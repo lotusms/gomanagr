@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import PublicLayout from '@/components/layouts/PublicLayout';
 import { useAuth } from '@/client/lib/AuthContext';
 import { PrimaryButton, SecondaryButton } from '@/components/buttons';
-import { HiMail } from 'react-icons/hi';
-import { FaTicketAlt } from 'react-icons/fa';
+import { FaCalendarAlt, FaFolderOpen } from 'react-icons/fa';
 import { MdAutoAwesome } from 'react-icons/md';
 import { HiLightningBolt } from 'react-icons/hi';
 import { FaChartBar } from 'react-icons/fa';
@@ -68,8 +67,8 @@ export default function LandingPage() {
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
               {[
-                { name: 'Shared Inbox', icon: HiMail },
-                { name: 'Ticketing', icon: FaTicketAlt },
+                { name: 'Organization', icon: FaFolderOpen },
+                { name: 'Scheduling', icon: FaCalendarAlt },
                 { name: 'AI Agent', icon: MdAutoAwesome },
                 { name: 'Automation', icon: HiLightningBolt },
                 { name: 'Insights', icon: FaChartBar },
@@ -84,7 +83,7 @@ export default function LandingPage() {
                       <IconComponent />
                     </div>
                     <div className="text-white font-medium mb-2">{feature.name}</div>
-                    <div className="h-1 bg-amber-400/70 rounded-full mx-auto w-12 group-hover:w-16 transition-all"></div>
+                    <div className="h-1 bg-pink-500 rounded-full mx-auto w-12 group-hover:w-16 transition-all opacity-90"></div>
                   </div>
                 );
               })}

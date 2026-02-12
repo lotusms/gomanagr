@@ -344,64 +344,98 @@ export default function MultiStepSignup() {
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-purple-200">Step {currentStep} of {TOTAL_STEPS}</span>
-          <span className="text-sm text-purple-200">{Math.round((currentStep / TOTAL_STEPS) * 100)}%</span>
+          <span className="text-sm text-purple-200 font-medium">Step {currentStep} of {TOTAL_STEPS}</span>
+          <span className="text-sm text-purple-200 font-medium">{Math.round((currentStep / TOTAL_STEPS) * 100)}%</span>
         </div>
-        <div className="w-full bg-white/10 rounded-full h-2">
+        <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden backdrop-blur-sm">
           <div
-            className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+            className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-500 ease-out shadow-lg shadow-purple-500/50"
             style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
           />
         </div>
       </div>
 
-      {/* Step Content */}
-      <div className="bg-white/10 backdrop-blur-sm rounded-2xl shadow-xl p-8 border border-white/20">
-        {errors.submit && (
-          <div className="mb-6 bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg whitespace-pre-line">
-            {errors.submit}
+      {/* Step Content - Glassmorphism Card */}
+      <div className="relative bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20 overflow-hidden group hover:border-white/30 transition-all duration-300">
+        {/* Shimmer effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+        
+        {/* Content */}
+        <div className="relative z-10">
+          {errors.submit && (
+            <div className="mb-6 bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg whitespace-pre-line animate-shake">
+              <div className="flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{errors.submit}</span>
+              </div>
+            </div>
+          )}
+
+          {renderStep()}
+
+          {/* Navigation Buttons */}
+          <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/20">
+            <SecondaryButton
+              onClick={handleBack}
+              disabled={currentStep === 1 || loading}
+              variant="white"
+              className="transform transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+              Back
+            </SecondaryButton>
+
+            <PrimaryButton
+              onClick={handleNext}
+              disabled={
+                loading || 
+                // CRITICAL: Always disable if email exists (already registered)
+                (currentStep === 1 && emailExists) ||
+                !isStepValid(currentStep) || 
+                (currentStep === 1 && (!emailVerified || emailCheckFailed))
+              }
+              title={
+                currentStep === 1 && emailExists
+                  ? 'This user already exists. Use a different email or login.'
+                  : !isStepValid(currentStep) 
+                    ? currentStep === 1 && (!emailVerified || emailCheckFailed)
+                      ? 'Email verification is required before proceeding'
+                      : 'Please complete all required fields'
+                    : ''
+              }
+              className="transform transition-all duration-200 hover:scale-105 active:scale-95"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating Account...
+                </span>
+              ) : currentStep === TOTAL_STEPS ? (
+                'Complete Signup'
+              ) : (
+                'Next'
+              )}
+            </PrimaryButton>
           </div>
-        )}
-
-        {renderStep()}
-
-        {/* Navigation Buttons */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/20">
-          <SecondaryButton
-            onClick={handleBack}
-            disabled={currentStep === 1 || loading}
-            variant="white"
-          >
-            Back
-          </SecondaryButton>
-
-          <PrimaryButton
-            onClick={handleNext}
-            disabled={
-              loading || 
-              // CRITICAL: Always disable if email exists (already registered)
-              (currentStep === 1 && emailExists) ||
-              !isStepValid(currentStep) || 
-              (currentStep === 1 && (!emailVerified || emailCheckFailed))
-            }
-            title={
-              currentStep === 1 && emailExists
-                ? 'This user already exists. Use a different email or login.'
-                : !isStepValid(currentStep) 
-                  ? currentStep === 1 && (!emailVerified || emailCheckFailed)
-                    ? 'Email verification is required before proceeding'
-                    : 'Please complete all required fields'
-                  : ''
-            }
-          >
-            {loading
-              ? 'Creating Account...'
-              : currentStep === TOTAL_STEPS
-              ? 'Complete Signup'
-              : 'Next'}
-          </PrimaryButton>
         </div>
+
+        {/* Decorative corner accents */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-br-full"></div>
+        <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-white/10 to-transparent rounded-tl-full"></div>
       </div>
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,24 +1,40 @@
 import { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/client/lib/AuthContext';
+import { InputField, PasswordField } from '@/components/ui';
+import { PrimaryButton, SecondaryButton } from '@/components/buttons';
 
-export default function AuthForm({ mode = 'login', onToggleMode, darkMode = false }) {
+export default function AuthForm({ mode = 'login', darkMode = false }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [generalError, setGeneralError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, signup } = useAuth();
 
+  const clearErrors = () => {
+    setEmailError('');
+    setPasswordError('');
+    setConfirmPasswordError('');
+    setGeneralError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    clearErrors();
 
+    // Validation
     if (mode === 'signup' && password !== confirmPassword) {
-      return setError('Passwords do not match');
+      setConfirmPasswordError('Passwords do not match');
+      return;
     }
 
     if (password.length < 6) {
-      return setError('Password must be at least 6 characters');
+      setPasswordError('Password must be at least 6 characters');
+      return;
     }
 
     try {
@@ -29,103 +45,142 @@ export default function AuthForm({ mode = 'login', onToggleMode, darkMode = fals
         await signup(email, password);
       }
     } catch (err) {
-      setError(err.message || 'Failed to authenticate');
+      const errorMessage = err.message || 'Failed to authenticate';
+      
+      // Check if error is email-related
+      if (errorMessage.toLowerCase().includes('email') || errorMessage.toLowerCase().includes('user')) {
+        setEmailError(errorMessage);
+      } else if (errorMessage.toLowerCase().includes('password')) {
+        setPasswordError(errorMessage);
+      } else {
+        setGeneralError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Validate password match for signup
+  const validatePasswordMatch = (value) => {
+    if (mode === 'signup' && value && value !== password) {
+      return 'Passwords do not match';
+    }
+    return null;
+  };
+
   return (
     <div className="w-full max-w-md mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="email" className={`block text-sm font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
-            Email
-          </label>
-          <input
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-5">
+          <InputField
             id="email"
+            label="Email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
-              darkMode 
-                ? 'border-white/30 bg-white/10 text-white placeholder-white/50 focus:bg-white/20' 
-                : 'border-gray-300 bg-white text-gray-900'
-            }`}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailError) setEmailError('');
+            }}
             placeholder="Enter your email"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="password" className={`block text-sm font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             required
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
-              darkMode 
-                ? 'border-white/30 bg-white/10 text-white placeholder-white/50 focus:bg-white/20' 
-                : 'border-gray-300 bg-white text-gray-900'
-            }`}
-            placeholder="Enter your password"
+            error={emailError}
           />
+
+          <PasswordField
+            id="password"
+            label="Password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (passwordError) setPasswordError('');
+            }}
+            placeholder="Enter your password"
+            required
+            error={passwordError}
+          />
+
+          {mode === 'signup' && (
+            <PasswordField
+              id="confirmPassword"
+              label="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (confirmPasswordError) setConfirmPasswordError('');
+              }}
+              placeholder="Confirm your password"
+              required
+              error={confirmPasswordError}
+              validate={validatePasswordMatch}
+            />
+          )}
         </div>
 
-        {mode === 'signup' && (
-          <div>
-            <label htmlFor="confirmPassword" className={`block text-sm font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
-              Confirm Password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition ${
-                darkMode 
-                  ? 'border-white/30 bg-white/10 text-white placeholder-white/50 focus:bg-white/20' 
-                  : 'border-gray-300 bg-white text-gray-900'
-              }`}
-              placeholder="Confirm your password"
-            />
+        {generalError && (
+          <div className="px-4 py-3 rounded-lg bg-red-900/50 border border-red-500/50 text-red-200 animate-shake">
+            <div className="flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{generalError}</span>
+            </div>
           </div>
         )}
 
-        {error && (
-          <div className={`px-4 py-3 rounded-lg ${
-            darkMode 
-              ? 'bg-red-900/50 border border-red-500/50 text-red-200' 
-              : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
-        >
-          {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
-        </button>
+        <div className="pt-2">
+          <PrimaryButton
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 text-base font-semibold transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+              </span>
+            ) : (
+              mode === 'login' ? 'Sign In' : 'Create Account'
+            )}
+          </PrimaryButton>
+        </div>
       </form>
 
-      <div className="mt-6 text-center">
-        <button
-          onClick={onToggleMode}
-          className="text-purple-300 hover:text-white font-medium transition"
+      {/* Divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-4 bg-transparent text-purple-200/60">or</span>
+        </div>
+      </div>
+
+      {/* Link to other auth page */}
+      <div className="text-center">
+        <Link
+          href={mode === 'login' ? '/signup' : '/login'}
+          className="text-purple-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4"
         >
           {mode === 'login'
-            ? "Don't have an account? Sign up"
-            : 'Already have an account? Sign in'}
-        </button>
+            ? "Don't have an account? "
+            : 'Already have an account? '}
+          <span className="text-white font-semibold">
+            {mode === 'login' ? 'Sign up' : 'Sign in'}
+          </span>
+        </Link>
       </div>
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }

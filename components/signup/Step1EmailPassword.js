@@ -253,6 +253,7 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         checking={checkingEmail}
         disabled={false}
         hasErrorState={emailExists}
+        inputProps={{ autoComplete: 'off' }}
         validate={(value) => {
           if (!value) return null; // Let required handle empty
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -297,6 +298,7 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         placeholder="At least 6 characters"
         required
         error={errors.password}
+        inputProps={{ autoComplete: 'new-password' }}
       />
 
       <PasswordField
@@ -307,6 +309,7 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         placeholder="Confirm your password"
         required
         error={errors.confirmPassword}
+        inputProps={{ autoComplete: 'new-password' }}
       />
 
       <div className="flex items-center space-x-2">

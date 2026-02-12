@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if the path userId matches the authenticated user's UID
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Company logos - stored at company-logos/{userId}/{filename}
+    match /company-logos/{userId}/{fileName} {
+      // Allow read if user is authenticated and owns the file (matches their userId)
+      allow read: if isOwner(userId);
+      
+      // Allow write (create/update) if user is authenticated and owns the file
+      // Also validate file size (max 5MB) and content type (images only)
+      allow write: if isOwner(userId)
+                 && request.resource.size < 5 * 1024 * 1024  // 5MB max
+                 && request.resource.contentType.matches('image/.*');
+      
+      // Allow delete if user is authenticated and owns the file
+      allow delete: if isOwner(userId);
+    }
+    
+    // Deny all other access by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

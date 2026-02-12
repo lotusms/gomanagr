@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserAccount",
+  "description": "User account document structure for Firestore collection 'useraccount'",
+  "type": "object",
+  "properties": {
+    "userId": {
+      "type": "string",
+      "description": "Firebase Auth user ID (same as document ID)",
+      "example": "abc123xyz789"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "User email address",
+      "example": "john.doe@example.com"
+    },
+    "trial": {
+      "type": "boolean",
+      "description": "Whether user is on free trial",
+      "default": true,
+      "example": true
+    },
+    "firstName": {
+      "type": "string",
+      "description": "User first name",
+      "minLength": 1,
+      "maxLength": 50,
+      "example": "John"
+    },
+    "lastName": {
+      "type": "string",
+      "description": "User last name",
+      "minLength": 1,
+      "maxLength": 50,
+      "example": "Doe"
+    },
+    "purpose": {
+      "type": "string",
+      "enum": ["Work", "Personal", "School", "Nonprofit"],
+      "description": "What brings the user to the platform",
+      "example": "Work"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "Owner",
+        "C-level",
+        "Director",
+        "President",
+        "VP",
+        "Team Leader",
+        "Team Member",
+        "Freelancer",
+        "Student",
+        "Researcher"
+      ],
+      "description": "User role in their organization",
+      "example": "Owner"
+    },
+    "companyName": {
+      "type": "string",
+      "description": "Company or organization name",
+      "minLength": 1,
+      "maxLength": 100,
+      "example": "Acme Inc."
+    },
+    "companyLogo": {
+      "type": "string",
+      "description": "URL to company logo (Firebase Storage URL) or empty string if not provided",
+      "example": "https://firebasestorage.googleapis.com/...",
+      "default": ""
+    },
+    "teamSize": {
+      "type": "string",
+      "enum": ["Myself", "2-5", "6-10", "11-25", "26+"],
+      "description": "Size of the user's team",
+      "example": "2-5"
+    },
+    "companySize": {
+      "type": "string",
+      "enum": ["Myself", "2-5", "6-10", "11-25", "26-50", "51-100", "101+"],
+      "description": "Total size of the company",
+      "example": "11-25"
+    },
+    "companyLocations": {
+      "type": "string",
+      "enum": ["1", "2-5", "6-10", "11-20", "21-50", "51+"],
+      "description": "Number of company locations",
+      "example": "1"
+    },
+    "sectionsToTrack": {
+      "type": "array",
+      "description": "Array of sections the user wants to track/manage",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "Client management",
+          "Lead Tracking",
+          "Onboarding",
+          "Messaging",
+          "File sharing",
+          "Scheduling",
+          "Invoicing / payments",
+          "Staff Management",
+          "Portfolio / Project Management",
+          "Task Management",
+          "Requests & Approvals",
+          "Resources Management"
+        ]
+      },
+      "example": ["Client management", "Task Management", "Messaging"]
+    },
+    "referralSource": {
+      "type": "string",
+      "enum": ["Social network", "Google", "Referral", "We Reached Out", "Other"],
+      "description": "How the user heard about the platform",
+      "example": "Google"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the account was created (ISO 8601)",
+      "example": "2026-02-12T14:30:00.000Z"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the account was last updated (ISO 8601)",
+      "example": "2026-02-12T14:30:00.000Z"
+    }
+  },
+  "required": [
+    "userId",
+    "email",
+    "trial",
+    "firstName",
+    "lastName",
+    "purpose",
+    "role",
+    "companyName",
+    "teamSize",
+    "companySize",
+    "companyLocations",
+    "sectionsToTrack",
+    "referralSource",
+    "createdAt",
+    "updatedAt"
+  ],
+  "additionalProperties": false
+}

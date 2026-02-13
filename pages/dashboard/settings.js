@@ -18,8 +18,15 @@ function SettingsContent() {
   }, []);
 
   const handlePaletteSelect = (paletteId) => {
+    console.log('Palette selected:', paletteId);
+    console.log('Available palettes:', Object.keys(allPalettes));
+    console.log('Current palette:', currentPalette);
+    
     if (paletteId && allPalettes[paletteId]) {
+      console.log('Calling setPalette with:', paletteId);
       setPalette(paletteId);
+    } else {
+      console.error('Invalid palette ID or palette not loaded:', paletteId);
     }
   };
 

@@ -146,9 +146,15 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col h-screen">
+    <div className="min-h-screen bg-gray-50 flex flex-col h-screen relative overflow-hidden">
+      {/* Same grid background as public pages */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
+        <div className="absolute top-1/2 right-1/3 w-72 h-72 bg-primary-400/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+      </div>
+
       {/* Top Navigation Bar */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 flex-shrink-0">
+      <header className="relative z-10 bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 flex-shrink-0">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
           <div className="flex items-center space-x-3">
             <Link href="/" className="flex items-center space-x-2">
@@ -225,7 +231,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
         {/* Sidebar */}
         <aside
           className={`${
@@ -240,8 +246,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-4 h-10 bg-white border border-gray-300 rounded-tr-lg rounded-br-lg shadow-lg hover:shadow-xl transition-all duration-200 items-center justify-center group hover:bg-gray-50 z-50 ml-2 cursor-pointer"
-            aria-label="Toggle sidebar"
-          >
+            aria-label="Toggle sidebar">
             <div className="flex flex-col gap-1">
               <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300"></div>
               <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300"></div>

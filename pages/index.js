@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
 import PublicLayout from '@/components/layouts/PublicLayout';
 import { useAuth } from '@/client/lib/AuthContext';
 import { PrimaryButton, SecondaryButton } from '@/components/buttons';
@@ -10,13 +8,6 @@ import { FaChartBar } from 'react-icons/fa';
 
 export default function LandingPage() {
   const { currentUser, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (currentUser) {
-      router.push('/dashboard');
-    }
-  }, [currentUser, router]);
 
   if (loading) {
     return (
@@ -29,10 +20,6 @@ export default function LandingPage() {
         </div>
       </PublicLayout>
     );
-  }
-
-  if (currentUser) {
-    return null;
   }
 
   return (
@@ -179,12 +166,12 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-gray-900">Loyalty Discount?</h2>
                     <div className="flex space-x-2">
-                      <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
+                      <SecondaryButton className="!rounded-lg text-sm min-w-0 px-4 py-2">
                         Assign
-                      </button>
-                      <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700">
+                      </SecondaryButton>
+                      <PrimaryButton className="!rounded-lg text-sm min-w-0 px-4 py-2">
                         Open
-                      </button>
+                      </PrimaryButton>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4 text-sm text-gray-600">

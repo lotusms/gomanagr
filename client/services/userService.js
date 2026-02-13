@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocFromServer } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/client/lib/firebase';
 
@@ -101,7 +101,7 @@ export async function createUserAccount(userId, userData, logoFile = null) {
 }
 
 /**
- * Get user account data
+ * Get user account data (may use cache).
  * @param {string} userId - The Firebase Auth user ID
  * @returns {Promise<object|null>}
  */
@@ -117,5 +117,48 @@ export async function getUserAccount(userId) {
   } catch (error) {
     console.error('Error getting user account:', error);
     throw new Error('Failed to get user account: ' + error.message);
+  }
+}
+
+/**
+ * Get user account data from server (bypasses cache). Use after saving so the UI sees the latest data.
+ * @param {string} userId - The Firebase Auth user ID
+ * @returns {Promise<object|null>}
+ */
+export async function getUserAccountFromServer(userId) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    const docSnap = await getDocFromServer(userAccountRef);
+
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user account from server:', error);
+    return getUserAccount(userId);
+  }
+}
+
+/**
+ * Update the user's selected theme palette (persists across devices).
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {string} paletteId - Theme palette ID (e.g. 'palette1', 'palette2')
+ * @returns {Promise<void>}
+ */
+export async function updateUserTheme(userId, paletteId) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    await setDoc(
+      userAccountRef,
+      {
+        selectedPalette: paletteId,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error updating user theme:', error);
+    throw new Error('Failed to save theme preference: ' + error.message);
   }
 }

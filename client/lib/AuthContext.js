@@ -4,7 +4,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  reauthenticateWithCredential,
+  updatePassword as firebaseUpdatePassword,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { auth } from './firebase';
 
@@ -34,6 +37,14 @@ export const AuthProvider = ({ children }) => {
     return sendPasswordResetEmail(auth, email);
   };
 
+  const updatePassword = (currentPassword, newPassword) => {
+    if (!currentUser) return Promise.reject(new Error('Not signed in'));
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+    return reauthenticateWithCredential(currentUser, credential).then(() =>
+      firebaseUpdatePassword(currentUser, newPassword)
+    );
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -50,6 +61,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     resetPassword,
+    updatePassword,
   };
 
   return (

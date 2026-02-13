@@ -1,5 +1,6 @@
 import * as Label from '@radix-ui/react-label';
 import { forwardRef } from 'react';
+import { getInputClasses, getLabelClasses } from './formControlStyles';
 
 /**
  * Reusable Input Field Component using Radix UI
@@ -23,6 +24,7 @@ import { forwardRef } from 'react';
  * @param {boolean} props.hasErrorState - Force error state styling (for cases like email exists)
  * @param {Object} props.inputProps - Additional props to pass to the input element
  * @param {Function} props.validate - Validation function that returns error message or null
+ * @param {string} props.variant - 'dark' (default) for dark backgrounds, 'light' for light backgrounds
  */
 const InputField = forwardRef(({
   id,
@@ -43,6 +45,7 @@ const InputField = forwardRef(({
   hasErrorState = false,
   inputProps = {},
   validate,
+  variant = 'dark',
 }, ref) => {
   // Run validation if provided
   const validationError = validate ? validate(value) : null;
@@ -50,14 +53,27 @@ const InputField = forwardRef(({
   const hasError = !!displayError || hasErrorState;
   const isValid = !hasError && value && !checking;
 
+  const isLight = variant === 'light';
+  const labelClass = getLabelClasses(variant);
+  const hasErrorState_ = hasError || hasErrorState;
+  const inputClass = getInputClasses(variant, hasErrorState_ && !checking);
+  const checkingClass = checking
+    ? (isLight
+        ? 'border-amber-400 bg-amber-50 text-gray-900 placeholder-gray-400'
+        : 'border-yellow-500 bg-yellow-900/20 text-white placeholder-white/50')
+    : '';
+  const iconPadding = 'pr-10';
+
+  const errorTextClass = isLight ? 'mt-1 text-sm text-red-600' : 'mt-1 text-sm text-red-300';
+
   return (
     <div className={className}>
       <Label.Root
         htmlFor={id}
-        className="block text-sm font-medium text-white mb-2"
+        className={labelClass}
       >
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className={isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1'}>*</span>}
       </Label.Root>
       <div className="relative">
         <input
@@ -70,28 +86,16 @@ const InputField = forwardRef(({
           required={required}
           disabled={disabled}
           placeholder={placeholder}
-          className={`
-            w-full px-4 py-3 border-2 rounded-lg
-            focus:ring-2 focus:ring-primary-500 focus:border-transparent
-            outline-none transition text-white placeholder-white/50 pr-12
-            disabled:opacity-50 disabled:cursor-not-allowed
-            ${
-              hasError || hasErrorState
-                ? 'border-red-500 bg-red-900/20'
-                : checking
-                ? 'border-yellow-500 bg-yellow-900/20'
-                : 'border-white/30 bg-white/10'
-            }
-          `}
+          className={`${inputClass} ${checkingClass} ${iconPadding}`}
           aria-invalid={hasError || hasErrorState ? 'true' : 'false'}
           aria-describedby={displayError ? `${id}-error` : undefined}
           {...inputProps}
         />
         
-        {/* Loading/Checking indicator */}
+        {/* Loading/Checking indicator - use theme CSS variable so palette (e.g. Rose ternary) applies */}
         {checking && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-ternary-500)' }}>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
           </div>
         )}
         
@@ -104,14 +108,14 @@ const InputField = forwardRef(({
         
         {/* Success icon */}
         {!checking && !hasError && isValid && successIcon && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-400">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-ternary-500)' }}>
             {successIcon}
           </div>
         )}
         
         {/* Custom icon */}
         {!checking && !hasError && !isValid && icon && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-ternary-500)' }}>
             {icon}
           </div>
         )}
@@ -119,7 +123,7 @@ const InputField = forwardRef(({
       
       {/* Error message */}
       {displayError && (
-        <p id={`${id}-error`} className="mt-1 text-sm text-red-300" role="alert">
+        <p id={`${id}-error`} className={errorTextClass} role="alert">
           {displayError}
         </p>
       )}

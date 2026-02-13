@@ -7,7 +7,7 @@
 
 const palettes = {
   palette1: {
-    name: 'Modern Teal & Sky',
+    name: 'Default',
     description: 'Modern, masculine palette with teal primary and light sky blue secondary',
     colors: {
       primary: {
@@ -49,7 +49,7 @@ const palettes = {
     },
   },
   palette2: {
-    name: 'Classic Purple & Pink',
+    name: 'Purple Rain',
     description: 'Original purple and pink palette with indigo accents',
     colors: {
       primary: {
@@ -91,20 +91,20 @@ const palettes = {
     },
   },
   palette3: {
-    name: 'Navy & Gold',
+    name: 'Harbor Vibes',
     description: 'Classic masculine palette with navy blue primary and rich gold secondary',
     colors: {
       primary: {
-        50: '#eff6ff',
-        100: '#dbeafe',
-        200: '#bfdbfe',
-        300: '#93c5fd',
-        400: '#60a5fa',
-        500: '#3b82f6',
-        600: '#2563eb',
-        700: '#1d4ed8',
-        800: '#1e40af',
-        900: '#1e3a8a',
+        50: '#e8eef6',
+        100: '#c5d2e8',
+        200: '#9fb3d6',
+        300: '#7290c2',
+        400: '#4a6fab',
+        500: '#2d4a7c',
+        600: '#1e3a6b',
+        700: '#162d57',
+        800: '#0f2244',
+        900: '#0a1833',
       },
       secondary: {
         50: '#fffbeb',
@@ -133,7 +133,7 @@ const palettes = {
     },
   },
   palette4: {
-    name: 'Deep Emerald & Rust',
+    name: 'Forest Ember',
     description: 'Bold, nature-inspired palette with deep emerald green and rust orange',
     colors: {
       primary: {
@@ -175,7 +175,7 @@ const palettes = {
     },
   },
   palette5: {
-    name: 'Electric Blue & Lime',
+    name: 'Neon Lights',
     description: 'Tech-forward, vibrant palette with electric blue and bright lime green',
     colors: {
       primary: {
@@ -217,7 +217,7 @@ const palettes = {
     },
   },
   palette6: {
-    name: 'Charcoal & Electric Cyan',
+    name: 'Midnight Drone',
     description: 'Sophisticated modern palette with charcoal gray and electric cyan',
     colors: {
       primary: {
@@ -259,7 +259,7 @@ const palettes = {
     },
   },
   palette7: {
-    name: 'Rich Orange & Teal',
+    name: 'Sunset Glow',
     description: 'Bold palette with rich orange primary and vibrant teal secondary',
     colors: {
       primary: {
@@ -301,8 +301,8 @@ const palettes = {
     },
   },
   palette8: {
-    name: 'Deep Red & Gold',
-    description: 'Bold palette with rich red primary and complementary gold secondary',
+    name: 'Red Carpet',
+    description: 'Bold palette with red primary and gold secondary',
     colors: {
       primary: {
         50: '#fef2f2',
@@ -385,7 +385,7 @@ const palettes = {
     },
   },
   palette10: {
-    name: 'Earth Tones',
+    name: 'Mother Earth',
     description: 'Natural palette with rich browns, terracotta, and olive greens',
     colors: {
       primary: {
@@ -473,16 +473,16 @@ const palettes = {
     description: 'Elegant palette with soft rose pinks and complementary greens',
     colors: {
       primary: {
-        50: '#fdf2f8',
-        100: '#fce7f3',
-        200: '#fbcfe8',
-        300: '#f9a8d4',
-        400: '#f472b6',
-        500: '#ec4899',
-        600: '#db2777',
-        700: '#be185d',
-        800: '#9f1239',
-        900: '#831843',
+        50: '#f9a8d4',
+        100: '#f472b6',
+        200: '#ec4899',
+        300: '#db2777',
+        400: '#be185d',
+        500: '#9f1239',
+        600: '#831843',
+        700: '#701035',
+        800: '#5a0d2b',
+        900: '#440922',
       },
       secondary: {
         50: '#fefdfb',
@@ -497,16 +497,16 @@ const palettes = {
         900: '#5c4a2f',
       },
       ternary: {
-        50: '#faf5ff',
-        100: '#f3e8ff',
-        200: '#e9d5ff',
-        300: '#d8b4fe',
-        400: '#c084fc',
-        500: '#a855f7',
-        600: '#9333ea',
-        700: '#7e22ce',
-        800: '#6b21a8',
-        900: '#581c87',
+        50: '#fdf2f8',
+        100: '#fce7f3',
+        200: '#fbcfe8',
+        300: '#f9a8d4',
+        400: '#f472b6',
+        500: '#ec4899',
+        600: '#db2777',
+        700: '#be185d',
+        800: '#9f1239',
+        900: '#831843',
       },
     },
   },

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { InputField, ChipsSingle } from '@/components/ui';
+import { SecondaryButton } from '@/components/buttons';
 
 const TEAM_SIZE_OPTIONS = ['Myself', '2-5', '6-10', '11-25', '26+'];
 const COMPANY_SIZE_OPTIONS = ['Myself', '2-5', '6-10', '11-25', '26-50', '51-100', '101+'];
@@ -88,13 +89,13 @@ export default function Step3CompanyInfo({ data, updateData, errors }) {
               </button>
             </div>
           ) : (
-            <button
+            <SecondaryButton
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full px-4 py-3 border-2 border-dashed border-white/30 bg-white/5 rounded-lg text-white hover:bg-white/10 transition"
+              className="w-full !rounded-lg"
             >
               + Upload Logo
-            </button>
+            </SecondaryButton>
           )}
           <input
             ref={fileInputRef}

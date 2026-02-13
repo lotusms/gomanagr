@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { PrimaryButton } from '@/components/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/buttons';
 
 /**
  * Sign in / Try for free (when logged out) or Go to Dashboard (when logged in).
@@ -13,24 +12,18 @@ export default function PublicActionButtons({ currentUser, onSignIn, onTryFree }
     <div className="flex items-center space-x-4">
       {!currentUser && (
         <>
-          <button
-            onClick={onSignIn}
-            className="text-white hover:text-primary-200 transition font-medium"
-          >
+          <SecondaryButton onClick={onSignIn} variant="light">
             Sign in
-          </button>
+          </SecondaryButton>
           <PrimaryButton onClick={onTryFree}>
             Try for free
           </PrimaryButton>
         </>
       )}
       {currentUser && (
-        <Link
-          href="/dashboard"
-          className="px-4 py-2 bg-white text-primary-900 rounded-lg font-medium hover:bg-primary-50 transition"
-        >
+        <PrimaryButton href="/dashboard">
           Go to Dashboard
-        </Link>
+        </PrimaryButton>
       )}
     </div>
   );

@@ -2,15 +2,115 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/client/lib/AuthContext';
+import { getUserAccount, getUserAccountFromServer } from '@/client/services/userService';
 import { HiFolder, HiUsers, HiCog } from 'react-icons/hi';
 import { MdDashboard } from 'react-icons/md';
+
+/** Format display name from account and nameView preference (saved in useraccount). */
+function getDisplayName(account, email = '') {
+  const first = (account?.firstName ?? '').trim();
+  const last = (account?.lastName ?? '').trim();
+  const nameView = account?.nameView ?? 'full';
+  const hasName = first || last;
+
+  switch (nameView) {
+    case 'first':
+      return first || email;
+    case 'f_last':
+      return hasName ? (first ? first[0] + '. ' : '') + last || email : email;
+    case 'last_first':
+      return hasName ? [last, first].filter(Boolean).join(', ') || email : email;
+    case 'email':
+      return email || '';
+    case 'full':
+    default:
+      return hasName ? `${first} ${last}`.trim() : email;
+  }
+}
+
+/** Avatar: logo if set, else initials by nameView. Default first+last initials. */
+function getAvatarContent(account, email = '') {
+  const logoUrl = (account?.companyLogo ?? '').trim();
+  if (logoUrl) return { type: 'image', url: logoUrl };
+
+  const first = (account?.firstName ?? '').trim();
+  const last = (account?.lastName ?? '').trim();
+  const nameView = account?.nameView ?? 'full';
+  const hasName = first || last;
+  const emailChar = (email || '?').charAt(0).toUpperCase();
+
+  let text;
+  switch (nameView) {
+    case 'first':
+      text = hasName && first ? first[0] : emailChar;
+      break;
+    case 'last_first':
+      text = hasName ? (last ? last[0] : '') + (first ? first[0] : '') : emailChar;
+      break;
+    case 'f_last':
+    case 'full':
+    default:
+      text = hasName ? (first ? first[0] : '') + (last ? last[0] : '') : emailChar;
+      break;
+    case 'email':
+      text = emailChar;
+      break;
+  }
+  text = (text || emailChar).toUpperCase();
+  return { type: 'initials', text };
+}
 
 export default function DashboardLayout({ children, title = 'Dashboard' }) {
   const { currentUser, logout } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userAccount, setUserAccount] = useState(null);
+  const [previewAccount, setPreviewAccount] = useState(null);
   const dropdownRef = useRef(null);
+
+  const fetchUserAccount = (fromServer = false) => {
+    if (!currentUser?.uid) return;
+    const fetch = fromServer ? getUserAccountFromServer : getUserAccount;
+    fetch(currentUser.uid)
+      .then((data) => setUserAccount(data || null))
+      .catch(() => setUserAccount(null));
+  };
+
+  // Load user account so header shows correct display name
+  useEffect(() => {
+    fetchUserAccount(false);
+  }, [currentUser?.uid, router.asPath]);
+
+  // Clear preview when not on Account page
+  useEffect(() => {
+    if (router.pathname !== '/account') setPreviewAccount(null);
+  }, [router.pathname]);
+
+  // Live preview: Account page sends current form state so header updates as user changes dropdown/name
+  useEffect(() => {
+    const onPreview = (e) => setPreviewAccount(e.detail || null);
+    window.addEventListener('useraccount-preview', onPreview);
+    return () => window.removeEventListener('useraccount-preview', onPreview);
+  }, []);
+
+  // On save: use payload from event so header updates immediately; then refetch from server
+  useEffect(() => {
+    const onSaved = (e) => {
+      const payload = e.detail;
+      if (payload && typeof payload === 'object') {
+        setUserAccount((prev) => ({ ...prev, ...payload }));
+      }
+      setPreviewAccount(null);
+      if (currentUser?.uid) {
+        getUserAccountFromServer(currentUser.uid)
+          .then((data) => data && setUserAccount(data))
+          .catch(() => {});
+      }
+    };
+    window.addEventListener('useraccount-updated', onSaved);
+    return () => window.removeEventListener('useraccount-updated', onSaved);
+  }, [currentUser?.uid]);
 
   const handleLogout = async () => {
     try {
@@ -51,7 +151,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50 flex-shrink-0">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
           <div className="flex items-center space-x-3">
-            <Link href="/dashboard" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">G</span>
               </div>
@@ -61,16 +161,29 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
 
           <div className="flex items-center space-x-4">
             <div className="hidden sm:block text-sm text-gray-600">
-              {currentUser?.email}
+              <span>Hello, </span>
+              {getDisplayName(previewAccount || userAccount, currentUser?.email ?? '') || currentUser?.email}
             </div>
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex-shrink-0 ${
+                  (userAccount?.companyLogo ?? '').trim()
+                    ? 'bg-white text-gray-900 hover:bg-gray-50'
+                    : 'bg-primary-600 text-white hover:bg-primary-700'
+                }`}
                 aria-label="User menu"
                 aria-expanded={dropdownOpen}
               >
-                {currentUser?.email?.charAt(0).toUpperCase()}
+                {(() => {
+                  const account = previewAccount ? { ...userAccount, ...previewAccount } : userAccount;
+                  const logoUrl = (userAccount?.companyLogo ?? '').trim();
+                  if (logoUrl) {
+                    return <img src={logoUrl} alt="" className="w-full h-full object-cover" />;
+                  }
+                  const avatar = getAvatarContent(account, currentUser?.email ?? '');
+                  return <span className="text-sm">{avatar.text}</span>;
+                })()}
               </button>
 
               {/* Dropdown Menu */}
@@ -99,6 +212,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
                   </Link>
                   <div className="border-t border-gray-200 my-1"></div>
                   <button
+                    type="button"
                     onClick={handleLogout}
                     className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >

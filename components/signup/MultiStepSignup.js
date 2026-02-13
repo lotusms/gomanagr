@@ -378,7 +378,7 @@ export default function MultiStepSignup() {
             <SecondaryButton
               onClick={handleBack}
               disabled={currentStep === 1 || loading}
-              variant="white"
+              variant="light"
               className="transform transition-all duration-200 hover:scale-105 active:scale-95"
             >
               Back

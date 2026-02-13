@@ -17,7 +17,7 @@ export default function Step5Referral({ data, updateData, errors }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">How did you hear about us?</h2>
-        <p className="text-purple-200">Help us understand how you found GoManagr</p>
+        <p className="text-primary-200">Help us understand how you found GoManagr</p>
       </div>
 
       <ChipsSingle

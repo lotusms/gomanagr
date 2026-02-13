@@ -53,7 +53,7 @@ export default function Step3CompanyInfo({ data, updateData, errors }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Company Information</h2>
-        <p className="text-purple-200">Tell us about your organization</p>
+        <p className="text-primary-200">Tell us about your organization</p>
       </div>
 
       <InputField
@@ -103,7 +103,7 @@ export default function Step3CompanyInfo({ data, updateData, errors }) {
             onChange={handleLogoChange}
             className="hidden"
           />
-          <p className="text-xs text-purple-200">You can add this later</p>
+          <p className="text-xs text-primary-200">You can add this later</p>
         </div>
       </div>
 

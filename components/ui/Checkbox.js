@@ -29,10 +29,10 @@ export default function Checkbox({
           flex h-5 w-5 items-center justify-center rounded border-2
           bg-white/10 border-white/30
           transition-all duration-200
-          focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-transparent
+          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-transparent
           disabled:cursor-not-allowed disabled:opacity-50
-          data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600
-          hover:border-purple-400
+          data-[state=checked]:bg-primary-600 data-[state=checked]:border-primary-600
+          hover:border-primary-400
         `}
         checked={checked}
         onCheckedChange={onCheckedChange}

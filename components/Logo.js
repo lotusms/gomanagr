@@ -12,7 +12,7 @@ export default function Logo({ variant = 'inline', href, className = '', tagline
   const inlineContent = (
     <>
       <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-        <span className="text-purple-900 font-bold text-xl">G</span>
+        <span className="text-primary-900 font-bold text-xl">G</span>
       </div>
       <span className="text-white text-xl font-semibold">GoManagr</span>
     </>
@@ -20,13 +20,13 @@ export default function Logo({ variant = 'inline', href, className = '', tagline
 
   const stackedContent = (
     <div className="text-center mb-8 animate-fade-in">
-      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-white to-purple-100 rounded-2xl shadow-2xl mb-4 transform hover:scale-110 transition-transform duration-300">
-        <span className="text-purple-900 font-bold text-6xl">G</span>
+      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-white to-primary-100 rounded-2xl shadow-2xl mb-4 transform hover:scale-110 transition-transform duration-300">
+        <span className="text-primary-900 font-bold text-6xl">G</span>
       </div>
-      <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-white via-purple-100 to-white bg-clip-text text-transparent">
+      <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-white via-primary-100 to-white bg-clip-text text-transparent">
         GoManagr
       </h1>
-      {tagline && <p className="text-purple-200/80 text-sm">{tagline}</p>}
+      {tagline && <p className="text-primary-200/80 text-sm">{tagline}</p>}
     </div>
   );
 

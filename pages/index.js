@@ -36,17 +36,17 @@ export default function LandingPage() {
   }
 
   return (
-    <PublicLayout title="GoManagr - Customer-first service at scale">
+    <PublicLayout title="GoManagr - A complete Business Management Suite">
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-            Customer-first service at scale.
+           Business Management Suite
             <br />
-            <span className="text-purple-200">Powered by AI, built for people.</span>
+            <span className="text-primary-200">for modern organizations.</span>
           </h1>
-          <p className="text-xl md:text-2xl text-purple-100 mb-10 max-w-3xl mx-auto">
-            GoManagr gives you complete control over AI and automation to deliver top-quality service you can trust.
+          <p className="text-xl md:text-2xl text-primary-100 mb-10 max-w-3xl mx-auto">
+            GoManagr unifies client management, staff coordination, project tracking, and scheduling, and more in one platform.
           </p>
 
           {/* CTA Buttons */}
@@ -83,7 +83,7 @@ export default function LandingPage() {
                       <IconComponent />
                     </div>
                     <div className="text-white font-medium mb-2">{feature.name}</div>
-                    <div className="h-1 bg-pink-500 rounded-full mx-auto w-12 group-hover:w-16 transition-all opacity-90"></div>
+                    <div className="h-1 bg-secondary-500 rounded-full mx-auto w-12 group-hover:w-16 transition-all opacity-90"></div>
                   </div>
                 );
               })}
@@ -139,12 +139,12 @@ export default function LandingPage() {
                     <div
                       key={index}
                       className={`p-4 rounded-lg cursor-pointer transition ${
-                        index === 0 ? 'bg-purple-50 border-2 border-purple-200' : 'hover:bg-gray-50'
+                        index === 0 ? 'bg-primary-50 border-2 border-primary-200' : 'hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-purple-200 rounded-full flex items-center justify-center text-purple-800 font-semibold text-sm">
+                          <div className="w-8 h-8 bg-primary-200 rounded-full flex items-center justify-center text-primary-800 font-semibold text-sm">
                             {conversation.name.charAt(0)}
                           </div>
                           <div>
@@ -182,7 +182,7 @@ export default function LandingPage() {
                       <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
                         Assign
                       </button>
-                      <button className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">
+                      <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700">
                         Open
                       </button>
                     </div>
@@ -201,7 +201,7 @@ export default function LandingPage() {
 
                 <div className="border-t border-gray-200 pt-6">
                   <div className="flex items-start space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center text-purple-800 font-semibold">
+                    <div className="w-12 h-12 bg-primary-200 rounded-full flex items-center justify-center text-primary-800 font-semibold">
                       KT
                     </div>
                     <div className="flex-1">
@@ -228,7 +228,7 @@ export default function LandingPage() {
           <h2 className="text-4xl font-bold text-white mb-6">
             Ready to transform your customer service?
           </h2>
-          <p className="text-xl text-purple-100 mb-8">
+          <p className="text-xl text-primary-100 mb-8">
             Join thousands of companies delivering exceptional customer experiences.
           </p>
           <PrimaryButton href="/signup">

@@ -29,7 +29,7 @@ function DashboardContent() {
           {[
             { title: 'Total Projects', value: '12', change: '+2', color: 'bg-blue-500' },
             { title: 'Active Tasks', value: '8', change: '+3', color: 'bg-green-500' },
-            { title: 'Team Members', value: '24', change: '+1', color: 'bg-purple-500' },
+            { title: 'Team Members', value: '24', change: '+1', color: 'bg-primary-500' },
             { title: 'Completed', value: '156', change: '+12', color: 'bg-orange-500' },
           ].map((stat, index) => (
             <div key={index} className="bg-white rounded-lg shadow p-6">

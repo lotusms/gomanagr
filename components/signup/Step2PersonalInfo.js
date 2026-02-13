@@ -43,7 +43,7 @@ export default function Step2PersonalInfo({ data, updateData, errors }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Tell us about yourself</h2>
-        <p className="text-purple-200">Help us personalize your experience</p>
+        <p className="text-primary-200">Help us personalize your experience</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

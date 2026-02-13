@@ -72,7 +72,7 @@ const InputField = forwardRef(({
           placeholder={placeholder}
           className={`
             w-full px-4 py-3 border-2 rounded-lg
-            focus:ring-2 focus:ring-purple-500 focus:border-transparent
+            focus:ring-2 focus:ring-primary-500 focus:border-transparent
             outline-none transition text-white placeholder-white/50 pr-12
             disabled:opacity-50 disabled:cursor-not-allowed
             ${

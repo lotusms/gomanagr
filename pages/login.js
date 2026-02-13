@@ -53,7 +53,7 @@ export default function LoginPage() {
                   <h2 className="text-3xl font-bold text-white mb-2 transform transition-all duration-300">
                     Welcome Back
                   </h2>
-                  <p className="text-purple-200/70 text-sm">
+                  <p className="text-primary-200/70 text-sm">
                     Sign in to continue to your dashboard
                   </p>
                 </div>
@@ -70,11 +70,11 @@ export default function LoginPage() {
 
           {/* Footer Links */}
           <div className="mt-8 text-center space-y-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <p className="text-purple-200/60 text-xs">
+            <p className="text-primary-200/60 text-xs">
               By continuing, you agree to our{' '}
-              <a href="#" className="text-purple-200 hover:text-white underline transition">Terms</a>
+              <a href="#" className="text-primary-200 hover:text-white underline transition">Terms</a>
               {' '}and{' '}
-              <a href="#" className="text-purple-200 hover:text-white underline transition">Privacy Policy</a>
+              <a href="#" className="text-primary-200 hover:text-white underline transition">Privacy Policy</a>
             </p>
           </div>
         </div>

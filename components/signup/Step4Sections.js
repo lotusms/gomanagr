@@ -26,7 +26,7 @@ export default function Step4Sections({ data, updateData, errors }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">What sections are you looking to track or manage?</h2>
-        <p className="text-purple-200">Select all that apply - more can be added later</p>
+        <p className="text-primary-200">Select all that apply - more can be added later</p>
       </div>
 
       <ChipsMulti

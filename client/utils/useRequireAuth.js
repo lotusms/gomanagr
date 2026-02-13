@@ -1,6 +1,6 @@
 /**
  * Hook to require authentication for a page
- * Redirects to home page if not authenticated
+ * Redirects to login page if not authenticated
  */
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -12,7 +12,8 @@ export function useRequireAuth() {
 
   useEffect(() => {
     if (!loading && !currentUser) {
-      router.push('/');
+      // Use replace instead of push to prevent back button navigation
+      router.replace('/login');
     }
   }, [currentUser, loading, router]);
 

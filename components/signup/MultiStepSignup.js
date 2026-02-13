@@ -344,12 +344,12 @@ export default function MultiStepSignup() {
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-purple-200 font-medium">Step {currentStep} of {TOTAL_STEPS}</span>
-          <span className="text-sm text-purple-200 font-medium">{Math.round((currentStep / TOTAL_STEPS) * 100)}%</span>
+          <span className="text-sm text-primary-200 font-medium">Step {currentStep} of {TOTAL_STEPS}</span>
+          <span className="text-sm text-primary-200 font-medium">{Math.round((currentStep / TOTAL_STEPS) * 100)}%</span>
         </div>
         <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden backdrop-blur-sm">
           <div
-            className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-500 ease-out shadow-lg shadow-purple-500/50"
+            className="bg-gradient-to-r from-primary-500 to-secondary-500 h-2.5 rounded-full transition-all duration-500 ease-out shadow-lg shadow-primary-500/50"
             style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
           />
         </div>

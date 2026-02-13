@@ -237,7 +237,7 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Create your account</h2>
-        <p className="text-purple-200">Start your free trial - no credit card required</p>
+        <p className="text-primary-200">Start your free trial - no credit card required</p>
       </div>
 
       <InputField

@@ -15,7 +15,7 @@ export default function PublicActionButtons({ currentUser, onSignIn, onTryFree }
         <>
           <button
             onClick={onSignIn}
-            className="text-white hover:text-purple-200 transition font-medium"
+            className="text-white hover:text-primary-200 transition font-medium"
           >
             Sign in
           </button>
@@ -27,7 +27,7 @@ export default function PublicActionButtons({ currentUser, onSignIn, onTryFree }
       {currentUser && (
         <Link
           href="/dashboard"
-          className="px-4 py-2 bg-white text-purple-900 rounded-lg font-medium hover:bg-purple-50 transition"
+          className="px-4 py-2 bg-white text-primary-900 rounded-lg font-medium hover:bg-primary-50 transition"
         >
           Go to Dashboard
         </Link>

@@ -34,13 +34,13 @@ export default function SecondaryButton({
 
   const variantTextClasses = {
     white: 'text-white',
-    purple: 'text-purple-100 hover:text-purple-50',
+    purple: 'text-primary-100 hover:text-primary-50',
   };
 
   // Back pill: two gradient layers, crossfade opacity for smooth reverse
   const backPillBase = 'absolute inset-0 rounded-full transition-opacity duration-700 ease-in-out';
-  const backPillA = `${backPillBase} bg-gradient-to-r from-purple-500 to-pink-500 opacity-100 group-hover:opacity-0`;
-  const backPillB = `${backPillBase} bg-gradient-to-r from-pink-500 to-purple-500 opacity-0 group-hover:opacity-100`;
+  const backPillA = `${backPillBase} bg-gradient-to-r from-primary-500 to-secondary-500 opacity-100 group-hover:opacity-0`;
+  const backPillB = `${backPillBase} bg-gradient-to-r from-secondary-500 to-primary-500 opacity-0 group-hover:opacity-100`;
 
   // Front pill: solid purple, 2px smaller; bg stays the same on hover (only gradient border reverses)
   const frontPillClasses = `
@@ -50,10 +50,10 @@ export default function SecondaryButton({
     px-6 py-3
     rounded-full
     font-semibold text-sm
-    bg-purple-900
+    bg-primary-900
     transition-all duration-500 ease-in-out
     disabled:opacity-50 disabled:cursor-not-allowed
-    focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-transparent
+    focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 focus:ring-offset-transparent
     ${variantTextClasses[variant] || variantTextClasses.white}
     ${className}
   `;

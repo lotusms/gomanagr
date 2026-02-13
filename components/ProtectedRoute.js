@@ -8,7 +8,8 @@ export default function ProtectedRoute({ children }) {
 
   useEffect(() => {
     if (!loading && !currentUser) {
-      router.push('/');
+      // Use replace instead of push to prevent back button navigation
+      router.replace('/login');
     }
   }, [currentUser, loading, router]);
 

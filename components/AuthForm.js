@@ -152,7 +152,7 @@ export default function AuthForm({ mode = 'login', darkMode = false }) {
           <div className="w-full border-t border-white/10"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-transparent text-purple-200/60">or</span>
+          <span className="px-4 bg-transparent text-primary-200/60">or</span>
         </div>
       </div>
 
@@ -160,7 +160,7 @@ export default function AuthForm({ mode = 'login', darkMode = false }) {
       <div className="text-center">
         <Link
           href={mode === 'login' ? '/signup' : '/login'}
-          className="text-purple-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4"
+          className="text-primary-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4"
         >
           {mode === 'login'
             ? "Don't have an account? "

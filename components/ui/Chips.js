@@ -52,10 +52,10 @@ export function ChipsSingle({
             value={option}
             className={`
               ${isVertical ? 'w-full px-6 py-4' : 'px-4 py-2'} rounded-lg font-medium transition cursor-pointer text-left
-              focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-purple-900
+              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-900
               ${
                 value === option
-                  ? 'bg-purple-600 text-white border-2 border-purple-400'
+                  ? 'bg-primary-600 text-white border-2 border-primary-400'
                   : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20'
               }
             `}
@@ -134,10 +134,10 @@ export function ChipsMulti({
             value={option}
             className={`
               px-4 py-3 rounded-lg font-medium text-left transition cursor-pointer
-              focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-purple-900
+              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-900
               ${
                 value?.includes(option)
-                  ? 'bg-purple-600 text-white border-2 border-purple-400'
+                  ? 'bg-primary-600 text-white border-2 border-primary-400'
                   : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20'
               }
             `}
@@ -152,7 +152,7 @@ export function ChipsMulti({
         ))}
       </ToggleGroup.Root>
       {value && value.length > 0 && (
-        <div className="mt-4 bg-purple-900/50 border border-purple-500/50 rounded-lg p-4">
+        <div className="mt-4 bg-primary-900/50 border border-primary-500/50 rounded-lg p-4">
           <p className="text-sm text-white">
             <span className="font-semibold">{value.length}</span> section{value.length !== 1 ? 's' : ''} selected
           </p>

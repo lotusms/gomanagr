@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/router';
 import Logo from '@/components/Logo';
 import { PublicHeader } from './PublicHeader';

@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 import Step1EmailPassword from './Step1EmailPassword';
 import Step2PersonalInfo from './Step2PersonalInfo';
 import Step3CompanyInfo from './Step3CompanyInfo';
 import Step4Sections from './Step4Sections';
 import Step5Referral from './Step5Referral';
-import { createUserAccount } from '@/client/services/userService';
+import { createUserAccount } from '@/services/userService';
 import { PrimaryButton, SecondaryButton } from '@/components/buttons';
 
 const TOTAL_STEPS = 5;

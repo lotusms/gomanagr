@@ -1,19 +1,33 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useEffect, useRef } from 'react';
+import { useAuth } from '@/lib/AuthContext';
+import { getUserAccount } from '@/services/userService';
 import PublicLayout from '@/components/layouts/PublicLayout';
 import AuthForm from '@/components/AuthForm';
 import Logo from '@/components/Logo';
 
+const THEME_COOKIE = 'gomanagr_palette';
+const DEFAULT_PALETTE = 'palette1';
+
 export default function LoginPage() {
   const { currentUser, loading } = useAuth();
-  const router = useRouter();
+  const redirecting = useRef(false);
 
   useEffect(() => {
-    if (currentUser) {
-      router.push('/dashboard');
-    }
-  }, [currentUser, router]);
+    if (!currentUser || redirecting.current) return;
+    redirecting.current = true;
+    getUserAccount(currentUser.uid)
+      .then((account) => {
+        const paletteId = account?.selectedPalette && typeof account.selectedPalette === 'string'
+          ? account.selectedPalette
+          : DEFAULT_PALETTE;
+        document.cookie = `${THEME_COOKIE}=${encodeURIComponent(paletteId)};path=/;max-age=31536000;SameSite=Lax`;
+        window.location.href = '/dashboard';
+      })
+      .catch(() => {
+        document.cookie = `${THEME_COOKIE}=${encodeURIComponent(DEFAULT_PALETTE)};path=/;max-age=31536000;SameSite=Lax`;
+        window.location.href = '/dashboard';
+      });
+  }, [currentUser]);
 
   if (loading) {
     return (

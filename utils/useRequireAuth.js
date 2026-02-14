@@ -4,7 +4,7 @@
  */
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 
 export function useRequireAuth() {
   const { currentUser, loading } = useAuth();

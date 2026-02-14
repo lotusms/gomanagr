@@ -46,11 +46,9 @@ gomanagr/
 │   └── api/            # Next.js API routes (server-side)
 │       └── hello.js    # Example API endpoint
 ├── components/         # Shared React components
-├── client/             # Client-side code (runs in browser)
-│   ├── lib/            # Client libraries (Firebase, etc.)
-│   │   └── firebase.js # Firebase client configuration
-│   ├── utils/          # Client-side utilities
-│   └── components/     # Client-specific components
+├── lib/                # Shared libs (Auth, Firebase, Theme – browser/server as needed)
+├── services/           # Services (e.g. userService)
+├── utils/              # Shared utilities
 ├── server/             # Server-side code (runs on Node.js)
 │   ├── api/            # Server API handlers
 │   ├── services/       # Business logic & services
@@ -63,10 +61,9 @@ gomanagr/
 
 ### Code Separation
 
-- **Client Code** (`/client`): Code that runs in the browser
-  - Use `@/client/*` import alias
-  - Can import React components, browser APIs
-  - Example: `import { auth } from '@/client/lib/firebase'`
+- **Shared / client-facing code**: `lib/`, `services/`, `utils/`
+  - Use `@/lib/*`, `@/services/*`, `@/utils/*` import aliases
+  - Example: `import { auth } from '@/lib/firebase'`
 
 - **Server Code** (`/server`): Code that runs on Node.js server
   - Use `@/server/*` import alias

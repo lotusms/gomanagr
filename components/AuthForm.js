@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 import { InputField, PasswordField } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/buttons';
 

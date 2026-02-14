@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/client/lib/AuthContext';
-import { getUserAccount, createUserAccount } from '@/client/services/userService';
+import { useAuth } from '@/lib/AuthContext';
+import { getUserAccount, createUserAccount } from '@/services/userService';
 import { HiCloudUpload, HiX } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
@@ -296,17 +296,18 @@ export default function OrganizationSettings() {
           />
         </div>
 
-
-        {/* Currency */}
-        <Dropdown
-          id="currency"
-          name="currency"
-          label="Currency"
-          value={formData.currency}
-          onChange={handleInputChange}
-          options={CURRENCIES}
-          placeholder="Select currency"
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Currency */}
+          <Dropdown
+            id="currency"
+            name="currency"
+            label="Currency"
+            value={formData.currency}
+            onChange={handleInputChange}
+            options={CURRENCIES}
+            placeholder="Select currency"
+          />
+        </div>        
 
         {/* Error/Success Messages */}
         {error && (

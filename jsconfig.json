@@ -3,7 +3,10 @@
     "baseUrl": ".",
     "paths": {
       "@/server/*": ["server/*"],
-      "@/client/*": ["client/*"],
+      "@/lib/*": ["lib/*"],
+      "@/services/*": ["services/*"],
+      "@/utils/*": ["utils/*"],
+      "@/config/*": ["config/*"],
       "@/components/*": ["components/*"],
       "@/styles/*": ["styles/*"],
       "@/pages/*": ["pages/*"]

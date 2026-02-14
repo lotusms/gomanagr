@@ -1,10 +1,21 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/client/lib/AuthContext';
-import { getUserAccount } from '@/client/services/userService';
+import { useAuth } from '@/lib/AuthContext';
+import { getUserAccount } from '@/services/userService';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { HiFolder, HiClipboardList, HiUsers, HiCheckCircle } from 'react-icons/hi';
+import {
+  HiFolder,
+  HiClipboardList,
+  HiUsers,
+  HiCheckCircle,
+  HiOfficeBuilding,
+  HiGlobe,
+  HiCurrencyDollar,
+  HiDocumentSearch,
+  HiSpeakerphone,
+} from 'react-icons/hi';
 
 function getWelcomeName(account, email = '') {
   const first = (account?.firstName ?? '').trim();
@@ -12,6 +23,56 @@ function getWelcomeName(account, email = '') {
   if (email) return email.split('@')[0];
   return '';
 }
+
+function getFormattedDate() {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function getTimeOfDay() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+const TODO_ITEMS = [
+  {
+    id: 'company-logo',
+    title: 'Add your company logo',
+    description: 'Pull your company logo and brand into GoManagr to use on quotes, invoices, and job forms.',
+    duration: '2 minutes',
+    Icon: HiOfficeBuilding,
+    href: '/dashboard/settings', // Organization settings (logo) is the default section
+  },
+  {
+    title: 'Explore your personalized online client portal',
+    description: 'Clients can approve quotes, review jobs, and pay all online.',
+    duration: '5 minutes',
+    Icon: HiGlobe,
+  },
+  {
+    title: 'Get paid with fast invoicing',
+    description: 'Create and send invoices your clients can pay online.',
+    duration: '2 minutes',
+    Icon: HiCurrencyDollar,
+  },
+  {
+    title: 'Create a winning quote',
+    description: 'Boost your revenue with custom quotes.',
+    duration: '2 minutes',
+    Icon: HiDocumentSearch,
+  },
+  {
+    title: 'Create a website for your business',
+    description: 'Apply for a website that will be integrated with GoManagr and get your business online.',
+    duration: '5 minutes',
+    Icon: HiSpeakerphone,
+  },
+];
 
 function DashboardContent() {
   const { currentUser } = useAuth();
@@ -26,6 +87,11 @@ function DashboardContent() {
 
   const welcomeName = getWelcomeName(userAccount, currentUser?.email ?? '');
 
+  // Hide "Add your company logo" when user already has a logo
+  const todoItems = TODO_ITEMS.filter(
+    (item) => item.id !== 'company-logo' || !userAccount?.companyLogo
+  );
+
   return (
     <>
       <Head>
@@ -36,12 +102,10 @@ function DashboardContent() {
       <div className="space-y-6">
         {/* Welcome Section */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back{welcomeName ? `, ${welcomeName}` : ''}!
+          <p className="text-sm text-gray-500 mb-1">{getFormattedDate()}</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Good {getTimeOfDay()}{welcomeName ? `, ${welcomeName}` : ''}
           </h1>
-          <p className="text-gray-600">
-            Here's what's happening with your account today.
-          </p>
         </div>
 
         {/* Stats Grid */}
@@ -67,48 +131,68 @@ function DashboardContent() {
           ))}
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {[
-                { action: 'Created new project', time: '2 hours ago', user: 'You' },
-                { action: 'Updated team settings', time: '5 hours ago', user: 'Admin' },
-                { action: 'Completed task', time: '1 day ago', user: 'You' },
-                { action: 'Added new team member', time: '2 days ago', user: 'Admin' },
-              ].map((activity, index) => (
-                <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                  <div>
-                    <p className="text-gray-900 font-medium">{activity.action}</p>
-                    <p className="text-sm text-gray-500">{activity.user} • {activity.time}</p>
+        {/* To do */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">To do</h2>
+          <div className="space-y-3">
+            {todoItems.map((item, index) => {
+              const Icon = item.Icon;
+              const content = (
+                <>
+                  <div className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0 text-gray-600">
+                    <Icon className="w-5 h-5" />
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900">{item.title}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{item.description}</p>
+                  </div>
+                  <span className="flex-shrink-0 flex items-center gap-2">
+                    {item.href && (
+                      <span className="text-xs font-medium text-primary-600 hover:text-primary-700">
+                        {item.href === '/dashboard/settings' ? 'Settings' : 'Go'}
+                      </span>
+                    )}
+                    <span className="text-xs font-medium text-gray-600 border border-gray-300 rounded-full px-3 py-1.5">
+                      {item.duration}
+                    </span>
+                  </span>
+                </>
+              );
+              return item.href ? (
+                <Link
+                  key={index}
+                  href={item.href}
+                  className="bg-white rounded-lg shadow border border-gray-200 p-4 flex items-start gap-4 hover:border-primary-200 hover:shadow-md transition-all"
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div
+                  key={index}
+                  className="bg-white rounded-lg shadow border border-gray-200 p-4 flex items-start gap-4"
+                >
+                  {content}
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* User Info Card */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Information</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Email:</span>
-              <span className="font-medium text-gray-900">{currentUser?.email}</span>
+        {/* Today's appointments */}
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Today&apos;s appointments</h2>
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
+              {['Total', 'Active', 'Completed', 'Overdue', 'Remaining'].map((label) => (
+                <div key={label}>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+                  <div className="mt-2 h-10 bg-gray-100 rounded border border-gray-200" aria-hidden />
+                </div>
+              ))}
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">User ID:</span>
-              <span className="font-mono text-sm text-gray-900">{currentUser?.uid}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Status:</span>
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                Active
-              </span>
-            </div>
+            <p className="text-sm text-gray-500 text-center">
+              This is where you will get an overview of your appointments for today once they are scheduled.
+            </p>
           </div>
         </div>
       </div>

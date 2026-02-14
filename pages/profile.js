@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 
 function ProfileContent() {
   const { currentUser } = useAuth();

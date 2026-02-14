@@ -1,6 +1,6 @@
 import { doc, setDoc, getDoc, getDocFromServer } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/client/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 
 /**
  * Create a user account document in Firestore

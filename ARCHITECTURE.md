@@ -10,17 +10,17 @@ The project is organized to clearly distinguish between:
 
 ## Directory Structure
 
-### Client-Side (`/client`)
-**Purpose**: Code that executes in the browser
+### Shared / client-facing (`/lib`, `/services`, `/utils`)
+**Purpose**: Code used in the browser (and sometimes server)
 
-**Location**: `/client`
+**Locations**: `/lib`, `/services`, `/utils`
 
 **Subdirectories**:
-- `lib/` - Client libraries (Firebase SDK, browser APIs)
-- `utils/` - Client utilities (formatters, validators)
-- `components/` - Client-specific React components
+- `lib/` - Auth, Firebase client, Theme, etc.
+- `services/` - User and other client-callable services
+- `utils/` - Formatters, validators, helpers
 
-**Import alias**: `@/client/*`
+**Import aliases**: `@/lib/*`, `@/services/*`, `@/utils/*`
 
 **Can use**:
 - ✅ Browser APIs (`window`, `document`, `localStorage`)
@@ -35,7 +35,7 @@ The project is organized to clearly distinguish between:
 
 **Example**:
 ```javascript
-// client/lib/firebase.js
+// lib/firebase.js
 import { initializeApp } from 'firebase/app';
 export const app = initializeApp(config); // Runs in browser
 ```
@@ -110,14 +110,14 @@ export default async function handler(req, res) {
 **Location**: `/pages`
 
 **Behavior**: 
-- Can import from both `@/client/*` and `@/server/*`
+- Can import from `@/lib/*`, `@/services/*`, `@/utils/*` and `@/server/*`
 - Client-side code runs in browser
 - Server-side code runs during SSR/getServerSideProps
 
 **Example**:
 ```javascript
 // pages/index.js
-import { auth } from '@/client/lib/firebase'; // Client-side
+import { auth } from '@/lib/firebase'; // Client-side
 import { getServerData } from '@/server/utils/data'; // Server-side (in getServerSideProps)
 
 export default function Home({ serverData }) {
@@ -139,7 +139,10 @@ export async function getServerSideProps() {
 
 Configured in `jsconfig.json`:
 
-- `@/client/*` → `client/*`
+- `@/lib/*` → `lib/*`
+- `@/services/*` → `services/*`
+- `@/utils/*` → `utils/*`
+- `@/config/*` → `config/*`
 - `@/server/*` → `server/*`
 - `@/components/*` → `components/*`
 - `@/styles/*` → `styles/*`
@@ -148,7 +151,7 @@ Configured in `jsconfig.json`:
 ## Best Practices
 
 1. **Always use the correct directory**:
-   - Browser code → `/client`
+   - Browser / shared code → `/lib`, `/services`, `/utils`
    - Server code → `/server`
    - API endpoints → `/pages/api`
 
@@ -166,14 +169,15 @@ Configured in `jsconfig.json`:
 
 4. **Never mix concerns**:
    - Don't import `@/server/*` in client components
-   - Don't import `@/client/*` in server utilities (unless needed for SSR)
+   - Don't import `@/server/*` in client-only code; use `@/lib/*`, `@/services/*`, `@/utils/*` where appropriate
 
 ## Quick Reference
 
 | Code Type | Location | Import Alias | Runs In |
 |-----------|----------|-------------|---------|
-| Client libs | `/client/lib` | `@/client/lib/*` | Browser |
-| Client utils | `/client/utils` | `@/client/utils/*` | Browser |
+| Shared libs | `/lib` | `@/lib/*` | Browser / shared |
+| Services | `/services` | `@/services/*` | Browser / shared |
+| Utils | `/utils` | `@/utils/*` | Browser / shared |
 | Server services | `/server/services` | `@/server/services/*` | Node.js |
 | Server utils | `/server/utils` | `@/server/utils/*` | Node.js |
 | API routes | `/pages/api` | Direct import | Node.js |

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useTheme } from '@/client/lib/ThemeContext';
+import { useTheme } from '@/lib/ThemeContext';
 
 export default function ThemeSettings() {
   const { currentPalette, setPalette } = useTheme();
@@ -7,7 +7,7 @@ export default function ThemeSettings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    import('@/client/lib/themes').then((module) => {
+    import('@/lib/themes').then((module) => {
       setAllPalettes(module.palettes);
       setLoading(false);
     });

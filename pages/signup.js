@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 import PublicLayout from '@/components/layouts/PublicLayout';
 import MultiStepSignup from '@/components/signup/MultiStepSignup';
 

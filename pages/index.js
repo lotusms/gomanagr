@@ -1,5 +1,5 @@
 import PublicLayout from '@/components/layouts/PublicLayout';
-import { useAuth } from '@/client/lib/AuthContext';
+import { useAuth } from '@/lib/AuthContext';
 import { PrimaryButton, SecondaryButton } from '@/components/buttons';
 import { FaCalendarAlt, FaFolderOpen } from 'react-icons/fa';
 import { MdAutoAwesome } from 'react-icons/md';

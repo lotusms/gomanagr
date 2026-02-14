@@ -544,10 +544,36 @@ function getPaletteForTailwind(paletteId = defaultPalette) {
   return palette.colors;
 }
 
+function hexToRgb(hex) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return m ? `${parseInt(m[1], 16)} ${parseInt(m[2], 16)} ${parseInt(m[3], 16)}` : '0 0 0';
+}
+
+/**
+ * Get CSS variable values (space-separated RGB) for a palette. Used for early theme apply in _document.
+ * @param {string} paletteId - The palette ID
+ * @returns {Object} Keys are --color-{type}-{shade}, values are "r g b"
+ */
+function getThemeColorsRgb(paletteId = defaultPalette) {
+  const palette = getPalette(paletteId);
+  if (!palette || !palette.colors) return {};
+  const out = {};
+  Object.keys(palette.colors).forEach((colorType) => {
+    const colorScale = palette.colors[colorType];
+    Object.keys(colorScale).forEach((shade) => {
+      const value = colorScale[shade];
+      out[`--color-${colorType}-${shade}`] =
+        typeof value === 'string' && value.startsWith('#') ? hexToRgb(value) : value;
+    });
+  });
+  return out;
+}
+
 module.exports = {
   palettes,
   defaultPalette,
   getPalette,
   getAllPalettes,
   getPaletteForTailwind,
+  getThemeColorsRgb,
 };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { checkEmailExists } from '@/client/utils/emailCheck';
+import { checkEmailExists } from '@/utils/emailCheck';
 import { Checkbox, PasswordField, InputField } from '@/components/ui';
 
 export default function Step1EmailPassword({ data, updateData, errors, onEmailCheck, onEmailVerified }) {

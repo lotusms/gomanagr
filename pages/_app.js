@@ -1,6 +1,6 @@
 import '../styles/globals.scss';
-import { AuthProvider } from '@/client/lib/AuthContext';
-import { ThemeProvider } from '@/client/lib/ThemeContext';
+import { AuthProvider } from '@/lib/AuthContext';
+import { ThemeProvider } from '@/lib/ThemeContext';
 
 export default function App({ Component, pageProps }) {
   return (

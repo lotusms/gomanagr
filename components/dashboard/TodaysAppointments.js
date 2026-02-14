@@ -21,6 +21,7 @@ function getPlaceholderAppointmentsForToday(startHour) {
   const raw = [
     { staffId: '1', start: '09:00', end: '12:00', label: 'Mary Smith Blowdry' },
     { staffId: '2', start: '14:00', end: '15:00', label: 'Karl Halloway Haircut' },
+    { staffId: '2', start: '16:00', end: '17:00', label: 'Sarah Long Full Body Massage' },
     { staffId: '3', start: '09:00', end: '09:30', label: 'Sandra Dickinson Haircut' },
     { staffId: '4', start: '10:30', end: '12:00', label: 'Jane Doe Haircut' },
     { staffId: '5', start: '13:00', end: '14:30', label: 'Lisa Smith Full Body Massage' },

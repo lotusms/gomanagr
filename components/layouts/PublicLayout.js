@@ -47,7 +47,7 @@ export default function PublicLayout({ children, title = 'GoManagr' }) {
       <footer className="relative z-10 border-t border-primary-700 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
-            <Logo href="/" />
+            <Logo href="/" wordmarkLight inlineClassName="h-16" />
             <p className="text-primary-300 text-sm">
               © {new Date().getFullYear()} GoManagr. All rights reserved.
             </p>

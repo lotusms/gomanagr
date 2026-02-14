@@ -3,8 +3,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/client/lib/AuthContext';
 import { getUserAccount, getUserAccountFromServer } from '@/client/services/userService';
-import { HiFolder, HiUsers, HiCog } from 'react-icons/hi';
+import { HiFolder, HiUsers } from 'react-icons/hi';
 import { MdDashboard } from 'react-icons/md';
+import Logo from '@/components/Logo';
 
 /** Format display name from account and nameView preference (saved in useraccount). */
 function getDisplayName(account, email = '') {
@@ -28,117 +29,59 @@ function getDisplayName(account, email = '') {
   }
 }
 
-/** Avatar: logo if set, else initials by nameView. Default first+last initials. */
+/** Avatar content: logo image, or initials from account/email. */
 function getAvatarContent(account, email = '') {
-  const logoUrl = (account?.companyLogo ?? '').trim();
-  if (logoUrl) return { type: 'image', url: logoUrl };
-
   const first = (account?.firstName ?? '').trim();
   const last = (account?.lastName ?? '').trim();
   const nameView = account?.nameView ?? 'full';
   const hasName = first || last;
-  const emailChar = (email || '?').charAt(0).toUpperCase();
 
-  let text;
-  switch (nameView) {
-    case 'first':
-      text = hasName && first ? first[0] : emailChar;
-      break;
-    case 'last_first':
-      text = hasName ? (last ? last[0] : '') + (first ? first[0] : '') : emailChar;
-      break;
-    case 'f_last':
-    case 'full':
-    default:
-      text = hasName ? (first ? first[0] : '') + (last ? last[0] : '') : emailChar;
-      break;
-    case 'email':
-      text = emailChar;
-      break;
-  }
-  text = (text || emailChar).toUpperCase();
-  return { type: 'initials', text };
+  if (nameView === 'first' && first) return { text: first[0].toUpperCase() };
+  if (nameView === 'last_first' && hasName) return { text: (last[0] + (first[0] || '')).toUpperCase() };
+  if (hasName) return { text: (first[0] + (last[0] || '')).toUpperCase() };
+  if (email) return { text: email[0].toUpperCase() };
+  return { text: '?' };
 }
 
-export default function DashboardLayout({ children, title = 'Dashboard' }) {
-  const { currentUser, logout } = useAuth();
+export default function DashboardLayout({ children }) {
   const router = useRouter();
-  // false = collapsed (icons only); true = expanded (icons + labels)
+  const { currentUser, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userAccount, setUserAccount] = useState(null);
   const [previewAccount, setPreviewAccount] = useState(null);
   const dropdownRef = useRef(null);
 
-  const fetchUserAccount = (fromServer = false) => {
+  useEffect(() => {
     if (!currentUser?.uid) return;
-    const fetch = fromServer ? getUserAccountFromServer : getUserAccount;
-    fetch(currentUser.uid)
-      .then((data) => setUserAccount(data || null))
-      .catch(() => setUserAccount(null));
-  };
-
-  // Load user account so header shows correct display name
-  useEffect(() => {
-    fetchUserAccount(false);
-  }, [currentUser?.uid, router.asPath]);
-
-  // Clear preview when not on Account page
-  useEffect(() => {
-    if (router.pathname !== '/account') setPreviewAccount(null);
-  }, [router.pathname]);
-
-  // Live preview: Account page sends current form state so header updates as user changes dropdown/name
-  useEffect(() => {
-    const onPreview = (e) => setPreviewAccount(e.detail || null);
-    window.addEventListener('useraccount-preview', onPreview);
-    return () => window.removeEventListener('useraccount-preview', onPreview);
-  }, []);
-
-  // On save: use payload from event so header updates immediately; then refetch from server
-  useEffect(() => {
-    const onSaved = (e) => {
-      const payload = e.detail;
-      if (payload && typeof payload === 'object') {
-        setUserAccount((prev) => ({ ...prev, ...payload }));
-      }
-      setPreviewAccount(null);
-      if (currentUser?.uid) {
-        getUserAccountFromServer(currentUser.uid)
-          .then((data) => data && setUserAccount(data))
-          .catch(() => {});
-      }
-    };
-    window.addEventListener('useraccount-updated', onSaved);
-    return () => window.removeEventListener('useraccount-updated', onSaved);
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setDropdownOpen(false);
-      router.push('/');
-    } catch (error) {
-      console.error('Failed to logout:', error);
-    }
-  };
-
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
+    const handle = (e) => {
+      if (e.detail?.type === 'useraccount-preview') setPreviewAccount(e.detail.payload || null);
+      if (e.detail?.type === 'useraccount-updated') {
+        setPreviewAccount(null);
+        if (e.detail?.payload) setUserAccount((prev) => ({ ...prev, ...e.detail.payload }));
       }
     };
+    window.addEventListener('useraccount', handle);
+    return () => window.removeEventListener('useraccount', handle);
+  }, []);
 
-    if (dropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
     }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownOpen]);
+
+  const handleLogout = async () => {
+    setDropdownOpen(false);
+    await signOut();
+    router.push('/');
+  };
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: MdDashboard },
@@ -157,12 +100,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
       <header className="relative z-50 bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 flex-shrink-0">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
           <div className="flex items-center space-x-3">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold">G</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900 whitespace-nowrap">GoManagr</span>
-            </Link>
+            <Logo href="/" inlineClassName="h-16" />
           </div>
 
           <div className="flex items-center space-x-4">
@@ -192,7 +130,6 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
                 })()}
               </button>
 
-              {/* Dropdown Menu */}
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[100]">
                   <Link
@@ -216,7 +153,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
                   >
                     Settings
                   </Link>
-                  <div className="border-t border-gray-200 my-1"></div>
+                  <div className="border-t border-gray-200 my-1" />
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -232,60 +169,63 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar - always visible: collapsed (icons only) or expanded (icons + labels) on all screens */}
+        {/* Sidebar - always visible: collapsed (icons only) or expanded on all screens */}
         <aside
           className={`translate-x-0 fixed top-16 bottom-0 left-0 z-40 bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
             sidebarOpen ? 'w-64' : 'w-16'
           }`}
         >
-          {/* Collapse / Expand handle - visible on all screens */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-4 h-10 bg-white border border-gray-300 rounded-tr-lg rounded-br-lg shadow-lg hover:shadow-xl transition-all duration-200 items-center justify-center group hover:bg-gray-50 z-50 ml-2 cursor-pointer"
-            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
             <div className="flex flex-col gap-1">
-              <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300"></div>
-              <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300"></div>
-              <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300"></div>
+              <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300" />
+              <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300" />
+              <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300" />
             </div>
           </button>
-          
-          <div className="h-full overflow-y-auto overflow-x-hidden">
 
-          <nav className={`py-6 space-y-2 transition-all duration-300 ${sidebarOpen ? 'px-4' : 'px-2'}`}>
-            {navigation.map((item) => {
-              const isActive = router.pathname === item.href;
-              const IconComponent = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center rounded-lg transition-all duration-300 ${
-                    sidebarOpen ? 'space-x-3 px-4 py-3' : 'justify-center px-2 py-3'
-                  } ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                  title={!sidebarOpen ? item.name : ''}
-                >
-                  <IconComponent className="w-5 h-5 flex-shrink-0" />
-                  <span className={`whitespace-nowrap transition-opacity duration-200 ${
-                    sidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'
-                  }`}>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="h-full overflow-y-auto overflow-x-hidden">
+            <nav className={`py-6 space-y-2 transition-all duration-300 ${sidebarOpen ? 'px-4' : 'px-2'}`}>
+              {navigation.map((item) => {
+                const isActive = router.pathname === item.href;
+                const IconComponent = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center rounded-lg transition-all duration-300 ${
+                      sidebarOpen ? 'space-x-3 px-4 py-3' : 'justify-center px-2 py-3'
+                    } ${
+                      isActive
+                        ? 'bg-primary-50 text-primary-700 font-medium'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                    title={!sidebarOpen ? item.name : ''}
+                  >
+                    <IconComponent className="w-5 h-5 flex-shrink-0" />
+                    <span
+                      className={`whitespace-nowrap transition-opacity duration-200 ${
+                        sidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'
+                      }`}
+                    >
+                      {item.name}
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all duration-300 overflow-y-auto h-full`}>
-          <div className="p-4 sm:p-6 lg:p-8">
-            {children}
-          </div>
+        <main
+          className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all duration-300 overflow-y-auto h-full`}
+        >
+          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
         </main>
       </div>
     </div>

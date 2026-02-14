@@ -158,10 +158,10 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
           <div className="flex items-center space-x-3">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold">G</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">GoManagr</span>
+              <span className="text-xl font-bold text-gray-900 whitespace-nowrap">GoManagr</span>
             </Link>
           </div>
 

@@ -11,10 +11,10 @@ import Link from 'next/link';
 export default function Logo({ variant = 'inline', href, className = '', tagline }) {
   const inlineContent = (
     <>
-      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-        <span className="text-primary-900 font-bold text-xl">G</span>
+      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 max-md:w-8 max-md:h-8">
+        <span className="text-primary-900 font-bold text-xl max-md:text-base">G</span>
       </div>
-      <span className="text-white text-xl font-semibold">GoManagr</span>
+      <span className="text-white text-xl font-semibold max-md:text-base">GoManagr</span>
     </>
   );
 
@@ -30,7 +30,7 @@ export default function Logo({ variant = 'inline', href, className = '', tagline
     </div>
   );
 
-  const inlineWrapperClass = `flex items-center space-x-2 ${className}`.trim();
+  const inlineWrapperClass = `flex flex-row items-center space-x-2 max-md:flex-col max-md:space-x-0 max-md:gap-0.5 ${className}`.trim();
 
   if (variant === 'stacked') {
     return <div className={className}>{stackedContent}</div>;

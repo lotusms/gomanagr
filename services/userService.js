@@ -162,3 +162,29 @@ export async function updateUserTheme(userId, paletteId) {
     throw new Error('Failed to save theme preference: ' + error.message);
   }
 }
+
+/**
+ * Update the user's dismissed dashboard todo IDs (manual or after completion).
+ * Persisted so todos stay hidden across sessions. Completed todos (e.g. after a tour)
+ * can be added here to auto-dismiss.
+ *
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {string[]} dismissedTodoIds - Full list of todo IDs to treat as dismissed
+ * @returns {Promise<void>}
+ */
+export async function updateDismissedTodos(userId, dismissedTodoIds) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    await setDoc(
+      userAccountRef,
+      {
+        dismissedTodoIds: Array.isArray(dismissedTodoIds) ? dismissedTodoIds : [],
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error updating dismissed todos:', error);
+    throw new Error('Failed to save dismissed todos: ' + error.message);
+  }
+}

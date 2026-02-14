@@ -2,7 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount } from '@/services/userService';
+import { getUserAccount, updateDismissedTodos } from '@/services/userService';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import {
@@ -13,8 +13,10 @@ import {
   HiOfficeBuilding,
   HiGlobe,
   HiCurrencyDollar,
-  HiDocumentSearch,
-  HiSpeakerphone,
+  HiX,
+  HiUserGroup,
+  HiReceiptTax,
+  HiDocumentText,
 } from 'react-icons/hi';
 
 function getWelcomeName(account, email = '') {
@@ -49,28 +51,36 @@ const TODO_ITEMS = [
     href: '/dashboard/settings', // Organization settings (logo) is the default section
   },
   {
+    id: 'client-portal',
     title: 'Explore your personalized online client portal',
     description: 'Clients can approve quotes, review jobs, and pay all online.',
     duration: '5 minutes',
-    Icon: HiGlobe,
+    Icon: HiUserGroup,
+    href: '/dashboard/clients',
   },
   {
+    id: 'invoicing',
     title: 'Get paid with fast invoicing',
     description: 'Create and send invoices your clients can pay online.',
     duration: '2 minutes',
-    Icon: HiCurrencyDollar,
+    Icon: HiClipboardList,
+    href: '/dashboard/invoices',
   },
   {
+    id: 'quote',
     title: 'Create a winning quote',
     description: 'Boost your revenue with custom quotes.',
     duration: '2 minutes',
-    Icon: HiDocumentSearch,
+    Icon: HiCurrencyDollar,
+    href: '/dashboard/quotes',
   },
   {
+    id: 'website',
     title: 'Create a website for your business',
     description: 'Apply for a website that will be integrated with GoManagr and get your business online.',
     duration: '5 minutes',
-    Icon: HiSpeakerphone,
+    Icon: HiGlobe,
+    href: '/dashboard/website',
   },
 ];
 
@@ -86,11 +96,24 @@ function DashboardContent() {
   }, [currentUser?.uid]);
 
   const welcomeName = getWelcomeName(userAccount, currentUser?.email ?? '');
+  const dismissedTodoIds = userAccount?.dismissedTodoIds ?? [];
 
-  // Hide "Add your company logo" when user already has a logo
-  const todoItems = TODO_ITEMS.filter(
-    (item) => item.id !== 'company-logo' || !userAccount?.companyLogo
-  );
+  const handleDismissTodo = (todoId) => {
+    if (!currentUser?.uid || !todoId) return;
+    const next = dismissedTodoIds.includes(todoId)
+      ? dismissedTodoIds
+      : [...dismissedTodoIds, todoId];
+    updateDismissedTodos(currentUser.uid, next)
+      .then(() => setUserAccount((prev) => (prev ? { ...prev, dismissedTodoIds: next } : null)))
+      .catch((err) => console.error('Failed to dismiss todo:', err));
+  };
+
+  // Hide "Add your company logo" when user already has a logo; hide any dismissed todos
+  const todoItems = TODO_ITEMS.filter((item) => {
+    if (dismissedTodoIds.includes(item.id)) return false;
+    if (item.id === 'company-logo' && userAccount?.companyLogo) return false;
+    return true;
+  });
 
   return (
     <>
@@ -132,13 +155,14 @@ function DashboardContent() {
         </div>
 
         {/* To do */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">To do</h2>
-          <div className="space-y-3">
-            {todoItems.map((item, index) => {
+        {todoItems.length > 0 && (
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">To do</h2>
+            <div className="space-y-3">
+              {todoItems.map((item) => {
               const Icon = item.Icon;
               const content = (
-                <>
+                <div className="flex items-center gap-4 w-full">
                   <div className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0 text-gray-600">
                     <Icon className="w-5 h-5" />
                   </div>
@@ -147,36 +171,40 @@ function DashboardContent() {
                     <p className="text-sm text-gray-500 mt-0.5">{item.description}</p>
                   </div>
                   <span className="flex-shrink-0 flex items-center gap-2">
-                    {item.href && (
-                      <span className="text-xs font-medium text-primary-600 hover:text-primary-700">
-                        {item.href === '/dashboard/settings' ? 'Settings' : 'Go'}
-                      </span>
-                    )}
-                    <span className="text-xs font-medium text-gray-600 border border-gray-300 rounded-full px-3 py-1.5">
-                      {item.duration}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDismissTodo(item.id);
+                      }}
+                      className="p-1 hover:text-gray-600 hover:bg-gray-100 transition-colors text-gray-600 border border-gray-300 rounded-full px-2 py-1 inline-flex items-center gap-2 text-xs"
+                      aria-label="Dismiss"
+                      title="Dismiss" >
+                      Dismiss <HiX className="size-3" />                    
+                    </button>
                   </span>
-                </>
+                </div>
               );
+              const cardClass =
+                'bg-white rounded-lg shadow border border-gray-200 p-4 flex items-start gap-4 relative';
               return item.href ? (
                 <Link
-                  key={index}
+                  key={item.id}
                   href={item.href}
-                  className="bg-white rounded-lg shadow border border-gray-200 p-4 flex items-start gap-4 hover:border-primary-200 hover:shadow-md transition-all"
+                  className={`${cardClass} hover:border-primary-200 hover:shadow-md transition-all`}
                 >
                   {content}
                 </Link>
               ) : (
-                <div
-                  key={index}
-                  className="bg-white rounded-lg shadow border border-gray-200 p-4 flex items-start gap-4"
-                >
+                <div key={item.id} className={cardClass}>
                   {content}
                 </div>
               );
-            })}
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Today's appointments */}
         <div>

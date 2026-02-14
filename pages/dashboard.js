@@ -18,6 +18,8 @@ import {
   HiReceiptTax,
   HiDocumentText,
 } from 'react-icons/hi';
+import Schedule from '@/components/dashboard/Schedule';
+import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 
 function getWelcomeName(account, email = '') {
   const first = (account?.firstName ?? '').trim();
@@ -87,16 +89,19 @@ const TODO_ITEMS = [
 function DashboardContent() {
   const { currentUser } = useAuth();
   const [userAccount, setUserAccount] = useState(null);
+  const [accountLoaded, setAccountLoaded] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
+    setAccountLoaded(false);
     getUserAccount(currentUser.uid)
       .then((data) => setUserAccount(data || null))
-      .catch(() => setUserAccount(null));
+      .catch(() => setUserAccount(null))
+      .finally(() => setAccountLoaded(true));
   }, [currentUser?.uid]);
 
   const welcomeName = getWelcomeName(userAccount, currentUser?.email ?? '');
-  const dismissedTodoIds = userAccount?.dismissedTodoIds ?? [];
+  const dismissedTodoIds = accountLoaded ? (userAccount?.dismissedTodoIds ?? []) : null;
 
   const handleDismissTodo = (todoId) => {
     if (!currentUser?.uid || !todoId) return;
@@ -108,12 +113,14 @@ function DashboardContent() {
       .catch((err) => console.error('Failed to dismiss todo:', err));
   };
 
-  // Hide "Add your company logo" when user already has a logo; hide any dismissed todos
-  const todoItems = TODO_ITEMS.filter((item) => {
-    if (dismissedTodoIds.includes(item.id)) return false;
-    if (item.id === 'company-logo' && userAccount?.companyLogo) return false;
-    return true;
-  });
+  const todoItems =
+    dismissedTodoIds === null
+      ? []
+      : TODO_ITEMS.filter((item) => {
+          if (dismissedTodoIds.includes(item.id)) return false;
+          if (item.id === 'company-logo' && userAccount?.companyLogo) return false;
+          return true;
+        });
 
   return (
     <>
@@ -206,23 +213,16 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Today's appointments */}
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Today&apos;s appointments</h2>
-          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
-              {['Total', 'Active', 'Completed', 'Overdue', 'Remaining'].map((label) => (
-                <div key={label}>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-                  <div className="mt-2 h-10 bg-gray-100 rounded border border-gray-200" aria-hidden />
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-gray-500 text-center">
-              This is where you will get an overview of your appointments for today once they are scheduled.
-            </p>
-          </div>
-        </div>
+        <TodaysAppointments
+          businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
+          businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
+          timeFormat={userAccount?.timeFormat ?? '24h'}
+        />
+        {/* <Schedule
+          businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
+          businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
+          timeFormat={userAccount?.timeFormat ?? '24h'}
+        /> */}
       </div>
     </>
   );

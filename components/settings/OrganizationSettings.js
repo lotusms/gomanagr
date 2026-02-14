@@ -55,6 +55,17 @@ const CURRENCIES = [
   { value: 'AUD', label: 'AUD (A$)' },
 ];
 
+// Business hours: every hour from 00:00 to 23:00 (value stored as HH:00)
+const BUSINESS_HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
+  const h = String(i).padStart(2, '0');
+  return { value: `${h}:00`, label: `${h}:00` };
+});
+
+const TIME_FORMAT_OPTIONS = [
+  { value: '24h', label: '24-hour (e.g. 18:00)' },
+  { value: '12h', label: '12-hour (e.g. 6:00 PM)' },
+];
+
 export default function OrganizationSettings() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -71,8 +82,9 @@ export default function OrganizationSettings() {
     dateFormat: 'MM/DD/YYYY',
     numberFormat: '1,234.56',
     defaultLanguage: 'en',
-    businessHoursStart: '09:00',
-    businessHoursEnd: '17:00',
+    businessHoursStart: '08:00',
+    businessHoursEnd: '18:00',
+    timeFormat: '24h',
     currency: 'USD',
   });
 
@@ -94,8 +106,9 @@ export default function OrganizationSettings() {
           dateFormat: userData.dateFormat || 'MM/DD/YYYY',
           numberFormat: userData.numberFormat || '1,234.56',
           defaultLanguage: userData.defaultLanguage || 'en',
-          businessHoursStart: userData.businessHoursStart || '09:00',
-          businessHoursEnd: userData.businessHoursEnd || '17:00',
+          businessHoursStart: userData.businessHoursStart || '08:00',
+          businessHoursEnd: userData.businessHoursEnd || '18:00',
+          timeFormat: userData.timeFormat || '24h',
           currency: userData.currency || 'USD',
         });
         if (userData.companyLogo) {
@@ -293,6 +306,37 @@ export default function OrganizationSettings() {
             onChange={handleInputChange}
             options={LANGUAGES}
             placeholder="Select language"
+          />
+        </div>
+
+        {/* Business hours & time format (used by appointments calendar) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Dropdown
+            id="businessHoursStart"
+            name="businessHoursStart"
+            label="Business hours start"
+            value={formData.businessHoursStart}
+            onChange={handleInputChange}
+            options={BUSINESS_HOUR_OPTIONS}
+            placeholder="Start"
+          />
+          <Dropdown
+            id="businessHoursEnd"
+            name="businessHoursEnd"
+            label="Business hours end"
+            value={formData.businessHoursEnd}
+            onChange={handleInputChange}
+            options={BUSINESS_HOUR_OPTIONS}
+            placeholder="End"
+          />
+          <Dropdown
+            id="timeFormat"
+            name="timeFormat"
+            label="Time format"
+            value={formData.timeFormat}
+            onChange={handleInputChange}
+            options={TIME_FORMAT_OPTIONS}
+            placeholder="Format"
           />
         </div>
 

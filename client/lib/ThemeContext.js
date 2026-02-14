@@ -13,7 +13,9 @@ export const ThemeProvider = ({ children }) => {
   const [currentPalette, setCurrentPalette] = useState('palette1');
   const [allPalettes, setAllPalettes] = useState({});
 
-  // Load palettes and determine initial theme (from user account, localStorage, or default)
+  const defaultPaletteId = 'palette1';
+
+  // Load palettes and set theme: default for anonymous, from user account when logged in (no localStorage)
   useEffect(() => {
     let cancelled = false;
 
@@ -22,16 +24,9 @@ export const ThemeProvider = ({ children }) => {
       if (cancelled) return;
       setAllPalettes(palettes);
 
-      const applyDefaultOrLocal = () => {
-        const fromStorage = localStorage.getItem('selectedPalette');
-        const fromDoc = document.documentElement.getAttribute('data-palette');
-        const saved = fromStorage || fromDoc || 'palette1';
-        if (saved && palettes[saved]) {
-          setCurrentPalette(saved);
-          applyPaletteColors(saved, palettes);
-        } else {
-          applyPaletteColors('palette1', palettes);
-        }
+      const applyDefault = () => {
+        setCurrentPalette(defaultPaletteId);
+        applyPaletteColors(defaultPaletteId, palettes);
       };
 
       if (currentUser) {
@@ -42,18 +37,15 @@ export const ThemeProvider = ({ children }) => {
             if (fromAccount && palettes[fromAccount]) {
               setCurrentPalette(fromAccount);
               applyPaletteColors(fromAccount, palettes);
-              try {
-                localStorage.setItem('selectedPalette', fromAccount);
-              } catch (_) {}
             } else {
-              applyDefaultOrLocal();
+              applyDefault();
             }
           })
           .catch(() => {
-            if (!cancelled) applyDefaultOrLocal();
+            if (!cancelled) applyDefault();
           });
       } else {
-        applyDefaultOrLocal();
+        applyDefault();
       }
     });
 
@@ -92,12 +84,6 @@ export const ThemeProvider = ({ children }) => {
 
     setCurrentPalette(paletteId);
     applyPaletteColors(paletteId, allPalettes);
-
-    try {
-      localStorage.setItem('selectedPalette', paletteId);
-    } catch (e) {
-      console.error('Failed to save to localStorage:', e);
-    }
 
     if (currentUser) {
       updateUserTheme(currentUser.uid, paletteId).catch((e) => {

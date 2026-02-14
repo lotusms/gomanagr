@@ -48,6 +48,12 @@ export default function DashboardLayout({ children }) {
   const { currentUser, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Default: expanded on lg+, collapsed on md and below (set once on mount)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setSidebarOpen(window.innerWidth >= 1024);
+  }, []);
   const [userAccount, setUserAccount] = useState(null);
   const [previewAccount, setPreviewAccount] = useState(null);
   const dropdownRef = useRef(null);

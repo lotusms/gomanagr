@@ -63,7 +63,8 @@ function getAvatarContent(account, email = '') {
 export default function DashboardLayout({ children, title = 'Dashboard' }) {
   const { currentUser, logout } = useAuth();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // false = collapsed (icons only); true = expanded (icons + labels)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userAccount, setUserAccount] = useState(null);
   const [previewAccount, setPreviewAccount] = useState(null);
@@ -149,7 +150,6 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
     <div className="min-h-screen bg-gray-50 flex flex-col h-screen relative overflow-hidden">
       {/* Same grid background as public pages */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
-        <div className="absolute top-1/2 right-1/3 w-72 h-72 bg-primary-400/10 rounded-full blur-3xl" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] bg-[size:4rem_4rem]" />
       </div>
 
@@ -232,21 +232,17 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar */}
+        {/* Sidebar - always visible: collapsed (icons only) or expanded (icons + labels) on all screens */}
         <aside
-          className={`${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } fixed top-16 bottom-0 left-0 z-40 bg-white border-r border-gray-200 transition-all duration-300 ease-in-out w-64 ${
-            sidebarOpen 
-              ? 'lg:translate-x-0 lg:fixed lg:top-16 lg:bottom-0 lg:w-64' 
-              : 'lg:translate-x-0 lg:fixed lg:top-16 lg:bottom-0 lg:w-16'
+          className={`translate-x-0 fixed top-16 bottom-0 left-0 z-40 bg-white border-r border-gray-200 transition-all duration-300 ease-in-out ${
+            sidebarOpen ? 'w-64' : 'w-16'
           }`}
         >
-          {/* Collapse Handle */}
+          {/* Collapse / Expand handle - visible on all screens */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-4 h-10 bg-white border border-gray-300 rounded-tr-lg rounded-br-lg shadow-lg hover:shadow-xl transition-all duration-200 items-center justify-center group hover:bg-gray-50 z-50 ml-2 cursor-pointer"
-            aria-label="Toggle sidebar">
+            className="flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-4 h-10 bg-white border border-gray-300 rounded-tr-lg rounded-br-lg shadow-lg hover:shadow-xl transition-all duration-200 items-center justify-center group hover:bg-gray-50 z-50 ml-2 cursor-pointer"
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
             <div className="flex flex-col gap-1">
               <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300"></div>
               <div className="size-1 rounded-full bg-gray-500 group-hover:bg-primary-500 transition-all duration-300"></div>
@@ -256,7 +252,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
           
           <div className="h-full overflow-y-auto overflow-x-hidden">
 
-          <nav className={`py-6 space-y-2 transition-all duration-300 ${sidebarOpen ? 'px-4' : 'lg:px-2'}`}>
+          <nav className={`py-6 space-y-2 transition-all duration-300 ${sidebarOpen ? 'px-4' : 'px-2'}`}>
             {navigation.map((item) => {
               const isActive = router.pathname === item.href;
               const IconComponent = item.icon;
@@ -264,8 +260,9 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={`flex items-center rounded-lg transition-all duration-300 ${
-                    sidebarOpen ? 'space-x-3 px-4 py-3' : 'lg:justify-center lg:px-2 lg:py-3'
+                    sidebarOpen ? 'space-x-3 px-4 py-3' : 'justify-center px-2 py-3'
                   } ${
                     isActive
                       ? 'bg-primary-50 text-primary-700 font-medium'
@@ -275,7 +272,7 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
                 >
                   <IconComponent className="w-5 h-5 flex-shrink-0" />
                   <span className={`whitespace-nowrap transition-opacity duration-200 ${
-                    sidebarOpen ? 'opacity-100' : 'lg:opacity-0 lg:w-0 lg:overflow-hidden'
+                    sidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'
                   }`}>{item.name}</span>
                 </Link>
               );
@@ -284,16 +281,8 @@ export default function DashboardLayout({ children, title = 'Dashboard' }) {
           </div>
         </aside>
 
-        {/* Overlay for mobile */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-gray-600 bg-opacity-75 z-30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
         {/* Main Content */}
-        <main className={`flex-1 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-16'} transition-all duration-300 overflow-y-auto h-full`}>
+        <main className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all duration-300 overflow-y-auto h-full`}>
           <div className="p-4 sm:p-6 lg:p-8">
             {children}
           </div>

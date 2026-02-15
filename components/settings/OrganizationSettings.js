@@ -4,7 +4,7 @@ import { getUserAccount, createUserAccount } from '@/services/userService';
 import { HiCloudUpload, HiX } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
-import { PrimaryButton } from '@/components/buttons';
+import { PrimaryButton } from '@/components/ui/buttons';
 
 const TIMEZONES = [
   'UTC',

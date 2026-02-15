@@ -1,6 +1,6 @@
 import PublicLayout from '@/components/layouts/PublicLayout';
 import { useAuth } from '@/lib/AuthContext';
-import { PrimaryButton, SecondaryButton } from '@/components/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { FaCalendarAlt, FaFolderOpen } from 'react-icons/fa';
 import { MdAutoAwesome } from 'react-icons/md';
 import { HiLightningBolt } from 'react-icons/hi';

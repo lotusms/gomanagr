@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { InputField, PasswordField } from '@/components/ui';
-import { PrimaryButton, SecondaryButton } from '@/components/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 export default function AuthForm({ mode = 'login', darkMode = false }) {
   const [email, setEmail] = useState('');

@@ -1,5 +1,12 @@
+export { default as Avatar } from './Avatar';
 export { default as Checkbox } from './Checkbox';
+export { default as ChipsArrayBuilder } from './ChipsArrayBuilder';
+export { default as Drawer } from './Drawer';
+export { default as Dropdown } from './Dropdown';
+export { default as FileInput } from './FileInput';
+export { default as PageHeader } from './PageHeader';
 export { default as PasswordField } from './PasswordField';
 export { default as InputField } from './InputField';
+export { default as TextareaField } from './TextareaField';
 export { default as Tooltip } from './Tooltip';
 export { ChipsSingle, ChipsMulti } from './Chips';

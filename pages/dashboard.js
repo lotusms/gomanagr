@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateDismissedTodos } from '@/services/userService';
+import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import {
@@ -140,6 +141,7 @@ function DashboardContent() {
           businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
           businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
           timeFormat={userAccount?.timeFormat ?? '24h'}
+          staff={userAccount?.teamMembers ?? DEFAULT_TEAM_MEMBERS}
         />
       </div>
     </>

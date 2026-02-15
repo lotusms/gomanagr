@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Head from 'next/head';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { PageHeader } from '@/components/ui';
 import SettingsMenu from '@/components/settings/SettingsMenu';
 import OrganizationSettings from '@/components/settings/OrganizationSettings';
 import ThemeSettings from '@/components/settings/ThemeSettings';
@@ -37,10 +38,11 @@ function SettingsContent() {
       </Head>
 
       <div className="pb-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p className="text-gray-600">Manage your account and application settings</p>
-        </div>
+        <PageHeader
+          title="Settings"
+          description="Manage your account and application settings"
+          className="mb-6"
+        />
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           <SettingsMenu activeSection={activeSection} onSectionChange={setActiveSection} />

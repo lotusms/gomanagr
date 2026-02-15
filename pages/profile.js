@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { PageHeader } from '@/components/ui';
 import { useAuth } from '@/lib/AuthContext';
 
 function ProfileContent() {
@@ -14,10 +15,7 @@ function ProfileContent() {
       </Head>
 
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile</h1>
-          <p className="text-gray-600">Manage your profile information</p>
-        </div>
+        <PageHeader title="Profile" description="Manage your profile information" />
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Information</h2>

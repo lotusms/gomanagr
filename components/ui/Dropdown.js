@@ -59,7 +59,7 @@ export default function Dropdown({
         </Select.Trigger>
 
         <Select.Portal>
-          <Select.Content className="overflow-hidden bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-[var(--radix-select-trigger-width)]">
+          <Select.Content className="overflow-hidden bg-white rounded-lg shadow-lg border border-gray-200 z-[110] min-w-[var(--radix-select-trigger-width)]">
             <Select.ScrollUpButton className="flex items-center justify-center h-6 bg-white text-gray-700 cursor-default">
               <HiChevronDown className="w-4 h-4 rotate-180" />
             </Select.ScrollUpButton>

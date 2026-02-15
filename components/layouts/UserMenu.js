@@ -1,19 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-
-/** Avatar content: logo image, or initials from account/email. */
-function getAvatarContent(account, email = '') {
-  const first = (account?.firstName ?? '').trim();
-  const last = (account?.lastName ?? '').trim();
-  const nameView = account?.nameView ?? 'full';
-  const hasName = first || last;
-
-  if (nameView === 'first' && first) return { text: first[0].toUpperCase() };
-  if (nameView === 'last_first' && hasName) return { text: (last[0] + (first[0] || '')).toUpperCase() };
-  if (hasName) return { text: (first[0] + (last[0] || '')).toUpperCase() };
-  if (email) return { text: email[0].toUpperCase() };
-  return { text: '?' };
-}
+import Avatar from '@/components/ui/Avatar';
+import { getDisplayName } from '@/lib/UserAccountContext';
 
 /**
  * User avatar button and dropdown menu (Profile, My Account, Settings, Logout).
@@ -41,24 +29,23 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
   };
 
   const account = previewAccount ? { ...userAccount, ...previewAccount } : userAccount;
-  const logoUrl = (userAccount?.companyLogo ?? '').trim();
-  const avatar = getAvatarContent(account, currentUser?.email ?? '');
+  const logoUrl = (account?.companyLogo ?? '').trim();
+  const displayName = getDisplayName(account, currentUser?.email ?? '');
 
   return (
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex-shrink-0 ${
-          logoUrl ? 'bg-white text-gray-900 hover:bg-gray-50' : 'bg-primary-600 text-white hover:bg-primary-700'
-        }`}
+        className="rounded-full flex items-center justify-center overflow-hidden font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex-shrink-0 hover:opacity-90"
         aria-label="User menu"
         aria-expanded={open}
       >
-        {logoUrl ? (
-          <img src={logoUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-sm">{avatar.text}</span>
-        )}
+        <Avatar
+          src={logoUrl || undefined}
+          name={displayName || undefined}
+          size="sm"
+          className={!logoUrl ? 'bg-primary-600 text-white' : 'bg-white'}
+        />
       </button>
 
       {open && (

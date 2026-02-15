@@ -188,3 +188,49 @@ export async function updateDismissedTodos(userId, dismissedTodoIds) {
     throw new Error('Failed to save dismissed todos: ' + error.message);
   }
 }
+
+/**
+ * Update the user's team members (synced with Team page and Today's Appointments staff).
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {Array<{ id: string, name: string, role?: string }>} teamMembers
+ * @returns {Promise<void>}
+ */
+export async function updateTeamMembers(userId, teamMembers) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    await setDoc(
+      userAccountRef,
+      {
+        teamMembers: Array.isArray(teamMembers) ? teamMembers : [],
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error updating team members:', error);
+    throw new Error('Failed to save team members: ' + error.message);
+  }
+}
+
+/**
+ * Update the user's clients (synced with Clients page).
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {Array<{ id: string, name: string, company?: string }>} clients
+ * @returns {Promise<void>}
+ */
+export async function updateClients(userId, clients) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    await setDoc(
+      userAccountRef,
+      {
+        clients: Array.isArray(clients) ? clients : [],
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error updating clients:', error);
+    throw new Error('Failed to save clients: ' + error.message);
+  }
+}

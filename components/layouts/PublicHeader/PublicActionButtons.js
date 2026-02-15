@@ -1,4 +1,4 @@
-import { PrimaryButton, SecondaryButton } from '@/components/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 /**
  * Sign in / Try for free (when logged out) or Go to Dashboard (when logged in).

@@ -91,6 +91,7 @@ export function ChipsSingle({
  * @param {boolean} props.required - Whether the field is required
  * @param {string} props.className - Additional CSS classes
  * @param {string} props.layout - Layout type: 'grid' or 'flex' (default: 'flex')
+ * @param {string} props.variant - 'dark' (default) or 'light' for light backgrounds
  */
 export function ChipsMulti({
   id,
@@ -102,29 +103,37 @@ export function ChipsMulti({
   required = false,
   className = '',
   layout = 'flex',
+  variant = 'dark',
 }) {
   const handleValueChange = (newValue) => {
-    // ToggleGroup returns a string array, we need to handle it properly
-    if (onValueChange) {
-      onValueChange(newValue);
-    }
+    if (onValueChange) onValueChange(newValue);
   };
+
+  const isLight = variant === 'light';
+  const labelClass = isLight ? 'block text-sm font-medium text-gray-700 mb-2' : 'block text-sm font-medium text-white mb-3';
+  const requiredClass = isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1';
+  const unselectedClass = isLight
+    ? 'bg-secondary-50 text-secondary-800 border border-secondary-200 hover:bg-secondary-100 hover:border-secondary-300'
+    : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20';
+  const selectedClass = isLight
+    ? 'bg-secondary-600 text-white border border-secondary-600'
+    : 'bg-primary-600 text-white border-2 border-primary-400';
+  const errorClass = isLight ? 'mt-2 text-sm text-red-600' : 'mt-2 text-sm text-red-300';
+  const chipPadding = isLight ? 'px-2.5 py-1.5 text-sm rounded-md' : 'px-4 py-3 rounded-lg';
+  const checkSize = isLight ? 'text-sm' : 'text-xl';
 
   return (
     <div className={className}>
-      <Label.Root
-        htmlFor={id}
-        className="block text-sm font-medium text-white mb-3"
-      >
+      <Label.Root htmlFor={id} className={labelClass}>
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className={requiredClass}>*</span>}
       </Label.Root>
       <ToggleGroup.Root
         id={id}
         type="multiple"
         value={value || []}
         onValueChange={handleValueChange}
-        className={layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : 'flex flex-wrap gap-3'}
+        className={layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-2' : 'flex flex-wrap gap-2'}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
       >
@@ -133,33 +142,20 @@ export function ChipsMulti({
             key={option}
             value={option}
             className={`
-              px-4 py-3 rounded-lg font-medium text-left transition cursor-pointer
-              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-900
-              ${
-                value?.includes(option)
-                  ? 'bg-primary-600 text-white border-2 border-primary-400'
-                  : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20'
-              }
+              ${chipPadding} font-medium text-left transition cursor-pointer
+              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-transparent
+              ${value?.includes(option) ? selectedClass : unselectedClass}
             `}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1.5">
               <span>{option}</span>
-              {value?.includes(option) && (
-                <span className="ml-2 text-xl">✓</span>
-              )}
+              {value?.includes(option) && <span className={`${checkSize} flex-shrink-0`}>✓</span>}
             </div>
           </ToggleGroup.Item>
         ))}
       </ToggleGroup.Root>
-      {value && value.length > 0 && (
-        <div className="mt-4 bg-primary-900/50 border border-primary-500/50 rounded-lg p-4">
-          <p className="text-sm text-white">
-            <span className="font-semibold">{value.length}</span> section{value.length !== 1 ? 's' : ''} selected
-          </p>
-        </div>
-      )}
       {error && (
-        <p id={`${id}-error`} className="mt-2 text-sm text-red-300" role="alert">
+        <p id={`${id}-error`} className={errorClass} role="alert">
           {error}
         </p>
       )}

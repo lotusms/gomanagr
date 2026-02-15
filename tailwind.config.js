@@ -65,6 +65,15 @@ module.exports = {
           900: `rgb(var(--color-ternary-900, ${t[900]}) / <alpha-value>)`,
         },
       },
+      keyframes: {
+        'drawer-in': {
+          from: { transform: 'translateX(100%)' },
+          to: { transform: 'translateX(0)' },
+        },
+      },
+      animation: {
+        'drawer-in': 'drawer-in 0.25s ease-out forwards',
+      },
     },
   },
   plugins: [],

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { InputField, ChipsSingle } from '@/components/ui';
-import { SecondaryButton } from '@/components/buttons';
+import { SecondaryButton } from '@/components/ui/buttons';
 
 const TEAM_SIZE_OPTIONS = ['Myself', '2-5', '6-10', '11-25', '26+'];
 const COMPANY_SIZE_OPTIONS = ['Myself', '2-5', '6-10', '11-25', '26-50', '51-100', '101+'];

@@ -7,7 +7,7 @@ import Step3CompanyInfo from './Step3CompanyInfo';
 import Step4Sections from './Step4Sections';
 import Step5Referral from './Step5Referral';
 import { createUserAccount } from '@/services/userService';
-import { PrimaryButton, SecondaryButton } from '@/components/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 const TOTAL_STEPS = 5;
 

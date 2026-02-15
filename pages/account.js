@@ -7,7 +7,7 @@ import { getUserAccount, createUserAccount } from '@/services/userService';
 import InputField from '@/components/ui/InputField';
 import PasswordField from '@/components/ui/PasswordField';
 import Dropdown from '@/components/ui/Dropdown';
-import { PrimaryButton } from '@/components/buttons';
+import { PrimaryButton } from '@/components/ui/buttons';
 
 const NAME_VIEW_OPTIONS = [
   { value: 'full', label: 'Full Name' },

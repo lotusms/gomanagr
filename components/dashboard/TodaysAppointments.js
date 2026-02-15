@@ -1,20 +1,9 @@
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 import Tooltip from '@/components/ui/Tooltip';
+import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 
-// Placeholder staff (10 total) and appointments for today (replace with real data later)
+// Staff rows come from dashboard (userAccount.teamMembers); fallback to default team
 // Appointments use "HH:00" or "HH:30" for half-hour slot math
-const PLACEHOLDER_STAFF = [
-  { id: '1', name: 'Alina Perez' },
-  { id: '2', name: 'Mark Peck' },
-  { id: '3', name: 'Jordan Lee' },
-  { id: '4', name: 'Sam Rivera' },
-  { id: '5', name: 'Casey Morgan' },
-  { id: '6', name: 'Riley Chen' },
-  { id: '7', name: 'Alex Kim' },
-  { id: '8', name: 'Taylor Wright' },
-  { id: '9', name: 'Jamie Foster' },
-  { id: '10', name: 'Quinn Hayes' },
-];
 
 // Appointments evenly spread across the day (half-hour slots from 8:00–18:00 = 20 slots)
 function getPlaceholderAppointmentsForToday(startHour) {
@@ -42,7 +31,9 @@ export default function TodaysAppointments({
   businessHoursStart = '08:00',
   businessHoursEnd = '18:00',
   timeFormat = '24h',
+  staff: staffProp,
 }) {
+  const staff = (staffProp && staffProp.length > 0) ? staffProp : DEFAULT_TEAM_MEMBERS;
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
   const appointments = getPlaceholderAppointmentsForToday(startHour);
@@ -77,12 +68,12 @@ export default function TodaysAppointments({
               </tr>
             </thead>
             <tbody>
-              {PLACEHOLDER_STAFF.map((staff) => {
-                const staffAppointments = appointments.filter((a) => a.staffId === staff.id);
+              {staff.map((staffRow) => {
+                const staffAppointments = appointments.filter((a) => a.staffId === staffRow.id);
                 return (
-                  <tr key={staff.id}>
+                  <tr key={staffRow.id}>
                     <td className="w-36 py-1 px-2 border-r border-b border-gray-100 bg-gray-50/50 font-medium text-gray-900 leading-tight">
-                      {staff.name}
+                      {staffRow.name}
                     </td>
                     {timeSlots.map((_, colIndex) => {
                       const appointment = staffAppointments.find(

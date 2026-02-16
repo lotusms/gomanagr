@@ -1,0 +1,160 @@
+{
+  "exportedAt": "2026-02-16T11:49:51.126Z",
+  "userId": "i6beWdN28CQx14CYd9kuu18kF3p2",
+  "documentId": "i6beWdN28CQx14CYd9kuu18kF3p2",
+  "lastName": "Silva",
+  "role": "Owner",
+  "purpose": "Work",
+  "companyLogo": "https://firebasestorage.googleapis.com/v0/b/gomanagr-845b4.firebasestorage.app/o/company-logos%2Fi6beWdN28CQx14CYd9kuu18kF3p2%2FBJJJUDOCOOrange.png?alt=media&token=876e071b-89d5-4e29-8b9e-6b14bf5c8a68",
+  "companyName": "Acme Inc",
+  "companySize": "6-10",
+  "trial": true,
+  "companyLocations": "6-10",
+  "createdAt": "2026-02-12T19:53:50.606Z",
+  "referralSource": "We Reached Out",
+  "teamSize": "Myself",
+  "sectionsToTrack": [
+    "Task Management",
+    "Scheduling",
+    "Messaging",
+    "Onboarding",
+    "Client management"
+  ],
+  "email": "luisbjjjudo@outlook.com",
+  "firstName": "Luis",
+  "nameView": "first",
+  "reportingEmail": "",
+  "selectedPalette": "palette3",
+  "dismissedTodoIds": [
+    "client-portal",
+    "invoicing",
+    "quote",
+    "website"
+  ],
+  "defaultLanguage": "en",
+  "numberFormat": "1,234.56",
+  "dateFormat": "MM/DD/YYYY",
+  "timezone": "UTC",
+  "timeFormat": "24h",
+  "currency": "USD",
+  "businessHoursStart": "09:00",
+  "businessHoursEnd": "17:00",
+  "teamMembers": [
+    {
+      "id": "1",
+      "role": "Stylist",
+      "name": "Alina Perez"
+    },
+    {
+      "name": "Mark Peck",
+      "role": "Stylist",
+      "id": "2"
+    },
+    {
+      "name": "Jordan Lee",
+      "role": "Developer",
+      "id": "3"
+    },
+    {
+      "name": "Sam Rivera",
+      "role": "Operations",
+      "id": "4"
+    },
+    {
+      "id": "5",
+      "role": "Designer",
+      "name": "Casey Morgan"
+    },
+    {
+      "role": "Developer",
+      "name": "Riley Chen",
+      "id": "6"
+    },
+    {
+      "id": "7",
+      "role": "Developer",
+      "name": "Alex Kim"
+    },
+    {
+      "role": "Marketing",
+      "id": "8",
+      "name": "Taylor Wright"
+    },
+    {
+      "name": "Jamie Foster",
+      "id": "9",
+      "role": "Designer"
+    },
+    {
+      "role": "Operations",
+      "id": "10",
+      "name": "Quinn Hayes"
+    },
+    {
+      "gender": "female",
+      "address": {
+        "address1": "sdfgh",
+        "country": "gdfg",
+        "address2": "sdfg2",
+        "city": "dsfgdfgdfg",
+        "postalCode": "34563",
+        "state": "gh"
+      },
+      "personalityTraits": [
+        "Friendly",
+        "Detail-oriented",
+        "Empathetic"
+      ],
+      "name": "asd jhgf",
+      "email": "sfd@asdf.sdf",
+      "firstName": "asd",
+      "role": "jkhgkjhg",
+      "phone": "717-123-45678",
+      "bio": "dfgdfghdfgndffgbdfgbdfgbdfgbdfbdfbdfbgdfgbdfb",
+      "lastName": "jhgf",
+      "title": "kjhjhg",
+      "id": "tm-1771163311347-ktnik6a",
+      "yearsExperience": 20,
+      "services": [
+        "kjhg",
+        "kjhglkjg",
+        "kjhgf",
+        "uytoioip"
+      ]
+    },
+    {
+      "id": "tm-1771172187624-0qdpljk",
+      "name": "sdfg sdfg",
+      "role": "sdfg",
+      "firstName": "sdfg",
+      "lastName": "sdfg",
+      "title": "sdfg",
+      "services": [
+        "sdfg",
+        "gfhjfgj",
+        "hgjkjhk"
+      ],
+      "phone": "717-845-9663",
+      "email": "dfgh@sdfg.sdf",
+      "address": {
+        "address1": "dfghdfgh",
+        "address2": "dfghj",
+        "city": "fghjghj",
+        "state": "hj",
+        "postalCode": "34566",
+        "country": "cvbnv"
+      },
+      "bio": "dfghsgfhsdfhgshsdfghsfghsgh  dfgdfg dfgndfbdgf dfgb d dfg dfghgfb fdfgdgb dfg dfgbdfg dfgbdf",
+      "gender": "female",
+      "personalityTraits": [
+        "Friendly",
+        "Detail-oriented",
+        "Talkative",
+        "Outgoing"
+      ],
+      "yearsExperience": 19,
+      "pictureUrl": "https://firebasestorage.googleapis.com/v0/b/gomanagr-845b4.firebasestorage.app/o/team-photos%2Fi6beWdN28CQx14CYd9kuu18kF3p2%2Ftm-1771172187624-0qdpljk%2FMitzi.jpg?alt=media&token=6a21ea15-755a-441f-9a90-afeead8221c4"
+    }
+  ],
+  "updatedAt": "2026-02-15T16:16:28.326Z"
+}

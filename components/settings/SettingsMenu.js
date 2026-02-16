@@ -1,6 +1,7 @@
-import { HiOfficeBuilding, HiColorSwatch, HiShieldCheck, HiCode, HiCreditCard } from 'react-icons/hi';
+import { HiOfficeBuilding, HiColorSwatch, HiShieldCheck, HiCode, HiCreditCard, HiCog } from 'react-icons/hi';
 
 const SETTINGS_SECTIONS = [
+  { id: 'general', label: 'General', icon: HiCog },
   { id: 'organization', label: 'Organization', icon: HiOfficeBuilding },
   { id: 'theme', label: 'Theme', icon: HiColorSwatch },
   { id: 'security', label: 'Security', icon: HiShieldCheck },

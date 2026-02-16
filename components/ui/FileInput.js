@@ -177,7 +177,7 @@ export default function FileInput({
           className={`flex flex-col items-center justify-center w-28 h-28 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 cursor-pointer hover:bg-gray-100 hover:border-gray-400 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           {preview ? (
-            <img src={preview} alt="" className="w-full h-full object-cover rounded-lg" />
+            <img src={preview} alt="" className="w-full h-full object-cover object-top rounded-lg" />
           ) : loading ? (
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent" />
           ) : (

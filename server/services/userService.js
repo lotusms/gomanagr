@@ -1,5 +1,5 @@
-import { doc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 
 /**
@@ -15,22 +15,54 @@ export async function createUserAccount(userId, userData, logoFile = null) {
 
     // Upload logo if provided
     if (logoFile) {
+      // First, delete all existing logos in the user's folder to ensure only one logo exists
+      try {
+        const userLogosFolderRef = ref(storage, `company-logos/${userId}`);
+        const listResult = await listAll(userLogosFolderRef);
+        
+        // Delete all existing logo files
+        const deletePromises = listResult.items.map((itemRef) => deleteObject(itemRef));
+        await Promise.all(deletePromises);
+        console.log('Deleted existing logo(s) before uploading new one');
+      } catch (err) {
+        // If folder doesn't exist or is empty, that's okay - just continue
+        console.log('No existing logos to delete (or folder does not exist)');
+      }
+
+      // Upload the new logo
       const logoRef = ref(storage, `company-logos/${userId}/${logoFile.name}`);
       await uploadBytes(logoRef, logoFile);
       logoUrl = await getDownloadURL(logoRef);
+      console.log('Uploaded new logo, URL:', logoUrl);
+    } else {
+      // If no new logo file, preserve existing logo from Firestore if not provided in userData
+      if (!logoUrl) {
+        try {
+          const userAccountRef = doc(db, 'useraccount', userId);
+          const docSnap = await getDoc(userAccountRef);
+          if (docSnap.exists()) {
+            const existingData = docSnap.data();
+            logoUrl = existingData.companyLogo || '';
+            console.log('Preserved existing logo URL from Firestore:', logoUrl);
+          }
+        } catch (err) {
+          console.warn('Could not fetch existing logo:', err);
+        }
+      }
     }
 
-    // Prepare document data
+    // Prepare document data - always include companyLogo
     const accountData = {
       ...userData,
       companyLogo: logoUrl,
       updatedAt: new Date().toISOString(),
     };
 
-    // Create document in useraccount collection with same ID as auth user
+    // Use merge: true to preserve existing fields that aren't being updated
     const userAccountRef = doc(db, 'useraccount', userId);
-    await setDoc(userAccountRef, accountData, { merge: false });
+    await setDoc(userAccountRef, accountData, { merge: true });
 
+    console.log('Saved account data with companyLogo:', logoUrl);
     return accountData;
   } catch (error) {
     console.error('Error creating user account:', error);

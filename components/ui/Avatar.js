@@ -33,7 +33,7 @@ export default function Avatar({ src, name, size = 'md', className = '' }) {
       aria-label={name ? `Avatar for ${name}` : 'Avatar'}
     >
       {src ? (
-        <img src={src} alt="" className="w-full h-full object-cover" />
+        <img src={src} alt="" className="w-full h-full object-cover object-top" />
       ) : initials ? (
         <span>{initials}</span>
       ) : (

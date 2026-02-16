@@ -1,0 +1,1083 @@
+{
+  "exportedAt": "2026-02-16T11:52:52.532Z",
+  "userId": "i6beWdN28CQx14CYd9kuu18kF3p2",
+  "documentId": "i6beWdN28CQx14CYd9kuu18kF3p2",
+  "count": 12,
+  "teamMembers": [
+    {
+      "id": "tm-1771172187624-0qdpljk",
+      "name": "Mitzi",
+      "role": "Support Staff",
+      "firstName": "Mitzi Anderson",
+      "lastName": "Anderson",
+      "title": "Support Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Mitzi Anderson is a Colorado native. She attended cosmetology school in Boulder, CO in 1974 and worked as a stylist from 1975-1990. She relocated to the Central PA area in 1990. Mitzi enjoys being involved in the salon industry and has worked at other salons in the area. She joined the team of Serenity and their talented professionals in 2016. She feels it is a privilege to serve the salons clients. Making the clients feel comfortable and relaxed is her favorite part of the position, seeing our clients leave with smiles on their faces is the most rewarding.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": "https://firebasestorage.googleapis.com/v0/b/gomanagr-845b4.firebasestorage.app/o/team-photos%2Fi6beWdN28CQx14CYd9kuu18kF3p2%2Ftm-1771172187624-0qdpljk%2FMitzi.jpg?alt=media&token=6a21ea15-755a-441f-9a90-afeead8221c4"
+    },
+    {
+      "id": "tm-1739123456789-a2k9mpx",
+      "name": "Amy Karaschak",
+      "role": "Massage Therapists",
+      "firstName": "Amy",
+      "lastName": "Karaschak",
+      "title": "Massage Therapists",
+      "services": [
+        "Relaxing Massage",
+        "Reflexology",
+        "Reiki",
+        "Hot Stone"
+      ],
+      "phone": "717-612-1630",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Amy Karaschak is a Licensed Massage Therapist and a graduate of the Baltimore School of Massage.<br/><br/>She has over 20 years of health care experience, including working with Practitioners specializing in holistic and whole-body wellness.<br/><br/>Amy specializes in Relaxing Therapeutic Massage integrating elements of Acupressure, Reflexology and Shiatsu.<br/><br/> She is a Reiki Master Practitioner, level 3. She  also provides Hot Stone Massage and Chair Massage.<br/><br/> Amy's unique focus comes from a place of serving others, healing and giving. She strives to make a positive contribution to the lives of everyone.<br/><br/>Amy loves spending time with her family! She is the proud Mom of her kind and adventurous son Noah, her beloved dog Daisy, and an assortment of cats.<br/><br/>Amy enjoys reading and is currently writing a novel and a children's book.<br/><br/>In her spare time, Amy is volunteering, gardening, kayaking, riding dirtbikes and traveling.<br/><br/>Schedule your Relaxing Therapeutic Massage with Amy today! Convenient online scheduling is always available, or call Serenity Skin Care and Wellness Salon at 717-612-1630.",
+      "gender": "female",
+      "personalityTraits": [
+        "Calm",
+        "Compassionate",
+        "Spiritual"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456790-b3k0nqy",
+      "name": "Megan Polvinale",
+      "role": "Massage Therapists",
+      "firstName": "Megan",
+      "lastName": "Polvinale",
+      "title": "Massage Therapists",
+      "services": [
+        "Deep Tissue",
+        "Sports Therapy",
+        "Cupping"
+      ],
+      "phone": "717-612-1630",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Introducing Megan Polvinale a seasoned Massage Therapist with an impressive 24-year career dedicated to the art of healing through touch. A proud graduate of the renowned Baltimore School of Massage, Megan embarked on her journey into the world of wellness, nurturing her passion for massage therapy and its transformative effects.<br/><br/>Megan's expertise spans a comprehensive spectrum of massage modalities, making her a versatile practitioner adept in addressing diverse client needs. Specializing in deep tissue massage, sports therapy, cupping, myofascial release, lymphatic drainage, and others, Megan brings a wealth of knowledge and skill to her practice.<br/><br/>With a commitment to continual growth and staying attuned to the latest advancements in her field, Megan offers more than just a massage; she delivers a tailored and therapeutic experience. Her 24 years of experience are a testament to her dedication to promoting physical and mental well-being, one client at a time.<br/><br/>Step into Megan Polvinale's care and discover the rejuvenating power of massage, where her hands bring harmony and healing to those seeking relief and relaxation.",
+      "gender": "female",
+      "personalityTraits": [
+        "Detail-Oriented",
+        "Caring",
+        "Energetic"
+      ],
+      "yearsExperience": 24,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456791-c4l1orz",
+      "name": "Amber D'Agostino",
+      "role": "Salon Staff",
+      "firstName": "Amber",
+      "lastName": "D'Agostino",
+      "title": "Salon Staff",
+      "services": [
+        "Botox Application"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Amber D'Agostino was born and raised in Mechanicsburg, Pennsylvania.  She graduated from Penn State University then Lock Haven PA Program with her Masters in Physician Assistant Studies in 2014.  She initially worked in Urgent Care where she enjoyed small procedures.  In 2019, she began working in a world-class cardiology practice.  She continues to work with this team.  In 2023, she started with SkinClique, a concierge aesthetics practice started in Charleston, SC.  She has enjoyed building her own practice, gaining patient trust by providing an extraordinary patient experience with honest consultation, precise results, and unmatched follow up.  With aspirations to grow her practice and expand offerings, she has partnered with Changes Salon and Day Spa to provide experience in aesthetics procedures and medical knowledge in wellness.  She believes that when you look your best, you feel your best, and you will do your best!",
+      "gender": "female",
+      "personalityTraits": [],
+      "yearsExperience": 3,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456792-d5m2psa",
+      "name": "Michelle",
+      "role": "Massage Therapists",
+      "firstName": "Michelle",
+      "lastName": "",
+      "title": "Massage Therapists",
+      "services": [
+        "Relaxation",
+        "Therapeutic Touch"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "I graduated from YTI in 2010 and have been practicing massage for the past 13 years. It is very humbling to know you possess the skills to help someone that is having chronic pain or just needs to feel better. I enjoy getting clients to open up about what is going on with their body &amp; educating them on more ways to take better care of themselves. Learning new techniques is something I love and it keeps me passionate about doing massage therapy.",
+      "gender": "female",
+      "personalityTraits": [
+        "Empathetic",
+        "Patient",
+        "Attentive"
+      ],
+      "yearsExperience": 13,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456793-e6n3qtb",
+      "name": "Gretta",
+      "role": "Massage Therapists",
+      "firstName": "Gretta",
+      "lastName": "",
+      "title": "Massage Therapists",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "I've been practicing massage for 15 years! I have been with Changes salon and Day Spa for 12 of those years. Graduated from YTI in 2008. I take pride in helping a variety of people whether they are struggling with anxiety, dealing with recovering from an injury or just simply want to have a relaxing experience and alleviate sore muscles, I find massage therapy to be very beneficial. I enjoy promoting the health and wellness aspects of massage as well as assisting in stress reduction for my clients!<br/><br/>I'm a proud Mama of my daughter Alivia and fur mama to my silly labradoodle Mikko. When I not working I enjoy spending time with my family and friends, working out and painting",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456794-f7o4ruc",
+      "name": "Terri",
+      "role": "Massage Therapists",
+      "firstName": "Terri",
+      "lastName": "",
+      "title": "Massage Therapists",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Terri received her cosmetology license in 1979 and graduated from Alternative Conjunction School of Massage in 1996. She is highly skilled with all of our facials, massages and body treatments. Terri has a warm and healing touch bringing comfort for your overall well being. She is also certified in Ashiatsu Massage (barefoot massage). She is truly a professional and talented technician who cares about your well being.<br/><br/>Accomplishments and credentials include L.A. Stone Therapy, Ashiatsu Massage, Medical Massage and aesthetic training at Derielle. Numerous workshops with Guinot and Skin Ceuticals.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456795-g8p5svd",
+      "name": "Darlene",
+      "role": "Nail Technicians",
+      "firstName": "Darlene",
+      "lastName": "",
+      "title": "Nail Technicians",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Darlene has numerous years of experience as a Nail Technician. She is highly skilled with natural and gel nails. She has also achieved CND elite status with shellac. She also provides professional services with our spa pedicures. Darlene is a seasoned nail technician and provides the highest quality of service to you.<br/><br/>Accomplishments and credentials include OPI and Tammy Taylor, CND Elite Salon/Shellac, Gel application and acrylics.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456796-h9q6twe",
+      "name": "Ryan",
+      "role": "Nail Technicians",
+      "firstName": "Ryan",
+      "lastName": "",
+      "title": "Nail Technicians",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Ryan is a licensed nail tech with 15 years experience. Specializing in natural nail manicures, pedicures, and shellac. She is focused on providing quality and a relaxing experience.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456797-i0r7uxf",
+      "name": "Andrea",
+      "role": "Nail Technicians",
+      "firstName": "Andrea",
+      "lastName": "",
+      "title": "Nail Technicians",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "With 32 years of experience, in the nail Care industry, Andrea has formed a close bond with her clients and coworkers. Specializing in natural nail care, pedicures as well as acrylic and gel polish, attention to detail is particularly important to her. \"Making people feel better about themselves after their appointment is so satisfying to me\". Andrea lives in Boiling Springs and was a 1989 graduate of Boiling Springs high School and Cumberland Perry vocational school",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456798-j1s8vyg",
+      "name": "Carly",
+      "role": "Nail Technicians",
+      "firstName": "Carly",
+      "lastName": "",
+      "title": "Nail Technicians",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Carly is a licensed cosmetologist She started at Changes as an assistant, but is now starting as a nail technician! She has been passionate about nails and nail designs for many years and loves making people feel confident and beautiful.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456799-k2t9wzh",
+      "name": "Ena",
+      "role": "Nail Technicians",
+      "firstName": "Ena",
+      "lastName": "",
+      "title": "Nail Technicians",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456800-l3u0xai",
+      "name": "Angela Martin",
+      "role": "Owner",
+      "firstName": "Angela",
+      "lastName": "Martin",
+      "title": "Owner",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Angela is from the Enola, Pennsylvania area and graduated from East Pennsboro Area high school. She then went to HACC to study nursing. Her career path changed, and she opened up a janitorial cleaning business. Angela purchased Serenity Skin Care Salon in 2021. She has always loved the beauty industry and new treads that come along with it. Honored to purchase Changes Salon and Day Spa in January 2023 her goal is to provide outstanding services that many salons lack altogether. It not only starts the minute you are greeted when you first check in but the entire experience as a whole.<br/><br/>She is very thankful for all the staff and credits them for her many accomplishments. Angela resides in Mechanicsburg with her husband Tom and her two bulldogs, Harper blue and Bruno Yuri. She enjoys cooking, shopping and traveling. Community outreach is so important.<br/><br/>Many organizations includes The PA Breast Cancer Coalition, National Night out. She recently purchased a canine dog for the East Pennsboro township police station named officer k9 Martin.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456801-m4v1ybj",
+      "name": "Tara",
+      "role": "Salon Staff",
+      "firstName": "Tara",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Tara has been a professional Hair Designer for 17 years. Tara had worked for Changes early on in her career and then went on to own her own salon for 8 years. She is a Wella Color Specialist and the Bumble and Bumble Network Coordinator for Changes. She provides quality services, knows her craft and works efficiently to provide excellence in hair care for each and every client.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456802-n5w2zck",
+      "name": "Megan",
+      "role": "Nail Technicians",
+      "firstName": "Megan",
+      "lastName": "",
+      "title": "Nail Technicians",
+      "services": [],
+      "phone": "717-612-1630",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "",
+      "gender": "female",
+      "personalityTraits": [],
+      "yearsExperience": 0,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456803-o6x3adl",
+      "name": "Lizzy",
+      "role": "Salon Staff",
+      "firstName": "Lizzy",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Lizzy is an amazing new Stylist with Changes! She brings a fresh new look with hip and urban styles.<br/><br/>She has an ease of style and creativity with special styles, curls and blowouts.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456804-p7y4bem",
+      "name": "Amanda",
+      "role": "Salon Staff",
+      "firstName": "Amanda",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Amanda is a Master Stylist with over 20 years of experience in the beauty industry.<br/><br/>She does amazing color services especially blondes. She also specializes in up styles and cutting and nail services.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456805-q8z5cfn",
+      "name": "Jeffrey",
+      "role": "Salon Staff",
+      "firstName": "Jeffrey",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Jeff has worked as a Hair Designer for 38 years. He was also an educator for Framesi and L'Oreal Professional.<br/><br/>He worked in the Philadelphia area for over 20 years. While working in Philadelphia he did the hair for the Eagle's Cheerleaders and 76er Dancers and participated in Philadelphia Phasion Fest for several years.<br/><br/>Jeff is a master colorist. He has extended education and training classes including Sassoon, John Sahag, Wella, Bumble, and Schwarzkoph. <br/><br/>Jeff has been with Changes Salon since 2017 as a Master Stylist and does exceptional work for both men and women.<br/><br/>Jeff provides quality services for hair color, hiites, cuts, design, extensions, smoothing treatments, Japanese straighteners. He is a true artistic talent to the beauty industry.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456806-r9a6dg0",
+      "name": "Enisa",
+      "role": "Salon Staff",
+      "firstName": "Enisa",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Enisa is a Master Hair Designer at Changes with over 10 years of experience in the beauty industry since 2007 and Changes since 2012. She is committed to continually perfecting her craft and creating beauty with every cut, style and color she performs. Enisa gives each client her undivided attention while focusing on their hair needs. She wants every client to love their hair and feel great about themselves.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456807-s0b7eh1",
+      "name": "Emily",
+      "role": "Salon Staff",
+      "firstName": "Emily",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Emily was educated at The Temple, A Paul Mitchell Partner. Early on Emily was an Assistant at Changes for several years and perfected her craft to move on to senior stylist. She possesses great people skills which includes listening to the client's needs and executes her craft...so important! Emily takes her time with each color and cut and is very talented with her blow outs. She is your go to for upstyles, special hair including braiding. She focuses on the latest trends and is upbeat. Emily works with men, women and children of all ages. She also provides quality nail services.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456808-t1c8fi2",
+      "name": "Stephanie",
+      "role": "Salon Staff",
+      "firstName": "Stephanie",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Stephanie is an accomplished Master stylist specializing in all aspects of color, hilites, cuts (including curly cuts) Up-dos, hair design and extensions, smoothing treatments. She is excited to help you design a look that fits your lifestyle! Stephanie is truly a credit to the hair industry as she is a professional who takes extreme pride in her craft.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456809-u2d9gj3",
+      "name": "Missy",
+      "role": "Salon Staff",
+      "firstName": "Missy",
+      "lastName": "",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Missy has been a Hair Designer for over 21 years and works with all facets of hair cut , color and design. She is a creative Master Stylist that enjoys braiding, upstyles and blow outs. Missy is also the bridal coordinator for Changes. She is dedicated to providing an exceptional experience for weddings or special occasions. Her specialty is Japanese Straightening.<br/><br/>Accomplishments and credentials include Paul Mitchell Training, Japanese Straightening, Biolustre Workshop, Tigi Academy NYC, Wella and Goldwell Color Classes, Phyto color and hair treatments and Bumble and Bumble razor cuts.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456810-v3e0hk4",
+      "name": "Allison Davis",
+      "role": "Salon Staff",
+      "firstName": "Allison",
+      "lastName": "Davis",
+      "title": "Salon Staff",
+      "services": [
+        "Nailcare",
+        "Skincare",
+        "Makeup"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "My name is Allison Davis. It has been a dream of mine to become an esthetician for quite some time. As an esthetician, I'm passionate about skincare and beauty; I am dedicated to providing personalized and professional services to help clients achieve their skincare and beauty goals. I am here to help my clients look and feel their best. I believe in the transformative power of skincare and am excited to bring my expertise to anyone seeking a healthy, glowing complexion.",
+      "gender": "female",
+      "personalityTraits": [],
+      "yearsExperience": 4,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456811-w4f1il5",
+      "name": "Ingrid",
+      "role": "Manager",
+      "firstName": "Ingrid",
+      "lastName": "",
+      "title": "Manager",
+      "services": [
+        "Medspa",
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456812-x5g2jm6",
+      "name": "Tammy",
+      "role": "Spa Staff",
+      "firstName": "Tammy",
+      "lastName": "",
+      "title": "Spa Staff",
+      "services": [
+        "Medspa",
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Tammy has been a Licensed Esthetician for over 15 years. She is artistic and free spirited. You just have to experience her facials... She also provides specialty skin care services such as micro dermabrasion, micro needing and eyelash lift and tinit.<br/><br/>Accomplishments and credentials include Murad Certification, Skinceutical &amp; Guinot Workshops and International Skin Care Shows.",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456813-y6h3kn7",
+      "name": "Tamara Lukens",
+      "role": "Salon Staff",
+      "firstName": "Tamara",
+      "lastName": "Lukens",
+      "title": "Salon Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "My name is Tamara Lukens. I've been in the beauty industry a long time and can't imagine ever doing anything else. I attended West Shore Beauty Academy for cosmetology/esthetician and later gained my certification in electrolysis. Several years ago I attended the National Laser Institute of Philadelphia to become a certified laser technician for hair removal, skin treatments and tattoo removal. I am also certified in Ultrasonic Cavitation and RF treatments. Though I still do hair, my focus is on spa work. Making you look better and feel better about yourself is my goal!",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456814-z7i4lo8",
+      "name": "Becca",
+      "role": "Spa Staff",
+      "firstName": "Becca",
+      "lastName": "",
+      "title": "Spa Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Becca is a newly licensed esthetician specializing in facials, waxing, eyelash extensions, and makeup. She's passionate about bringing out the natural beauty of each person she works with, creating personalized skincare routines tailored to their unique needs. Becca also loves doing makeup for weddings and special occasions, where she focuses on enhancing natural features to help her clients feel amazing. Whether it's a skincare regimen or a stunning makeup look, Becca is all about delivering results that make her clients feel confident and radiant. Schedule an appointment with Becca today to experience her skill in skincare and makeup firsthand!",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456815-a8j5mp9",
+      "name": "Reagan",
+      "role": "Support Staff",
+      "firstName": "Reagan",
+      "lastName": "",
+      "title": "Support Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Coming Soon",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456816-b9k6nq0",
+      "name": "Cambria",
+      "role": "Support Staff",
+      "firstName": "Cambria",
+      "lastName": "",
+      "title": "Support Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456817-c0l7or1",
+      "name": "Amanda",
+      "role": "Support Staff",
+      "firstName": "Amanda",
+      "lastName": "",
+      "title": "Support Staff",
+      "services": [
+        "Haircuts",
+        "Blondes",
+        "Updos",
+        "Balayage"
+      ],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "",
+      "gender": "female",
+      "personalityTraits": [
+        "Creative",
+        "Friendly",
+        "Fun"
+      ],
+      "yearsExperience": 20,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456818-d1m8ps2",
+      "name": "Jaylyn Westcott",
+      "role": "Nail Technicians",
+      "firstName": "Jaylyn",
+      "lastName": "Westcott",
+      "title": "Nail Technicians",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "My name is Jaylyn westcott I am a licensed esthetician and nail tech I am dedicated to provide professional services and fulfill all expectations from my clients. My goal is for you to look and feel your best. I hope to see you in my chair!",
+      "gender": "female",
+      "personalityTraits": [],
+      "yearsExperience": 4,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456819-e2n9qt3",
+      "name": "Riley",
+      "role": "Support Staff",
+      "firstName": "Riley",
+      "lastName": "",
+      "title": "Support Staff",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Riley is a dedicated support staff member with a passion for helping others. She is known for her friendly demeanor and reliability.",
+      "gender": "female",
+      "personalityTraits": [
+        "Friendly",
+        "Reliable"
+      ],
+      "yearsExperience": 4,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456820-f3o0ru4",
+      "name": "Sarah",
+      "role": "Massage Therapists",
+      "firstName": "Sarah",
+      "lastName": "",
+      "title": "Massage Therapists",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Sarah prides herself on her down to earth personality. She is patient, calm, and easily makes friends with everyone she meets. She was born in Louisiana and loves everything about Louisiana, such as; the spicy food, jazz music, the people, and the city. When not at Polished Sarah enjoys spending time with her husband Buddy and dogs Jazmine, a border collie, and Isabel her 3 year old Siberian Husky. Sarah plays on a bowling league and loves arts and crafts.",
+      "gender": "female",
+      "personalityTraits": [
+        "Friendly",
+        "Reliable"
+      ],
+      "yearsExperience": 1,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456821-g4p1sv5",
+      "name": "Arianna",
+      "role": "Support Staff",
+      "firstName": "Arianna",
+      "lastName": "",
+      "title": "Support Staff",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Coming Soon",
+      "gender": "female",
+      "personalityTraits": [
+        "Friendly",
+        "Reliable"
+      ],
+      "yearsExperience": 1,
+      "pictureUrl": ""
+    },
+    {
+      "id": "tm-1739123456822-h5q2tw6",
+      "name": "Sara",
+      "role": "Support Staff",
+      "firstName": "Sara",
+      "lastName": "",
+      "title": "Support Staff",
+      "services": [],
+      "phone": "",
+      "email": "",
+      "address": {
+        "address1": "",
+        "address2": "",
+        "city": "",
+        "state": "",
+        "postalCode": "",
+        "country": ""
+      },
+      "bio": "Coming Soon",
+      "gender": "female",
+      "personalityTraits": [
+        "Friendly",
+        "Reliable"
+      ],
+      "yearsExperience": 1,
+      "pictureUrl": ""
+    }
+  ]
+}

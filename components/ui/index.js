@@ -1,3 +1,4 @@
+export { default as AddressAutocomplete } from './AddressAutocomplete';
 export { default as Avatar } from './Avatar';
 export { default as Checkbox } from './Checkbox';
 export { default as ChipsArrayBuilder } from './ChipsArrayBuilder';
@@ -9,4 +10,5 @@ export { default as PasswordField } from './PasswordField';
 export { default as InputField } from './InputField';
 export { default as TextareaField } from './TextareaField';
 export { default as Tooltip } from './Tooltip';
+export { default as TeamFilter } from './TeamFilter';
 export { ChipsSingle, ChipsMulti } from './Chips';

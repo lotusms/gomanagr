@@ -18,7 +18,7 @@ export const FORM_CONTROL_FOCUS =
 export const FORM_CONTROL_LIGHT_DEFAULT =
   'border-gray-300 bg-white text-gray-900 placeholder-gray-500';
 export const FORM_CONTROL_LIGHT_ERROR = 'border-red-500 bg-red-50';
-export const FORM_CONTROL_LIGHT_LABEL = 'block text-sm font-medium text-gray-700 mb-2';
+export const FORM_CONTROL_LIGHT_LABEL = 'block text-sm font-semibold text-gray-700 mb-2';
 
 // Dark variant (e.g. login, dark backgrounds)
 export const FORM_CONTROL_DARK_DEFAULT =

@@ -42,7 +42,7 @@ export default function Drawer({ isOpen, onClose, children, title, className = '
         className="relative ml-auto h-full flex flex-col bg-white shadow-xl animate-drawer-in"
         style={{ width }}
       >
-        <div className="flex items-center justify-between flex-shrink-0 px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between flex-shrink-0 px-6 py-4 bg-slate-100">
           {title != null && title !== '' ? (
             <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
           ) : (

@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateTeamMembers } from '@/services/userService';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
@@ -7,7 +7,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
 import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
-import { PageHeader } from '@/components/ui';
+import { PageHeader, TeamFilter } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -26,6 +26,12 @@ function TeamContent() {
   const [saving, setSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [filters, setFilters] = useState({
+    roles: [],
+    services: [],
+    genders: [],
+    personalityTraits: [],
+  });
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -79,6 +85,7 @@ function TeamContent() {
       ...(data.firstName !== undefined && { firstName: data.firstName }),
       ...(data.lastName !== undefined && { lastName: data.lastName }),
       ...(data.title !== undefined && { title: data.title }),
+      ...(data.location !== undefined && { location: data.location }),
       ...(data.services?.length && { services: data.services }),
       ...(data.phone !== undefined && { phone: data.phone }),
       ...(data.email !== undefined && { email: data.email }),
@@ -113,6 +120,45 @@ function TeamContent() {
     setEditingMember(null);
   };
 
+  // Filter team members based on selected filters
+  const filteredTeam = useMemo(() => {
+    return team.filter((member) => {
+      // Role filter
+      if (filters.roles.length > 0 && !filters.roles.includes(member.role)) {
+        return false;
+      }
+
+      // Service filter
+      if (filters.services.length > 0) {
+        const memberServices = member.services || [];
+        const hasMatchingService = filters.services.some((service) =>
+          memberServices.includes(service)
+        );
+        if (!hasMatchingService) {
+          return false;
+        }
+      }
+
+      // Gender filter
+      if (filters.genders.length > 0 && !filters.genders.includes(member.gender)) {
+        return false;
+      }
+
+      // Personality trait filter
+      if (filters.personalityTraits.length > 0) {
+        const memberTraits = member.personalityTraits || [];
+        const hasMatchingTrait = filters.personalityTraits.some((trait) =>
+          memberTraits.includes(trait)
+        );
+        if (!hasMatchingTrait) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [team, filters]);
+
   return (
     <>
       <Head>
@@ -142,7 +188,7 @@ function TeamContent() {
             <Drawer
               isOpen={drawerOpen}
               onClose={closeDrawer}
-              title={editingMember ? 'Edit team member' : 'Add team member'}
+              title={editingMember ? `Edit ${editingMember.name}` : 'Add team member'}
               width="75vw"
             >
               <AddTeamMemberForm
@@ -150,11 +196,29 @@ function TeamContent() {
                 onSubmit={handleSaveMember}
                 onCancel={closeDrawer}
                 saving={saving}
+                locations={userAccount?.locations || []}
+                organizationCountry={userAccount?.organizationCountry || ''}
               />
             </Drawer>
 
+            <TeamFilter
+              teamMembers={team}
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {team.map((member) => (
+              {filteredTeam.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-gray-500 text-lg">No team members match the selected filters</p>
+                  <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
+                </div>
+              ) : (
+                [...filteredTeam].sort((a, b) => {
+                  const nameA = (a.name || '').toLowerCase();
+                  const nameB = (b.name || '').toLowerCase();
+                  return nameA.localeCompare(nameB);
+                }).map((member) => (
                 <PersonCard
                   key={member.id}
                   name={member.name}
@@ -163,7 +227,8 @@ function TeamContent() {
                   onClick={() => openDrawerForEdit(member)}
                   onRemove={() => handleRemove(member.id)}
                 />
-              ))}
+                ))
+              )}
             </div>
           </>
         )}

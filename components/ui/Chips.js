@@ -1,6 +1,7 @@
 import * as RadioGroup from '@radix-ui/react-radio-group';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import * as Label from '@radix-ui/react-label';
+import { getLabelClasses } from './formControlStyles';
 
 /**
  * Chips Component - Single Select (Radio Group)
@@ -15,6 +16,7 @@ import * as Label from '@radix-ui/react-label';
  * @param {boolean} props.required - Whether the field is required
  * @param {string} props.className - Additional CSS classes
  * @param {string} props.layout - Layout type: 'flex' (default) or 'vertical' for full-width stacked buttons
+ * @param {string} props.variant - 'dark' (default) or 'light' for light backgrounds
  */
 export function ChipsSingle({
   id,
@@ -26,17 +28,22 @@ export function ChipsSingle({
   required = false,
   className = '',
   layout = 'flex',
+  variant = 'dark',
 }) {
   const isVertical = layout === 'vertical';
+  const isLight = variant === 'light';
+  const labelClass = getLabelClasses(variant);
+  const requiredClass = isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1';
+  const errorClass = isLight ? 'mt-2 text-sm text-red-600' : 'mt-2 text-sm text-red-300';
   
   return (
     <div className={className}>
       <Label.Root
         htmlFor={id}
-        className="block text-sm font-medium text-white mb-3"
+        className={labelClass}
       >
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className={requiredClass}>*</span>}
       </Label.Root>
       <RadioGroup.Root
         id={id}
@@ -70,7 +77,7 @@ export function ChipsSingle({
         ))}
       </RadioGroup.Root>
       {error && (
-        <p id={`${id}-error`} className="mt-2 text-sm text-red-300" role="alert">
+        <p id={`${id}-error`} className={errorClass} role="alert">
           {error}
         </p>
       )}
@@ -110,16 +117,16 @@ export function ChipsMulti({
   };
 
   const isLight = variant === 'light';
-  const labelClass = isLight ? 'block text-sm font-medium text-gray-700 mb-2' : 'block text-sm font-medium text-white mb-3';
+  const labelClass = getLabelClasses(variant);
   const requiredClass = isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1';
   const unselectedClass = isLight
-    ? 'bg-secondary-50 text-secondary-800 border border-secondary-200 hover:bg-secondary-100 hover:border-secondary-300'
+    ? 'bg-primary-50 text-primary-800 border border-primary-200 hover:bg-primary-100 hover:border-primary-300'
     : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20';
   const selectedClass = isLight
-    ? 'bg-secondary-600 text-white border border-secondary-600'
+    ? 'bg-primary-600 text-white border border-primary-600'
     : 'bg-primary-600 text-white border-2 border-primary-400';
   const errorClass = isLight ? 'mt-2 text-sm text-red-600' : 'mt-2 text-sm text-red-300';
-  const chipPadding = isLight ? 'px-2.5 py-1.5 text-sm rounded-md' : 'px-4 py-3 rounded-lg';
+  const chipPadding = isLight ? 'px-3 py-0.5 text-sm rounded-full' : 'px-4 py-3 rounded-lg';
   const checkSize = isLight ? 'text-sm' : 'text-xl';
 
   return (

@@ -4,6 +4,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader } from '@/components/ui';
 import SettingsMenu from '@/components/settings/SettingsMenu';
+import GeneralSettings from '@/components/settings/GeneralSettings';
 import OrganizationSettings from '@/components/settings/OrganizationSettings';
 import ThemeSettings from '@/components/settings/ThemeSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
@@ -11,10 +12,12 @@ import APISettings from '@/components/settings/APISettings';
 import BillingSettings from '@/components/settings/BillingSettings';
 
 function SettingsContent() {
-  const [activeSection, setActiveSection] = useState('organization');
+  const [activeSection, setActiveSection] = useState('general');
 
   const renderActiveSection = () => {
     switch (activeSection) {
+      case 'general':
+        return <GeneralSettings />;
       case 'organization':
         return <OrganizationSettings />;
       case 'theme':
@@ -26,7 +29,7 @@ function SettingsContent() {
       case 'billing':
         return <BillingSettings />;
       default:
-        return <OrganizationSettings />;
+        return <GeneralSettings />;
     }
   };
 

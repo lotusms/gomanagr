@@ -4,67 +4,15 @@ import { getUserAccount, createUserAccount } from '@/services/userService';
 import { HiCloudUpload, HiX } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
+import { AddressAutocomplete } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
-
-const TIMEZONES = [
-  'UTC',
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Phoenix',
-  'America/Anchorage',
-  'America/Honolulu',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Asia/Tokyo',
-  'Asia/Shanghai',
-  'Asia/Dubai',
-  'Australia/Sydney',
-];
-
-const DATE_FORMATS = [
-  { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
-  { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
-  { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
-  { value: 'DD MMM YYYY', label: 'DD MMM YYYY' },
-];
-
-const NUMBER_FORMATS = [
-  { value: '1,234.56', label: '1,234.56 (US)' },
-  { value: '1.234,56', label: '1.234,56 (EU)' },
-  { value: '1 234,56', label: '1 234,56 (FR)' },
-];
-
-const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'zh', label: 'Chinese' },
-];
-
-const CURRENCIES = [
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'EUR', label: 'EUR (€)' },
-  { value: 'GBP', label: 'GBP (£)' },
-  { value: 'JPY', label: 'JPY (¥)' },
-  { value: 'CAD', label: 'CAD (C$)' },
-  { value: 'AUD', label: 'AUD (A$)' },
-];
+import { COUNTRIES } from '@/utils/countries';
 
 // Business hours: every hour from 00:00 to 23:00 (value stored as HH:00)
 const BUSINESS_HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   const h = String(i).padStart(2, '0');
   return { value: `${h}:00`, label: `${h}:00` };
 });
-
-const TIME_FORMAT_OPTIONS = [
-  { value: '24h', label: '24-hour (e.g. 18:00)' },
-  { value: '12h', label: '12-hour (e.g. 6:00 PM)' },
-];
 
 export default function OrganizationSettings() {
   const { currentUser } = useAuth();
@@ -78,14 +26,14 @@ export default function OrganizationSettings() {
     companyName: '',
     companyLogo: '',
     logoFile: null,
-    timezone: 'UTC',
-    dateFormat: 'MM/DD/YYYY',
-    numberFormat: '1,234.56',
-    defaultLanguage: 'en',
+    organizationCountry: '',
+    organizationAddress: '',
+    organizationAddress2: '',
+    organizationCity: '',
+    organizationState: '',
+    organizationPostalCode: '',
     businessHoursStart: '08:00',
     businessHoursEnd: '18:00',
-    timeFormat: '24h',
-    currency: 'USD',
   });
 
   useEffect(() => {
@@ -99,25 +47,93 @@ export default function OrganizationSettings() {
       setLoading(true);
       const userData = await getUserAccount(currentUser.uid);
       if (userData) {
+        let logoUrl = userData.companyLogo || '';
+        
+        // If logo URL is missing but logo file exists in storage, get the URL
+        if (!logoUrl || logoUrl.trim() === '') {
+          try {
+            const { ref: storageRef, listAll, getDownloadURL } = await import('firebase/storage');
+            const { storage } = await import('@/lib/firebase');
+            
+            const userLogosFolderRef = storageRef(storage, `company-logos/${currentUser.uid}`);
+            const listResult = await listAll(userLogosFolderRef);
+            
+            if (listResult.items.length > 0) {
+              // Get the first logo file's download URL
+              const firstLogoRef = listResult.items[0];
+              logoUrl = await getDownloadURL(firstLogoRef);
+              
+              // Save the URL to Firestore for future use
+              const { createUserAccount } = await import('@/services/userService');
+              const updatedData = await createUserAccount(
+                currentUser.uid,
+                {
+                  ...userData,
+                  companyLogo: logoUrl,
+                  userId: currentUser.uid,
+                  email: currentUser.email,
+                },
+                null
+              );
+              
+              // Dispatch event to update header avatar immediately
+              if (typeof window !== 'undefined' && updatedData) {
+                window.dispatchEvent(
+                  new CustomEvent('useraccount', {
+                    detail: {
+                      type: 'useraccount-updated',
+                      payload: updatedData,
+                    },
+                  })
+                );
+              }
+            }
+          } catch (err) {
+            console.error('No logo found in storage or error retrieving:', err);
+          }
+        }
+        
+        // Set logo preview FIRST before setting formData to ensure it displays
+        if (logoUrl && logoUrl.trim() !== '') {
+          setLogoPreview(logoUrl);
+        } else {
+          setLogoPreview(null);
+        }
+        
         setFormData({
           companyName: userData.companyName || '',
-          companyLogo: userData.companyLogo || '',
-          timezone: userData.timezone || 'UTC',
-          dateFormat: userData.dateFormat || 'MM/DD/YYYY',
-          numberFormat: userData.numberFormat || '1,234.56',
-          defaultLanguage: userData.defaultLanguage || 'en',
+          companyLogo: logoUrl,
+          logoFile: null,
+          organizationCountry: userData.organizationCountry || '',
+          organizationAddress: userData.organizationAddress || '',
+          organizationAddress2: userData.organizationAddress2 || '',
+          organizationCity: userData.organizationCity || '',
+          organizationState: userData.organizationState || '',
+          organizationPostalCode: userData.organizationPostalCode || '',
           businessHoursStart: userData.businessHoursStart || '08:00',
           businessHoursEnd: userData.businessHoursEnd || '18:00',
-          timeFormat: userData.timeFormat || '24h',
-          currency: userData.currency || 'USD',
         });
-        if (userData.companyLogo) {
-          setLogoPreview(userData.companyLogo);
-        }
+      } else {
+        // No user data found, reset everything
+        setLogoPreview(null);
+        setFormData({
+          companyName: '',
+          companyLogo: '',
+          logoFile: null,
+          organizationCountry: '',
+          organizationAddress: '',
+          organizationAddress2: '',
+          organizationCity: '',
+          organizationState: '',
+          organizationPostalCode: '',
+          businessHoursStart: '08:00',
+          businessHoursEnd: '18:00',
+        });
       }
     } catch (err) {
       console.error('Error loading user data:', err);
       setError('Failed to load organization settings');
+      setLogoPreview(null);
     } finally {
       setLoading(false);
     }
@@ -154,9 +170,61 @@ export default function OrganizationSettings() {
     }
   };
 
-  const removeLogo = () => {
-    setLogoPreview(null);
-    setFormData((prev) => ({ ...prev, companyLogo: '', logoFile: null }));
+  const removeLogo = async () => {
+    if (!currentUser) return;
+    
+    try {
+      // Delete logo from storage
+      const { ref: storageRef, listAll, deleteObject } = await import('firebase/storage');
+      const { storage } = await import('@/lib/firebase');
+      
+      const userLogosFolderRef = storageRef(storage, `company-logos/${currentUser.uid}`);
+      const listResult = await listAll(userLogosFolderRef);
+      
+      // Delete all logo files
+      const deletePromises = listResult.items.map((itemRef) => deleteObject(itemRef));
+      await Promise.all(deletePromises);
+      
+      // Update Firestore to remove logo URL
+      const { createUserAccount } = await import('@/services/userService');
+      const updatedData = await createUserAccount(
+        currentUser.uid,
+        {
+          ...formData,
+          companyLogo: '',
+          userId: currentUser.uid,
+          email: currentUser.email,
+        },
+        null
+      );
+      
+      // Dispatch event to update header avatar
+      if (typeof window !== 'undefined' && updatedData) {
+        window.dispatchEvent(
+          new CustomEvent('useraccount', {
+            detail: {
+              type: 'useraccount-updated',
+              payload: updatedData,
+            },
+          })
+        );
+      }
+      
+      setLogoPreview(null);
+      setFormData((prev) => ({ ...prev, companyLogo: '', logoFile: null }));
+      
+      // Reset file input
+      const fileInput = document.getElementById('logo');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      
+      // Reload to sync
+      await loadUserData();
+    } catch (err) {
+      console.error('Error removing logo:', err);
+      setError('Failed to remove logo: ' + err.message);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -170,7 +238,7 @@ export default function OrganizationSettings() {
 
       const { logoFile, ...dataToSave } = formData;
       
-      await createUserAccount(
+      const savedData = await createUserAccount(
         currentUser.uid,
         {
           ...dataToSave,
@@ -179,6 +247,27 @@ export default function OrganizationSettings() {
         },
         logoFile || null
       );
+
+      // Update logo preview with the saved logo URL
+      if (savedData && savedData.companyLogo) {
+        setLogoPreview(savedData.companyLogo);
+        setFormData((prev) => ({ ...prev, companyLogo: savedData.companyLogo, logoFile: null }));
+      }
+      
+      // Dispatch event to update header avatar
+      if (typeof window !== 'undefined' && savedData) {
+        window.dispatchEvent(
+          new CustomEvent('useraccount', {
+            detail: {
+              type: 'useraccount-updated',
+              payload: savedData,
+            },
+          })
+        );
+      }
+      
+      // Reload user data to ensure everything is in sync
+      await loadUserData();
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -226,30 +315,26 @@ export default function OrganizationSettings() {
           </label>
           <div className="flex items-start gap-4">
             {logoPreview && (
-              <div className="relative">
-                <img
-                  src={logoPreview}
-                  alt="Organization logo"
-                  className="w-24 h-24 object-contain border border-gray-300 rounded-lg bg-gray-50"
-                />
+              <div className="relative group">
+                <label
+                  htmlFor="logo"
+                  className="cursor-pointer block"
+                  title="Click to replace logo"
+                >
+                  <img
+                    src={logoPreview}
+                    alt="Organization logo"
+                    className="w-24 h-24 object-contain border border-gray-300 rounded-lg bg-gray-50 group-hover:opacity-80 transition-opacity"
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={removeLogo}
                   className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  title="Remove logo"
                 >
                   <HiX className="w-4 h-4" />
                 </button>
-              </div>
-            )}
-            <div className="flex-1">
-              <label
-                htmlFor="logo"
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors w-fit"
-              >
-                <HiCloudUpload className="w-5 h-5 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">
-                  {logoPreview ? 'Change Logo' : 'Upload Logo'}
-                </span>
                 <input
                   type="file"
                   id="logo"
@@ -258,59 +343,119 @@ export default function OrganizationSettings() {
                   onChange={handleLogoChange}
                   className="hidden"
                 />
-              </label>
-              <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+              </div>
+            )}
+            <div className="flex-1">
+              {!logoPreview && (
+                <>
+                  <label
+                    htmlFor="logo"
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors w-fit"
+                  >
+                    <HiCloudUpload className="w-5 h-5 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">
+                      Upload Logo
+                    </span>
+                    <input
+                      type="file"
+                      id="logo"
+                      name="logo"
+                      accept="image/*"
+                      onChange={handleLogoChange}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                </>
+              )}
+              {logoPreview && (
+                <p className="text-xs text-gray-500 mt-1">Click the logo to replace it</p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Date & Number Formats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Time Zone */}
-          <Dropdown
-            id="timezone"
-            name="timezone"
-            label="Time Zone"
-            value={formData.timezone}
-            onChange={handleInputChange}
-            options={TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
-            placeholder="Select time zone"
+        {/* Organization Country */}
+        <Dropdown
+          id="organizationCountry"
+          name="organizationCountry"
+          label="Organization Country (HQ)"
+          value={formData.organizationCountry || undefined}
+          onChange={handleInputChange}
+          options={COUNTRIES}
+          placeholder="Select organization country..."
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> 
+          {/* Organization Address */}
+          <AddressAutocomplete
+            id="organizationAddress"
+            label="Organization Address"
+            value={formData.organizationAddress}
+            onChange={(address) => setFormData((prev) => ({ ...prev, organizationAddress: address }))}
+            onSelect={(addressData) => {
+              setFormData((prev) => ({
+                ...prev,
+                organizationAddress: addressData.address1,
+                organizationAddress2: addressData.address2 || '',
+                organizationCity: addressData.city || '',
+                organizationState: addressData.state || '',
+                organizationPostalCode: addressData.postalCode || '',
+                organizationCountry: addressData.country || prev.organizationCountry,
+              }));
+            }}
+            placeholder="Start typing organization address..."
           />
-          <Dropdown
-            id="dateFormat"
-            name="dateFormat"
-            label="Date Format"
-            value={formData.dateFormat}
-            onChange={handleInputChange}
-            options={DATE_FORMATS}
-            placeholder="Select date format"
-          />
+          
+          {/* Address Line 2 */}
+          {formData.organizationAddress && (
+            <InputField
+              id="organizationAddress2"
+              name="organizationAddress2"
+              label="Address line 2"
+              type="text"
+              value={formData.organizationAddress2}
+              onChange={handleInputChange}
+              placeholder="Apt, suite, etc. (optional)"
+              variant="light"
+            />
+          )}
         </div>
+
+        {/* City, State, Postal Code */}
+        {formData.organizationAddress && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <InputField
+              id="organizationCity"
+              name="organizationCity"
+              label="City"
+              type="text"
+              value={formData.organizationCity}
+              onChange={handleInputChange}
+              variant="light"
+            />
+            <InputField
+              id="organizationState"
+              name="organizationState"
+              label="State / Province"
+              type="text"
+              value={formData.organizationState}
+              onChange={handleInputChange}
+              variant="light"
+            />
+            <InputField
+              id="organizationPostalCode"
+              name="organizationPostalCode"
+              label="Postal Code"
+              type="text"
+              value={formData.organizationPostalCode}
+              onChange={handleInputChange}
+              variant="light"
+            />
+          </div>
+        )}
+
+        {/* Business hours (used by appointments calendar) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Dropdown
-            id="numberFormat"
-            name="numberFormat"
-            label="Number Format"
-            value={formData.numberFormat}
-            onChange={handleInputChange}
-            options={NUMBER_FORMATS}
-            placeholder="Select number format"
-          />
-
-          {/* Default Language */}
-          <Dropdown
-            id="defaultLanguage"
-            name="defaultLanguage"
-            label="Default Language"
-            value={formData.defaultLanguage}
-            onChange={handleInputChange}
-            options={LANGUAGES}
-            placeholder="Select language"
-          />
-        </div>
-
-        {/* Business hours & time format (used by appointments calendar) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Dropdown
             id="businessHoursStart"
             name="businessHoursStart"
@@ -328,28 +473,6 @@ export default function OrganizationSettings() {
             onChange={handleInputChange}
             options={BUSINESS_HOUR_OPTIONS}
             placeholder="End"
-          />
-          <Dropdown
-            id="timeFormat"
-            name="timeFormat"
-            label="Time format"
-            value={formData.timeFormat}
-            onChange={handleInputChange}
-            options={TIME_FORMAT_OPTIONS}
-            placeholder="Format"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Currency */}
-          <Dropdown
-            id="currency"
-            name="currency"
-            label="Currency"
-            value={formData.currency}
-            onChange={handleInputChange}
-            options={CURRENCIES}
-            placeholder="Select currency"
           />
         </div>        
 

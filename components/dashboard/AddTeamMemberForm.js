@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import {
   InputField,
@@ -7,7 +7,26 @@ import {
   ChipsArrayBuilder,
   ChipsMulti,
   Dropdown,
+  AddressAutocomplete,
 } from '@/components/ui';
+import { formatPhone, unformatPhone } from '@/utils/formatPhone';
+import { COUNTRIES } from '@/utils/countries';
+import { State } from 'country-state-city';
+
+// Helper to normalize country value (convert name to code if needed)
+function normalizeCountryValue(value) {
+  if (!value) return '';
+  // If it's already a 2-letter code, return uppercase
+  if (value.length === 2 && /^[A-Z]{2}$/i.test(value)) {
+    return value.toUpperCase();
+  }
+  // Try to find by name
+  const found = COUNTRIES.find(c => 
+    c.label.toLowerCase() === value.toLowerCase() ||
+    c.value.toLowerCase() === value.toLowerCase()
+  );
+  return found ? found.value : value;
+}
 
 const GENDER_OPTIONS = [
   { value: 'female', label: 'Female' },
@@ -38,12 +57,15 @@ const PERSONALITY_TRAITS = [
  * @param {() => void} onCancel
  * @param {boolean} [saving]
  * @param {Object} [initialMember] - When set, form is in edit mode (pre-filled, submit updates this member)
+ * @param {Array<string>} [locations] - Array of location names. Location field only shows when locations.length > 1
+ * @param {string} [organizationCountry] - Organization's HQ country code. This country will appear at the top of the country dropdown.
  */
-export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, initialMember = null }) {
+export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, initialMember = null, locations = [], organizationCountry = '' }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('');
   const [title, setTitle] = useState('');
+  const [location, setLocation] = useState('');
   const [services, setServices] = useState([]);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -58,18 +80,63 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
   const [personalityTraits, setPersonalityTraits] = useState([]);
   const [yearsExperience, setYearsExperience] = useState('');
   const [pictureFile, setPictureFile] = useState(null);
+  const [picturePreviewUrl, setPicturePreviewUrl] = useState('');
   const [fileInputKey, setFileInputKey] = useState(0);
 
   const isEdit = !!initialMember?.id;
 
+  // Sort countries with organization country at the top
+  const sortedCountries = useMemo(() => {
+    if (!organizationCountry) return COUNTRIES;
+    const normalizedOrgCountry = normalizeCountryValue(organizationCountry);
+    const orgCountry = COUNTRIES.find(c => c.value === normalizedOrgCountry);
+    if (!orgCountry) return COUNTRIES;
+    const otherCountries = COUNTRIES.filter(c => c.value !== normalizedOrgCountry);
+    return [orgCountry, ...otherCountries];
+  }, [organizationCountry]);
+
+  // Get available states/provinces based on selected country
+  const availableStates = useMemo(() => {
+    if (!country) return [];
+    // Ensure country is normalized (uppercase ISO code)
+    const normalizedCountry = normalizeCountryValue(country);
+    // Use country-state-city package to get states
+    const states = State.getStatesOfCountry(normalizedCountry);
+    // Convert to dropdown format: { value, label }
+    return states.map(state => ({
+      value: state.isoCode,
+      label: state.name
+    }));
+  }, [country]);
+
+  // Reset state when country changes if current state is not valid for new country
   useEffect(() => {
-    if (!initialMember) return;
+    if (country && state) {
+      const normalizedCountry = normalizeCountryValue(country);
+      const states = State.getStatesOfCountry(normalizedCountry);
+      const isValidState = states.some(s => s.isoCode === state || s.name === state);
+      if (!isValidState && states.length > 0) {
+        setState('');
+      }
+    } else if (!country) {
+      setState('');
+    }
+  }, [country, state]);
+
+  useEffect(() => {
+    if (!initialMember) {
+      setPicturePreviewUrl('');
+      return;
+    }
     setFirstName(initialMember.firstName ?? (initialMember.name?.split(' ')[0] ?? ''));
     setLastName(initialMember.lastName ?? (initialMember.name?.split(' ').slice(1).join(' ') ?? ''));
     setRole(initialMember.role ?? '');
     setTitle(initialMember.title ?? '');
+    setLocation(initialMember.location ?? '');
     setServices(Array.isArray(initialMember.services) ? initialMember.services : []);
-    setPhone(initialMember.phone ?? '');
+    // Format phone if it exists, otherwise set empty
+    const phoneValue = initialMember.phone ?? '';
+    setPhone(phoneValue ? formatPhone(unformatPhone(phoneValue)) : '');
     setEmail(initialMember.email ?? '');
     const addr = initialMember.address;
     setAddress1(addr?.address1 ?? '');
@@ -77,12 +144,13 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setCity(addr?.city ?? '');
     setState(addr?.state ?? '');
     setPostalCode(addr?.postalCode ?? '');
-    setCountry(addr?.country ?? '');
+    setCountry(normalizeCountryValue(addr?.country ?? ''));
     setBio(initialMember.bio ?? '');
     setGender(initialMember.gender ?? '');
     setPersonalityTraits(Array.isArray(initialMember.personalityTraits) ? initialMember.personalityTraits : []);
     setYearsExperience(initialMember.yearsExperience != null ? String(initialMember.yearsExperience) : '');
     setPictureFile(null);
+    setPicturePreviewUrl(initialMember.pictureUrl ?? '');
     setFileInputKey((k) => k + 1);
   }, [initialMember?.id]);
 
@@ -91,6 +159,7 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setLastName('');
     setRole('');
     setTitle('');
+    setLocation('');
     setServices([]);
     setPhone('');
     setEmail('');
@@ -105,6 +174,7 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setPersonalityTraits([]);
     setYearsExperience('');
     setPictureFile(null);
+    setPicturePreviewUrl('');
     setFileInputKey((k) => k + 1);
   };
 
@@ -121,8 +191,9 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
         lastName: trimmedLast || undefined,
         role: role.trim() || undefined,
         title: title.trim() || undefined,
+        location: location.trim() || undefined,
         services: services.length ? services : undefined,
-        phone: phone.trim() || undefined,
+        phone: unformatPhone(phone.trim()) || undefined,
         email: email.trim() || undefined,
         address: [address1, address2, city, state, postalCode, country].some((s) => s?.trim())
           ? {
@@ -152,6 +223,9 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
 
   const handlePictureChange = (file) => {
     setPictureFile(file);
+    if (!file) {
+      setPicturePreviewUrl('');
+    }
   };
 
   const isValid = firstName.trim() || lastName.trim();
@@ -165,7 +239,7 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
             key={fileInputKey}
             id="team-member-picture"
             label="Team picture"
-            value=""
+            value={picturePreviewUrl}
             onChange={handlePictureChange}
             disabled={saving}
           />
@@ -189,65 +263,54 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
               variant="light"
             />
           </div>
-          <InputField
-            id="role"
-            label="Role / Position"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder="e.g. Stylist, Developer"
-            disabled={saving}
-            variant="light"
-          />
-          <InputField
-            id="title"
-            label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Senior Stylist"
-            disabled={saving}
-            variant="light"
-          />
-          <ChipsArrayBuilder
-            id="services"
-            label="Services offered"
-            value={services}
-            onChange={setServices}
-            placeholder="Add a service..."
-            disabled={saving}
-            addButtonLabel="Add"
-          />
-          <InputField
-            id="phone"
-            label="Phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1 234 567 8900"
-            disabled={saving}
-            variant="light"
-          />
-          <InputField
-            id="email"
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="email@example.com"
-            disabled={saving}
-            variant="light"
-          />
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField
+              id="role"
+              label="Role / Position"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              placeholder="e.g. Stylist, Developer"
+              disabled={saving}
+              variant="light"
+            />
+            <InputField
+              id="title"
+              label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Senior Stylist"
+              disabled={saving}
+              variant="light"
+            />
+          </div>
+          
+          {locations && locations.length > 1 && (
+            <Dropdown
+              id="location"
+              label="Location"
+              value={location || undefined}
+              onChange={(e) => setLocation(e.target.value)}
+              options={locations.map(loc => ({ value: loc, label: loc }))}
+              placeholder="Select location..."
+              disabled={saving}
+            />
+          )}
 
-        {/* Right column */}
-        <div className="space-y-6">
-          <InputField
+          <AddressAutocomplete
             id="address1"
-            label="Address line 1"
+            label="Address"
             value={address1}
-            onChange={(e) => setAddress1(e.target.value)}
-            placeholder="Street address"
+            onChange={(address) => setAddress1(address)}
+            onSelect={(addressData) => {
+              setAddress1(addressData.address1);
+              setAddress2(addressData.address2);
+              setCity(addressData.city);
+              setState(addressData.state);
+              setPostalCode(addressData.postalCode);
+              setCountry(normalizeCountryValue(addressData.country));
+            }}
+            placeholder="Start typing an address..."
             disabled={saving}
-            variant="light"
           />
           <InputField
             id="address2"
@@ -259,6 +322,27 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
             variant="light"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Dropdown
+              id="country"
+              label="Country"
+              value={country || undefined}
+              onChange={(e) => setCountry(e.target.value)}
+              options={sortedCountries}
+              placeholder="Select country..."
+              disabled={saving}
+            />
+            <Dropdown
+              key={`state-dropdown-${country}`}
+              id="state"
+              label="State / Province"
+              value={state || undefined}
+              onChange={(e) => setState(e.target.value)}
+              options={availableStates}
+              placeholder="Select state/province..."
+              disabled={saving || !country}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField
               id="city"
               label="City"
@@ -269,17 +353,6 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
               variant="light"
             />
             <InputField
-              id="state"
-              label="State / Province"
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              placeholder="State or province"
-              disabled={saving}
-              variant="light"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField
               id="postalCode"
               label="Postal code"
               value={postalCode}
@@ -288,12 +361,32 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
               disabled={saving}
               variant="light"
             />
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField
-              id="country"
-              label="Country"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="Country"
+              id="phone"
+              label="Phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => {
+                const formatted = formatPhone(e.target.value);
+                setPhone(formatted);
+              }}
+              placeholder="(717) 123-4567"
+              disabled={saving}
+              variant="light"
+            />
+            <InputField
+              id="email"
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="email@example.com"
               disabled={saving}
               variant="light"
             />
@@ -315,6 +408,15 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
             options={GENDER_OPTIONS}
             placeholder="Select..."
             disabled={saving}
+          />
+          <ChipsArrayBuilder
+            id="services"
+            label="Services offered"
+            value={services}
+            onChange={setServices}
+            placeholder="Add a service..."
+            disabled={saving}
+            addButtonLabel="Add"
           />
           <ChipsMulti
             id="personality"
@@ -339,13 +441,13 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
         </div>
       </div>
 
-      <div className="flex gap-3 pt-6 mt-6 border-t border-gray-200 lg:col-span-2">
-        <PrimaryButton type="submit" disabled={saving || !isValid}>
-          {isEdit ? 'Save member' : 'Add member'}
-        </PrimaryButton>
+      <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200 lg:col-span-2">
         <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
+        <PrimaryButton type="submit" disabled={saving || !isValid}>
+          {isEdit ? 'Save member' : 'Add member'}
+        </PrimaryButton>
       </div>
     </form>
   );

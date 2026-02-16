@@ -7,7 +7,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
 import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
-import { PageHeader, TeamFilter } from '@/components/ui';
+import { PageHeader, TeamFilter, ConfirmationDialog } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -26,6 +26,8 @@ function TeamContent() {
   const [saving, setSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState(null);
   const [filters, setFilters] = useState({
     roles: [],
     services: [],
@@ -48,21 +50,62 @@ function TeamContent() {
       .finally(() => setLoaded(true));
   }, [currentUser?.uid]);
 
+  // Helper function to clean team member objects by removing undefined values
+  const cleanTeamMember = (member) => {
+    const cleaned = {};
+    Object.keys(member).forEach(key => {
+      if (member[key] !== undefined) {
+        // If it's an object, recursively clean it
+        if (typeof member[key] === 'object' && member[key] !== null && !Array.isArray(member[key])) {
+          const cleanedObj = {};
+          Object.keys(member[key]).forEach(objKey => {
+            if (member[key][objKey] !== undefined) {
+              cleanedObj[objKey] = member[key][objKey];
+            }
+          });
+          if (Object.keys(cleanedObj).length > 0) {
+            cleaned[key] = cleanedObj;
+          }
+        } else {
+          cleaned[key] = member[key];
+        }
+      }
+    });
+    return cleaned;
+  };
+
   const saveTeam = (nextTeam) => {
     if (!currentUser?.uid) return;
     setSaving(true);
-    updateTeamMembers(currentUser.uid, nextTeam)
+    // Clean all team members to remove undefined values before saving
+    const cleanedTeam = nextTeam.map(cleanTeamMember);
+    updateTeamMembers(currentUser.uid, cleanedTeam)
       .then(() => {
-        setUserAccount((prev) => (prev ? { ...prev, teamMembers: nextTeam } : null));
-        setTeam(nextTeam);
+        setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
+        setTeam(cleanedTeam);
       })
       .catch((err) => console.error('Failed to save team:', err))
       .finally(() => setSaving(false));
   };
 
-  const handleRemove = (id) => {
-    const next = team.filter((m) => m.id !== id);
-    saveTeam(next);
+  const handleRemoveClick = (id) => {
+    const member = team.find((m) => m.id === id);
+    setMemberToDelete(member);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleRemoveConfirm = () => {
+    if (memberToDelete) {
+      const next = team.filter((m) => m.id !== memberToDelete.id);
+      saveTeam(next);
+      setDeleteDialogOpen(false);
+      setMemberToDelete(null);
+    }
+  };
+
+  const handleRemoveCancel = () => {
+    setDeleteDialogOpen(false);
+    setMemberToDelete(null);
   };
 
   const handleSaveMember = async (data, pictureFile, editingId) => {
@@ -78,24 +121,35 @@ function TeamContent() {
         console.error('Failed to upload team photo:', err);
       }
     }
-    const updatedMember = {
+    // Helper function to remove undefined values from an object
+    const removeUndefined = (obj) => {
+      const cleaned = {};
+      Object.keys(obj).forEach(key => {
+        if (obj[key] !== undefined) {
+          cleaned[key] = obj[key];
+        }
+      });
+      return cleaned;
+    };
+
+    const updatedMember = removeUndefined({
       id: memberId,
       name: data.name,
-      role: data.role,
-      ...(data.firstName !== undefined && { firstName: data.firstName }),
-      ...(data.lastName !== undefined && { lastName: data.lastName }),
-      ...(data.title !== undefined && { title: data.title }),
-      ...(data.location !== undefined && { location: data.location }),
-      ...(data.services?.length && { services: data.services }),
-      ...(data.phone !== undefined && { phone: data.phone }),
-      ...(data.email !== undefined && { email: data.email }),
-      ...(data.address && typeof data.address === 'object' && { address: data.address }),
-      ...(data.bio !== undefined && { bio: data.bio }),
-      ...(data.gender !== undefined && { gender: data.gender }),
-      ...(data.personalityTraits?.length && { personalityTraits: data.personalityTraits }),
-      ...(data.yearsExperience !== undefined && { yearsExperience: data.yearsExperience }),
-      ...(pictureUrl && { pictureUrl }),
-    };
+      role: data.role || '',
+      firstName: data.firstName,
+      lastName: data.lastName,
+      title: data.title,
+      location: data.location && data.location !== null ? (typeof data.location === 'object' ? data.location : data.location) : undefined,
+      services: data.services?.length ? data.services : undefined,
+      phone: data.phone,
+      email: data.email,
+      address: data.address && typeof data.address === 'object' ? data.address : undefined,
+      bio: data.bio,
+      gender: data.gender,
+      personalityTraits: data.personalityTraits?.length ? data.personalityTraits : undefined,
+      yearsExperience: data.yearsExperience,
+      pictureUrl: pictureUrl || undefined,
+    });
     const next = isEdit
       ? team.map((m) => (m.id === editingId ? updatedMember : m))
       : [...team, updatedMember];
@@ -201,6 +255,18 @@ function TeamContent() {
               />
             </Drawer>
 
+            <ConfirmationDialog
+              isOpen={deleteDialogOpen}
+              onClose={handleRemoveCancel}
+              onConfirm={handleRemoveConfirm}
+              title="Delete Team Member"
+              message={`Are you sure you want to delete ${memberToDelete?.name || 'this team member'}? This action cannot be undone and will remove all associated data.`}
+              confirmText="Delete"
+              cancelText="Cancel"
+              confirmationWord="delete"
+              variant="danger"
+            />
+
             <TeamFilter
               teamMembers={team}
               filters={filters}
@@ -225,7 +291,7 @@ function TeamContent() {
                   subtitle={member.role}
                   src={member.pictureUrl}
                   onClick={() => openDrawerForEdit(member)}
-                  onRemove={() => handleRemove(member.id)}
+                  onRemove={() => handleRemoveClick(member.id)}
                 />
                 ))
               )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount } from '@/services/userService';
-import { HiCloudUpload, HiX } from 'react-icons/hi';
+import { HiCloudUpload, HiX, HiPlus } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
 import { AddressAutocomplete } from '@/components/ui';
@@ -21,6 +21,7 @@ export default function OrganizationSettings() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [logoPreview, setLogoPreview] = useState(null);
+  const [newLocationValue, setNewLocationValue] = useState('');
   
   const [formData, setFormData] = useState({
     companyName: '',
@@ -34,6 +35,7 @@ export default function OrganizationSettings() {
     organizationPostalCode: '',
     businessHoursStart: '08:00',
     businessHoursEnd: '18:00',
+    locations: [],
   });
 
   useEffect(() => {
@@ -100,6 +102,54 @@ export default function OrganizationSettings() {
           setLogoPreview(null);
         }
         
+        // Build locations array - always include HQ location
+        const hqAddress = userData.organizationAddress || '';
+        const existingLocations = userData.locations || [];
+        let locations = [];
+        
+        // If HQ address exists, add it as first location (as object with full details)
+        if (hqAddress.trim()) {
+          locations = [{
+            address: hqAddress.trim(),
+            address2: userData.organizationAddress2 || '',
+            city: userData.organizationCity || '',
+            state: userData.organizationState || '',
+            postalCode: userData.organizationPostalCode || '',
+            country: userData.organizationCountry || '',
+          }];
+        }
+        
+        // Add other locations (convert strings to objects if needed, excluding HQ)
+        existingLocations.forEach(loc => {
+          if (loc) {
+            // If it's already an object, use it
+            if (typeof loc === 'object' && loc.address) {
+              const locAddress = loc.address.trim();
+              // Only add if it's different from HQ address
+              if (locAddress && locAddress !== hqAddress.trim()) {
+                locations.push({
+                  address: locAddress,
+                  address2: loc.address2 || '',
+                  city: loc.city || '',
+                  state: loc.state || '',
+                  postalCode: loc.postalCode || '',
+                  country: loc.country || '',
+                });
+              }
+            } else if (typeof loc === 'string' && loc.trim() && loc.trim() !== hqAddress.trim()) {
+              // Convert string to object format
+              locations.push({
+                address: loc.trim(),
+                address2: '',
+                city: '',
+                state: '',
+                postalCode: '',
+                country: '',
+              });
+            }
+          }
+        });
+        
         setFormData({
           companyName: userData.companyName || '',
           companyLogo: logoUrl,
@@ -112,6 +162,7 @@ export default function OrganizationSettings() {
           organizationPostalCode: userData.organizationPostalCode || '',
           businessHoursStart: userData.businessHoursStart || '08:00',
           businessHoursEnd: userData.businessHoursEnd || '18:00',
+          locations: locations,
         });
       } else {
         // No user data found, reset everything
@@ -128,6 +179,7 @@ export default function OrganizationSettings() {
           organizationPostalCode: '',
           businessHoursStart: '08:00',
           businessHoursEnd: '18:00',
+          locations: [],
         });
       }
     } catch (err) {
@@ -141,9 +193,83 @@ export default function OrganizationSettings() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      
+      // If organization address changes, update HQ location in locations array
+      if (name === 'organizationAddress' && value.trim()) {
+        const hqAddress = value.trim();
+        const otherLocations = prev.locations.filter((loc, idx) => idx !== 0);
+        updated.locations = [{
+          address: hqAddress,
+          address2: prev.organizationAddress2 || '',
+          city: prev.organizationCity || '',
+          state: prev.organizationState || '',
+          postalCode: prev.organizationPostalCode || '',
+          country: prev.organizationCountry || '',
+        }, ...otherLocations];
+      }
+      
+      // Update HQ location details when address fields change
+      if (['organizationAddress2', 'organizationCity', 'organizationState', 'organizationPostalCode', 'organizationCountry'].includes(name)) {
+        if (updated.locations.length > 0) {
+          updated.locations[0] = {
+            ...updated.locations[0],
+            address: updated.organizationAddress || updated.locations[0].address,
+            address2: name === 'organizationAddress2' ? value : (updated.organizationAddress2 || updated.locations[0].address2),
+            city: name === 'organizationCity' ? value : (updated.organizationCity || updated.locations[0].city),
+            state: name === 'organizationState' ? value : (updated.organizationState || updated.locations[0].state),
+            postalCode: name === 'organizationPostalCode' ? value : (updated.organizationPostalCode || updated.locations[0].postalCode),
+            country: name === 'organizationCountry' ? value : (updated.organizationCountry || updated.locations[0].country),
+          };
+        }
+      }
+      
+      return updated;
+    });
     setError(null);
     setSuccess(false);
+  };
+
+  const handleAddLocation = (addressData) => {
+    const newLocationAddress = addressData.address1 || addressData.fullAddress || '';
+    if (newLocationAddress.trim()) {
+      // Check if location already exists
+      const locationExists = formData.locations.some(loc => 
+        (typeof loc === 'string' ? loc.trim() : loc.address?.trim()) === newLocationAddress.trim()
+      );
+      
+      if (!locationExists) {
+        const newLocation = {
+          address: newLocationAddress.trim(),
+          address2: addressData.address2 || '',
+          city: addressData.city || '',
+          state: addressData.state || '',
+          postalCode: addressData.postalCode || '',
+          country: addressData.country || '',
+        };
+        
+        setFormData((prev) => ({
+          ...prev,
+          locations: [...prev.locations, newLocation],
+        }));
+        
+        // Clear the input field after a short delay to allow the selection to complete
+        setTimeout(() => {
+          setNewLocationValue('');
+        }, 100);
+      }
+    }
+  };
+
+  const handleRemoveLocation = (indexToRemove) => {
+    // Don't allow removing the first location (HQ)
+    if (indexToRemove === 0) return;
+    
+    setFormData((prev) => ({
+      ...prev,
+      locations: prev.locations.filter((_, index) => index !== indexToRemove),
+    }));
   };
 
   const handleLogoChange = (e) => {
@@ -238,10 +364,23 @@ export default function OrganizationSettings() {
 
       const { logoFile, ...dataToSave } = formData;
       
+      // Ensure HQ location is always first in locations array
+      const hqAddress = dataToSave.organizationAddress || '';
+      let locations = dataToSave.locations || [];
+      
+      // Remove HQ from locations if it exists elsewhere
+      locations = locations.filter(loc => loc !== hqAddress);
+      
+      // Add HQ as first location if it exists
+      if (hqAddress.trim()) {
+        locations = [hqAddress.trim(), ...locations];
+      }
+      
       const savedData = await createUserAccount(
         currentUser.uid,
         {
           ...dataToSave,
+          locations: locations,
           userId: currentUser.uid,
           email: currentUser.email,
         },
@@ -474,6 +613,78 @@ export default function OrganizationSettings() {
             options={BUSINESS_HOUR_OPTIONS}
             placeholder="End"
           />
+        </div>
+
+        {/* Locations */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Locations
+          </label>
+          <p className="text-xs text-gray-500 mb-4">
+            Add additional locations where your team works. The HQ address is automatically included as the first location.
+          </p>
+          
+          {/* List of locations */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {formData.locations.map((location, index) => {
+              // Handle both string and object formats
+              const locationObj = typeof location === 'string' 
+                ? { address: location, address2: '', city: '', state: '', postalCode: '', country: '' }
+                : location;
+              
+              const locationAddress = locationObj.address || '';
+              const locationCity = locationObj.city || '';
+              const locationState = locationObj.state || '';
+              const locationPostalCode = locationObj.postalCode || '';
+              
+              return (
+                <div
+                  key={index}
+                  className="flex items-start justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                >
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    {index === 0 && (
+                      <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded flex-shrink-0 self-start">
+                        HQ
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 break-words">{locationAddress}</div>
+                      {(locationCity || locationState || locationPostalCode) && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {[locationCity, locationState, locationPostalCode].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLocation(index)}
+                      className="ml-2 p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex-shrink-0 self-start"
+                      title="Remove location"
+                    >
+                      <HiX className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add new location */}
+          <div>
+            <AddressAutocomplete
+              id="newLocation"
+              label="Add Location"
+              value={newLocationValue}
+              onChange={(value) => setNewLocationValue(value)}
+              onSelect={(addressData) => {
+                handleAddLocation(addressData);
+              }}
+              placeholder="Start typing an address to add a new location..."
+            />
+          </div>
         </div>        
 
         {/* Error/Success Messages */}

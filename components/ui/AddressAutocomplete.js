@@ -297,7 +297,22 @@ export default function AddressAutocomplete({
 
   // Handle keyboard navigation
   const handleKeyDown = (e) => {
-    if (!isOpen || suggestions.length === 0) return;
+    // Handle space key specially - ensure it doesn't cause focus loss or form submission
+    if (e.key === ' ' || e.keyCode === 32) {
+      // If a suggestion is highlighted, reset it but still allow space to be typed
+      if (activeIndex >= 0 && isOpen) {
+        setActiveIndex(-1);
+      }
+      // Ensure input maintains focus - don't prevent default, just ensure focus stays
+      // The space will be handled by the onChange handler naturally
+      e.stopPropagation(); // Prevent any parent handlers from interfering
+      return; // Allow default behavior (typing the space)
+    }
+
+    // Only handle navigation keys when dropdown is open
+    if (!isOpen || suggestions.length === 0) {
+      return;
+    }
 
     switch (e.key) {
       case 'ArrowDown':
@@ -317,15 +332,25 @@ export default function AddressAutocomplete({
         }
         break;
       case 'Escape':
+        e.preventDefault();
         setIsOpen(false);
         setActiveIndex(-1);
+        inputRef.current?.focus(); // Keep focus on input
+        break;
+      default:
+        // For all other keys, allow normal behavior
         break;
     }
   };
 
-  // Close suggestions when clicking outside
+  // Close suggestions when clicking outside (but not on keyboard events)
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Only handle mouse/touch events, not keyboard events
+      if (event.type === 'keydown' || event.type === 'keyup' || event.type === 'keypress') {
+        return;
+      }
+      
       if (
         suggestionsRef.current &&
         !suggestionsRef.current.contains(event.target) &&
@@ -339,7 +364,11 @@ export default function AddressAutocomplete({
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
     }
   }, [isOpen]);
 
@@ -389,9 +418,35 @@ export default function AddressAutocomplete({
           value={value}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => {
+          onFocus={(e) => {
+            // Clear any pending blur timeout
+            if (inputRef.current?._blurTimeout) {
+              clearTimeout(inputRef.current._blurTimeout);
+              inputRef.current._blurTimeout = null;
+            }
+            
             if (suggestions.length > 0) {
               setIsOpen(true);
+            }
+          }}
+          onBlur={(e) => {
+            // Don't close dropdown immediately on blur - wait a bit to allow clicks on suggestions
+            // This prevents the dropdown from closing when space is pressed or when clicking suggestions
+            const blurTimeout = setTimeout(() => {
+              // Check if focus moved to a suggestion or back to input
+              const activeElement = document.activeElement;
+              const clickedSuggestion = suggestionsRef.current?.contains(activeElement);
+              const backToInput = activeElement === inputRef.current;
+              
+              if (!clickedSuggestion && !backToInput) {
+                setIsOpen(false);
+                setActiveIndex(-1);
+              }
+            }, 200);
+            
+            // Store timeout to clear if focus returns quickly
+            if (inputRef.current) {
+              inputRef.current._blurTimeout = blurTimeout;
             }
           }}
           placeholder={placeholder}

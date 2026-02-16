@@ -26,16 +26,22 @@ export default function Dropdown({
       const syntheticEvent = {
         target: {
           name: name || id,
-          value: newValue,
+          value: newValue || undefined,
         },
         currentTarget: {
           name: name || id,
-          value: newValue,
+          value: newValue || undefined,
         },
       };
       onChange(syntheticEvent);
     }
   };
+
+  // Radix Select treats undefined as uncontrolled, and any string (including empty) as controlled
+  // To prevent controlled/uncontrolled switching, we need to ensure value is always the same type
+  // If value is undefined or null, keep it undefined. If it's a string (even empty), keep it as a string
+  // Empty strings are valid controlled values for Radix Select
+  const selectValue = value === undefined || value === null ? undefined : value;
 
   return (
     <div className={className}>
@@ -45,7 +51,7 @@ export default function Dropdown({
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      <Select.Root value={value} onValueChange={handleValueChange} disabled={disabled}>
+      <Select.Root value={selectValue} onValueChange={handleValueChange} disabled={disabled}>
         <Select.Trigger
           id={id}
           name={name}

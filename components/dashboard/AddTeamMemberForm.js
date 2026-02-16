@@ -65,6 +65,8 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('');
   const [title, setTitle] = useState('');
+  // Initialize location as empty string to keep dropdown controlled from the start
+  // Will be set to undefined or a valid location value by useEffect
   const [location, setLocation] = useState('');
   const [services, setServices] = useState([]);
   const [phone, setPhone] = useState('');
@@ -132,7 +134,8 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setLastName(initialMember.lastName ?? (initialMember.name?.split(' ').slice(1).join(' ') ?? ''));
     setRole(initialMember.role ?? '');
     setTitle(initialMember.title ?? '');
-    setLocation(initialMember.location ?? '');
+    // Location will be set by the separate useEffect when locations are loaded
+    // Don't set it here to avoid controlled/uncontrolled switch
     setServices(Array.isArray(initialMember.services) ? initialMember.services : []);
     // Format phone if it exists, otherwise set empty
     const phoneValue = initialMember.phone ?? '';
@@ -153,6 +156,116 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setPicturePreviewUrl(initialMember.pictureUrl ?? '');
     setFileInputKey((k) => k + 1);
   }, [initialMember?.id]);
+
+  // Separate effect to update location when locations array is loaded/updated
+  useEffect(() => {
+    // Wait for locations to be loaded and initial member to be set
+    if (!Array.isArray(locations) || locations.length <= 1) {
+      // If no locations or only one location, clear the location state
+      if (!initialMember?.location) {
+        setLocation('');
+      }
+      return;
+    }
+
+    // Only process if we have an initial member with a location
+    if (!initialMember?.location) {
+      setLocation('');
+      return;
+    }
+
+    const savedLocation = initialMember.location;
+    let locationValue = undefined;
+    
+    // Helper to normalize address for comparison
+    const normalizeAddress = (addr) => {
+      if (!addr) return '';
+      return String(addr).trim().toLowerCase().replace(/\s+/g, ' ');
+    };
+    
+    if (typeof savedLocation === 'object' && savedLocation !== null && savedLocation.address) {
+      // If saved location is an object, find matching location by address
+      const savedAddr = String(savedLocation.address || '').trim();
+      const savedAddrNormalized = normalizeAddress(savedAddr);
+      
+      // Debug logging
+      console.log('[Location Match] Saved location object:', savedLocation);
+      console.log('[Location Match] Saved address:', savedAddr);
+      console.log('[Location Match] Available locations:', locations);
+      console.log('[Location Match] Normalized saved address:', savedAddrNormalized);
+      
+      // Try to find exact match first
+      let matchingLoc = locations.find(loc => {
+        const locAddress = typeof loc === 'string' ? loc.trim() : String(loc.address || '').trim();
+        const normalizedLocAddr = normalizeAddress(locAddress);
+        const matches = normalizedLocAddr === savedAddrNormalized;
+        console.log(`[Location Match] Comparing "${normalizedLocAddr}" === "${savedAddrNormalized}": ${matches}`);
+        return matches;
+      });
+      
+      if (matchingLoc) {
+        // Use the address from the matching location as the dropdown value
+        // Must trim to match the dropdown option values
+        locationValue = typeof matchingLoc === 'string' ? matchingLoc.trim() : String(matchingLoc.address || '').trim();
+        console.log('[Location Match] ✓ Found match! Setting location value to:', locationValue);
+      } else {
+        // If no match found, don't set a value (location might have been deleted)
+        // This prevents showing an invalid selection
+        console.warn('[Location Match] ✗ No match found for saved location:', savedAddr);
+        console.log('[Location Match] Available location addresses:', locations.map(loc => {
+          const addr = typeof loc === 'string' ? loc : loc.address;
+          return `"${addr}" (normalized: "${normalizeAddress(addr)}")`;
+        }));
+        locationValue = undefined;
+      }
+    } else if (typeof savedLocation === 'string' && savedLocation.trim()) {
+      const trimmedSaved = savedLocation.trim();
+      const savedAddrNormalized = normalizeAddress(trimmedSaved);
+      
+      let matchingLoc = locations.find(loc => {
+        const locAddress = typeof loc === 'string' ? loc : (loc.address || '');
+        return normalizeAddress(locAddress) === savedAddrNormalized;
+      });
+      
+      if (matchingLoc) {
+        locationValue = typeof matchingLoc === 'string' ? matchingLoc.trim() : (matchingLoc.address || '').trim();
+      } else {
+        // If no match found, use the saved string as fallback
+        locationValue = trimmedSaved || undefined;
+      }
+    }
+    
+    // Set the location value - this will update the dropdown
+    console.log('[Location Match] Final location value to set:', JSON.stringify(locationValue));
+    console.log('[Location Match] Current location state:', JSON.stringify(location));
+    console.log('[Location Match] Dropdown option values:', locations.map(loc => {
+      const addr = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
+      return JSON.stringify(addr);
+    }));
+    console.log('[Location Match] Value matches an option?', locationValue ? locations.some(loc => {
+      const addr = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
+      return addr === locationValue;
+    }) : false);
+    
+    // Set the location value directly - ensure it's exactly what's in the dropdown options
+    // Convert undefined to empty string to keep dropdown controlled
+    if (locationValue) {
+      // Double-check that the value exists in the options
+      const valueExists = locations.some(loc => {
+        const addr = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
+        return addr === locationValue;
+      });
+      if (valueExists) {
+        console.log('[Location Match] ✓ Value exists in options, setting location state');
+        setLocation(locationValue);
+      } else {
+        console.warn('[Location Match] ✗ Value does NOT exist in options!', locationValue);
+        setLocation('');
+      }
+    } else {
+      setLocation('');
+    }
+  }, [locations, initialMember?.location, initialMember?.id]);
 
   const resetForm = () => {
     setFirstName('');
@@ -184,6 +297,33 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     const trimmedLast = lastName.trim();
     if (!trimmedFirst && !trimmedLast) return;
     const name = [trimmedFirst, trimmedLast].filter(Boolean).join(' ') || trimmedFirst || trimmedLast;
+    
+    // Find the full location object if a location is selected
+    let locationToSave = undefined;
+    if (location && typeof location === 'string' && location.trim() && locations.length > 1) {
+      const selectedLoc = locations.find(loc => {
+        const locAddress = typeof loc === 'string' ? loc : loc.address || '';
+        return locAddress === location.trim();
+      });
+      
+      if (selectedLoc) {
+        // Save the full location object with all address components
+        if (typeof selectedLoc === 'object') {
+          locationToSave = {
+            address: selectedLoc.address || '',
+            address2: selectedLoc.address2 || '',
+            city: selectedLoc.city || '',
+            state: selectedLoc.state || '',
+            postalCode: selectedLoc.postalCode || '',
+            country: selectedLoc.country || '',
+          };
+        } else {
+          // If it's a string, save it as is (for backward compatibility)
+          locationToSave = selectedLoc;
+        }
+      }
+    }
+    
     onSubmit(
       {
         name,
@@ -191,7 +331,7 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
         lastName: trimmedLast || undefined,
         role: role.trim() || undefined,
         title: title.trim() || undefined,
-        location: location.trim() || undefined,
+        location: locationToSave,
         services: services.length ? services : undefined,
         phone: unformatPhone(phone.trim()) || undefined,
         email: email.trim() || undefined,
@@ -286,11 +426,26 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
           
           {locations && locations.length > 1 && (
             <Dropdown
+              key={`location-${location || 'empty'}-${initialMember?.id || 'new'}`}
               id="location"
               label="Location"
-              value={location || undefined}
-              onChange={(e) => setLocation(e.target.value)}
-              options={locations.map(loc => ({ value: loc, label: loc }))}
+              value={location}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setLocation(newValue && newValue.trim() ? newValue.trim() : '');
+              }}
+              options={locations.map((loc, index) => {
+                // Handle both string and object formats
+                const locAddress = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
+                const locCity = typeof loc === 'object' ? loc.city : '';
+                const locState = typeof loc === 'object' ? loc.state : '';
+                const locPostalCode = typeof loc === 'object' ? loc.postalCode : '';
+                const locationLabel = [locAddress, locCity, locState, locPostalCode].filter(Boolean).join(', ');
+                // Use the trimmed address as the value to ensure exact matching
+                // This must match exactly what we set in the location state
+                const locationKey = locAddress;
+                return { value: locationKey, label: locationLabel };
+              })}
               placeholder="Select location..."
               disabled={saving}
             />

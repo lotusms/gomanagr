@@ -17,9 +17,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('🌐 [API] Checking email with Firebase Admin SDK');
-    console.log('📧 [API] Email entered:', email);
-    
     // Use Firebase Admin SDK to check if user exists by email
     let exists = false;
     let methods = [];
@@ -31,19 +28,11 @@ export default async function handler(req, res) {
       exists = true;
       methods = foundUser.providerData.map(provider => provider.providerId);
       
-      console.log('✅ [API] Email EXISTS (confirmed via Admin SDK)');
-      console.log('📧 [API] Email entered:', email);
-      console.log('📧 [API] Emails in Firebase Auth:', [foundUser.email]);
-      console.log('🎯 THE EMAILS MATCH');
-      
     } catch (adminError) {
       // If user doesn't exist, Admin SDK throws an error
       if (adminError.code === 'auth/user-not-found') {
         exists = false;
         methods = [];
-        console.log('✅ [API] Email DOES NOT exist (confirmed via Admin SDK)');
-        console.log('📧 [API] Email entered:', email);
-        console.log('📧 [API] No matching emails found in Firebase Auth');
       } else {
         // Other errors (permission, network, etc.)
         console.error('❌ [API] Admin SDK error:', adminError);
@@ -53,12 +42,6 @@ export default async function handler(req, res) {
         });
       }
     }
-    
-    console.log('📊 [API] Final result:', {
-      email,
-      exists,
-      methods
-    });
     
     return res.status(200).json({ 
       exists,

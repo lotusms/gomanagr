@@ -23,7 +23,6 @@ export async function createUserAccount(userId, userData, logoFile = null) {
         // Delete all existing logo files
         const deletePromises = listResult.items.map((itemRef) => deleteObject(itemRef));
         await Promise.all(deletePromises);
-        console.log('Deleted existing logo(s) before uploading new one');
       } catch (err) {
         // If folder doesn't exist or is empty, that's okay - just continue
         console.log('No existing logos to delete (or folder does not exist)');
@@ -33,7 +32,6 @@ export async function createUserAccount(userId, userData, logoFile = null) {
       const logoRef = ref(storage, `company-logos/${userId}/${logoFile.name}`);
       await uploadBytes(logoRef, logoFile);
       logoUrl = await getDownloadURL(logoRef);
-      console.log('Uploaded new logo, URL:', logoUrl);
     } else {
       // If no new logo file, preserve existing logo from Firestore if not provided in userData
       if (!logoUrl) {
@@ -43,7 +41,6 @@ export async function createUserAccount(userId, userData, logoFile = null) {
           if (docSnap.exists()) {
             const existingData = docSnap.data();
             logoUrl = existingData.companyLogo || '';
-            console.log('Preserved existing logo URL from Firestore:', logoUrl);
           }
         } catch (err) {
           console.warn('Could not fetch existing logo:', err);
@@ -62,7 +59,6 @@ export async function createUserAccount(userId, userData, logoFile = null) {
     const userAccountRef = doc(db, 'useraccount', userId);
     await setDoc(userAccountRef, accountData, { merge: true });
 
-    console.log('Saved account data with companyLogo:', logoUrl);
     return accountData;
   } catch (error) {
     console.error('Error creating user account:', error);

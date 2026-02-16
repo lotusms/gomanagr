@@ -142,7 +142,6 @@ export default function MultiStepSignup() {
     if (step === 1) {
       // CRITICAL: If email exists, ALWAYS block regardless of other validation
       if (emailExists) {
-        console.log('🚫 [MultiStepSignup] BLOCKING: Email already exists');
         return false;
       }
       
@@ -240,7 +239,6 @@ export default function MultiStepSignup() {
   const handleNext = () => {
     // CRITICAL: Always block if email exists (already registered)
     if (currentStep === 1 && emailExists) {
-      console.log('🚫 [MultiStepSignup] handleNext BLOCKED: Email already exists');
       setErrors((prev) => ({
         ...prev,
         email: 'This email is already registered. Please sign in or use a different email.',
@@ -261,8 +259,6 @@ export default function MultiStepSignup() {
       } else {
         handleSubmit();
       }
-    } else {
-      console.log('🚫 [MultiStepSignup] handleNext BLOCKED: Step validation failed');
     }
   };
 

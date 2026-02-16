@@ -168,7 +168,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
     if (data.email && data.email !== email && emailRegex.test(data.email) && data.email !== lastCheckedEmail.current) {
-      console.log('🔄 [SYNC] Email changed externally, checking:', data.email);
       setEmail(data.email);
       const checkFn = performEmailCheckRef.current || performEmailCheck;
       if (checkFn && typeof checkFn === 'function') {

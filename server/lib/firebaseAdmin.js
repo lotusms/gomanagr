@@ -16,7 +16,6 @@ if (!getApps().length) {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     try {
       serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      console.log('✅ Loaded Firebase Admin SDK credentials from FIREBASE_SERVICE_ACCOUNT_KEY');
     } catch (error) {
       console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', error);
     }
@@ -30,7 +29,6 @@ if (!getApps().length) {
         : join(process.cwd(), process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
       const fileContent = readFileSync(filePath, 'utf8');
       serviceAccount = JSON.parse(fileContent);
-      console.log('✅ Loaded Firebase Admin SDK credentials from FIREBASE_SERVICE_ACCOUNT_PATH');
     } catch (error) {
       console.error('Failed to read service account file from path:', error);
     }
@@ -42,7 +40,6 @@ if (!getApps().length) {
       const defaultPath = join(process.cwd(), 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
       const fileContent = readFileSync(defaultPath, 'utf8');
       serviceAccount = JSON.parse(fileContent);
-      console.log('✅ Loaded Firebase Admin SDK credentials from default file');
     } catch (error) {
       // File doesn't exist or can't be read - that's okay, try other methods
     }
@@ -52,7 +49,6 @@ if (!getApps().length) {
     initializeApp({
       credential: cert(serviceAccount),
     });
-    console.log('✅ Firebase Admin SDK initialized successfully');
   } else {
     // Try to use default credentials (for Google Cloud environments)
     // Or initialize with project ID from environment
@@ -62,10 +58,8 @@ if (!getApps().length) {
         initializeApp({
           projectId: projectId,
         });
-        console.log('✅ Firebase Admin SDK initialized with project ID');
       } else {
         initializeApp();
-        console.log('✅ Firebase Admin SDK initialized with default credentials');
       }
     } catch (error) {
       console.error('❌ Failed to initialize Firebase Admin:', error.message);

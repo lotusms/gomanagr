@@ -86,3 +86,94 @@ export async function getUserAccount(userId) {
     throw new Error('Failed to get user account: ' + error.message);
   }
 }
+
+/**
+ * Save appointments array to user account
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {Array} appointments - Array of appointment objects
+ * @returns {Promise<void>}
+ */
+export async function saveAppointments(userId, appointments) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    await setDoc(
+      userAccountRef,
+      {
+        appointments: appointments,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error saving appointments:', error);
+    throw new Error('Failed to save appointments: ' + error.message);
+  }
+}
+
+/**
+ * Add or update an appointment
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {Object} appointment - Appointment object to add/update
+ * @returns {Promise<void>}
+ */
+export async function saveAppointment(userId, appointment) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    const docSnap = await getDoc(userAccountRef);
+
+    let appointments = [];
+    if (docSnap.exists()) {
+      appointments = docSnap.data().appointments || [];
+    }
+
+    // Remove existing appointment with same ID if updating
+    const filteredAppointments = appointments.filter((apt) => apt.id !== appointment.id);
+    
+    // Add the new/updated appointment
+    filteredAppointments.push(appointment);
+
+    await setDoc(
+      userAccountRef,
+      {
+        appointments: filteredAppointments,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error saving appointment:', error);
+    throw new Error('Failed to save appointment: ' + error.message);
+  }
+}
+
+/**
+ * Delete an appointment
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {string} appointmentId - ID of appointment to delete
+ * @returns {Promise<void>}
+ */
+export async function deleteAppointment(userId, appointmentId) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    const docSnap = await getDoc(userAccountRef);
+
+    if (!docSnap.exists()) {
+      throw new Error('User account not found');
+    }
+
+    const appointments = docSnap.data().appointments || [];
+    const filteredAppointments = appointments.filter((apt) => apt.id !== appointmentId);
+
+    await setDoc(
+      userAccountRef,
+      {
+        appointments: filteredAppointments,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error deleting appointment:', error);
+    throw new Error('Failed to delete appointment: ' + error.message);
+  }
+}

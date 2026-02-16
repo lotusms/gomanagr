@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { HiChevronLeft, HiChevronRight, HiCalendar } from 'react-icons/hi';
-import { buildTimeSlots } from './scheduleTimeUtils';
+import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 import Tooltip from '@/components/ui/Tooltip';
 
 function getWeekStart(d) {
@@ -33,45 +33,64 @@ function toDateKey(d) {
   );
 }
 
-// Placeholder uses half-hour slot indices (e.g. 20 slots for 8:00–18:00)
-function getPlaceholderAppointments(weekDays, todayKey, slotCount) {
-  const appointments = [];
-  const todayIndex = weekDays.findIndex((d) => toDateKey(d) === todayKey);
-  if (todayIndex === -1 || slotCount < 4) return appointments;
-  const s1 = Math.min(4, slotCount - 4);
-  const e1 = Math.min(s1 + 4, slotCount);
-  appointments.push({
-    dayIndex: todayIndex,
-    startSlot: s1,
-    endSlot: e1,
-    label: 'Client call',
-    color: 'bg-primary-100 border-primary-200 text-primary-800',
-  });
-  const s2 = Math.min(10, slotCount - 4);
-  const e2 = Math.min(s2 + 4, slotCount);
-  if (s2 < e2) {
-    appointments.push({
-      dayIndex: todayIndex,
-      startSlot: s2,
-      endSlot: e2,
-      label: 'Team sync',
-      color: 'bg-amber-50 border-amber-200 text-amber-800',
-    });
-  }
-  return appointments;
+/**
+ * Process appointments for the week view
+ * @param {Array} appointments - Array of appointment objects from Firestore
+ * @param {Array} weekDays - Array of Date objects for the week
+ * @param {number} startHour - Business hours start hour
+ * @returns {Array} Processed appointments with dayIndex, startSlot, endSlot
+ */
+function processAppointmentsForWeek(appointments, weekDays, startHour) {
+  if (!appointments || !Array.isArray(appointments)) return [];
+
+  return appointments
+    .map((apt) => {
+      // Handle date string (YYYY-MM-DD) or Date object
+      let appointmentDateKey;
+      if (typeof apt.date === 'string') {
+        // If it's already a date string in YYYY-MM-DD format, use it directly
+        appointmentDateKey = apt.date;
+      } else {
+        // If it's a Date object or ISO string, convert to YYYY-MM-DD
+        const date = new Date(apt.date);
+        appointmentDateKey = toDateKey(date);
+      }
+      
+      const dayIndex = weekDays.findIndex((d) => toDateKey(d) === appointmentDateKey);
+      
+      if (dayIndex === -1) return null; // Appointment not in this week
+
+      const startSlot = parseTimeToSlotIndex(apt.start, startHour);
+      const endSlot = parseTimeToSlotIndex(apt.end, startHour);
+
+      return {
+        ...apt,
+        dayIndex,
+        startSlot,
+        endSlot,
+        color: 'bg-primary-100 border-primary-200 text-primary-800',
+      };
+    })
+    .filter(Boolean);
 }
 
 export default function Schedule({
   businessHoursStart = '08:00',
   businessHoursEnd = '18:00',
   timeFormat = '24h',
+  appointments = [],
+  onAppointmentClick,
 }) {
   const today = new Date();
   const todayKey = toDateKey(today);
   const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
   const weekDays = getWeekDays(weekStart);
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
-  const placeholderAppointments = getPlaceholderAppointments(weekDays, todayKey, timeSlots.length);
+  const startHour = parseHour(businessHoursStart);
+  
+  const processedAppointments = useMemo(() => {
+    return processAppointmentsForWeek(appointments, weekDays, startHour);
+  }, [appointments, weekDays, startHour]);
 
   return (
     <div>
@@ -165,10 +184,10 @@ export default function Schedule({
                   </td>
                   {weekDays.map((d, colIndex) => {
                     const isToday = toDateKey(d) === todayKey;
-                    const appointment = placeholderAppointments.find(
+                    const appointment = processedAppointments.find(
                       (a) => a.dayIndex === colIndex && a.startSlot === rowIndex
                     );
-                    const covered = placeholderAppointments.some(
+                    const covered = processedAppointments.some(
                       (a) =>
                         a.dayIndex === colIndex && rowIndex > a.startSlot && rowIndex < a.endSlot
                     );
@@ -178,13 +197,14 @@ export default function Schedule({
                         <td
                           key={toDateKey(d)}
                           rowSpan={appointment.endSlot - appointment.startSlot}
-                          className={`relative border-b border-r border-gray-100 align-top p-1 min-w-0 overflow-hidden ${appointment.color} border rounded`}
+                          className={`relative border-b border-r border-gray-100 align-top p-1 min-w-0 overflow-hidden ${appointment.color} border rounded cursor-pointer hover:opacity-80 transition-opacity`}
+                          onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                         >
-                          <Tooltip content={appointment.label}>
-                          <span className="text-xs font-medium truncate block">
-                            {appointment.label}
-                          </span>
-                        </Tooltip>
+                          <Tooltip content={`${appointment.label}\n${appointment.start} - ${appointment.end}`}>
+                            <span className="text-xs font-medium truncate block">
+                              {appointment.label}
+                            </span>
+                          </Tooltip>
                         </td>
                       );
                     }

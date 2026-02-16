@@ -1,30 +1,46 @@
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 import Tooltip from '@/components/ui/Tooltip';
+import Avatar from '@/components/ui/Avatar';
+import { HiCalendar } from 'react-icons/hi';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 
 // Staff rows come from dashboard (userAccount.teamMembers); fallback to default team
 // Appointments use "HH:00" or "HH:30" for half-hour slot math
 
-// Appointments evenly spread across the day (half-hour slots from 8:00–18:00 = 20 slots)
-function getPlaceholderAppointmentsForToday(startHour) {
-  const raw = [
-    { staffId: '1', start: '09:00', end: '12:00', label: 'Mary Smith Blowdry' },
-    { staffId: '2', start: '14:00', end: '15:00', label: 'Karl Halloway Haircut' },
-    { staffId: '2', start: '16:00', end: '17:00', label: 'Sarah Long Full Body Massage' },
-    { staffId: '3', start: '09:00', end: '09:30', label: 'Sandra Dickinson Haircut' },
-    { staffId: '4', start: '10:30', end: '12:00', label: 'Jane Doe Haircut' },
-    { staffId: '5', start: '13:00', end: '14:30', label: 'Lisa Smith Full Body Massage' },
-    { staffId: '6', start: '15:00', end: '16:30', label: 'John Doe Haircut' },
-    { staffId: '7', start: '11:00', end: '12:30', label: 'Peter Parker Haircut' },
-    { staffId: '8', start: '16:00', end: '17:00', label: 'Clark Kent Deep Conditioning' },
-    { staffId: '9', start: '09:30', end: '11:00', label: 'Tony Stark Haircut' },
-    { staffId: '10', start: '14:30', end: '16:00', label: 'Bruce Wayne Facial' },
-  ];
-  return raw.map((a) => ({
-    ...a,
-    startSlot: parseTimeToSlotIndex(a.start, startHour),
-    endSlot: parseTimeToSlotIndex(a.end, startHour),
-  }));
+/**
+ * Filter appointments for today
+ * @param {Array} appointments - Array of appointment objects
+ * @param {string} todayKey - Date key in format YYYY-MM-DD
+ * @param {number} startHour - Business hours start hour
+ * @returns {Array} Appointments for today with startSlot and endSlot
+ */
+function getAppointmentsForToday(appointments, todayKey, startHour) {
+  if (!appointments || !Array.isArray(appointments)) return [];
+  
+  return appointments
+    .filter((apt) => {
+      // Handle date string (YYYY-MM-DD) or Date object
+      let appointmentKey;
+      if (typeof apt.date === 'string' && apt.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // If it's already a date string in YYYY-MM-DD format, use it directly
+        appointmentKey = apt.date;
+      } else {
+        // If it's a Date object or ISO string, convert to YYYY-MM-DD
+        const appointmentDate = new Date(apt.date);
+        appointmentKey = 
+          appointmentDate.getFullYear() +
+          '-' +
+          String(appointmentDate.getMonth() + 1).padStart(2, '0') +
+          '-' +
+          String(appointmentDate.getDate()).padStart(2, '0');
+      }
+      return appointmentKey === todayKey;
+    })
+    .map((a) => ({
+      ...a,
+      startSlot: parseTimeToSlotIndex(a.start, startHour),
+      endSlot: parseTimeToSlotIndex(a.end, startHour),
+    }));
 }
 
 export default function TodaysAppointments({
@@ -32,99 +48,139 @@ export default function TodaysAppointments({
   businessHoursEnd = '18:00',
   timeFormat = '24h',
   staff: staffProp,
+  appointments = [],
 }) {
   const staff = (staffProp && staffProp.length > 0) ? staffProp : DEFAULT_TEAM_MEMBERS;
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
-  const appointments = getPlaceholderAppointmentsForToday(startHour);
+  
+  const today = new Date();
+  const todayKey = 
+    today.getFullYear() +
+    '-' +
+    String(today.getMonth() + 1).padStart(2, '0') +
+    '-' +
+    String(today.getDate()).padStart(2, '0');
+  
+  const appointmentsForToday = getAppointmentsForToday(appointments, todayKey, startHour);
   const todayLabel = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
   });
 
+  // Filter staff to only show those with appointments today
+  const staffWithAppointments = staff.filter((staffRow) => {
+    const staffAppointments = appointmentsForToday.filter((a) => a.staffId === staffRow.id);
+    return staffAppointments.length > 0;
+  });
+
+  const hasAppointments = staffWithAppointments.length > 0;
+
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">Today&apos;s appointments</h2>
       <p className="text-sm text-gray-500 mb-2">{todayLabel}</p>
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse min-w-[500px] text-xs">
-            <thead>
-              <tr>
-                <th className="w-36 py-1.5 px-2 text-left font-medium uppercase tracking-wide border-b border-r border-gray-200 text-white bg-secondary-500">
-                  Staff
-                </th>
-                {timeSlots.map((slot) => (
-                  <th
-                    key={slot}
-                    className="min-w-0 py-1.5 px-1 text-center font-medium text-white uppercase tracking-wide border-b border-gray-200 bg-secondary-500 overflow-hidden"
-                  >
-                    <Tooltip content={slot} placement="bottom">
-                      <span className="truncate block">{slot}</span>
-                    </Tooltip>
+      {hasAppointments ? (
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed border-collapse min-w-[500px] text-xs">
+              <thead>
+                <tr>
+                  <th className="w-36 py-1.5 px-2 text-left font-medium uppercase tracking-wide border-b border-r border-gray-200 text-white bg-secondary-500">
+                    Staff
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map((staffRow) => {
-                const staffAppointments = appointments.filter((a) => a.staffId === staffRow.id);
-                return (
-                  <tr key={staffRow.id}>
-                    <td className="w-36 py-1 px-2 border-r border-b border-gray-100 bg-gray-50/50 font-medium text-gray-900 leading-tight">
-                      {staffRow.name}
-                    </td>
-                    {timeSlots.map((_, colIndex) => {
-                      const appointment = staffAppointments.find(
-                        (a) => colIndex >= a.startSlot && colIndex < a.endSlot
-                      );
-                      const isStart = appointment && colIndex === appointment.startSlot;
-                      if (appointment && !isStart) return null;
-                      if (isStart) {
-                        const span = appointment.endSlot - appointment.startSlot;
-                        const timeRangeText =
-                          timeSlots[appointment.startSlot] +
-                          (appointment.endSlot < timeSlots.length
-                            ? ` – ${timeSlots[appointment.endSlot]}`
-                            : '');
-                        const tooltipContent = `${appointment.label}\n${timeRangeText}`;
+                  {timeSlots.map((slot) => (
+                    <th
+                      key={slot}
+                      className="min-w-0 py-1.5 px-1 text-center font-medium text-white uppercase tracking-wide border-b border-gray-200 bg-secondary-500 overflow-hidden"
+                    >
+                      <Tooltip content={slot} placement="bottom">
+                        <span className="truncate block">{slot}</span>
+                      </Tooltip>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {staffWithAppointments.map((staffRow) => {
+                  const staffAppointments = appointmentsForToday.filter((a) => a.staffId === staffRow.id);
+                  return (
+                    <tr key={staffRow.id}>
+                      <td className="w-36 py-1 px-2 border-r border-b border-gray-100 bg-gray-50/50 font-medium text-gray-900 leading-tight">
+                        <div className="flex items-center gap-2">
+                          <Avatar 
+                            src={staffRow.pictureUrl} 
+                            name={staffRow.name} 
+                            size="sm" 
+                            className="flex-shrink-0"
+                          />
+                          <span className="truncate">{staffRow.name}</span>
+                        </div>
+                      </td>
+                      {timeSlots.map((_, colIndex) => {
+                        const appointment = staffAppointments.find(
+                          (a) => colIndex >= a.startSlot && colIndex < a.endSlot
+                        );
+                        const isStart = appointment && colIndex === appointment.startSlot;
+                        if (appointment && !isStart) return null;
+                        if (isStart) {
+                          const span = appointment.endSlot - appointment.startSlot;
+                          const timeRangeText =
+                            timeSlots[appointment.startSlot] +
+                            (appointment.endSlot < timeSlots.length
+                              ? ` – ${timeSlots[appointment.endSlot]}`
+                              : '');
+                          const tooltipContent = `${appointment.label}\n${timeRangeText}`;
+                          return (
+                            <td
+                              key={colIndex}
+                              colSpan={span}
+                              className="min-w-0 py-1 px-0.5 align-top border-b border-r border-gray-100 overflow-hidden"
+                            >
+                              <Tooltip content={tooltipContent}>
+                                <div className="bg-primary-100 border border-primary-200 text-primary-800 rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight">
+                                  <span className="truncate block">
+                                    {appointment.label}
+                                  </span>
+                                  <span className="truncate block text-primary-600 mt-px">
+                                    {timeSlots[appointment.startSlot]}
+                                    {appointment.endSlot < timeSlots.length
+                                      ? ` – ${timeSlots[appointment.endSlot]}`
+                                      : ''}
+                                  </span>
+                                </div>
+                              </Tooltip>
+                            </td>
+                          );
+                        }
                         return (
                           <td
                             key={colIndex}
-                            colSpan={span}
-                            className="min-w-0 py-1 px-0.5 align-top border-b border-r border-gray-100 overflow-hidden"
-                          >
-                            <Tooltip content={tooltipContent}>
-                              <div className="bg-primary-100 border border-primary-200 text-primary-800 rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight">
-                                <span className="truncate block">
-                                  {appointment.label}
-                                </span>
-                                <span className="truncate block text-primary-600 mt-px">
-                                  {timeSlots[appointment.startSlot]}
-                                  {appointment.endSlot < timeSlots.length
-                                    ? ` – ${timeSlots[appointment.endSlot]}`
-                                    : ''}
-                                </span>
-                              </div>
-                            </Tooltip>
-                          </td>
+                            className="min-w-0 py-1 border-b border-r border-gray-100 align-top"
+                          />
                         );
-                      }
-                      return (
-                        <td
-                          key={colIndex}
-                          className="min-w-0 py-1 border-b border-r border-gray-100 align-top"
-                        />
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex flex-col items-center justify-center py-12 px-6">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <HiCalendar className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">No appointments today</h3>
+            <p className="text-sm text-gray-500 text-center max-w-sm">
+              You&apos;re all caught up! Enjoy your free day.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

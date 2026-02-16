@@ -142,6 +142,7 @@ function DashboardContent() {
           businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
           timeFormat={userAccount?.timeFormat ?? '24h'}
           staff={userAccount?.teamMembers ?? DEFAULT_TEAM_MEMBERS}
+          appointments={userAccount?.appointments || []}
         />
       </div>
     </>

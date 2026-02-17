@@ -49,7 +49,7 @@ export default function TimeField({
   const isLight = variant === 'light';
   const labelClass = getLabelClasses(variant);
   const inputClass = getInputClasses(variant, !!error);
-  const errorTextClass = isLight ? 'mt-1 text-sm text-red-600' : 'mt-1 text-sm text-red-300';
+  const errorTextClass = isLight ? 'mt-1 text-sm text-red-600 dark:text-red-400' : 'mt-1 text-sm text-red-300';
 
   // Use provided options or generate time slots
   const timeSlotOptions = useMemo(() => {
@@ -138,7 +138,7 @@ export default function TimeField({
       {label && (
         <Label.Root htmlFor={id} className={labelClass}>
           {label}
-          {required && <span className={isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1'}>*</span>}
+          {required && <span className={isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1'}>*</span>}
         </Label.Root>
       )}
       <div className="relative">
@@ -162,7 +162,7 @@ export default function TimeField({
             type="button"
             onClick={handleInputClick}
             disabled={disabled}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Open time picker"
           >
             <HiClock className="w-5 h-5" />
@@ -172,7 +172,7 @@ export default function TimeField({
         {isOpen && !disabled && (
           <div
             ref={popupRef}
-            className="absolute z-50 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[200px] max-w-[280px]"
+            className="absolute z-50 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[200px] max-w-[280px]"
             style={{ top: 'calc(100% + 4px)', left: 0 }}
           >
             {/* Time slots list */}
@@ -193,10 +193,10 @@ export default function TimeField({
                     className={`
                       w-full text-left px-3 py-2 text-sm rounded-md transition-colors
                       ${isDisabled
-                        ? 'text-gray-300 cursor-not-allowed'
+                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                         : isSelected
                         ? 'bg-primary-600 text-white font-semibold'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }
                     `}
                   >

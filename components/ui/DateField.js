@@ -76,7 +76,7 @@ export default function DateField({
   const isLight = variant === 'light';
   const labelClass = getLabelClasses(variant);
   const inputClass = getInputClasses(variant, !!error);
-  const errorTextClass = isLight ? 'mt-1 text-sm text-red-600' : 'mt-1 text-sm text-red-300';
+  const errorTextClass = isLight ? 'mt-1 text-sm text-red-600 dark:text-red-400' : 'mt-1 text-sm text-red-300';
 
   // Close popup when clicking outside
   useEffect(() => {
@@ -211,7 +211,7 @@ export default function DateField({
       {label && (
         <Label.Root htmlFor={id} className={labelClass}>
           {label}
-          {required && <span className={isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1'}>*</span>}
+          {required && <span className={isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1'}>*</span>}
         </Label.Root>
       )}
       <div className="relative">
@@ -235,7 +235,7 @@ export default function DateField({
             type="button"
             onClick={handleInputClick}
             disabled={disabled}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Open calendar"
           >
             <HiCalendar className="w-5 h-5" />
@@ -245,29 +245,29 @@ export default function DateField({
         {isOpen && !disabled && (
           <div
             ref={popupRef}
-            className="absolute z-50 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[280px]"
+            className="absolute z-50 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-[280px]"
             style={{ top: 'calc(100% + 4px)', left: 0 }}
           >
             {/* Month/Year Navigation */}
-            <div className="flex items-center justify-between mb-4 p-2 bg-primary-50">
+            <div className="flex items-center justify-between mb-4 p-2 bg-primary-50 dark:bg-gray-700">
               <button
                 type="button"
                 onClick={() => navigateMonth('prev')}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 aria-label="Previous month"
               >
-                <HiChevronLeft className="w-5 h-5 text-gray-600" />
+                <HiChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
               </button>
-              <div className="text-sm font-semibold text-gray-900">
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </div>
               <button
                 type="button"
                 onClick={() => navigateMonth('next')}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 aria-label="Next month"
               >
-                <HiChevronRight className="w-5 h-5 text-gray-600" />
+                <HiChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
               </button>
             </div>
 
@@ -276,7 +276,7 @@ export default function DateField({
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                 <div
                   key={day}
-                  className="text-xs font-medium text-gray-500 text-center py-1"
+                  className="text-xs font-medium text-gray-500 dark:text-gray-400 text-center py-1"
                 >
                   {day}
                 </div>
@@ -310,12 +310,12 @@ export default function DateField({
                     className={`
                       aspect-square text-sm rounded-full transition-colors
                       ${isDisabled
-                        ? 'text-gray-300 cursor-not-allowed'
+                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                         : isTodayAndSelected || isSelected
-                        ? 'bg-secondary-500/10 text-secondary-700 font-semibold border border-secondary-500'
+                        ? 'bg-secondary-500/10 dark:bg-secondary-900/40 text-secondary-700 dark:text-secondary-300 font-semibold border border-secondary-500 dark:border-secondary-600'
                         : isToday
                         ? 'bg-primary-600 text-white font-semibold'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }
                     `}
                   >

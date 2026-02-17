@@ -64,15 +64,15 @@ export default function TeamFilter({
   const hasActiveFilters = activeFilterCount > 0;
 
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 shadow-sm ${className}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
       {/* Filter Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <HiFilter className="w-5 h-5 text-gray-600" />
-          <span className="font-semibold text-gray-900">Filters</span>
+          <HiFilter className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <span className="font-semibold text-gray-900 dark:text-white">Filters</span>
           {hasActiveFilters && (
             <span className="px-2 py-0.5 bg-primary-600 text-white text-xs font-medium rounded-full">
               {activeFilterCount}
@@ -93,14 +93,14 @@ export default function TeamFilter({
             </SecondaryButton>
           )}
           <HiChevronDown
-            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           />
         </div>
       </button>
 
       {/* Filter Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 pt-2 border-t border-gray-200 space-y-6">
+        <div className="px-4 pb-4 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-6">
           {/* Role/Position Filter */}
           {filterOptions.roles.length > 0 && (
             <ChipsMulti
@@ -161,7 +161,7 @@ export default function TeamFilter({
             filterOptions.services.length === 0 &&
             filterOptions.genders.length === 0 &&
             filterOptions.personalityTraits.length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
                 No filter options available
               </p>
             )}

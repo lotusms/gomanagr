@@ -78,15 +78,15 @@ export default function ConfirmationDialog({
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] data-[state=open]:animate-[fadeIn_150ms_ease-out] data-[state=closed]:animate-[fadeOut_150ms_ease-out]" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-[201] w-full max-w-lg p-0 data-[state=open]:animate-[scaleIn_200ms_ease-out] data-[state=closed]:animate-[scaleOut_200ms_ease-out] focus:outline-none overflow-hidden border border-gray-100">
+        <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[201] w-full max-w-lg p-0 data-[state=open]:animate-[scaleIn_200ms_ease-out] data-[state=closed]:animate-[scaleOut_200ms_ease-out] focus:outline-none overflow-hidden border border-gray-100 dark:border-gray-700">
           {/* Header section with colored background */}
-          <div className={`px-6 pt-6 pb-5 ${variant === 'danger' ? 'bg-gradient-to-br from-red-50 to-red-100/50' : 'bg-gradient-to-br from-amber-50 to-amber-100/50'}`}>
+          <div className={`px-6 pt-6 pb-5 ${variant === 'danger' ? 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-800/10' : 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/10'}`}>
             <div className="flex items-center">
               <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center`}>
                 <HiExclamationCircle className={`size-10 ${styles.icon}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <Dialog.Title className="text-2xl font-bold text-gray-900 leading-tight">
+                <Dialog.Title className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                   {title}
                 </Dialog.Title>
               </div>
@@ -94,7 +94,7 @@ export default function ConfirmationDialog({
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="flex-shrink-0 p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/60 transition-all duration-200"
+                  className="flex-shrink-0 p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-700/60 transition-all duration-200"
                   aria-label="Close"
                 >
                   <HiX className="w-5 h-5" />
@@ -104,8 +104,8 @@ export default function ConfirmationDialog({
           </div>
 
           {/* Content section */}
-          <div className="px-6 py-6 bg-white">
-            <Dialog.Description className="text-sm text-gray-600 leading-relaxed mb-4 text-center">
+          <div className="px-6 py-6 bg-white dark:bg-gray-800">
+            <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4 text-center">
               {message}
             </Dialog.Description>
             <div className="mb-6">
@@ -133,7 +133,7 @@ export default function ConfirmationDialog({
             </div>
 
             {/* Action buttons */}
-            <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+            <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
               <SecondaryButton 
                 onClick={handleCancel} 
                 className="px-6 py-2.5 font-medium"

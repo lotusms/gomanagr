@@ -150,7 +150,7 @@ export default function Dropdown({
       {label && (
         <label htmlFor={id} className={FORM_CONTROL_LIGHT_LABEL}>
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="text-red-500 dark:text-red-400 ml-1">*</span>}
         </label>
       )}
       <div className="relative">
@@ -160,45 +160,45 @@ export default function Dropdown({
           name={name}
           onClick={handleTriggerClick}
           disabled={disabled}
-          className={`inline-flex items-center justify-between w-full ${FORM_CONTROL_HEIGHT} ${FORM_CONTROL_BASE} ${FORM_CONTROL_FOCUS} ${FORM_CONTROL_LIGHT_DEFAULT} hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`inline-flex items-center justify-between w-full ${FORM_CONTROL_HEIGHT} ${FORM_CONTROL_BASE} ${FORM_CONTROL_FOCUS} ${FORM_CONTROL_LIGHT_DEFAULT} hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed ${
             isOpen ? 'ring-1 ring-ternary-500 border-ternary-500' : ''
           }`}
           aria-label={label || placeholder}
           aria-expanded={isOpen}
           aria-haspopup="listbox"
         >
-          <span className={selectedLabel ? 'text-gray-900' : 'text-gray-500'}>
+          <span className={selectedLabel ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
             {selectedLabel || placeholder}
           </span>
           <HiChevronDown
-            className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           />
         </button>
 
         {isOpen && !disabled && (
           <div
             ref={popupRef}
-            className="absolute z-50 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-full w-full"
+            className="absolute z-50 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 min-w-full w-full"
             style={{ top: '100%', left: 0 }}
           >
             {/* Search field */}
             {showSearch && (
-              <div className="p-2 border-b border-gray-200">
+              <div className="p-2 border-b border-gray-200 dark:border-gray-700">
                 <div className="relative">
-                  <HiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <HiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={handleSearchChange}
                     placeholder="Search options..."
-                    className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   />
                   {searchQuery && (
                     <button
                       type="button"
                       onClick={handleClearSearch}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                       aria-label="Clear search"
                     >
                       <HiX className="w-4 h-4" />
@@ -211,7 +211,7 @@ export default function Dropdown({
             {/* Options list */}
             <div className="max-h-[300px] overflow-y-auto">
               {filteredOptions.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">
                   {searchQuery ? 'No options found' : 'No options available'}
                 </div>
               ) : (
@@ -233,11 +233,11 @@ export default function Dropdown({
                         w-full text-left px-3 py-2 text-sm transition-colors
                         ${optionDisabled
                           ? isAssigned
-                            ? 'bg-primary-50 text-primary-700 cursor-not-allowed border-l-2 border-primary-500'
-                            : 'text-gray-300 cursor-not-allowed'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 cursor-not-allowed border-l-2 border-primary-500'
+                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                           : isSelected
                           ? 'bg-primary-600 text-white font-semibold'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }
                       `}
                       role="option"

@@ -364,6 +364,16 @@ export default function OrganizationSettings() {
 
       const { logoFile, ...dataToSave } = formData;
       
+      // Preserve existing logo URL if no new logo file is being uploaded
+      // This prevents overwriting the logo URL with an empty string when saving other settings
+      if (!logoFile) {
+        // Get current account data to preserve existing logo
+        const currentAccount = await getUserAccount(currentUser.uid);
+        if (currentAccount?.companyLogo && currentAccount.companyLogo.trim()) {
+          dataToSave.companyLogo = currentAccount.companyLogo;
+        }
+      }
+      
       // Ensure HQ location is always first in locations array
       const hqAddress = dataToSave.organizationAddress || '';
       let locations = dataToSave.locations || [];
@@ -420,7 +430,7 @@ export default function OrganizationSettings() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
         </div>
@@ -429,9 +439,9 @@ export default function OrganizationSettings() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">Organization</h2>
-      <p className="text-sm text-gray-600 mb-6">Manage your organization profile, members, and preferences</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Organization</h2>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Manage your organization profile, members, and preferences</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Organization Name */}
@@ -449,7 +459,7 @@ export default function OrganizationSettings() {
 
         {/* Logo / Branding */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Logo / Branding
           </label>
           <div className="flex items-start gap-4">
@@ -463,7 +473,7 @@ export default function OrganizationSettings() {
                   <img
                     src={logoPreview}
                     alt="Organization logo"
-                    className="w-24 h-24 object-contain border border-gray-300 rounded-lg bg-gray-50 group-hover:opacity-80 transition-opacity"
+                    className="w-24 h-24 object-contain border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 group-hover:opacity-80 transition-opacity"
                   />
                 </label>
                 <button
@@ -489,10 +499,10 @@ export default function OrganizationSettings() {
                 <>
                   <label
                     htmlFor="logo"
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors w-fit"
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors w-fit"
                   >
-                    <HiCloudUpload className="w-5 h-5 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">
+                    <HiCloudUpload className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Upload Logo
                     </span>
                     <input
@@ -504,11 +514,11 @@ export default function OrganizationSettings() {
                       className="hidden"
                     />
                   </label>
-                  <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PNG, JPG up to 5MB</p>
                 </>
               )}
               {logoPreview && (
-                <p className="text-xs text-gray-500 mt-1">Click the logo to replace it</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Click the logo to replace it</p>
               )}
             </div>
           </div>
@@ -617,10 +627,10 @@ export default function OrganizationSettings() {
 
         {/* Locations */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Locations
           </label>
-          <p className="text-xs text-gray-500 mb-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
             Add additional locations where your team works. The HQ address is automatically included as the first location.
           </p>
           
@@ -640,18 +650,18 @@ export default function OrganizationSettings() {
               return (
                 <div
                   key={index}
-                  className="flex items-start justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                  className="flex items-start justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
                 >
                   <div className="flex items-start gap-2 flex-1 min-w-0">
                     {index === 0 && (
-                      <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded flex-shrink-0 self-start">
+                      <span className="px-2 py-1 text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded flex-shrink-0 self-start">
                         HQ
                       </span>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 break-words">{locationAddress}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-200 break-words">{locationAddress}</div>
                       {(locationCity || locationState || locationPostalCode) && (
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           {[locationCity, locationState, locationPostalCode].filter(Boolean).join(', ')}
                         </div>
                       )}
@@ -661,7 +671,7 @@ export default function OrganizationSettings() {
                     <button
                       type="button"
                       onClick={() => handleRemoveLocation(index)}
-                      className="ml-2 p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex-shrink-0 self-start"
+                      className="ml-2 p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 self-start"
                       title="Remove location"
                     >
                       <HiX className="w-5 h-5" />
@@ -689,12 +699,12 @@ export default function OrganizationSettings() {
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg">
             Organization settings saved successfully!
           </div>
         )}

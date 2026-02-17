@@ -33,8 +33,8 @@ export function ChipsSingle({
   const isVertical = layout === 'vertical';
   const isLight = variant === 'light';
   const labelClass = getLabelClasses(variant);
-  const requiredClass = isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1';
-  const errorClass = isLight ? 'mt-2 text-sm text-red-600' : 'mt-2 text-sm text-red-300';
+  const requiredClass = isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1';
+  const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
   
   return (
     <div className={className}>
@@ -59,11 +59,13 @@ export function ChipsSingle({
             value={option}
             className={`
               ${isVertical ? 'w-full px-6 py-4' : 'px-4 py-2'} rounded-lg font-medium transition cursor-pointer text-left
-              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-900
+              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-900 dark:focus:ring-offset-gray-900
               ${
                 value === option
                   ? 'bg-primary-600 text-white border-2 border-primary-400'
-                  : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20'
+                  : isLight
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20'
               }
             `}
           >
@@ -122,14 +124,14 @@ export function ChipsMulti({
 
   const isLight = variant === 'light';
   const labelClass = getLabelClasses(variant);
-  const requiredClass = isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1';
+  const requiredClass = isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1';
   const unselectedClass = isLight
-    ? 'bg-primary-50 text-primary-800 border border-primary-200 hover:bg-primary-100 hover:border-primary-300'
+    ? 'bg-primary-50 dark:bg-gray-700 text-primary-800 dark:text-gray-200 border border-primary-200 dark:border-gray-600 hover:bg-primary-100 dark:hover:bg-gray-600 hover:border-primary-300 dark:hover:border-gray-500'
     : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20';
   const selectedClass = isLight
     ? 'bg-primary-600 text-white border border-primary-600'
     : 'bg-primary-600 text-white border-2 border-primary-400';
-  const errorClass = isLight ? 'mt-2 text-sm text-red-600' : 'mt-2 text-sm text-red-300';
+  const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
   const chipPadding = isLight ? 'px-3 py-0.5 text-sm rounded-full' : 'px-4 py-3 rounded-lg';
   const checkSize = isLight ? 'text-sm' : 'text-xl';
 

@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center px-4 py-12 relative">
         <div className="relative z-10 w-full max-w-md">
           {/* Logo/Brand Section */}
-          <Logo variant="stacked" />
+          <Logo variant="stacked" wordmarkLight />
 
           {/* Auth Card */}
           <div className="relative">

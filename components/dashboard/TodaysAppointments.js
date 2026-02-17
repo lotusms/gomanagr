@@ -76,21 +76,21 @@ export default function TodaysAppointments({
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-2">Today&apos;s appointments</h2>
-      <p className="text-sm text-gray-500 mb-2">{todayLabel}</p>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Today&apos;s appointments</h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{todayLabel}</p>
       {hasAppointments ? (
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse min-w-[500px] text-xs">
               <thead>
                 <tr>
-                  <th className="w-36 py-1.5 px-2 text-left font-medium uppercase tracking-wide border-b border-r border-gray-200 text-white bg-secondary-500">
+                  <th className="w-36 py-1.5 px-2 text-left font-medium uppercase tracking-wide border-b border-r border-gray-200 dark:border-gray-600 text-white bg-secondary-500">
                     Staff
                   </th>
                   {timeSlots.map((slot) => (
                     <th
                       key={slot}
-                      className="min-w-0 py-1.5 px-1 text-center font-medium text-white uppercase tracking-wide border-b border-gray-200 bg-secondary-500 overflow-hidden"
+                      className="min-w-0 py-1.5 px-1 text-center font-medium text-white uppercase tracking-wide border-b border-gray-200 dark:border-gray-600 bg-secondary-500 overflow-hidden"
                     >
                       <Tooltip content={slot} placement="bottom">
                         <span className="truncate block">{slot}</span>
@@ -104,7 +104,7 @@ export default function TodaysAppointments({
                   const staffAppointments = appointmentsForToday.filter((a) => a.staffId === staffRow.id);
                   return (
                     <tr key={staffRow.id}>
-                      <td className="w-36 py-1 px-2 border-r border-b border-gray-100 bg-gray-50/50 font-medium text-gray-900 leading-tight">
+                      <td className="w-36 py-1 px-2 border-r border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 font-medium text-gray-900 dark:text-white leading-tight">
                         <div className="flex items-center gap-2">
                           <Avatar 
                             src={staffRow.pictureUrl} 
@@ -133,14 +133,14 @@ export default function TodaysAppointments({
                             <td
                               key={colIndex}
                               colSpan={span}
-                              className="min-w-0 py-1 px-0.5 align-top border-b border-r border-gray-100 overflow-hidden"
+                              className="min-w-0 py-1 px-0.5 align-top border-b border-r border-gray-100 dark:border-gray-700 overflow-hidden"
                             >
                               <Tooltip content={tooltipContent}>
-                                <div className="bg-primary-100 border border-primary-200 text-primary-800 rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight">
+                                <div className="bg-primary-100 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 text-primary-800 dark:text-primary-200 rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight">
                                   <span className="truncate block">
                                     {appointment.label}
                                   </span>
-                                  <span className="truncate block text-primary-600 mt-px">
+                                  <span className="truncate block text-primary-600 dark:text-primary-300 mt-px">
                                     {timeSlots[appointment.startSlot]}
                                     {appointment.endSlot < timeSlots.length
                                       ? ` – ${timeSlots[appointment.endSlot]}`
@@ -154,7 +154,7 @@ export default function TodaysAppointments({
                         return (
                           <td
                             key={colIndex}
-                            className="min-w-0 py-1 border-b border-r border-gray-100 align-top"
+                            className="min-w-0 py-1 border-b border-r border-gray-100 dark:border-gray-700 align-top"
                           />
                         );
                       })}

@@ -141,9 +141,9 @@ function AccountContent() {
 
       <div className="space-y-6">
         {/* Profile: Name, Reporting Email, Name View */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile</h2>
-          <p className="text-sm text-gray-600 mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Profile</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Update your name, reporting email (not used for sign-in), and how your name is displayed.
           </p>
           <form onSubmit={saveAccountDetails} className="space-y-4">
@@ -202,7 +202,7 @@ function AccountContent() {
             {accountSaveStatus.message && (
               <p
                 className={`text-sm ${
-                  accountSaveStatus.type === 'error' ? 'text-red-600' : 'text-green-600'
+                  accountSaveStatus.type === 'error' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                 }`}
               >
                 {accountSaveStatus.message}
@@ -216,8 +216,8 @@ function AccountContent() {
 
         {/* Change Password */}
         <div className="grid grid-cols-1 md:grid-cols-2 ">
-          <div className="bg-white rounded-lg shadow p-6">          
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Change Password</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">          
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Change Password</h2>
             <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md">
               <PasswordField
                 id="currentPassword"
@@ -249,7 +249,7 @@ function AccountContent() {
               {passwordStatus.message && (
                 <p
                   className={`text-sm ${
-                    passwordStatus.type === 'error' ? 'text-red-600' : 'text-green-600'
+                    passwordStatus.type === 'error' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                   }`}
                 >
                   {passwordStatus.message}

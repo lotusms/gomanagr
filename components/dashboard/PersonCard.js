@@ -19,9 +19,9 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove }) {
       onClick={onClick}
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       className={`
-        relative rounded-lg shadow-md border border-gray-200 overflow-hidden
+        relative rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden
         aspect-[4/3] min-h-[200px]
-        ${hasImage ? '' : 'bg-primary-50'}
+        ${hasImage ? '' : 'bg-primary-50 dark:bg-primary-900/20'}
         hover:scale-[1.02] hover:shadow-xl transition-all duration-300 ease-out
         ${onClick ? 'cursor-pointer' : ''}
       `}
@@ -40,18 +40,18 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove }) {
       {/* Person silhouette icon when no image */}
       {!hasImage && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <HiUser className="w-24 h-24 text-primary-300 opacity-50" />
+          <HiUser className="w-24 h-24 text-primary-300 dark:text-primary-400 opacity-50" />
         </div>
       )}
 
       {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-end p-4">
         <div className="relative z-10">
-          <p className={`font-semibold truncate ${hasImage ? 'text-white' : 'text-gray-900'}`}>
+          <p className={`font-semibold truncate ${hasImage ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
             {name}
           </p>
           {subtitle && (
-            <p className={`text-sm truncate mt-1 ${hasImage ? 'text-white/90' : 'text-gray-600'}`}>
+            <p className={`text-sm truncate mt-1 ${hasImage ? 'text-white/90' : 'text-gray-600 dark:text-gray-300'}`}>
               {subtitle}
             </p>
           )}

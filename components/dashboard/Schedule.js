@@ -69,7 +69,7 @@ function processAppointmentsForWeek(appointments, weekDays, startHour) {
         dayIndex,
         startSlot,
         endSlot,
-        color: 'bg-primary-100 border-primary-200 text-primary-800',
+        color: 'bg-primary-100 dark:bg-primary-900/40 border-primary-200 dark:border-primary-600 text-primary-800 dark:text-primary-200',
       };
     })
     .filter(Boolean);
@@ -97,9 +97,9 @@ export default function Schedule({
 
   return (
     <div>
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <span className="text-sm font-medium text-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
             {weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: timezone })}
           </span>
           <div className="flex items-center gap-1">
@@ -112,7 +112,7 @@ export default function Schedule({
                   return d;
                 })
               }
-              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
               aria-label="Previous week"
             >
               <HiChevronLeft className="w-5 h-5" />
@@ -120,7 +120,7 @@ export default function Schedule({
             <button
               type="button"
               onClick={() => setWeekStart(getWeekStart(today))}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-primary-600 hover:bg-primary-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30"
             >
               <HiCalendar className="w-4 h-4" />
               Today
@@ -134,7 +134,7 @@ export default function Schedule({
                   return d;
                 })
               }
-              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
               aria-label="Next week"
             >
               <HiChevronRight className="w-5 h-5" />
@@ -146,22 +146,22 @@ export default function Schedule({
           <table className="w-full table-fixed border-collapse min-w-[600px]">
             <thead>
               <tr>
-                <th className="w-14 p-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 bg-gray-50" />
+                <th className="w-14 p-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700" />
                 {weekDays.map((d, colIndex) => {
                   const isToday = toDateKey(d) === todayKey;
                   return (
                     <th
                       key={toDateKey(d)}
-                      className={`relative min-w-0 p-2 text-center border-b border-gray-200 bg-gray-50 ${
-                        colIndex > 0 ? 'border-r' : ''
-                      } ${isToday ? 'bg-primary-50/50' : ''}`}
+                      className={`relative min-w-0 p-2 text-center border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 ${
+                        colIndex > 0 ? 'border-r dark:border-gray-700' : ''
+                      } ${isToday ? 'bg-primary-50/50 dark:bg-primary-900/30' : ''}`}
                     >
-                      <span className="block text-xs font-medium text-gray-500">
+                      <span className="block text-xs font-medium text-gray-500 dark:text-gray-400">
                         {d.toLocaleDateString('en-US', { weekday: 'short', timeZone: timezone })}
                       </span>
                       <span
                         className={`inline-flex items-center justify-center mt-1 w-8 h-8 rounded-full text-sm font-semibold ${
-                          isToday ? 'bg-primary-500 text-white ring-2 ring-primary-200' : 'text-gray-700'
+                          isToday ? 'bg-primary-500 text-white ring-2 ring-primary-200 dark:ring-primary-800' : 'text-gray-700 dark:text-gray-300'
                         }`}
                       >
                         {d.toLocaleDateString('en-US', { day: 'numeric', timeZone: timezone })}
@@ -175,7 +175,7 @@ export default function Schedule({
               {timeSlots.map((slot, rowIndex) => (
                 <tr key={slot}>
                   {/* Time slot column */}
-                  <td className="w-14 min-w-0 p-1.5 text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50 align-center overflow-hidden">
+                  <td className="w-14 min-w-0 p-1.5 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 align-center overflow-hidden">
                     <Tooltip content={slot} placement="bottom">
                       <span className="truncate block">{slot}</span>
                     </Tooltip>
@@ -197,14 +197,14 @@ export default function Schedule({
                         <td
                           key={toDateKey(d)}
                           rowSpan={appointment.endSlot - appointment.startSlot}
-                          className={`relative align-top p-1 min-w-0 overflow-hidden ${appointment.color} border-2 border-primary-600/50 cursor-pointer hover:opacity-80 transition-opacity`}
+                          className={`relative align-top p-1 min-w-0 overflow-hidden ${appointment.color} dark:bg-primary-900/40 dark:border-primary-600 dark:text-primary-200 border-2 border-primary-600/50 dark:border-primary-500/50 cursor-pointer hover:opacity-80 transition-opacity`}
                           onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                         >
                           <Tooltip content={`${appointment.label}\n${formatTime(appointment.start, timeFormat)} - ${formatTime(appointment.end, timeFormat)}`}>
                             <span className="text-xs font-medium truncate block">
                               {appointment.label}
                             </span>
-                            <span className="text-xs text-gray-600 truncate block mt-0.5">
+                            <span className="text-xs text-gray-600 dark:text-primary-300 truncate block mt-0.5">
                               {formatTime(appointment.start, timeFormat)} - {formatTime(appointment.end, timeFormat)}
                             </span>
                           </Tooltip>
@@ -214,8 +214,8 @@ export default function Schedule({
                     return (
                       <td
                         key={toDateKey(d)}
-                        className={`border border-gray-100 align-top min-w-0 ${
-                          isToday ? 'bg-primary-50/30' : ''
+                        className={`border border-gray-100 dark:border-gray-700 align-top min-w-0 ${
+                          isToday ? 'bg-primary-50/30 dark:bg-primary-900/20' : ''
                         }`}
                       />
                     );

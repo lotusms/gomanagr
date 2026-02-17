@@ -10,9 +10,9 @@ export default function PageHeader({ title, description, actions, className = ''
   return (
     <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 ${className}`.trim()}>
       <div className="min-w-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">{title}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
         {description != null && description !== '' && (
-          <p className="text-gray-600">{description}</p>
+          <p className="text-gray-600 dark:text-gray-400">{description}</p>
         )}
       </div>
       {actions != null && (

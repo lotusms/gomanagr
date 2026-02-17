@@ -195,13 +195,13 @@ function ServicesContent() {
                 <HiPlus className="w-5 h-5" />
                 Add service
               </PrimaryButton>
-              {saving && <span className="text-sm text-gray-500">Saving…</span>}
+              {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
             </>
           }
         />
 
         {!loaded ? (
-          <p className="text-gray-500">Loading…</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading…</p>
         ) : (
           <>
             <Drawer
@@ -243,7 +243,7 @@ function ServicesContent() {
                 return (
                   <div
                     key={service.id}
-                    className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-primary-200 transition-all duration-300 flex flex-col"
+                    className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col"
                   >
                     {/* Header with gradient background */}
                     <div className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 px-5 py-4">
@@ -288,17 +288,17 @@ function ServicesContent() {
                     <div className="p-5 flex-1 flex flex-col">
                       {/* Description */}
                       {service.description && (
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">
                           {service.description}
                         </p>
                       )}
 
                       {/* Assigned team members */}
                       {assignedMembers.length > 0 ? (
-                        <div className="mt-auto pt-4 border-t border-gray-100">
+                        <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
                           <div className="flex items-center gap-2 mb-2">
-                            <HiUserGroup className="w-4 h-4 text-gray-400" />
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                            <HiUserGroup className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                               Assigned to {assignedMembers.length} {assignedMembers.length === 1 ? 'member' : 'members'}
                             </p>
                           </div>
@@ -306,21 +306,21 @@ function ServicesContent() {
                             {assignedMembers.slice(0, 5).map((name) => (
                               <span
                                 key={name}
-                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100"
+                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-100 dark:border-primary-800"
                               >
                                 {name}
                               </span>
                             ))}
                             {assignedMembers.length > 5 && (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
                                 +{assignedMembers.length - 5} more
                               </span>
                             )}
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-auto pt-4 border-t border-gray-100">
-                          <p className="text-xs text-gray-400 italic">No team members assigned</p>
+                        <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
+                          <p className="text-xs text-gray-400 dark:text-gray-500 italic">No team members assigned</p>
                         </div>
                       )}
                     </div>

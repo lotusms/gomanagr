@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount } from '@/services/userService';
 import Dropdown from '@/components/ui/Dropdown';
+import Toggle from '@/components/ui/Toggle';
 import { PrimaryButton } from '@/components/ui/buttons';
 
 const TIMEZONES = [
@@ -58,6 +59,19 @@ const TIME_FORMAT_OPTIONS = [
   { value: '12h', label: '12-hour (e.g. 6:00 PM)' },
 ];
 
+const DATA_VIEW_STYLE_OPTIONS = [
+  { 
+    value: 'cards', 
+    label: 'Cards',
+    description: 'Responsive and user-friendly. Cards adapt to different screen sizes and provide a modern, visual experience.'
+  },
+  { 
+    value: 'tables', 
+    label: 'Tables',
+    description: 'Data-friendly and efficient. Tables display more information at once but are not responsive on mobile devices.'
+  },
+];
+
 export default function GeneralSettings() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -72,6 +86,7 @@ export default function GeneralSettings() {
     defaultLanguage: 'en',
     timeFormat: '24h',
     currency: 'USD',
+    dataViewStyle: 'cards',
   });
 
   useEffect(() => {
@@ -92,6 +107,7 @@ export default function GeneralSettings() {
           defaultLanguage: userData.defaultLanguage || 'en',
           timeFormat: userData.timeFormat || '24h',
           currency: userData.currency || 'USD',
+          dataViewStyle: userData.dataViewStyle || 'cards',
         });
       }
     } catch (err) {
@@ -140,7 +156,7 @@ export default function GeneralSettings() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
         </div>
@@ -149,9 +165,9 @@ export default function GeneralSettings() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">General</h2>
-      <p className="text-sm text-gray-600 mb-6">Manage your preferences and display settings</p>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">General</h2>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Manage your preferences and display settings</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Date & Number Formats */}
@@ -222,14 +238,38 @@ export default function GeneralSettings() {
           />
         </div>
 
+        {/* Data View Style */}
+        <div className="space-y-2">
+          <Toggle
+            id="dataViewStyle"
+            label="Preferred Data View Style"
+            value={formData.dataViewStyle || 'cards'}
+            onValueChange={(newValue) => {
+              setFormData((prev) => ({ ...prev, dataViewStyle: newValue || 'cards' }));
+              setError(null);
+              setSuccess(false);
+            }}
+            option1="cards"
+            option1Label="Cards"
+            option2="tables"
+            option2Label="Tables"
+            variant="light"
+          />
+          {formData.dataViewStyle && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 ml-1">
+              {DATA_VIEW_STYLE_OPTIONS.find(opt => opt.value === formData.dataViewStyle)?.description}
+            </p>
+          )}
+        </div>
+
         {/* Error/Success Messages */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg">
             General settings saved successfully!
           </div>
         )}

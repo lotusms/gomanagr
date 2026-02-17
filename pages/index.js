@@ -82,21 +82,21 @@ export default function LandingPage() {
       {/* Product Mockup Section */}
       <section className="mt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
             {/* Mock Dashboard Interface */}
-            <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700 font-semibold">Open</span>
+                <span className="text-gray-700 dark:text-gray-300 font-semibold">Open</span>
                 <div className="flex space-x-2">
-                  <button className="p-1 text-gray-500 hover:text-gray-700">🔽</button>
-                  <button className="p-1 text-gray-500 hover:text-gray-700">🔍</button>
+                  <button className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">🔽</button>
+                  <button className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">🔍</button>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
               {/* Left Panel - Conversation List */}
-              <div className="bg-white border-r border-gray-200 p-4">
+              <div className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
                 <div className="space-y-3">
                   {[
                     {
@@ -104,7 +104,7 @@ export default function LandingPage() {
                       subject: 'Loyalty Discount?',
                       preview: 'Hi there, I was wondering if...',
                       tag: 'VIP',
-                      tagColor: 'bg-green-100 text-green-800',
+                      tagColor: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
                       time: 'NOW',
                     },
                     {
@@ -112,7 +112,7 @@ export default function LandingPage() {
                       subject: 'Change of address for order',
                       preview: 'Hi, I realized I accidentally...',
                       tag: 'Urgent',
-                      tagColor: 'bg-amber-100 text-amber-800',
+                      tagColor: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
                       time: '3h',
                     },
                     {
@@ -126,27 +126,27 @@ export default function LandingPage() {
                     <div
                       key={index}
                       className={`p-4 rounded-lg cursor-pointer transition ${
-                        index === 0 ? 'bg-primary-50 border-2 border-primary-200' : 'hover:bg-gray-50'
+                        index === 0 ? 'bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-200 dark:border-primary-600' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-primary-200 rounded-full flex items-center justify-center text-primary-800 font-semibold text-sm">
+                          <div className="w-8 h-8 bg-primary-200 dark:bg-primary-800 rounded-full flex items-center justify-center text-primary-800 dark:text-primary-200 font-semibold text-sm">
                             {conversation.name.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-semibold text-gray-900 text-sm">
+                            <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
                               {conversation.name}
                             </div>
-                            <div className="text-xs text-gray-500">{conversation.time}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{conversation.time}</div>
                           </div>
                         </div>
                       </div>
-                      <div className="font-medium text-gray-900 text-sm mb-1">
+                      <div className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-1">
                         {conversation.subject}
                       </div>
                       {conversation.preview && (
-                        <div className="text-xs text-gray-600 mb-2">{conversation.preview}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">{conversation.preview}</div>
                       )}
                       {conversation.tag && (
                         <span
@@ -161,10 +161,10 @@ export default function LandingPage() {
               </div>
 
               {/* Right Panel - Conversation Detail */}
-              <div className="lg:col-span-2 bg-white p-6">
+              <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6">
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Loyalty Discount?</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Loyalty Discount?</h2>
                     <div className="flex space-x-2">
                       <SecondaryButton className="!rounded-lg text-sm min-w-0 px-4 py-2">
                         Assign
@@ -174,30 +174,30 @@ export default function LandingPage() {
                       </PrimaryButton>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
                     <span>Support Tier 1</span>
                     <span>•</span>
                     <span>SU-2132</span>
                     <span>•</span>
                     <span>1</span>
-                    <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded text-xs font-medium">
                       VIP
                     </span>
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-6">
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                   <div className="flex items-start space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-primary-200 rounded-full flex items-center justify-center text-primary-800 font-semibold">
+                    <div className="w-12 h-12 bg-primary-200 dark:bg-primary-800 rounded-full flex items-center justify-center text-primary-800 dark:text-primary-200 font-semibold">
                       KT
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <span className="font-semibold text-gray-900">Kim Thompson</span>
-                        <span className="text-gray-500 text-sm">&lt;kim.thompson@gmail.com&gt;</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">Kim Thompson</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">&lt;kim.thompson@gmail.com&gt;</span>
                       </div>
-                      <div className="text-sm text-gray-600 mb-2">To: GoManagr Customer Support</div>
-                      <div className="text-gray-700 leading-relaxed">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">To: GoManagr Customer Support</div>
+                      <div className="text-gray-700 dark:text-gray-300 leading-relaxed">
                         Hi there, I was wondering if there was any long-time customer discount? I wanted to order another bike and was just curious if there was anything you could do. Huge fan and have told tons of friends about you guys.
                       </div>
                     </div>

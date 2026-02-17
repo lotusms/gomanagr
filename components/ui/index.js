@@ -14,6 +14,7 @@ export { default as PasswordField } from './PasswordField';
 export { default as InputField } from './InputField';
 export { default as TextareaField } from './TextareaField';
 export { default as TimeField } from './TimeField';
+export { default as Toggle } from './Toggle';
 export { default as Tooltip } from './Tooltip';
 export { default as TeamFilter } from './TeamFilter';
 export { ChipsSingle, ChipsMulti } from './Chips';

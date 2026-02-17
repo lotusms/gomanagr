@@ -91,14 +91,14 @@ export default function ChipsArrayBuilder({
           {value.map((item) => (
             <span
               key={item}
-              className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-primary-50 text-primary-800 border border-primary-200 text-sm"
+              className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-primary-50 dark:bg-gray-700 text-primary-800 dark:text-gray-200 border border-primary-200 dark:border-gray-600 text-sm"
             >
               {item}
               <button
                 type="button"
                 onClick={() => handleRemove(item)}
                 disabled={disabled}
-                className="p-0.5 rounded-full hover:bg-primary-200 text-primary-700"
+                className="p-0.5 rounded-full hover:bg-primary-200 dark:hover:bg-gray-600 text-primary-700 dark:text-gray-300"
                 aria-label={`Remove ${item}`}
               >
                 <HiX className="w-3.5 h-3.5" />

@@ -91,16 +91,16 @@ export default function Paginator({
   return (
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 ${className}`}>
       {/* Items per page selector - Left side */}
-      {showItemsPerPage && onItemsPerPageChange && (
-        <div className="flex items-center gap-2">
-          <label htmlFor="items-per-page" className="text-sm text-gray-600 whitespace-nowrap">
-            Items per page:
-          </label>
+        {showItemsPerPage && onItemsPerPageChange && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="items-per-page" className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+              Items per page:
+            </label>
           <select
             id="items-per-page"
             value={itemsPerPage}
             onChange={handleItemsPerPageChange}
-            className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors cursor-pointer"
+            className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors cursor-pointer"
             aria-label="Items per page"
           >
             {itemsPerPageOptions.map((option) => (
@@ -121,7 +121,7 @@ export default function Paginator({
               type="button"
               onClick={handleFirst}
               disabled={safeCurrentPage === 1}
-              className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-700 transition-colors"
               aria-label="First page"
             >
               First
@@ -133,7 +133,7 @@ export default function Paginator({
             type="button"
             onClick={handlePrevious}
             disabled={safeCurrentPage === 1}
-            className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+            className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-700 transition-colors"
             aria-label="Previous page"
           >
             <HiChevronLeft className="w-5 h-5" />
@@ -147,10 +147,10 @@ export default function Paginator({
                 key={page}
                 type="button"
                 onClick={() => handlePageChange(page)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
                   isActive
                     ? 'bg-primary-600 text-white border-2 border-primary-600 hover:bg-primary-700 hover:border-primary-700'
-                    : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                    : 'text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
                 aria-label={`Page ${page}`}
                 aria-current={isActive ? 'page' : undefined}
@@ -165,7 +165,7 @@ export default function Paginator({
             type="button"
             onClick={handleNext}
             disabled={safeCurrentPage === totalPages}
-            className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+            className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-700 transition-colors"
             aria-label="Next page"
           >
             <HiChevronRight className="w-5 h-5" />
@@ -177,7 +177,7 @@ export default function Paginator({
               type="button"
               onClick={handleLast}
               disabled={safeCurrentPage === totalPages}
-              className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
+              className="px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-700 transition-colors"
               aria-label="Last page"
             >
               Last

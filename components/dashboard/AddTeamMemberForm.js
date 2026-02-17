@@ -675,7 +675,7 @@ export default function AddTeamMemberForm({
             disabled={saving}
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
               Services offered
             </label>
             <div className="flex gap-2">
@@ -713,14 +713,14 @@ export default function AddTeamMemberForm({
                     return (
                       <span
                         key={serviceId}
-                        className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-primary-50 text-primary-800 border border-primary-200 text-sm font-medium"
+                        className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-primary-50 dark:bg-gray-700 text-primary-800 dark:text-gray-200 border border-primary-200 dark:border-gray-600 text-sm font-medium"
                       >
                         {serviceName}
                         <button
                           type="button"
                           onClick={() => handleRemoveService(serviceId)}
                           disabled={saving}
-                          className="p-0.5 rounded-full hover:bg-primary-200 text-primary-700 focus:outline-none"
+                          className="p-0.5 rounded-full hover:bg-primary-200 dark:hover:bg-gray-600 text-primary-700 dark:text-gray-300 focus:outline-none"
                           aria-label={`Remove ${serviceName}`}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -20,8 +20,8 @@ export default function Custom404() {
 
   // Optional: show a brief message while redirecting
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <p className="text-gray-500">Redirecting...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <p className="text-gray-500 dark:text-gray-400">Redirecting...</p>
     </div>
   );
 }

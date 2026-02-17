@@ -46,7 +46,7 @@ function getDisplayName(account, email = '') {
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
-  const { currentUser, signOut } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [userAccount, setUserAccount] = useState(null);
   const [previewAccount, setPreviewAccount] = useState(null);
@@ -90,26 +90,40 @@ export default function DashboardLayout({ children }) {
   }, []);
 
   const handleLogout = async () => {
-    await signOut();
-    router.push('/');
+    try {
+      // Remove dark mode before logging out
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove('dark');
+      }
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Ensure dark mode is removed even if logout fails
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove('dark');
+      }
+      // Still redirect even if logout fails
+      router.push('/');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col h-screen relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col h-screen relative overflow-hidden">
       {/* Same grid background as public pages */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#00000006_1px,transparent_1px),linear-gradient(to_bottom,#00000006_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:4rem_4rem]" />
       </div>
 
       {/* Top Navigation Bar */}
-      <header className="relative z-50 bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 flex-shrink-0">
+      <header className="relative z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 flex-shrink-0">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
           <div className="flex items-center space-x-3">
             <Logo href="/" inlineClassName="h-16" />
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="hidden sm:block text-sm text-gray-600">
+            <div className="hidden sm:block text-sm text-gray-600 dark:text-gray-300">
               <span>Hello, </span>
               {getDisplayName(previewAccount || userAccount, currentUser?.email ?? '') || currentUser?.email}
             </div>
@@ -128,7 +142,7 @@ export default function DashboardLayout({ children }) {
 
         {/* Main Content */}
         <main
-          className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all duration-300 overflow-y-auto h-full`}
+          className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-16'} transition-all duration-300 overflow-y-auto h-full bg-gray-50 dark:bg-gray-900`}
         >
           <div className="p-4 sm:p-6 lg:p-8">{children}</div>
         </main>

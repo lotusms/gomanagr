@@ -29,6 +29,24 @@ export async function createUserAccount(userId, userData, logoFile = null) {
         console.error('Logo upload error (continuing without logo):', storageError);
         // Continue without logo if upload fails
       }
+    } else {
+      // If no new logo file, preserve existing logo from Firestore if not provided in userData
+      // This prevents overwriting the logo URL with an empty string
+      if (!logoUrl || logoUrl.trim() === '') {
+        try {
+          const userAccountRef = doc(db, 'useraccount', userId);
+          const existingDoc = await getDoc(userAccountRef);
+          if (existingDoc.exists()) {
+            const existingData = existingDoc.data();
+            const existingLogo = existingData?.companyLogo;
+            if (existingLogo && typeof existingLogo === 'string' && existingLogo.trim()) {
+              logoUrl = existingLogo.trim();
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch existing logo:', err);
+        }
+      }
     }
 
     // Prepare document data

@@ -25,7 +25,7 @@ export default function TextareaField({
       {label && (
         <Label.Root htmlFor={id} className={FORM_CONTROL_LIGHT_LABEL}>
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="text-red-500 dark:text-red-400 ml-1">*</span>}
         </Label.Root>
       )}
       <textarea
@@ -42,7 +42,7 @@ export default function TextareaField({
         aria-describedby={error ? `${id}-error` : undefined}
       />
       {error && (
-        <p id={`${id}-error`} className="mt-1 text-sm text-red-600" role="alert">
+        <p id={`${id}-error`} className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
           {error}
         </p>
       )}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 /**
  * Logo component using SVG assets with theme colors.
@@ -12,6 +13,7 @@ import Link from 'next/link';
  * @param {string} [props.inlineClassName] - Extra classes for inline SVG (e.g. "h-16" for larger)
  */
 const MANAGER_DARK = '#231f20';
+const MANAGER_LIGHT = '#ffffff';
 
 const inlinePathManager =
   'M1000.42,218.64v19.5c-1.76-.14-3.11-.27-4.74-.27-11.64,0-19.36,6.36-19.36,20.31v36.51h-21.12v-74.97h20.18v9.61c5.15-7.04,13.81-10.7,25.05-10.7ZM947.48,220.77v60.66c0,27.08-14.62,39.54-40.89,39.54-13.81,0-27.22-3.38-35.75-10.02l8.4-15.16c6.23,5.01,16.38,8.26,25.73,8.26,14.89,0,21.39-6.77,21.39-19.9v-3.11c-5.55,6.09-13.54,9.07-23.02,9.07-20.18,0-36.42-13.95-36.42-35.2s16.25-35.2,36.42-35.2c10.16,0,18.55,3.39,24.1,10.43v-9.34h20.04ZM926.62,254.89c0-10.7-7.99-17.87-19.09-17.87s-19.23,7.18-19.23,17.87,8.12,17.87,19.23,17.87,19.09-7.18,19.09-17.87ZM858.47,252.04v42.65h-19.77v-10.16c-3.93,6.63-11.51,10.16-22.2,10.16-17.06,0-27.22-9.48-27.22-22.07s9.07-21.8,31.28-21.8h16.79c0-9.07-5.42-14.35-16.79-14.35-7.72,0-15.71,2.57-20.99,6.77l-7.58-14.76c7.99-5.69,19.77-8.8,31.41-8.8,22.21,0,35.07,10.29,35.07,32.36ZM837.35,270.59v-7.45h-14.49c-9.88,0-13,3.66-13,8.53,0,5.28,4.47,8.8,11.92,8.8,7.04,0,13.13-3.25,15.57-9.88ZM782.39,251.91v42.79h-21.12v-39.54c0-11.78-5.42-17.2-14.76-17.2-10.16,0-17.47,6.23-17.47,19.63v37.1h-21.12v-75.01s20.18,0,20.18,0v9.61c5.69-6.23,14.22-9.61,24.1-9.61,17.2,0,30.19,10.02,30.19,32.23ZM700.78,252.04v42.65h-19.77v-10.16c-3.93,6.63-11.51,10.16-22.2,10.16-17.06,0-27.22-9.48-27.22-22.07s9.07-21.8,31.28-21.8h16.79c0-9.07-5.42-14.35-16.79-14.35-7.72,0-15.71,2.57-20.99,6.77l-7.58-14.76c7.99-5.69,19.77-8.8,31.41-8.8,22.21,0,35.07,10.29,35.07,32.36ZM679.66,270.59v-7.45h-14.49c-9.88,0-13,3.66-13,8.53,0,5.28,4.47,8.8,11.92,8.8,7.04,0,13.13-3.25,15.57-9.88ZM603.25,294.7l-.14-56.87-27.89,46.85h-9.88l-27.76-45.63v55.65h-20.58v-94.78h18.14l35.47,58.9,34.93-58.9h18.01l.27,94.78h-20.58ZM429.8,257.12c0-21.94,16.93-37.51,40.08-37.51s39.94,15.57,39.94,37.51-16.79,37.51-39.94,37.51-40.08-15.57-40.08-37.51ZM488.43,257.12c0-12.59-7.99-20.18-18.55-20.18s-18.69,7.58-18.69,20.18,8.12,20.18,18.69,20.18,18.55-7.58,18.55-20.18ZM402.4,244.12h20.04v38.45c-10.43,7.85-24.78,12.05-38.32,12.05-29.79,0-51.72-20.45-51.72-49.01s21.94-49.01,52.13-49.01c16.65,0,30.46,5.69,39.67,16.38l-14.08,13c-6.91-7.31-14.89-10.7-24.51-10.7-18.41,0-31.01,12.32-31.01,30.33s12.59,30.33,30.74,30.33c5.96,0,11.51-1.08,17.06-4.06v-27.76Z';
@@ -28,7 +30,31 @@ const stackedPathO =
   'M546.7,130.97v136.45s-58.58,0-58.58,0v-21.34c-19.77,14.34-44.67,21.34-70.65,21.34-69.17,0-119.42-55.54-119.42-131.51S349.44,4.05,424.65,4.05c61.97,0,107.32,36.28,117.15,92.96l-74.83,1.5c-5.29-20.02-20.4-31.35-41.57-31.35-31.37,0-49.12,24.18-49.12,66.88,0,47.23,19.27,72.94,54.41,72.94,21.17,0,37.03-10.2,43.46-28.35h-32.87v-47.65s105.43,0,105.43,0Z';
 
 function InlineLogoSvg({ className = '', wordmarkLight, ...rest }) {
-  const managerFill = wordmarkLight ? 'rgb(var(--color-primary-100))' : MANAGER_DARK;
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Check initial state
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    
+    // Watch for changes to dark mode class
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+  
+  // Use light color if wordmarkLight prop is true OR if dark mode is active
+  const managerFill = wordmarkLight || isDarkMode 
+    ? (wordmarkLight ? 'rgb(var(--color-primary-100))' : MANAGER_LIGHT)
+    : MANAGER_DARK;
+    
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -46,7 +72,31 @@ function InlineLogoSvg({ className = '', wordmarkLight, ...rest }) {
 }
 
 function StackedLogoSvg({ className = '', wordmarkLight, ...rest }) {
-  const managerFill = wordmarkLight ? 'rgb(var(--color-primary-100))' : MANAGER_DARK;
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Check initial state
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkDarkMode();
+    
+    // Watch for changes to dark mode class
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+  
+  // Use light color if wordmarkLight prop is true OR if dark mode is active
+  const managerFill = wordmarkLight || isDarkMode 
+    ? (wordmarkLight ? 'rgb(var(--color-primary-100))' : MANAGER_LIGHT)
+    : MANAGER_DARK;
+    
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

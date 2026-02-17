@@ -117,7 +117,7 @@ function ScheduleContent() {
                 <HiPlus className="w-5 h-5" />
                 Add appointment
               </PrimaryButton>
-              {saving && <span className="text-sm text-gray-500">Saving…</span>}
+              {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
             </>
           }
         />

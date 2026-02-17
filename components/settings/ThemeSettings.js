@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
+import { getUserAccount, createUserAccount } from '@/services/userService';
 import { useTheme } from '@/lib/ThemeContext';
+import Toggle from '@/components/ui/Toggle';
 
 export default function ThemeSettings() {
+  const { currentUser } = useAuth();
   const { currentPalette, setPalette } = useTheme();
   const [allPalettes, setAllPalettes] = useState({});
   const [loading, setLoading] = useState(true);
+  const [themeMode, setThemeMode] = useState('light');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     import('@/lib/themes').then((module) => {
@@ -13,6 +19,85 @@ export default function ThemeSettings() {
     });
   }, []);
 
+  // Load theme mode preference
+  useEffect(() => {
+    if (currentUser?.uid) {
+      getUserAccount(currentUser.uid)
+        .then((data) => {
+          const mode = data?.themeMode || 'light';
+          setThemeMode(mode);
+          // Apply dark mode class to document only if user has dark mode preference
+          if (typeof document !== 'undefined') {
+            if (mode === 'dark') {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
+          }
+        })
+        .catch(() => {
+          // Default to light mode on error
+          setThemeMode('light');
+          if (typeof document !== 'undefined') {
+            document.documentElement.classList.remove('dark');
+          }
+        });
+    } else {
+      // No user logged in - ensure light mode
+      setThemeMode('light');
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [currentUser?.uid]);
+
+  const handleThemeModeChange = async (newMode) => {
+    setThemeMode(newMode);
+    
+    // Apply dark mode class to document immediately
+    if (typeof document !== 'undefined') {
+      if (newMode === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    // Save to Firebase (merge: true in createUserAccount preserves existing fields)
+    if (currentUser?.uid) {
+      try {
+        setSaving(true);
+        // Load existing account data first to preserve it
+        const existingAccount = await getUserAccount(currentUser.uid);
+        await createUserAccount(
+          currentUser.uid,
+          {
+            ...(existingAccount || {}),
+            themeMode: newMode,
+            userId: currentUser.uid,
+            email: currentUser.email,
+          },
+          null
+        );
+        // Dispatch event to update other components
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('useraccount', {
+              detail: {
+                type: 'useraccount-updated',
+                payload: { themeMode: newMode },
+              },
+            })
+          );
+        }
+      } catch (err) {
+        console.error('Error saving theme mode:', err);
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
+
   const handlePaletteSelect = (paletteId) => {
     if (paletteId && allPalettes[paletteId]) {
       setPalette(paletteId);
@@ -20,10 +105,38 @@ export default function ThemeSettings() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">Select your theme</h2>
-      <p className="text-sm text-gray-600 mb-6">Choose a color palette that matches your style</p>
-      {loading ? (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Theme Settings</h2>
+      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Customize your application appearance</p>
+
+      {/* Theme Mode Toggle */}
+      <div className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+        <div className="space-y-2">
+          <Toggle
+            id="themeMode"
+            label="Theme Mode"
+            value={themeMode || 'light'}
+            onValueChange={handleThemeModeChange}
+            option1="light"
+            option1Label="Light"
+            option2="dark"
+            option2Label="Dark"
+            variant="light"
+            disabled={saving}
+          />
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 ml-1">
+            {themeMode === 'light' 
+              ? 'Light mode provides a clean, bright interface that\'s easy on the eyes during daytime use.'
+              : 'Dark mode reduces eye strain in low-light conditions and provides a modern, sleek appearance.'}
+          </p>
+        </div>
+      </div>
+
+      {/* Color Palette Selection */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Color Palette</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Choose a color palette that matches your style</p>
+        {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
         </div>
@@ -37,7 +150,7 @@ export default function ThemeSettings() {
                 key={paletteId}
                 onClick={() => handlePaletteSelect(paletteId)}
                 className={`relative overflow-hidden rounded-lg border-2 transition-all duration-200 ${
-                  isSelected ? 'border-primary-500 shadow-md' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  isSelected ? 'border-primary-500 shadow-md' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
                 }`}
               >
                 <div className="relative h-32 overflow-hidden">
@@ -87,7 +200,8 @@ export default function ThemeSettings() {
             );
           })}
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -59,7 +59,7 @@ export default function DashboardSidebar({ open, onToggle }) {
 
   return (
     <aside
-      className={`translate-x-0 fixed top-16 bottom-0 left-0 z-40 bg-slate-100 border-r border-slate-200 transition-all duration-300 ease-in-out ${
+      className={`translate-x-0 fixed top-16 bottom-0 left-0 z-40 bg-slate-100 dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 transition-all duration-300 ease-in-out ${
         open ? 'w-64' : 'w-16'
       }`}
     >
@@ -69,7 +69,7 @@ export default function DashboardSidebar({ open, onToggle }) {
         <nav className={`py-3 space-y-0.5 transition-all duration-300 ${open ? 'px-3' : 'px-2'}`}>
           {NAVIGATION.map((item, index) => {
             if (item.divider) {
-              return <hr key={`divider-${index}`} className="border-gray-200 my-1.5" />;
+              return <hr key={`divider-${index}`} className="border-gray-200 dark:border-gray-700 my-1.5" />;
             }
             const isActive = router.pathname === item.href;
             const IconComponent = item.icon;
@@ -82,8 +82,8 @@ export default function DashboardSidebar({ open, onToggle }) {
                   open ? 'space-x-2.5 px-3 py-2' : 'justify-center px-2 py-2'
                 } ${
                   isActive
-                    ? 'bg-primary-50 text-primary-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
                 title={!open ? item.name : ''}
               >

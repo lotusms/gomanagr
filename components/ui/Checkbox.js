@@ -61,7 +61,7 @@ export default function Checkbox({
       {children || (
         <label
           htmlFor={id}
-          className="text-sm text-white cursor-pointer select-none"
+          className="text-sm text-white dark:text-gray-200 cursor-pointer select-none"
         >
           {label}
         </label>

@@ -18,6 +18,12 @@ export default function Document({ themeInitScript }) {
   return (
     <Html>
       <Head>
+        {/* Ensure dark mode is NOT applied on initial load - only apply when user is logged in and has dark mode preference */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){if(typeof document!=='undefined'){document.documentElement.classList.remove('dark');}})();`,
+          }}
+        />
         {themeInitScript ? (
           <script
             dangerouslySetInnerHTML={{

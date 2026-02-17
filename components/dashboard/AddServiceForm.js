@@ -241,12 +241,12 @@ export default function AddServiceForm({
           />
         </div>
       ) : (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
           Add team members in the Team section to assign services.
         </div>
       )}
 
-      <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+      <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
         <div></div>
         <div className="flex justify-end gap-3">
           <SecondaryButton type="button" onClick={onCancel} disabled={saving}>

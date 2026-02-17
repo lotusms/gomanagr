@@ -93,10 +93,44 @@ function DashboardContent() {
   useEffect(() => {
     if (!currentUser?.uid) return;
     setAccountLoaded(false);
-    getUserAccount(currentUser.uid)
-      .then((data) => setUserAccount(data || null))
-      .catch(() => setUserAccount(null))
-      .finally(() => setAccountLoaded(true));
+    // Use getUserAccountFromServer to bypass cache and get fresh data
+    import('@/services/userService').then(({ getUserAccountFromServer }) => {
+      getUserAccountFromServer(currentUser.uid)
+        .then((data) => {
+          setUserAccount(data || null);
+          // Debug: log companyLogo value
+          if (data) {
+            console.log('[Dashboard] Loaded account data:', {
+              hasCompanyLogo: !!data.companyLogo,
+              companyLogoType: typeof data.companyLogo,
+              companyLogoValue: data.companyLogo ? String(data.companyLogo).substring(0, 50) : 'empty/null',
+              companyLogoLength: data.companyLogo ? String(data.companyLogo).length : 0
+            });
+          }
+        })
+        .catch(() => setUserAccount(null))
+        .finally(() => setAccountLoaded(true));
+    });
+  }, [currentUser?.uid]);
+
+  // Listen for account updates (e.g., when logo is saved)
+  useEffect(() => {
+    const handleAccountUpdate = async (e) => {
+      if (e.detail?.type === 'useraccount-updated' && currentUser?.uid) {
+        // Refresh account data from server to get latest logo
+        try {
+          const { getUserAccountFromServer } = await import('@/services/userService');
+          const updatedData = await getUserAccountFromServer(currentUser.uid);
+          if (updatedData) {
+            setUserAccount(updatedData);
+          }
+        } catch (err) {
+          console.error('Failed to refresh account data:', err);
+        }
+      }
+    };
+    window.addEventListener('useraccount', handleAccountUpdate);
+    return () => window.removeEventListener('useraccount', handleAccountUpdate);
   }, [currentUser?.uid]);
 
   const welcomeName = getWelcomeName(userAccount, currentUser?.email ?? '');
@@ -117,7 +151,22 @@ function DashboardContent() {
       ? []
       : TODO_ITEMS.filter((item) => {
           if (dismissedTodoIds.includes(item.id)) return false;
-          if (item.id === 'company-logo' && userAccount?.companyLogo) return false;
+          // Check if company logo exists and is not empty
+          if (item.id === 'company-logo') {
+            // Only check if account has loaded
+            if (!accountLoaded || !userAccount) return true; // Show todo if account not loaded yet
+            
+            const rawLogo = userAccount.companyLogo;
+            // Handle various cases: string, null, undefined, empty string, whitespace
+            let logoUrl = '';
+            if (rawLogo !== null && rawLogo !== undefined) {
+              logoUrl = String(rawLogo).trim();
+            }
+            const hasLogo = logoUrl.length > 0;
+            
+            // Hide todo if logo exists
+            if (hasLogo) return false;
+          }
           return true;
         });
 
@@ -131,10 +180,10 @@ function DashboardContent() {
       <div className="space-y-6">
         {/* Welcome Section */}
         <div>
-          <p className="text-sm text-gray-500 mb-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             {getFormattedDate(userAccount?.dateFormat, userAccount?.timezone)}
           </p>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Good {getTimeOfDay()}{welcomeName ? `, ${welcomeName}` : ''}
           </h1>
         </div>

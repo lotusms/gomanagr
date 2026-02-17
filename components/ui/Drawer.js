@@ -56,18 +56,18 @@ export default function Drawer({ isOpen, onClose, children, title, className = '
         {/* Panel */}
         <div
           id={drawerId}
-          className="relative ml-auto h-full flex flex-col bg-white shadow-xl animate-drawer-in"
+          className="relative ml-auto h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl animate-drawer-in"
         >
-          <div className="flex items-center justify-between flex-shrink-0 px-6 py-4 bg-slate-100">
+          <div className="flex items-center justify-between flex-shrink-0 px-6 py-4 bg-slate-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
             {title != null && title !== '' ? (
-              <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>
             ) : (
               <span />
             )}
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors -mr-2"
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors -mr-2"
               aria-label="Close"
             >
               <HiX className="w-5 h-5" />

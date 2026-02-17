@@ -13,11 +13,11 @@ const STATS = [
 ];
 
 const StatCard = ({ title, value, change, color, Icon }) => (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{value}</p>
         </div>
         <div
           className={`${color} w-12 h-12 rounded-lg flex items-center justify-center text-white`}
@@ -25,7 +25,7 @@ const StatCard = ({ title, value, change, color, Icon }) => (
           <Icon className="w-6 h-6" />
         </div>
       </div>
-      <p className="text-sm text-green-600 mt-4">{change} from last month</p>
+      <p className="text-sm text-green-600 dark:text-green-400 mt-4">{change} from last month</p>
     </div>
 );
 

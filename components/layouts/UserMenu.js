@@ -4,7 +4,7 @@ import Avatar from '@/components/ui/Avatar';
 import { getDisplayName } from '@/lib/UserAccountContext';
 
 /**
- * User avatar button and dropdown menu (Profile, My Account, Settings, Logout).
+ * User avatar button and dropdown menu (My Account, Settings, Logout).
  * @param {Object} props
  * @param {Object} [props.userAccount] - User account data (companyLogo, nameView, firstName, lastName)
  * @param {Object} [props.previewAccount] - Preview overrides (e.g. from account form)
@@ -29,8 +29,35 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
   };
 
   const account = previewAccount ? { ...userAccount, ...previewAccount } : userAccount;
-  const logoUrl = (account?.companyLogo ?? '').trim();
+  // Get logo URL and ensure it's a valid non-empty string
+  const rawLogo = account?.companyLogo;
+  // Handle all possible cases: string, null, undefined, number, etc.
+  let logoUrl = '';
+  if (rawLogo !== null && rawLogo !== undefined) {
+    logoUrl = String(rawLogo).trim();
+  }
   const displayName = getDisplayName(account, currentUser?.email ?? '');
+  
+  // Use company logo if available, otherwise fall back to initials
+  // Only show initials if userAccount has loaded and there's no logo
+  // Check for non-empty string (logo URLs can be various formats: http, https, data:, Firebase Storage URLs, etc.)
+  const hasLogo = logoUrl.length > 0;
+  const accountLoaded = userAccount !== null || previewAccount !== null;
+  
+  // Debug logging
+  if (accountLoaded && account) {
+    console.log('[UserMenu] Account check:', {
+      hasLogo,
+      logoUrl: logoUrl ? logoUrl.substring(0, 50) + '...' : 'empty',
+      rawLogo,
+      rawLogoType: typeof rawLogo,
+      accountKeys: Object.keys(account).filter(k => k.includes('logo') || k.includes('Logo'))
+    });
+  }
+  
+  // Don't show initials until we know for sure there's no logo
+  // This prevents the flash of initials while account data is loading
+  const shouldShowInitials = accountLoaded && !hasLogo;
 
   return (
     <div className="relative" ref={ref}>
@@ -40,42 +67,40 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
         aria-label="User menu"
         aria-expanded={open}
       >
-        <Avatar
-          src={logoUrl || undefined}
-          name={displayName || undefined}
-          size="sm"
-          className={!logoUrl ? 'bg-primary-600 text-white' : 'bg-white'}
-        />
+        {accountLoaded ? (
+          <Avatar
+            src={hasLogo ? logoUrl : undefined}
+            name={shouldShowInitials ? displayName : undefined}
+            size="sm"
+            className={!hasLogo ? 'bg-primary-600 text-white' : 'bg-white'}
+          />
+        ) : (
+          // Show a placeholder while loading to prevent flash
+          <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+        )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[100]">
-          <Link
-            href="/profile"
-            onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            Profile
-          </Link>
+        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-[100]">
           <Link
             href="/account"
             onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             My Account
           </Link>
           <Link
             href="/dashboard/settings"
             onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Settings
           </Link>
-          <div className="border-t border-gray-200 my-1" />
+          <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
           <button
             type="button"
             onClick={handleLogout}
-            className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
             Logout
           </button>

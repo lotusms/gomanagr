@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateDismissedTodos } from '@/services/userService';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
+import { formatDate } from '@/utils/dateTimeFormatters';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import {
@@ -23,11 +24,14 @@ function getWelcomeName(account, email = '') {
   return '';
 }
 
-function getFormattedDate() {
+function getFormattedDate(dateFormat = 'MM/DD/YYYY', timezone = 'UTC') {
+  const todayInTimezone = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
+  // For welcome message, use a friendly format regardless of user preference
   return new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
+    timeZone: timezone,
   });
 }
 
@@ -127,7 +131,9 @@ function DashboardContent() {
       <div className="space-y-6">
         {/* Welcome Section */}
         <div>
-          <p className="text-sm text-gray-500 mb-1">{getFormattedDate()}</p>
+          <p className="text-sm text-gray-500 mb-1">
+            {getFormattedDate(userAccount?.dateFormat, userAccount?.timezone)}
+          </p>
           <h1 className="text-3xl font-bold text-gray-900">
             Good {getTimeOfDay()}{welcomeName ? `, ${welcomeName}` : ''}
           </h1>
@@ -141,6 +147,8 @@ function DashboardContent() {
           businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
           businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
           timeFormat={userAccount?.timeFormat ?? '24h'}
+          dateFormat={userAccount?.dateFormat ?? 'MM/DD/YYYY'}
+          timezone={userAccount?.timezone ?? 'UTC'}
           staff={userAccount?.teamMembers ?? DEFAULT_TEAM_MEMBERS}
           appointments={userAccount?.appointments || []}
         />

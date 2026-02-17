@@ -114,6 +114,40 @@ async function importTeamMembers() {
 
     console.log(`\n📊 Found ${teamMembers.length} team members in JSON file`);
     
+    // Check for duplicates in JSON file
+    console.log(`\n🔍 Checking for duplicates in JSON file...`);
+    const ids = teamMembers.map(m => m.id).filter(Boolean);
+    const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+    const uniqueIds = new Set(ids);
+    
+    if (duplicateIds.length > 0) {
+      console.error(`\n❌ ERROR: Found ${duplicateIds.length} duplicate ID(s) in JSON file:`);
+      duplicateIds.forEach(id => {
+        const members = teamMembers.filter(m => m.id === id);
+        console.error(`   - ID "${id}" appears ${members.length} times:`);
+        members.forEach((m, idx) => {
+          console.error(`     ${idx + 1}. ${m.name || 'Unnamed'} (${m.role || 'No role'})`);
+        });
+      });
+      console.error('\n⚠️  Please fix duplicate IDs before importing to prevent data corruption.');
+      process.exit(1);
+    }
+    
+    if (ids.length !== uniqueIds.size) {
+      console.warn(`⚠️  Warning: ${ids.length} team members but only ${uniqueIds.size} unique IDs`);
+    } else {
+      console.log(`   ✅ All ${ids.length} team members have unique IDs`);
+    }
+    
+    // Check for duplicate names (informational only)
+    const names = teamMembers.map(m => m.name).filter(Boolean);
+    const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index);
+    if (duplicateNames.length > 0) {
+      const uniqueDuplicateNames = [...new Set(duplicateNames)];
+      console.log(`   ℹ️  Found ${uniqueDuplicateNames.length} duplicate name(s): ${uniqueDuplicateNames.join(', ')}`);
+      console.log(`      (This is OK if they are different people with different IDs)`);
+    }
+    
     // Verify user account exists
     console.log(`\n🔍 Verifying user account for userId: ${userId}...`);
     const userAccountRef = db.collection('useraccount').doc(userId);
@@ -129,12 +163,32 @@ async function importTeamMembers() {
     const currentTeamMembers = currentData?.teamMembers || [];
     console.log(`   Current team members in Firestore: ${currentTeamMembers.length}`);
 
+    // Check for ID conflicts between JSON and existing data
+    const currentIds = new Set(currentTeamMembers.map(m => m.id).filter(Boolean));
+    const jsonIds = new Set(ids);
+    const conflictingIds = [...currentIds].filter(id => jsonIds.has(id));
+    
+    if (conflictingIds.length > 0) {
+      console.log(`\n⚠️  Warning: ${conflictingIds.length} team member ID(s) already exist in Firestore:`);
+      conflictingIds.forEach(id => {
+        const currentMember = currentTeamMembers.find(m => m.id === id);
+        const jsonMember = teamMembers.find(m => m.id === id);
+        console.log(`   - ID "${id}":`);
+        console.log(`     Current: ${currentMember?.name || 'Unnamed'} (${currentMember?.role || 'No role'})`);
+        console.log(`     JSON:    ${jsonMember?.name || 'Unnamed'} (${jsonMember?.role || 'No role'})`);
+      });
+      console.log(`\n   These will be REPLACED with the JSON data.`);
+    }
+
     // Show summary
     console.log(`\n📋 Import Summary:`);
     console.log(`   - User ID: ${userId}`);
     console.log(`   - Current team members: ${currentTeamMembers.length}`);
     console.log(`   - New team members: ${teamMembers.length}`);
     console.log(`   - Change: ${teamMembers.length - currentTeamMembers.length > 0 ? '+' : ''}${teamMembers.length - currentTeamMembers.length}`);
+    if (conflictingIds.length > 0) {
+      console.log(`   - IDs to be replaced: ${conflictingIds.length}`);
+    }
 
     // Confirm before proceeding
     console.log(`\n⚠️  This will REPLACE all existing team members in Firestore!`);
@@ -154,11 +208,41 @@ async function importTeamMembers() {
       process.exit(0);
     }
 
+    // Final safety check: Remove any duplicates that might have slipped through
+    console.log(`\n🔒 Final safety check: Removing any duplicate IDs...`);
+    const seenIds = new Set();
+    const deduplicatedTeamMembers = [];
+    let duplicatesRemoved = 0;
+    
+    for (const member of teamMembers) {
+      if (!member.id) {
+        console.warn(`   ⚠️  Skipping team member without ID: ${member.name || 'Unnamed'}`);
+        continue;
+      }
+      
+      if (seenIds.has(member.id)) {
+        console.warn(`   ⚠️  Removing duplicate ID "${member.id}": ${member.name || 'Unnamed'}`);
+        duplicatesRemoved++;
+        continue;
+      }
+      
+      seenIds.add(member.id);
+      deduplicatedTeamMembers.push(member);
+    }
+    
+    if (duplicatesRemoved > 0) {
+      console.log(`   ✅ Removed ${duplicatesRemoved} duplicate(s)`);
+    } else {
+      console.log(`   ✅ No duplicates found`);
+    }
+    
+    console.log(`   Final count: ${deduplicatedTeamMembers.length} unique team members`);
+
     // Update Firestore document
     console.log(`\n💾 Updating Firestore document...`);
     await userAccountRef.set(
       {
-        teamMembers: teamMembers,
+        teamMembers: deduplicatedTeamMembers,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
@@ -166,11 +250,17 @@ async function importTeamMembers() {
 
     console.log(`\n✅ Team members imported successfully!`);
     console.log(`\n📊 Final Summary:`);
-    console.log(`   - Total team members: ${teamMembers.length}`);
-    if (teamMembers.length > 0) {
-      console.log(`   - Members with photos: ${teamMembers.filter(m => m.pictureUrl && m.pictureUrl.trim()).length}`);
-      console.log(`   - Members with roles: ${teamMembers.filter(m => m.role).length}`);
-      console.log(`   - Unique roles: ${[...new Set(teamMembers.map(m => m.role).filter(Boolean))].join(', ')}`);
+    console.log(`   - Total team members imported: ${deduplicatedTeamMembers.length}`);
+    if (deduplicatedTeamMembers.length > 0) {
+      console.log(`   - Members with photos: ${deduplicatedTeamMembers.filter(m => m.pictureUrl && m.pictureUrl.trim()).length}`);
+      console.log(`   - Members with roles: ${deduplicatedTeamMembers.filter(m => m.role).length}`);
+      const uniqueRoles = [...new Set(deduplicatedTeamMembers.map(m => m.role).filter(Boolean))];
+      if (uniqueRoles.length > 0) {
+        console.log(`   - Unique roles: ${uniqueRoles.join(', ')}`);
+      }
+    }
+    if (duplicatesRemoved > 0) {
+      console.log(`   - Duplicates removed: ${duplicatesRemoved}`);
     }
     
   } catch (error) {

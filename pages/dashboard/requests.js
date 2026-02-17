@@ -5,32 +5,32 @@ import { PageHeader, EmptyState } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { HiPlus } from 'react-icons/hi';
 
-function ProjectsContent() {
+function RequestsContent() {
   return (
     <>
       <Head>
-        <title>Projects - GoManagr</title>
-        <meta name="description" content="Manage your projects" />
+        <title>Requests - GoManagr</title>
+        <meta name="description" content="Manage requests" />
       </Head>
 
       <div className="space-y-6">
         <PageHeader 
-          title="Projects" 
-          description="Manage and track your projects"
+          title="Requests" 
+          description="Manage requests from clients and team members"
           actions={
             <PrimaryButton className="gap-2">
               <HiPlus className="w-5 h-5" />
-              Add project
+              Create request
             </PrimaryButton>
           }
         />
 
         <EmptyState
-          type="projects"
+          type="requests"
           action={
             <PrimaryButton className="gap-2">
               <HiPlus className="w-5 h-5" />
-              Create your first project
+              Create your first request
             </PrimaryButton>
           }
         />
@@ -39,11 +39,11 @@ function ProjectsContent() {
   );
 }
 
-export default function ProjectsPage() {
+export default function RequestsPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <ProjectsContent />
+        <RequestsContent />
       </DashboardLayout>
     </ProtectedRoute>
   );

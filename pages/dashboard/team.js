@@ -1,13 +1,13 @@
 import Head from 'next/head';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, updateTeamMembers } from '@/services/userService';
+import { getUserAccount, updateTeamMembers, updateServices } from '@/services/userService';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
 import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
-import { PageHeader, TeamFilter, ConfirmationDialog } from '@/components/ui';
+import { PageHeader, TeamFilter, ConfirmationDialog, EmptyState } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -155,6 +155,57 @@ function TeamContent() {
       : [...team, updatedMember];
     setTeam(next);
     saveTeam(next);
+
+    // Update services to reflect team member assignments
+    if (data.selectedServiceIds !== undefined && userAccount?.services) {
+      const currentServices = [...(userAccount.services || [])];
+      const selectedServiceIds = Array.isArray(data.selectedServiceIds) ? data.selectedServiceIds : [];
+      
+      // Get previously assigned service IDs (for editing)
+      const previousServiceIds = isEdit && editingId
+        ? currentServices
+            .filter(service => 
+              service.assignedTeamMemberIds && 
+              Array.isArray(service.assignedTeamMemberIds) &&
+              service.assignedTeamMemberIds.includes(editingId)
+            )
+            .map(service => service.id)
+            .filter(Boolean)
+        : [];
+
+      // Update each service's assignedTeamMemberIds
+      const updatedServices = currentServices.map(service => {
+        const wasAssigned = previousServiceIds.includes(service.id);
+        const shouldBeAssigned = selectedServiceIds.includes(service.id);
+        
+        let assignedIds = [...(service.assignedTeamMemberIds || [])];
+        
+        if (shouldBeAssigned && !assignedIds.includes(memberId)) {
+          // Add member to this service
+          assignedIds.push(memberId);
+        } else if (!shouldBeAssigned && assignedIds.includes(memberId)) {
+          // Remove member from this service
+          assignedIds = assignedIds.filter(id => id !== memberId);
+        }
+        
+        return {
+          ...service,
+          assignedTeamMemberIds: assignedIds,
+        };
+      });
+
+      // Save updated services
+      if (currentUser?.uid) {
+        updateServices(currentUser.uid, updatedServices)
+          .then(() => {
+            setUserAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
+          })
+          .catch((err) => {
+            console.error('Failed to update services:', err);
+          });
+      }
+    }
+
     setDrawerOpen(false);
     setEditingMember(null);
   };
@@ -182,11 +233,24 @@ function TeamContent() {
         return false;
       }
 
-      // Service filter
+      // Service filter - check services assigned to this team member from userAccount.services
       if (filters.services.length > 0) {
-        const memberServices = member.services || [];
+        const userServices = userAccount?.services || [];
+        const memberServiceNames = userServices
+          .filter(service => 
+            service.assignedTeamMemberIds && 
+            Array.isArray(service.assignedTeamMemberIds) &&
+            service.assignedTeamMemberIds.includes(member.id)
+          )
+          .map(service => service.name)
+          .filter(Boolean);
+        
+        // Also check legacy member.services for backward compatibility
+        const legacyMemberServices = member.services || [];
+        const allMemberServices = [...new Set([...memberServiceNames, ...legacyMemberServices])];
+        
         const hasMatchingService = filters.services.some((service) =>
-          memberServices.includes(service)
+          allMemberServices.includes(service)
         );
         if (!hasMatchingService) {
           return false;
@@ -211,7 +275,7 @@ function TeamContent() {
 
       return true;
     });
-  }, [team, filters]);
+  }, [team, filters, userAccount?.services]);
 
   return (
     <>
@@ -252,6 +316,24 @@ function TeamContent() {
                 saving={saving}
                 locations={userAccount?.locations || []}
                 organizationCountry={userAccount?.organizationCountry || ''}
+                services={userAccount?.services || []}
+                teamMembers={team}
+                onServiceCreated={async (updatedServices) => {
+                  // Save the new service to Firebase
+                  if (currentUser?.uid) {
+                    try {
+                      console.log('Saving services to Firebase:', updatedServices);
+                      await updateServices(currentUser.uid, updatedServices);
+                      setUserAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
+                      console.log('Services saved successfully');
+                    } catch (error) {
+                      console.error('Error saving services:', error);
+                      throw error; // Re-throw to be caught by handleCreateService
+                    }
+                  } else {
+                    throw new Error('User not authenticated');
+                  }
+                }}
               />
             </Drawer>
 
@@ -273,29 +355,41 @@ function TeamContent() {
               onFiltersChange={setFilters}
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredTeam.length === 0 ? (
-                <div className="col-span-full text-center py-12">
+            {team.length === 0 ? (
+              <EmptyState
+                type="team"
+                action={
+                  <PrimaryButton type="button" onClick={openDrawerForAdd} className="gap-2">
+                    <HiPlus className="w-5 h-5" />
+                    Add your first team member
+                  </PrimaryButton>
+                }
+              />
+            ) : filteredTeam.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="flex flex-col items-center justify-center py-12 px-6">
                   <p className="text-gray-500 text-lg">No team members match the selected filters</p>
                   <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
                 </div>
-              ) : (
-                [...filteredTeam].sort((a, b) => {
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[...filteredTeam].sort((a, b) => {
                   const nameA = (a.name || '').toLowerCase();
                   const nameB = (b.name || '').toLowerCase();
                   return nameA.localeCompare(nameB);
                 }).map((member) => (
-                <PersonCard
-                  key={member.id}
-                  name={member.name}
-                  subtitle={member.role}
-                  src={member.pictureUrl}
-                  onClick={() => openDrawerForEdit(member)}
-                  onRemove={() => handleRemoveClick(member.id)}
-                />
-                ))
-              )}
-            </div>
+                  <PersonCard
+                    key={member.id}
+                    name={member.name}
+                    subtitle={member.role}
+                    src={member.pictureUrl}
+                    onClick={() => openDrawerForEdit(member)}
+                    onRemove={() => handleRemoveClick(member.id)}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

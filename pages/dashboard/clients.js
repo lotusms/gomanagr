@@ -6,7 +6,7 @@ import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
-import { PageHeader } from '@/components/ui';
+import { PageHeader, EmptyState } from '@/components/ui';
 import { HiPlus } from 'react-icons/hi';
 
 function generateId() {
@@ -144,16 +144,32 @@ function ClientsContent() {
               </form>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {clients.map((client) => (
-                <PersonCard
-                  key={client.id}
-                  name={client.name}
-                  subtitle={client.company}
-                  onRemove={() => handleRemove(client.id)}
-                />
-              ))}
-            </div>
+            {clients.length === 0 ? (
+              <EmptyState
+                type="clients"
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setShowAdd(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+                  >
+                    <HiPlus className="w-5 h-5" />
+                    Add your first client
+                  </button>
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {clients.map((client) => (
+                  <PersonCard
+                    key={client.id}
+                    name={client.name}
+                    subtitle={client.company}
+                    onRemove={() => handleRemove(client.id)}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

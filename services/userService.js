@@ -236,6 +236,29 @@ export async function updateClients(userId, clients) {
 }
 
 /**
+ * Update the user's services (synced with Services page).
+ * @param {string} userId - The Firebase Auth user ID
+ * @param {Array<{ id: string, name: string, description?: string, assignedTeamMemberIds: string[] }>} services
+ * @returns {Promise<void>}
+ */
+export async function updateServices(userId, services) {
+  try {
+    const userAccountRef = doc(db, 'useraccount', userId);
+    await setDoc(
+      userAccountRef,
+      {
+        services: Array.isArray(services) ? services : [],
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error updating services:', error);
+    throw new Error('Failed to save services: ' + error.message);
+  }
+}
+
+/**
  * Add or update an appointment
  * @param {string} userId - The Firebase Auth user ID
  * @param {Object} appointment - Appointment object to add/update

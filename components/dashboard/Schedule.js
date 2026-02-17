@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { HiChevronLeft, HiChevronRight, HiCalendar } from 'react-icons/hi';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
+import { formatTime, formatDate } from '@/utils/dateTimeFormatters';
 import Tooltip from '@/components/ui/Tooltip';
 
 function getWeekStart(d) {
@@ -78,6 +79,8 @@ export default function Schedule({
   businessHoursStart = '08:00',
   businessHoursEnd = '18:00',
   timeFormat = '24h',
+  dateFormat = 'MM/DD/YYYY',
+  timezone = 'UTC',
   appointments = [],
   onAppointmentClick,
 }) {
@@ -97,7 +100,7 @@ export default function Schedule({
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <span className="text-sm font-medium text-gray-700">
-            {weekDays[0].toLocaleDateString('en-US', { month: 'long' })} {weekDays[0].getFullYear()}
+            {weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: timezone })}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -154,21 +157,15 @@ export default function Schedule({
                       } ${isToday ? 'bg-primary-50/50' : ''}`}
                     >
                       <span className="block text-xs font-medium text-gray-500">
-                        {d.toLocaleDateString('en-US', { weekday: 'short' })}
+                        {d.toLocaleDateString('en-US', { weekday: 'short', timeZone: timezone })}
                       </span>
                       <span
                         className={`inline-flex items-center justify-center mt-1 w-8 h-8 rounded-full text-sm font-semibold ${
                           isToday ? 'bg-primary-500 text-white ring-2 ring-primary-200' : 'text-gray-700'
                         }`}
                       >
-                        {d.getDate()}
+                        {d.toLocaleDateString('en-US', { day: 'numeric', timeZone: timezone })}
                       </span>
-                      {isToday && (
-                        <div
-                          className="absolute bottom-0 top-0 left-1/2 w-0.5 bg-primary-500 -translate-x-1/2 pointer-events-none"
-                          aria-hidden
-                        />
-                      )}
                     </th>
                   );
                 })}
@@ -177,11 +174,14 @@ export default function Schedule({
             <tbody>
               {timeSlots.map((slot, rowIndex) => (
                 <tr key={slot}>
-                  <td className="w-14 min-w-0 p-1.5 text-xs text-gray-500 border-r border-b border-gray-100 bg-gray-50/50 align-top overflow-hidden">
+                  {/* Time slot column */}
+                  <td className="w-14 min-w-0 p-1.5 text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50 align-center overflow-hidden">
                     <Tooltip content={slot} placement="bottom">
-                    <span className="truncate block">{slot}</span>
-                  </Tooltip>
+                      <span className="truncate block">{slot}</span>
+                    </Tooltip>
                   </td>
+
+                  {/* Week days columns */}
                   {weekDays.map((d, colIndex) => {
                     const isToday = toDateKey(d) === todayKey;
                     const appointment = processedAppointments.find(
@@ -197,12 +197,15 @@ export default function Schedule({
                         <td
                           key={toDateKey(d)}
                           rowSpan={appointment.endSlot - appointment.startSlot}
-                          className={`relative border-b border-r border-gray-100 align-top p-1 min-w-0 overflow-hidden ${appointment.color} border rounded cursor-pointer hover:opacity-80 transition-opacity`}
+                          className={`relative align-top p-1 min-w-0 overflow-hidden ${appointment.color} border-2 border-primary-600/50 cursor-pointer hover:opacity-80 transition-opacity`}
                           onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                         >
-                          <Tooltip content={`${appointment.label}\n${appointment.start} - ${appointment.end}`}>
+                          <Tooltip content={`${appointment.label}\n${formatTime(appointment.start, timeFormat)} - ${formatTime(appointment.end, timeFormat)}`}>
                             <span className="text-xs font-medium truncate block">
                               {appointment.label}
+                            </span>
+                            <span className="text-xs text-gray-600 truncate block mt-0.5">
+                              {formatTime(appointment.start, timeFormat)} - {formatTime(appointment.end, timeFormat)}
                             </span>
                           </Tooltip>
                         </td>
@@ -211,7 +214,7 @@ export default function Schedule({
                     return (
                       <td
                         key={toDateKey(d)}
-                        className={`border-b border-r border-gray-100 align-top min-w-0 ${
+                        className={`border border-gray-100 align-top min-w-0 ${
                           isToday ? 'bg-primary-50/30' : ''
                         }`}
                       />

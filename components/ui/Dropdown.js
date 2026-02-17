@@ -1,5 +1,5 @@
-import * as Select from '@radix-ui/react-select';
-import { HiChevronDown, HiCheck } from 'react-icons/hi';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { HiChevronDown, HiCheck, HiSearch, HiX } from 'react-icons/hi';
 import {
   FORM_CONTROL_HEIGHT,
   FORM_CONTROL_BASE,
@@ -8,6 +8,23 @@ import {
   FORM_CONTROL_LIGHT_LABEL,
 } from './formControlStyles';
 
+/**
+ * Dropdown Component with optional search functionality
+ * 
+ * @param {Object} props
+ * @param {string} props.id - Unique ID for the dropdown
+ * @param {string} props.name - Name attribute
+ * @param {string} props.value - Selected value
+ * @param {Function} props.onChange - Callback when value changes (receives event object)
+ * @param {Array} props.options - Array of options (strings or {value, label, disabled})
+ * @param {string} props.placeholder - Placeholder text
+ * @param {boolean} props.disabled - Whether dropdown is disabled
+ * @param {string} props.className - Additional CSS classes
+ * @param {string} props.label - Label text
+ * @param {boolean} props.required - Whether field is required
+ * @param {boolean} props.searchable - Whether to show search field (default: true if options.length > 10)
+ * @param {number} props.searchThreshold - Show search when options exceed this count (default: 10)
+ */
 export default function Dropdown({
   id,
   name,
@@ -19,81 +36,230 @@ export default function Dropdown({
   className = '',
   label,
   required = false,
+  searchable,
+  searchThreshold = 10,
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const containerRef = useRef(null);
+  const popupRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // Determine if search should be shown
+  const showSearch = searchable !== undefined ? searchable : options.length > searchThreshold;
+
+  // Filter options based on search query
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    
+    const query = searchQuery.toLowerCase();
+    return options.filter((option) => {
+      const optionLabel = typeof option === 'object' ? option.label : option;
+      return String(optionLabel).toLowerCase().includes(query);
+    });
+  }, [options, searchQuery]);
+
+  // Normalize value for comparison
+  const selectValue = value === undefined || value === null || value === '' ? undefined : String(value);
+
+  // Find selected option label
+  const selectedOption = useMemo(() => {
+    if (!selectValue) return null;
+    return options.find((opt) => {
+      const optValue = typeof opt === 'object' ? opt.value : opt;
+      return String(optValue) === selectValue;
+    });
+  }, [options, selectValue]);
+
+  const selectedLabel = selectedOption
+    ? (typeof selectedOption === 'object' ? selectedOption.label : selectedOption)
+    : '';
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        popupRef.current &&
+        !popupRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+        setSearchQuery('');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      // Focus search input when popup opens
+      if (showSearch && searchInputRef.current) {
+        setTimeout(() => searchInputRef.current?.focus(), 0);
+      }
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen, showSearch]);
+
+  // Close on escape key
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        setSearchQuery('');
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
   const handleValueChange = (newValue) => {
     if (onChange) {
-      // Create a synthetic event-like object for consistency with standard input onChange
       const syntheticEvent = {
         target: {
           name: name || id,
-          value: newValue || undefined,
+          value: newValue === undefined || newValue === null || newValue === '' ? undefined : newValue,
         },
         currentTarget: {
           name: name || id,
-          value: newValue || undefined,
+          value: newValue === undefined || newValue === null || newValue === '' ? undefined : newValue,
         },
       };
       onChange(syntheticEvent);
     }
+    setIsOpen(false);
+    setSearchQuery('');
   };
 
-  // Radix Select treats undefined as uncontrolled, and any string (including empty) as controlled
-  // To prevent controlled/uncontrolled switching, we need to ensure value is always the same type
-  // If value is undefined or null, keep it undefined. If it's a string (even empty), keep it as a string
-  // Empty strings are valid controlled values for Radix Select
-  const selectValue = value === undefined || value === null ? undefined : value;
+  const handleTriggerClick = () => {
+    if (!disabled) {
+      setIsOpen(!isOpen);
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  };
 
   return (
-    <div className={className}>
+    <div className={className} ref={containerRef}>
       {label && (
         <label htmlFor={id} className={FORM_CONTROL_LIGHT_LABEL}>
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      <Select.Root value={selectValue} onValueChange={handleValueChange} disabled={disabled}>
-        <Select.Trigger
+      <div className="relative">
+        <button
+          type="button"
           id={id}
           name={name}
-          className={`inline-flex items-center justify-between ${FORM_CONTROL_HEIGHT} ${FORM_CONTROL_BASE} ${FORM_CONTROL_FOCUS} ${FORM_CONTROL_LIGHT_DEFAULT} hover:bg-gray-50`}
+          onClick={handleTriggerClick}
+          disabled={disabled}
+          className={`inline-flex items-center justify-between w-full ${FORM_CONTROL_HEIGHT} ${FORM_CONTROL_BASE} ${FORM_CONTROL_FOCUS} ${FORM_CONTROL_LIGHT_DEFAULT} hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${
+            isOpen ? 'ring-1 ring-ternary-500 border-ternary-500' : ''
+          }`}
           aria-label={label || placeholder}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
         >
-          <Select.Value placeholder={placeholder} />
-          <Select.Icon className="text-gray-500">
-            <HiChevronDown className="w-4 h-4" />
-          </Select.Icon>
-        </Select.Trigger>
+          <span className={selectedLabel ? 'text-gray-900' : 'text-gray-500'}>
+            {selectedLabel || placeholder}
+          </span>
+          <HiChevronDown
+            className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
 
-        <Select.Portal>
-          <Select.Content className="overflow-hidden bg-white rounded-lg shadow-lg border border-gray-200 z-[110] min-w-[var(--radix-select-trigger-width)]">
-            <Select.ScrollUpButton className="flex items-center justify-center h-6 bg-white text-gray-700 cursor-default">
-              <HiChevronDown className="w-4 h-4 rotate-180" />
-            </Select.ScrollUpButton>
-            <Select.Viewport className="p-1">
-              {options.map((option) => {
-                const optionValue = typeof option === 'object' ? option.value : option;
-                const optionLabel = typeof option === 'object' ? option.label : option;
-                
-                return (
-                  <Select.Item
-                    key={optionValue}
-                    value={optionValue}
-                    className="relative flex items-center justify-between px-3 py-2 text-sm leading-none text-gray-900 rounded-md select-none data-[highlighted]:bg-primary-50 data-[highlighted]:text-primary-700 data-[highlighted]:outline-none cursor-pointer"
-                  >
-                    <Select.ItemText>{optionLabel}</Select.ItemText>
-                    <Select.ItemIndicator className="inline-flex items-center justify-center ml-2">
-                      <HiCheck className="w-4 h-4 text-primary-600" />
-                    </Select.ItemIndicator>
-                  </Select.Item>
-                );
-              })}
-            </Select.Viewport>
-            <Select.ScrollDownButton className="flex items-center justify-center h-6 bg-white text-gray-700 cursor-default">
-              <HiChevronDown className="w-4 h-4" />
-            </Select.ScrollDownButton>
-          </Select.Content>
-        </Select.Portal>
-      </Select.Root>
+        {isOpen && !disabled && (
+          <div
+            ref={popupRef}
+            className="absolute z-50 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 min-w-full w-full"
+            style={{ top: '100%', left: 0 }}
+          >
+            {/* Search field */}
+            {showSearch && (
+              <div className="p-2 border-b border-gray-200">
+                <div className="relative">
+                  <HiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    placeholder="Search options..."
+                    className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label="Clear search"
+                    >
+                      <HiX className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Options list */}
+            <div className="max-h-[300px] overflow-y-auto">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                  {searchQuery ? 'No options found' : 'No options available'}
+                </div>
+              ) : (
+                filteredOptions.map((option, index) => {
+                  const optionValue = typeof option === 'object' ? option.value : option;
+                  const optionLabel = typeof option === 'object' ? option.label : option;
+                  const optionDisabled = typeof option === 'object' ? option.disabled : false;
+                  const isAssigned = typeof option === 'object' ? option.isAssigned : false;
+                  const itemValue = optionValue === undefined || optionValue === null ? '' : String(optionValue);
+                  const isSelected = selectValue === itemValue;
+
+                  return (
+                    <button
+                      key={itemValue || `opt-${index}`}
+                      type="button"
+                      onClick={() => !optionDisabled && handleValueChange(itemValue)}
+                      disabled={optionDisabled}
+                      className={`
+                        w-full text-left px-3 py-2 text-sm transition-colors
+                        ${optionDisabled
+                          ? isAssigned
+                            ? 'bg-primary-50 text-primary-700 cursor-not-allowed border-l-2 border-primary-500'
+                            : 'text-gray-300 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-primary-600 text-white font-semibold'
+                          : 'text-gray-700 hover:bg-gray-100'
+                        }
+                      `}
+                      role="option"
+                      aria-selected={isSelected}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{optionLabel}</span>
+                        {isSelected && (
+                          <HiCheck className="w-4 h-4 ml-2 flex-shrink-0" />
+                        )}
+                        {isAssigned && !isSelected && (
+                          <span className="text-xs text-primary-600 ml-2">(Assigned)</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

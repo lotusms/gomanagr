@@ -5,10 +5,12 @@ import {
   TextareaField,
   FileInput,
   ChipsArrayBuilder,
-  ChipsMulti,
   Dropdown,
   AddressAutocomplete,
+  Drawer,
 } from '@/components/ui';
+import AddServiceForm from '@/components/dashboard/AddServiceForm';
+import { HiPlus } from 'react-icons/hi';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
 import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
@@ -36,20 +38,6 @@ const GENDER_OPTIONS = [
   { value: 'prefer-not-to-say', label: 'Prefer not to say' },
 ];
 
-const PERSONALITY_TRAITS = [
-  'Friendly',
-  'Creative',
-  'Fun',
-  'Introvert',
-  'Talkative',
-  'Relaxed',
-  'Professional',
-  'Detail-oriented',
-  'Empathetic',
-  'Outgoing',
-  'Calm',
-  'Energetic',
-];
 
 /**
  * Full add/edit team member form. Uses Radix-based UI components.
@@ -59,8 +47,21 @@ const PERSONALITY_TRAITS = [
  * @param {Object} [initialMember] - When set, form is in edit mode (pre-filled, submit updates this member)
  * @param {Array<string>} [locations] - Array of location names. Location field only shows when locations.length > 1
  * @param {string} [organizationCountry] - Organization's HQ country code. This country will appear at the top of the country dropdown.
+ * @param {Array} [services] - Array of service objects from userAccount.services
+ * @param {Array} [teamMembers] - Array of team members for service assignment
+ * @param {Function} [onServiceCreated] - Callback when a new service is created (receives updated services array)
  */
-export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, initialMember = null, locations = [], organizationCountry = '' }) {
+export default function AddTeamMemberForm({ 
+  onSubmit, 
+  onCancel, 
+  saving = false, 
+  initialMember = null, 
+  locations = [], 
+  organizationCountry = '', 
+  services = [], 
+  teamMembers = [], 
+  onServiceCreated 
+}) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('');
@@ -68,7 +69,6 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
   // Initialize location as empty string to keep dropdown controlled from the start
   // Will be set to undefined or a valid location value by useEffect
   const [location, setLocation] = useState('');
-  const [services, setServices] = useState([]);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address1, setAddress1] = useState('');
@@ -80,10 +80,14 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('');
   const [personalityTraits, setPersonalityTraits] = useState([]);
+  const [selectedServiceIds, setSelectedServiceIds] = useState([]);
+  const [serviceToAdd, setServiceToAdd] = useState('');
   const [yearsExperience, setYearsExperience] = useState('');
   const [pictureFile, setPictureFile] = useState(null);
   const [picturePreviewUrl, setPicturePreviewUrl] = useState('');
   const [fileInputKey, setFileInputKey] = useState(0);
+  const [showServiceDrawer, setShowServiceDrawer] = useState(false);
+  const [savingService, setSavingService] = useState(false);
 
   const isEdit = !!initialMember?.id;
 
@@ -136,7 +140,6 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setTitle(initialMember.title ?? '');
     // Location will be set by the separate useEffect when locations are loaded
     // Don't set it here to avoid controlled/uncontrolled switch
-    setServices(Array.isArray(initialMember.services) ? initialMember.services : []);
     // Format phone if it exists, otherwise set empty
     const phoneValue = initialMember.phone ?? '';
     setPhone(phoneValue ? formatPhone(unformatPhone(phoneValue)) : '');
@@ -273,7 +276,6 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setRole('');
     setTitle('');
     setLocation('');
-    setServices([]);
     setPhone('');
     setEmail('');
     setAddress1('');
@@ -285,6 +287,8 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
     setBio('');
     setGender('');
     setPersonalityTraits([]);
+    setSelectedServiceIds([]);
+    setServiceToAdd('');
     setYearsExperience('');
     setPictureFile(null);
     setPicturePreviewUrl('');
@@ -332,7 +336,6 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
         role: role.trim() || undefined,
         title: title.trim() || undefined,
         location: locationToSave,
-        services: services.length ? services : undefined,
         phone: unformatPhone(phone.trim()) || undefined,
         email: email.trim() || undefined,
         address: [address1, address2, city, state, postalCode, country].some((s) => s?.trim())
@@ -349,6 +352,7 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
         gender: gender || undefined,
         personalityTraits: personalityTraits.length ? personalityTraits : undefined,
         yearsExperience: yearsExperience.trim() ? Number(yearsExperience) : undefined,
+        selectedServiceIds: selectedServiceIds,
       },
       pictureFile,
       initialMember?.id ?? null
@@ -370,8 +374,114 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
 
   const isValid = firstName.trim() || lastName.trim();
 
+  // Initialize selectedServiceIds when editing a team member
+  useEffect(() => {
+    if (initialMember?.id && services && services.length > 0) {
+      const assignedIds = services
+        .filter(service => 
+          service.assignedTeamMemberIds && 
+          Array.isArray(service.assignedTeamMemberIds) &&
+          service.assignedTeamMemberIds.includes(initialMember.id)
+        )
+        .map(service => service.id)
+        .filter(Boolean);
+      setSelectedServiceIds(assignedIds);
+    } else {
+      setSelectedServiceIds([]);
+    }
+  }, [initialMember?.id, services]);
+
+  // Get service options for dropdown (show all services, highlight assigned ones)
+  const serviceOptions = useMemo(() => {
+    if (!services || services.length === 0) return [];
+    return services.map(service => ({
+      value: service.id,
+      label: service.name || 'Unnamed Service',
+      disabled: selectedServiceIds.includes(service.id), // Disable already assigned services
+      isAssigned: selectedServiceIds.includes(service.id) // Flag for visual highlighting
+    }));
+  }, [services, selectedServiceIds]);
+
+  // Get assigned service names for display
+  const assignedServiceNames = useMemo(() => {
+    if (!services || services.length === 0 || selectedServiceIds.length === 0) return [];
+    return selectedServiceIds
+      .map(serviceId => {
+        const service = services.find(s => s.id === serviceId);
+        return service?.name;
+      })
+      .filter(Boolean);
+  }, [services, selectedServiceIds]);
+
+  // Handle adding a service from dropdown
+  const handleAddService = (serviceId) => {
+    if (serviceId && !selectedServiceIds.includes(serviceId)) {
+      setSelectedServiceIds([...selectedServiceIds, serviceId]);
+      setServiceToAdd(''); // Reset dropdown
+    }
+  };
+
+  // Handle removing a service from chips
+  const handleRemoveService = (serviceId) => {
+    setSelectedServiceIds(selectedServiceIds.filter(id => id !== serviceId));
+  };
+
+  // Handle creating a new service
+  const handleCreateService = async (serviceData) => {
+    if (!onServiceCreated) {
+      console.error('onServiceCreated callback not provided');
+      alert('Error: Service creation callback not available');
+      return;
+    }
+    
+    setSavingService(true);
+    try {
+      console.log('Creating service:', serviceData);
+      
+      // Ensure the current team member is assigned to the new service
+      const currentMemberId = initialMember?.id;
+      let assignedIds = [...(serviceData.assignedTeamMemberIds || [])];
+      
+      // If we're editing a team member, add them to the service assignment
+      if (currentMemberId && !assignedIds.includes(currentMemberId)) {
+        assignedIds.push(currentMemberId);
+      }
+      
+      // Update service data with assigned team members
+      const serviceWithAssignment = {
+        ...serviceData,
+        assignedTeamMemberIds: assignedIds,
+      };
+      
+      console.log('Service with assignment:', serviceWithAssignment);
+      
+      // Add the new service to the services array
+      const updatedServices = [...(services || []), serviceWithAssignment];
+      
+      console.log('Updated services array:', updatedServices);
+      
+      // Call the callback to update services in parent (saves to Firebase)
+      await onServiceCreated(updatedServices);
+      
+      console.log('Service created successfully');
+      
+      // Automatically select the newly created service
+      if (!selectedServiceIds.includes(serviceData.id)) {
+        setSelectedServiceIds([...selectedServiceIds, serviceData.id]);
+      }
+      
+      // Close the service drawer (team member drawer stays open)
+      setShowServiceDrawer(false);
+    } catch (error) {
+      console.error('Failed to create service:', error);
+      alert(`Failed to create service: ${error.message || 'Unknown error'}`);
+      setSavingService(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="p-6 overflow-y-auto">
+    <>
+      <form onSubmit={handleSubmit} className="p-6 overflow-y-auto">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
         {/* Left column */}
         <div className="space-y-6">
@@ -564,23 +674,74 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
             placeholder="Select..."
             disabled={saving}
           />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Services offered
+            </label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Dropdown
+                  id="service-select"
+                  label=""
+                  value={serviceToAdd}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    if (selectedId) {
+                      handleAddService(selectedId);
+                    }
+                  }}
+                  options={[{ value: '', label: 'Select a service to assign...' }, ...serviceOptions]}
+                  placeholder="Select a service to assign..."
+                  disabled={saving}
+                />
+              </div>
+              <PrimaryButton
+                type="button"
+                onClick={() => setShowServiceDrawer(true)}
+                disabled={saving}
+                className="flex-shrink-0 gap-1.5 h-9 px-4"
+              >
+                <HiPlus className="w-4 h-4" />
+                Add
+              </PrimaryButton>
+            </div>
+            {selectedServiceIds.length > 0 && (
+              <div className="mt-3">
+                <div className="flex flex-wrap gap-2">
+                  {selectedServiceIds.map((serviceId) => {
+                    const serviceName = (services || []).find(s => s.id === serviceId)?.name || serviceId;
+                    return (
+                      <span
+                        key={serviceId}
+                        className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-primary-50 text-primary-800 border border-primary-200 text-sm font-medium"
+                      >
+                        {serviceName}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveService(serviceId)}
+                          disabled={saving}
+                          className="p-0.5 rounded-full hover:bg-primary-200 text-primary-700 focus:outline-none"
+                          aria-label={`Remove ${serviceName}`}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
           <ChipsArrayBuilder
-            id="services"
-            label="Services offered"
-            value={services}
-            onChange={setServices}
-            placeholder="Add a service..."
-            disabled={saving}
-            addButtonLabel="Add"
-          />
-          <ChipsMulti
             id="personality"
             label="Personality traits"
-            options={PERSONALITY_TRAITS}
             value={personalityTraits}
-            onValueChange={setPersonalityTraits}
-            variant="light"
-            layout="flex"
+            onChange={setPersonalityTraits}
+            placeholder="Add a personality trait..."
+            disabled={saving}
+            addButtonLabel="Add"
           />
           <InputField
             id="years-experience"
@@ -604,6 +765,38 @@ export default function AddTeamMemberForm({ onSubmit, onCancel, saving = false, 
           {isEdit ? 'Save member' : 'Add member'}
         </PrimaryButton>
       </div>
-    </form>
+      </form>
+      
+      {/* Add Service Drawer - Render outside the form to avoid form submission issues */}
+    {showServiceDrawer && (
+      <Drawer
+        isOpen={showServiceDrawer}
+        onClose={(e) => {
+          e?.stopPropagation?.();
+          setShowServiceDrawer(false);
+        }}
+        title="Add Service"
+        width="75vw"
+      >
+        <AddServiceForm
+          teamMembers={teamMembers}
+          existingServices={services || []}
+          onSubmit={async (serviceData) => {
+            try {
+              await handleCreateService(serviceData);
+            } catch (error) {
+              console.error('Error in onSubmit handler:', error);
+              // Don't close drawer on error
+            }
+          }}
+          onCancel={() => {
+            setShowServiceDrawer(false);
+          }}
+          saving={savingService}
+          preselectedTeamMemberIds={initialMember?.id ? [initialMember.id] : []}
+        />
+      </Drawer>
+    )}
+    </>
   );
 }

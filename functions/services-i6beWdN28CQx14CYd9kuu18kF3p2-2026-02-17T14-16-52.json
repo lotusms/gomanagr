@@ -1,0 +1,272 @@
+{
+  "exportedAt": "2026-02-17T14:20:13.376Z",
+  "userId": "i6beWdN28CQx14CYd9kuu18kF3p2",
+  "documentId": "i6beWdN28CQx14CYd9kuu18kF3p2",
+  "count": 42,
+  "services": [
+    {
+      "name": "Haircut",
+      "assignedTeamMemberIds": [
+        "tm-1739123456810-v3e0hk4",
+        "tm-1739123456804-p7y4bem",
+        "tm-1739123456791-c4l1orz",
+        "tm-1739123456807-s0b7eh1",
+        "tm-1739123456806-r9a6dg0",
+        "tm-1739123456805-q8z5cfn",
+        "tm-1739123456803-o6x3adl",
+        "tm-1739123456809-u2d9gj3",
+        "tm-1739123456808-t1c8fi2",
+        "tm-1739123456813-y6h3kn7",
+        "tm-1739123456801-m4v1ybj"
+      ],
+      "description": "This service encompasses styling as well.",
+      "id": "svc-1771334434982-r5k1uak"
+    },
+    {
+      "id": "svc-1771338013375-pktrnay",
+      "name": "Massage Therapies",
+      "description": "This service encompasses a variety of massage techniques and treatments.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013376-d6gbrdy",
+      "name": "Hydrafacial",
+      "description": "Hydrafacial is a deep cleansing and exfoliation treatment that uses a combination of cleansing, exfoliation, and hydration to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013377-tcm1q3f",
+      "name": "Oxygen Facial",
+      "description": "Oxygen Facial is a treatment that uses oxygen to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013378-j9ut8cn",
+      "name": "Anti-Aging Customized Facial",
+      "description": "Anti-Aging Customized Facial is a treatment that uses anti-aging ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013379-y2webu3",
+      "name": "Sensitive Skin/Rosacea Customized Facial",
+      "description": "Sensitive Skin/Rosacea Customized Facial is a treatment that uses sensitive skin/rosacea ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013380-oip8foe",
+      "name": "Acne Customized Facial",
+      "description": "Acne Customized Facial is a treatment that uses acne ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013381-nduud0h",
+      "name": "Stem Factor Facial",
+      "description": "Stem Factor Facial is a treatment that uses stem cell ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013382-92rwpoj",
+      "name": "Alpha Beta Peel",
+      "description": "Alpha Beta Peel is a treatment that uses alpha and beta acids to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013383-qxxeua9",
+      "name": "SkinCeutical Smart TCH Peel",
+      "description": "SkinCeutical Smart TCH Peel is a treatment that uses SkinCeutical Smart TCH ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013384-k4cdojb",
+      "name": "SkinCeutical Peel",
+      "description": "SkinCeutical Peel is a treatment that uses SkinCeutical ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013385-2if4snq",
+      "name": "S'Mores Facial",
+      "description": "S'Mores Facial is a treatment that uses S'Mores ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013386-97ajmv1",
+      "name": "Chocolate Facial",
+      "description": "Chocolate Facial is a treatment that uses chocolate ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013387-eqpxta5",
+      "name": "Osmosis Watermelon Cooling Facial",
+      "description": "Osmosis Watermelon Cooling Facial is a treatment that uses osmosis watermelon cooling ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013388-cw3g9ri",
+      "name": "Circadia Berry Facial",
+      "description": "Circadia Berry Facial is a treatment that uses circadia berry ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013389-rt9v6lr",
+      "name": "Facial Infusion",
+      "description": "Facial Infusion is a treatment that uses facial infusion ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013390-h52mz2t",
+      "name": "Express Facial",
+      "description": "Express Facial is a treatment that uses express ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013391-zimkutq",
+      "name": "Men's Fitness Facial",
+      "description": "Men's Fitness Facial is a treatment that uses men's fitness ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013392-9vjpv7d",
+      "name": "Back Facial",
+      "description": "Back Facial is a treatment that uses back ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013393-cvisiou",
+      "name": "Teen Facial",
+      "description": "Teen Facial is a treatment that uses teen ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013394-w4dki5g",
+      "name": "Circadia Pumpkin Perfecting Facial",
+      "description": "Circadia Pumpkin Perfecting Facial is a treatment that uses circadia pumpkin perfecting ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013395-phr5ikg",
+      "name": "Circadia Radiance 4C Facial",
+      "description": "Circadia Radiance 4C Facial is a treatment that uses circadia radiance 4C ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013396-gh5gus8",
+      "name": "Sea Salt Body Polish",
+      "description": "Sea Salt Body Polish is a treatment that uses sea salt body polish ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013397-jtye2ho",
+      "name": "Sea Bronze Treatment",
+      "description": "Sea Bronze Treatment is a treatment that uses sea bronze treatment ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013398-4bezr8v",
+      "name": "Ear Candling",
+      "description": "Ear Candling is a treatment that uses ear candling ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013399-5l83h5y",
+      "name": "Tranquility Scrub",
+      "description": "Tranquility Scrub is a treatment that uses tranquility scrub ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013400-b22z6k8",
+      "name": "Detoxifying Body Wrap",
+      "description": "Detoxifying Body Wrap is a treatment that uses detoxifying body wrap ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013401-hm1tmip",
+      "name": "Manicure",
+      "description": "Manicure is a treatment that uses manicure ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013402-91kslh4",
+      "name": "Pedicure",
+      "description": "Pedicure is a treatment that uses pedicure ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013403-x3pkq2m",
+      "name": "Shellac",
+      "description": "Shellac is a treatment that uses shellac ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013404-sekl76p",
+      "name": "Nail Apres",
+      "description": "Nail Apres is a treatment that uses nail apres ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013405-4hdo538",
+      "name": "Waxing",
+      "description": "Waxing is a treatment that uses waxing ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013406-r879lv0",
+      "name": "Skincare Threading",
+      "description": "Skincare Threading is a treatment that uses skincare threading ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013407-ujetnao",
+      "name": "IPL Photofacial",
+      "description": "IPL Photofacial is a treatment that uses IPL photofacial ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013408-s1396vl",
+      "name": "Pixel Laser Resurfacing",
+      "description": "Pixel Laser Resurfacing is a treatment that uses pixel laser resurfacing ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013409-s5tfoyp",
+      "name": "Micro Dermabrasion Back Facial",
+      "description": "Micro Dermabrasion Back Facial is a treatment that uses micro dermabrasion back facial ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013410-l56rrpx",
+      "name": "Laser Hair Removal",
+      "description": "Laser Hair Removal is a treatment that uses laser hair removal ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013411-b7nj8up",
+      "name": "Makeup Services",
+      "description": "Makeup Services is a treatment that uses makeup services ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013412-4kcd0qe",
+      "name": "Microdermabrasion",
+      "description": "Microdermabrasion is a treatment that uses microdermabrasion ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013413-khewhwz",
+      "name": "Dermaplaning",
+      "description": "Dermaplaning is a treatment that uses dermaplaning ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013414-5v309kl",
+      "name": "Microneedling",
+      "description": "Microneedling is a treatment that uses microneedling ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    },
+    {
+      "id": "svc-1771338013415-eqqxz19",
+      "name": "Cryotherapy T-Shock",
+      "description": "Cryotherapy T-Shock is a treatment that uses cryotherapy T-Shock ingredients to improve the appearance of the skin.",
+      "assignedTeamMemberIds": []
+    }
+  ]
+}

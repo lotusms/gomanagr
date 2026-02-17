@@ -1,6 +1,8 @@
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
+import { formatDate } from '@/utils/dateTimeFormatters';
 import Tooltip from '@/components/ui/Tooltip';
 import Avatar from '@/components/ui/Avatar';
+import EmptyState from '@/components/ui/EmptyState';
 import { HiCalendar } from 'react-icons/hi';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 
@@ -47,6 +49,8 @@ export default function TodaysAppointments({
   businessHoursStart = '08:00',
   businessHoursEnd = '18:00',
   timeFormat = '24h',
+  dateFormat = 'MM/DD/YYYY',
+  timezone = 'UTC',
   staff: staffProp,
   appointments = [],
 }) {
@@ -54,20 +58,13 @@ export default function TodaysAppointments({
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
   
-  const today = new Date();
-  const todayKey = 
-    today.getFullYear() +
-    '-' +
-    String(today.getMonth() + 1).padStart(2, '0') +
-    '-' +
-    String(today.getDate()).padStart(2, '0');
+  // Get today's date in user's timezone
+  const todayInTimezone = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
+  const todayKey = todayInTimezone; // Already in YYYY-MM-DD format
   
   const appointmentsForToday = getAppointmentsForToday(appointments, todayKey, startHour);
-  const todayLabel = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
+  // Format today's date according to user's preference
+  const todayLabel = formatDate(todayInTimezone, dateFormat, timezone);
 
   // Filter staff to only show those with appointments today
   const staffWithAppointments = staff.filter((staffRow) => {
@@ -169,17 +166,7 @@ export default function TodaysAppointments({
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="flex flex-col items-center justify-center py-12 px-6">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <HiCalendar className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">No appointments today</h3>
-            <p className="text-sm text-gray-500 text-center max-w-sm">
-              You&apos;re all caught up! Enjoy your free day.
-            </p>
-          </div>
-        </div>
+        <EmptyState type="appointments" />
       )}
     </div>
   );

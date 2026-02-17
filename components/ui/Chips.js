@@ -99,6 +99,8 @@ export function ChipsSingle({
  * @param {string} props.className - Additional CSS classes
  * @param {string} props.layout - Layout type: 'grid' or 'flex' (default: 'flex')
  * @param {string} props.variant - 'dark' (default) or 'light' for light backgrounds
+ * @param {Object} props.optionData - Optional map of option values to objects with avatar, name, etc.
+ * @param {Function} props.renderOption - Optional custom render function for options
  */
 export function ChipsMulti({
   id,
@@ -111,6 +113,8 @@ export function ChipsMulti({
   className = '',
   layout = 'flex',
   variant = 'dark',
+  optionData = {},
+  renderOption,
 }) {
   const handleValueChange = (newValue) => {
     if (onValueChange) onValueChange(newValue);
@@ -144,22 +148,46 @@ export function ChipsMulti({
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
       >
-        {options.map((option) => (
-          <ToggleGroup.Item
-            key={option}
-            value={option}
-            className={`
-              ${chipPadding} font-medium text-left transition cursor-pointer
-              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-transparent
-              ${value?.includes(option) ? selectedClass : unselectedClass}
-            `}
-          >
-            <div className="flex items-center justify-between gap-1.5">
-              <span>{option}</span>
-              {value?.includes(option) && <span className={`${checkSize} flex-shrink-0`}>✓</span>}
-            </div>
-          </ToggleGroup.Item>
-        ))}
+        {options.map((option) => {
+          const data = optionData[option] || {};
+          const isSelected = value?.includes(option);
+          
+          return (
+            <ToggleGroup.Item
+              key={option}
+              value={option}
+              className={`
+                ${chipPadding} font-medium text-left transition cursor-pointer flex items-center gap-2
+                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-transparent
+                ${isSelected ? selectedClass : unselectedClass}
+              `}
+            >
+              {renderOption ? (
+                renderOption(option, isSelected, data)
+              ) : (
+                <div className="flex items-center justify-between gap-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {data.avatar && (
+                      <div className="flex-shrink-0">
+                        {typeof data.avatar === 'string' ? (
+                          <img 
+                            src={data.avatar} 
+                            alt="" 
+                            className="w-5 h-5 rounded-full object-cover"
+                          />
+                        ) : (
+                          data.avatar
+                        )}
+                      </div>
+                    )}
+                    <span className="truncate">{option}</span>
+                  </div>
+                  {isSelected && <span className={`${checkSize} flex-shrink-0`}>✓</span>}
+                </div>
+              )}
+            </ToggleGroup.Item>
+          );
+        })}
       </ToggleGroup.Root>
       {error && (
         <p id={`${id}-error`} className={errorClass} role="alert">

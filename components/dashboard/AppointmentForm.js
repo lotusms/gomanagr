@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import InputField from '@/components/ui/InputField';
+import DateField from '@/components/ui/DateField';
+import TimeField from '@/components/ui/TimeField';
 import Dropdown from '@/components/ui/Dropdown';
+import { ChipsMulti } from '@/components/ui/Chips';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 
@@ -11,8 +14,12 @@ import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeU
  * @param {string} props.businessHoursStart - Business hours start (e.g., '08:00')
  * @param {string} props.businessHoursEnd - Business hours end (e.g., '18:00')
  * @param {string} props.timeFormat - '12h' or '24h'
+ * @param {string} props.timezone - User's timezone (e.g., 'America/New_York')
+ * @param {string} props.dateFormat - User's date format preference (e.g., 'MM/DD/YYYY')
  * @param {Object} props.initialAppointment - Existing appointment to edit (optional)
  * @param {Date} props.selectedDate - Pre-selected date (optional)
+ * @param {Array} props.appointments - Array of existing appointments (optional)
+ * @param {Array} props.services - Array of services (optional)
  * @param {Function} props.onSubmit - Callback when form is submitted
  * @param {Function} props.onCancel - Callback when form is cancelled
  * @param {Function} props.onDelete - Callback when delete is requested (only shown when editing)
@@ -23,10 +30,15 @@ export default function AppointmentForm({
   businessHoursStart = '08:00',
   businessHoursEnd = '18:00',
   timeFormat = '24h',
+  timezone = 'UTC',
+  dateFormat = 'MM/DD/YYYY',
   initialAppointment = null,
   selectedDate = null,
+  appointments = [],
+  services = [],
   onSubmit,
   onCancel,
+  onDelete,
   saving = false,
 }) {
   const startHour = parseHour(businessHoursStart);
@@ -38,43 +50,259 @@ export default function AppointmentForm({
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [selectedServices, setSelectedServices] = useState([]);
   const [label, setLabel] = useState('');
   const [errors, setErrors] = useState({});
 
-  // Initialize form with initial appointment or defaults
-  useEffect(() => {
-    if (initialAppointment) {
-      setStaffId(initialAppointment.staffId || '');
-      setDate(initialAppointment.date || '');
-      setStartTime(initialAppointment.start || '');
-      setEndTime(initialAppointment.end || '');
-      setLabel(initialAppointment.label || '');
-    } else {
-      // Default to today's date if selectedDate is provided, otherwise empty
-      const defaultDate = selectedDate
-        ? selectedDate.toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
-      setDate(defaultDate);
-      setStaffId('');
-      setStartTime('');
-      setEndTime('');
-      setLabel('');
-    }
-    setErrors({});
-  }, [initialAppointment, selectedDate]);
+  // Get current date and time in user's timezone
+  const getCurrentDateTimeInTimezone = useMemo(() => {
+    return () => {
+      const now = new Date();
+      // Format date and time in user's timezone
+      const dateStr = now.toLocaleDateString('en-CA', { timeZone: timezone }); // en-CA gives YYYY-MM-DD
+      const timeStr = now.toLocaleTimeString('en-US', { 
+        timeZone: timezone,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      return { date: dateStr, time: timeStr };
+    };
+  }, [timezone]);
 
-  // Generate time slot options
+  // Get today's date in YYYY-MM-DD format (in user's timezone)
+  const todayDateString = useMemo(() => {
+    return getCurrentDateTimeInTimezone().date;
+  }, [getCurrentDateTimeInTimezone]);
+
+  // Check if a time slot is in the past
+  const isTimeSlotInPast = useMemo(() => {
+    return (timeSlot) => {
+      // Only check if date is today
+      if (!date || date !== todayDateString) return false;
+
+      // Get current time in user's timezone
+      const { time: currentTimeStr } = getCurrentDateTimeInTimezone();
+      const [currentHours, currentMinutes] = currentTimeStr.split(':').map(Number);
+
+      // Parse time slot to compare with current time
+      // Handle both 12h and 24h formats
+      let slotHours, slotMinutes;
+      if (timeFormat === '12h') {
+        // Parse 12h format (e.g., "10:30 AM" or "6:00 PM")
+        const match = timeSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match) {
+          slotHours = parseInt(match[1], 10);
+          slotMinutes = parseInt(match[2], 10);
+          if (match[3].toUpperCase() === 'PM' && slotHours !== 12) {
+            slotHours += 12;
+          } else if (match[3].toUpperCase() === 'AM' && slotHours === 12) {
+            slotHours = 0;
+          }
+        } else {
+          return false; // Invalid format
+        }
+      } else {
+        // Parse 24h format (e.g., "10:30" or "18:00")
+        [slotHours, slotMinutes] = timeSlot.split(':').map(Number);
+      }
+
+      // Convert to minutes since midnight for easier comparison
+      const slotMinutesSinceMidnight = slotHours * 60 + slotMinutes;
+      const currentMinutesSinceMidnight = currentHours * 60 + currentMinutes;
+
+      // Time slot is in the past if it's before current time
+      return slotMinutesSinceMidnight < currentMinutesSinceMidnight;
+    };
+  }, [date, todayDateString, getCurrentDateTimeInTimezone, timeFormat]);
+
+  // Check if a time slot conflicts with existing appointments for the selected staff member
+  const isTimeSlotConflicting = useMemo(() => {
+    return (timeSlot) => {
+      // Only check conflicts if staff member and date are selected
+      if (!staffId || !date) return false;
+
+      // Find existing appointments for the selected staff member on the selected date
+      // Exclude the current appointment if editing
+      const conflictingAppointments = appointments.filter((apt) => {
+        // Skip if this is the appointment we're editing
+        if (initialAppointment && apt.id === initialAppointment.id) return false;
+        
+        // Check if appointment is for the same staff member
+        if (String(apt.staffId) !== String(staffId)) return false;
+        
+        // Check if appointment is on the same date
+        let appointmentDateKey;
+        if (typeof apt.date === 'string') {
+          appointmentDateKey = apt.date;
+        } else {
+          const aptDate = new Date(apt.date);
+          appointmentDateKey = aptDate.toISOString().split('T')[0];
+        }
+        
+        return appointmentDateKey === date;
+      });
+
+      // Check if the time slot falls within any conflicting appointment's time range
+      return conflictingAppointments.some((apt) => {
+        const slotIndex = parseTimeToSlotIndex(timeSlot, startHour);
+        const aptStartSlot = parseTimeToSlotIndex(apt.start, startHour);
+        const aptEndSlot = parseTimeToSlotIndex(apt.end, startHour);
+        
+        // Time slot conflicts if it falls within the appointment's time range
+        // (start is inclusive, end is exclusive)
+        return slotIndex >= aptStartSlot && slotIndex < aptEndSlot;
+      });
+    };
+  }, [staffId, date, appointments, initialAppointment, startHour]);
+
+  // Generate time slot options with disabled state for conflicting slots and past times
   const timeSlotOptions = useMemo(() => {
-    return timeSlots.map((slot) => ({ value: slot, label: slot }));
-  }, [timeSlots]);
+    return timeSlots.map((slot) => ({
+      value: slot,
+      label: slot,
+      disabled: isTimeSlotConflicting(slot) || isTimeSlotInPast(slot),
+    }));
+  }, [timeSlots, isTimeSlotConflicting, isTimeSlotInPast]);
 
-  // Generate team member options
+  // Generate team member options (must be before useEffect that uses them)
   const teamMemberOptions = useMemo(() => {
     return teamMembers.map((member) => ({
       value: member.id,
       label: member.name || 'Unnamed',
     }));
   }, [teamMembers]);
+
+  // Filter services by selected team member
+  const availableServices = useMemo(() => {
+    if (!staffId) return [];
+    return services.filter((service) => {
+      const assignedIds = service.assignedTeamMemberIds || [];
+      return assignedIds.includes(staffId);
+    });
+  }, [services, staffId]);
+
+  // Service names for chips (only services assigned to selected team member)
+  const serviceNames = useMemo(() => {
+    return availableServices.map((service) => service.name);
+  }, [availableServices]);
+
+  // Initialize form: set date and label from initial appointment; dropdowns set in separate effect
+  useEffect(() => {
+    if (initialAppointment) {
+      setDate(initialAppointment.date || '');
+      setLabel(initialAppointment.label || '');
+      setSelectedServices(initialAppointment.services || []);
+      // staffId, startTime, endTime are set by the effect below so values match dropdown options
+    } else {
+      // Use selectedDate if provided, otherwise default to today
+      // Ensure we never set a past date (using user's timezone)
+      let defaultDate = selectedDate
+        ? selectedDate.toISOString().split('T')[0]
+        : todayDateString;
+      
+      // If selectedDate is in the past (in user's timezone), use today instead
+      const currentDateTime = getCurrentDateTimeInTimezone();
+      if (defaultDate < currentDateTime.date) {
+        defaultDate = todayDateString;
+      }
+      
+      setDate(defaultDate);
+      setStaffId('');
+      setStartTime('');
+      setEndTime('');
+      setSelectedServices([]);
+      setLabel('');
+    }
+    setErrors({});
+  }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone]);
+
+  // Clear selected services when team member changes (if not editing)
+  useEffect(() => {
+    if (!initialAppointment && staffId) {
+      // Filter services to only those assigned to the selected team member
+      const validServices = selectedServices.filter((serviceName) => {
+        const service = services.find((s) => s.name === serviceName);
+        return service?.assignedTeamMemberIds?.includes(staffId);
+      });
+      if (validServices.length !== selectedServices.length) {
+        setSelectedServices(validServices);
+      }
+    }
+  }, [staffId, services, initialAppointment]);
+
+  // Clear startTime if it becomes disabled when staffId or date changes
+  // Also clear if date becomes past or startTime becomes past
+  useEffect(() => {
+    if (!initialAppointment) {
+      // Clear if date is in the past (using user's timezone)
+      if (date) {
+        const currentDateTime = getCurrentDateTimeInTimezone();
+        if (date < currentDateTime.date) {
+          setDate(todayDateString);
+          setStartTime('');
+          setEndTime('');
+          return;
+        }
+      }
+
+      // Clear startTime if it becomes disabled
+      if (startTime) {
+        const selectedSlot = timeSlotOptions.find((opt) => opt.value === startTime);
+        if (selectedSlot && selectedSlot.disabled) {
+          setStartTime('');
+          setEndTime(''); // Also clear endTime since it depends on startTime
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffId, date, timeSlotOptions, todayDateString, getCurrentDateTimeInTimezone]);
+
+  // Separate effect to set dropdown values when editing (same pattern as location in AddTeamMemberForm)
+  // Only set values that exist in options so the dropdowns show the selection
+  // Only runs when initialAppointment.id changes (switching appointments) or when options become available
+  useEffect(() => {
+    if (!initialAppointment) {
+      setStaffId('');
+      setStartTime('');
+      setEndTime('');
+      return;
+    }
+
+    // Only initialize if options are available
+    if (teamMemberOptions.length === 0 || timeSlotOptions.length === 0) {
+      return;
+    }
+
+    const staffOpt = teamMemberOptions.find(
+      (opt) => String(opt.value) === String(initialAppointment.staffId)
+    );
+    if (staffOpt) {
+      setStaffId(String(staffOpt.value));
+    } else {
+      setStaffId('');
+    }
+
+    const startOpt = timeSlotOptions.find(
+      (opt) => String(opt.value) === String(initialAppointment.start) && !opt.disabled
+    );
+    if (startOpt) {
+      setStartTime(String(startOpt.value));
+    } else {
+      setStartTime('');
+    }
+
+    const endOpt = timeSlotOptions.find(
+      (opt) => String(opt.value) === String(initialAppointment.end)
+    );
+    if (endOpt) {
+      setEndTime(String(endOpt.value));
+    } else {
+      setEndTime('');
+    }
+    // Only depend on initialAppointment.id to avoid overwriting user changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAppointment?.id]);
 
   // Validate form
   const validate = () => {
@@ -86,10 +314,46 @@ export default function AppointmentForm({
 
     if (!date) {
       newErrors.date = 'Please select a date';
+    } else {
+      // Check if date is in the past (using user's timezone)
+      const currentDateTime = getCurrentDateTimeInTimezone();
+      const todayInTimezone = currentDateTime.date;
+      
+      if (date < todayInTimezone) {
+        newErrors.date = 'Cannot schedule appointments in the past';
+      }
     }
 
     if (!startTime) {
       newErrors.startTime = 'Please select a start time';
+    } else if (date === todayDateString) {
+      // Check if start time is in the past (only if date is today, using user's timezone)
+      const currentDateTime = getCurrentDateTimeInTimezone();
+      const [currentHours, currentMinutes] = currentDateTime.time.split(':').map(Number);
+      
+      // Parse start time (handle both 12h and 24h formats)
+      let startHours, startMinutes;
+      if (timeFormat === '12h') {
+        const match = startTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match) {
+          startHours = parseInt(match[1], 10);
+          startMinutes = parseInt(match[2], 10);
+          if (match[3].toUpperCase() === 'PM' && startHours !== 12) {
+            startHours += 12;
+          } else if (match[3].toUpperCase() === 'AM' && startHours === 12) {
+            startHours = 0;
+          }
+        }
+      } else {
+        [startHours, startMinutes] = startTime.split(':').map(Number);
+      }
+      
+      const startMinutesSinceMidnight = startHours * 60 + startMinutes;
+      const currentMinutesSinceMidnight = currentHours * 60 + currentMinutes;
+      
+      if (startMinutesSinceMidnight < currentMinutesSinceMidnight) {
+        newErrors.startTime = 'Cannot schedule appointments in the past';
+      }
     }
 
     if (!endTime) {
@@ -124,6 +388,7 @@ export default function AppointmentForm({
       date,
       start: startTime,
       end: endTime,
+      services: selectedServices,
       label: label.trim(),
       createdAt: initialAppointment?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -134,64 +399,71 @@ export default function AppointmentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6">
-      <div>
-        <Dropdown
-          id="staffId"
-          label="Team Member"
-          value={staffId}
-          onChange={(e) => {
-            setStaffId(e.target.value);
-            setErrors((prev) => ({ ...prev, staffId: '' }));
-          }}
-          options={teamMemberOptions}
-          placeholder="Select team member..."
-          required
-          error={errors.staffId}
-        />
-        {errors.staffId && <p className="mt-1 text-sm text-red-600">{errors.staffId}</p>}
-      </div>
-
-      <div>
-        <InputField
-          id="date"
-          type="date"
-          label="Date"
-          value={date}
-          onChange={(e) => {
-            setDate(e.target.value);
-            setErrors((prev) => ({ ...prev, date: '' }));
-          }}
-          required
-          error={errors.date}
-          variant="light"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <Dropdown
+            key={`staffId-${staffId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
+            id="staffId"
+            label="Team Member"
+            value={staffId}
+            onChange={(e) => {
+              setStaffId(e.target.value ?? '');
+              setErrors((prev) => ({ ...prev, staffId: '' }));
+            }}
+            options={teamMemberOptions}
+            placeholder="Select team member..."
+            required
+            error={errors.staffId}
+          />
+          {errors.staffId && <p className="mt-1 text-sm text-red-600">{errors.staffId}</p>}
+        </div>
+
+        <div>
+          <DateField
+            id="date"
+            label="Date"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setErrors((prev) => ({ ...prev, date: '' }));
+            }}
+            required
+            error={errors.date}
+            variant="light"
+            min={todayDateString}
+            timezone={timezone}
+            dateFormat={dateFormat}
+          />
+        </div>
+        <div>
+          <TimeField
+            key={`startTime-${startTime || 'empty'}-${initialAppointment?.id ?? 'new'}`}
             id="startTime"
             label="Start Time"
             value={startTime}
             onChange={(e) => {
-              setStartTime(e.target.value);
+              setStartTime(e.target.value ?? '');
               setErrors((prev) => ({ ...prev, startTime: '', endTime: '' }));
             }}
             options={timeSlotOptions}
             placeholder="Select start time..."
             required
             error={errors.startTime}
+            variant="light"
+            businessHoursStart={businessHoursStart}
+            businessHoursEnd={businessHoursEnd}
+            timeFormat={timeFormat}
           />
-          {errors.startTime && <p className="mt-1 text-sm text-red-600">{errors.startTime}</p>}
         </div>
 
         <div>
-          <Dropdown
+          <TimeField
+            key={`endTime-${endTime || 'empty'}-${initialAppointment?.id ?? 'new'}`}
             id="endTime"
             label="End Time"
             value={endTime}
             onChange={(e) => {
-              setEndTime(e.target.value);
+              setEndTime(e.target.value ?? '');
               setErrors((prev) => ({ ...prev, endTime: '' }));
             }}
             options={timeSlotOptions.filter((slot) => {
@@ -203,10 +475,31 @@ export default function AppointmentForm({
             placeholder="Select end time..."
             required
             error={errors.endTime}
+            variant="light"
+            businessHoursStart={businessHoursStart}
+            businessHoursEnd={businessHoursEnd}
+            timeFormat={timeFormat}
           />
-          {errors.endTime && <p className="mt-1 text-sm text-red-600">{errors.endTime}</p>}
         </div>
       </div>
+
+      {staffId && serviceNames.length > 0 && (
+        <div>
+          <ChipsMulti
+            id="services"
+            label="Services"
+            options={serviceNames}
+            value={selectedServices}
+            onValueChange={(newServices) => {
+              setSelectedServices(newServices);
+              setErrors((prev) => ({ ...prev, services: '' }));
+            }}
+            variant="light"
+            layout="flex"
+          />
+          {errors.services && <p className="mt-1 text-sm text-red-600">{errors.services}</p>}
+        </div>
+      )}
 
       <div>
         <InputField

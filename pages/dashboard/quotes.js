@@ -5,32 +5,32 @@ import { PageHeader, EmptyState } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { HiPlus } from 'react-icons/hi';
 
-function ProjectsContent() {
+function QuotesContent() {
   return (
     <>
       <Head>
-        <title>Projects - GoManagr</title>
-        <meta name="description" content="Manage your projects" />
+        <title>Quotes - GoManagr</title>
+        <meta name="description" content="Manage quotes" />
       </Head>
 
       <div className="space-y-6">
         <PageHeader 
-          title="Projects" 
-          description="Manage and track your projects"
+          title="Quotes" 
+          description="Create and manage quotes for your clients"
           actions={
             <PrimaryButton className="gap-2">
               <HiPlus className="w-5 h-5" />
-              Add project
+              Create quote
             </PrimaryButton>
           }
         />
 
         <EmptyState
-          type="projects"
+          type="quotes"
           action={
             <PrimaryButton className="gap-2">
               <HiPlus className="w-5 h-5" />
-              Create your first project
+              Create your first quote
             </PrimaryButton>
           }
         />
@@ -39,11 +39,11 @@ function ProjectsContent() {
   );
 }
 
-export default function ProjectsPage() {
+export default function QuotesPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <ProjectsContent />
+        <QuotesContent />
       </DashboardLayout>
     </ProtectedRoute>
   );

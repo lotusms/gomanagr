@@ -16,6 +16,7 @@ import {
   HiClock,
   HiChatAlt2,
   HiViewGrid,
+  HiClipboardList,
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 
@@ -26,6 +27,7 @@ const NAVIGATION = [
   { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
   { divider: true },
   { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
+  { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
   { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
   { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
   { name: 'Jobs', href: '/dashboard/jobs', icon: HiBriefcase },

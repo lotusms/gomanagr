@@ -37,7 +37,18 @@ function ScheduleContent() {
   };
 
   const handleAppointmentClick = (appointment) => {
-    setEditingAppointment(appointment);
+    // Extract only the appointment data needed for the form (remove processed properties)
+    const appointmentData = {
+      id: appointment.id,
+      staffId: appointment.staffId,
+      date: appointment.date,
+      start: appointment.start,
+      end: appointment.end,
+      label: appointment.label,
+      createdAt: appointment.createdAt,
+      updatedAt: appointment.updatedAt,
+    };
+    setEditingAppointment(appointmentData);
     setShowDrawer(true);
   };
 
@@ -99,7 +110,7 @@ function ScheduleContent() {
       <div className="space-y-6">
         <PageHeader
           title="Schedule"
-          description="Manage your Schedule."
+          description="Refer to the settings page to mamage your schedule settings (date format, time format, timezone, etc.)"
           actions={
             <>
               <PrimaryButton type="button" onClick={handleAddClick} className="gap-2">
@@ -114,6 +125,8 @@ function ScheduleContent() {
           businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
           businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
           timeFormat={userAccount?.timeFormat ?? '24h'}
+          dateFormat={userAccount?.dateFormat ?? 'MM/DD/YYYY'}
+          timezone={userAccount?.timezone ?? 'UTC'}
           appointments={appointments}
           onAppointmentClick={handleAppointmentClick}
         />
@@ -130,7 +143,11 @@ function ScheduleContent() {
             businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
             businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
             timeFormat={userAccount?.timeFormat ?? '24h'}
+            timezone={userAccount?.timezone ?? 'UTC'}
+            dateFormat={userAccount?.dateFormat ?? 'MM/DD/YYYY'}
             initialAppointment={editingAppointment}
+            appointments={appointments}
+            services={userAccount?.services || []}
             onSubmit={handleSaveAppointment}
             onCancel={() => {
               setShowDrawer(false);

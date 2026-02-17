@@ -1,4 +1,4 @@
-import { HiX, HiUser } from 'react-icons/hi';
+import { HiTrash, HiUser } from 'react-icons/hi';
 
 /**
  * Card with background image (or soft primary color if no image), name, and optional subtitle.
@@ -75,7 +75,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove }) {
           `}
           aria-label="Remove"
         >
-          <HiX className="w-5 h-5" />
+          <HiTrash className="w-5 h-5" />
         </button>
       )}
     </div>

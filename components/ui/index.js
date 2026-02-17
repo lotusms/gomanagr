@@ -9,6 +9,7 @@ export { default as Dropdown } from './Dropdown';
 export { default as EmptyState } from './EmptyState';
 export { default as FileInput } from './FileInput';
 export { default as PageHeader } from './PageHeader';
+export { default as Paginator } from './Paginator';
 export { default as PasswordField } from './PasswordField';
 export { default as InputField } from './InputField';
 export { default as TextareaField } from './TextareaField';

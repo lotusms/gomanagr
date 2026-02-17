@@ -1,10 +1,10 @@
 import Head from 'next/head';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateServices, updateTeamMembers } from '@/services/userService';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { PageHeader, Drawer, EmptyState, ConfirmationDialog } from '@/components/ui';
+import { PageHeader, Drawer, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
 import AddServiceForm from '@/components/dashboard/AddServiceForm';
 import { HiPlus, HiX, HiPencil, HiTrash, HiClipboardList, HiUserGroup } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
@@ -19,8 +19,31 @@ function ServicesContent() {
   const [editingService, setEditingService] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   const teamMembers = userAccount?.teamMembers || [];
+
+  // Calculate paginated services
+  const paginatedServices = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return services.slice(startIndex, endIndex);
+  }, [services, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when services change (e.g., after deletion)
+  useEffect(() => {
+    const totalPages = Math.ceil(services.length / itemsPerPage);
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [services.length, itemsPerPage, currentPage]);
+
+  // Handle items per page change - reset to page 1
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -209,7 +232,7 @@ function ServicesContent() {
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {services.map((service) => {
+              {paginatedServices.map((service) => {
                 const assignedMembers = service.assignedTeamMemberIds
                   ?.map((id) => {
                     const member = teamMembers.find((m) => m.id === id);
@@ -305,6 +328,23 @@ function ServicesContent() {
                 );
               })}
             </div>
+
+            {/* Pagination */}
+            {services.length > 0 && (
+              <Paginator
+                currentPage={currentPage}
+                totalItems={services.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                itemsPerPageOptions={[6, 12, 24, 48, 96]}
+                showItemsPerPage={true}
+                maxVisiblePages={5}
+                showInfo={false}
+                showFirstLast={false}
+                className="mt-6"
+              />
+            )}
 
             {services.length === 0 && (
               <EmptyState

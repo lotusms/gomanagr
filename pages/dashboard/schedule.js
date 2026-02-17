@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, getUserAccountFromServer, saveAppointment, deleteAppointment } from '@/services/userService';
+import { getUserAccount, getUserAccountFromServer, saveAppointment, deleteAppointment, updateClients } from '@/services/userService';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import Schedule from '@/components/dashboard/Schedule';
@@ -10,7 +10,7 @@ import { PageHeader, ConfirmationDialog } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { HiPlus } from 'react-icons/hi';
 import Drawer from '@/components/ui/Drawer';
-import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
+import { DEFAULT_TEAM_MEMBERS, DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 
 function ScheduleContent() {
   const { currentUser } = useAuth();
@@ -23,6 +23,9 @@ function ScheduleContent() {
 
   const appointments = userAccount?.appointments || [];
   const teamMembers = userAccount?.teamMembers || DEFAULT_TEAM_MEMBERS;
+  const clients = userAccount?.clients && userAccount.clients.length > 0
+    ? userAccount.clients
+    : DEFAULT_CLIENTS;
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -45,6 +48,8 @@ function ScheduleContent() {
       start: appointment.start,
       end: appointment.end,
       label: appointment.label,
+      clientId: appointment.clientId,
+      services: appointment.services,
       createdAt: appointment.createdAt,
       updatedAt: appointment.updatedAt,
     };
@@ -100,6 +105,34 @@ function ScheduleContent() {
     setAppointmentToDelete(null);
   };
 
+  const handleClientAdd = async (clientData) => {
+    if (!currentUser?.uid) return null;
+    
+    try {
+      // Generate new client ID
+      const newClientId = `cl-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const newClient = {
+        id: newClientId,
+        name: clientData.name,
+        company: clientData.company,
+      };
+      
+      // Add to existing clients
+      const updatedClients = [...clients, newClient];
+      
+      // Save to Firebase
+      await updateClients(currentUser.uid, updatedClients);
+      
+      // Update local state
+      setUserAccount((prev) => (prev ? { ...prev, clients: updatedClients } : null));
+      
+      return newClientId;
+    } catch (error) {
+      console.error('Failed to add client:', error);
+      throw error;
+    }
+  };
+
   return (
     <>
       <Head>
@@ -128,6 +161,8 @@ function ScheduleContent() {
           dateFormat={userAccount?.dateFormat ?? 'MM/DD/YYYY'}
           timezone={userAccount?.timezone ?? 'UTC'}
           appointments={appointments}
+          clients={clients}
+          services={userAccount?.services || []}
           onAppointmentClick={handleAppointmentClick}
         />
         <Drawer 
@@ -148,6 +183,8 @@ function ScheduleContent() {
             initialAppointment={editingAppointment}
             appointments={appointments}
             services={userAccount?.services || []}
+            clients={clients}
+            onClientAdd={handleClientAdd}
             onSubmit={handleSaveAppointment}
             onCancel={() => {
               setShowDrawer(false);

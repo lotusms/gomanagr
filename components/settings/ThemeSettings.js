@@ -54,12 +54,18 @@ export default function ThemeSettings() {
   const handleThemeModeChange = async (newMode) => {
     setThemeMode(newMode);
     
-    // Apply dark mode class to document immediately
+    // Apply dark mode class to document immediately and forcefully
     if (typeof document !== 'undefined') {
+      const htmlElement = document.documentElement;
       if (newMode === 'dark') {
-        document.documentElement.classList.add('dark');
+        htmlElement.classList.add('dark');
       } else {
-        document.documentElement.classList.remove('dark');
+        // Forcefully remove dark class - ensure it's completely removed
+        htmlElement.classList.remove('dark');
+        // Double-check: if somehow still present, remove again
+        if (htmlElement.classList.contains('dark')) {
+          htmlElement.classList.remove('dark');
+        }
       }
     }
 

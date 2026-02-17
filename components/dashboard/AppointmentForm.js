@@ -5,6 +5,8 @@ import TimeField from '@/components/ui/TimeField';
 import Dropdown from '@/components/ui/Dropdown';
 import { ChipsMulti } from '@/components/ui/Chips';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import Drawer from '@/components/ui/Drawer';
+import ClientForm from '@/components/dashboard/ClientForm';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 
 /**
@@ -20,6 +22,8 @@ import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeU
  * @param {Date} props.selectedDate - Pre-selected date (optional)
  * @param {Array} props.appointments - Array of existing appointments (optional)
  * @param {Array} props.services - Array of services (optional)
+ * @param {Array} props.clients - Array of clients (optional)
+ * @param {Function} props.onClientAdd - Callback when a new client is added
  * @param {Function} props.onSubmit - Callback when form is submitted
  * @param {Function} props.onCancel - Callback when form is cancelled
  * @param {Function} props.onDelete - Callback when delete is requested (only shown when editing)
@@ -36,6 +40,8 @@ export default function AppointmentForm({
   selectedDate = null,
   appointments = [],
   services = [],
+  clients = [],
+  onClientAdd,
   onSubmit,
   onCancel,
   onDelete,
@@ -52,6 +58,8 @@ export default function AppointmentForm({
   const [endTime, setEndTime] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
   const [label, setLabel] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [showClientDrawer, setShowClientDrawer] = useState(false);
   const [errors, setErrors] = useState({});
 
   // Get current date and time in user's timezone
@@ -173,6 +181,14 @@ export default function AppointmentForm({
     }));
   }, [teamMembers]);
 
+  // Generate client options
+  const clientOptions = useMemo(() => {
+    return clients.map((client) => ({
+      value: client.id,
+      label: client.company ? `${client.name} (${client.company})` : client.name,
+    }));
+  }, [clients]);
+
   // Filter services by selected team member
   const availableServices = useMemo(() => {
     if (!staffId) return [];
@@ -193,6 +209,7 @@ export default function AppointmentForm({
       setDate(initialAppointment.date || '');
       setLabel(initialAppointment.label || '');
       setSelectedServices(initialAppointment.services || []);
+      setClientId(initialAppointment.clientId || '');
       // staffId, startTime, endTime are set by the effect below so values match dropdown options
     } else {
       // Use selectedDate if provided, otherwise default to today
@@ -213,7 +230,9 @@ export default function AppointmentForm({
       setEndTime('');
       setSelectedServices([]);
       setLabel('');
+      setClientId('');
     }
+    setShowClientDrawer(false);
     setErrors({});
   }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone]);
 
@@ -369,12 +388,27 @@ export default function AppointmentForm({
       }
     }
 
-    if (!label || label.trim() === '') {
-      newErrors.label = 'Please enter an appointment description';
-    }
+    // Notes is optional, no validation needed
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle adding a new client
+  const handleAddClient = async (clientData) => {
+    if (!onClientAdd) return;
+
+    try {
+      const newClientId = await onClientAdd(clientData);
+      if (newClientId) {
+        setClientId(newClientId);
+        setShowClientDrawer(false);
+        setErrors((prev) => ({ ...prev, client: '' }));
+      }
+    } catch (error) {
+      console.error('Failed to add client:', error);
+      setErrors((prev) => ({ ...prev, client: 'Failed to add client. Please try again.' }));
+    }
   };
 
   // Handle form submission
@@ -389,7 +423,8 @@ export default function AppointmentForm({
       start: startTime,
       end: endTime,
       services: selectedServices,
-      label: label.trim(),
+      label: label.trim() || undefined,
+      clientId: clientId || undefined,
       createdAt: initialAppointment?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -497,22 +532,71 @@ export default function AppointmentForm({
             variant="light"
             layout="flex"
           />
-          {errors.services && <p className="mt-1 text-sm text-red-600">{errors.services}</p>}
+          {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
         </div>
       )}
+
+      {/* Client Section */}
+      <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Client
+          </label>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Dropdown
+                key={`clientId-${clientId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
+                id="clientId"
+                label=""
+                value={clientId}
+                onChange={(e) => {
+                  setClientId(e.target.value ?? '');
+                  setErrors((prev) => ({ ...prev, client: '' }));
+                }}
+                options={[
+                  { value: '', label: 'None' },
+                  ...clientOptions,
+                ]}
+                placeholder="Select client..."
+                error={errors.client}
+              />
+            </div>
+            <PrimaryButton
+              type="button"
+              onClick={() => setShowClientDrawer(true)}
+              className="whitespace-nowrap"
+            >
+              Add
+            </PrimaryButton>
+          </div>
+          {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
+        </div>
+      </div>
+
+      {/* Client Drawer */}
+      <Drawer
+        isOpen={showClientDrawer}
+        onClose={() => setShowClientDrawer(false)}
+        title="Add Client"
+      >
+        <ClientForm
+          onSubmit={handleAddClient}
+          onCancel={() => setShowClientDrawer(false)}
+          saving={saving}
+        />
+      </Drawer>
 
       <div>
         <InputField
           id="label"
           type="text"
-          label="Description"
+          label="Notes"
           value={label}
           onChange={(e) => {
             setLabel(e.target.value);
             setErrors((prev) => ({ ...prev, label: '' }));
           }}
           placeholder="e.g., Client consultation, Team meeting..."
-          required
           error={errors.label}
           variant="light"
         />

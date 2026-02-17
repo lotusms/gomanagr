@@ -53,6 +53,8 @@ export default function TodaysAppointments({
   timezone = 'UTC',
   staff: staffProp,
   appointments = [],
+  clients = [],
+  services = [],
 }) {
   const staff = (staffProp && staffProp.length > 0) ? staffProp : DEFAULT_TEAM_MEMBERS;
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
@@ -128,7 +130,30 @@ export default function TodaysAppointments({
                             (appointment.endSlot < timeSlots.length
                               ? ` – ${timeSlots[appointment.endSlot]}`
                               : '');
-                          const tooltipContent = `${appointment.label}\n${timeRangeText}`;
+                          
+                          // Get client name
+                          const client = appointment.clientId 
+                            ? clients.find(c => c.id === appointment.clientId)
+                            : null;
+                          const clientName = client ? client.name : '';
+                          
+                          // Get service names (first service or empty)
+                          const serviceNames = appointment.services || [];
+                          const firstService = serviceNames.length > 0 ? serviceNames[0] : '';
+                          
+                          // Build display text: "Client Name - Service" or just "Client Name" or just "Service"
+                          let displayText = '';
+                          if (clientName && firstService) {
+                            displayText = `${clientName} - ${firstService}`;
+                          } else if (clientName) {
+                            displayText = clientName;
+                          } else if (firstService) {
+                            displayText = firstService;
+                          } else {
+                            displayText = 'Appointment';
+                          }
+                          
+                          const tooltipContent = `${displayText}\n${timeRangeText}`;
                           return (
                             <td
                               key={colIndex}
@@ -138,7 +163,7 @@ export default function TodaysAppointments({
                               <Tooltip content={tooltipContent}>
                                 <div className="bg-primary-100 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 text-primary-800 dark:text-primary-200 rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight">
                                   <span className="truncate block">
-                                    {appointment.label}
+                                    {displayText}
                                   </span>
                                   <span className="truncate block text-primary-600 dark:text-primary-300 mt-px">
                                     {timeSlots[appointment.startSlot]}

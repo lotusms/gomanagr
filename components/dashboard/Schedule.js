@@ -82,6 +82,8 @@ export default function Schedule({
   dateFormat = 'MM/DD/YYYY',
   timezone = 'UTC',
   appointments = [],
+  clients = [],
+  services = [],
   onAppointmentClick,
 }) {
   const today = new Date();
@@ -193,6 +195,30 @@ export default function Schedule({
                     );
                     if (covered) return null;
                     if (appointment) {
+                      // Get client name
+                      const client = appointment.clientId 
+                        ? clients.find(c => c.id === appointment.clientId)
+                        : null;
+                      const clientName = client ? client.name : '';
+                      
+                      // Get service names (first service or empty)
+                      const serviceNames = appointment.services || [];
+                      const firstService = serviceNames.length > 0 ? serviceNames[0] : '';
+                      
+                      // Build display text: "Client Name - Service" or just "Client Name" or just "Service"
+                      let displayText = '';
+                      if (clientName && firstService) {
+                        displayText = `${clientName} - ${firstService}`;
+                      } else if (clientName) {
+                        displayText = clientName;
+                      } else if (firstService) {
+                        displayText = firstService;
+                      } else {
+                        displayText = 'Appointment';
+                      }
+                      
+                      const timeRange = `${formatTime(appointment.start, timeFormat)} - ${formatTime(appointment.end, timeFormat)}`;
+                      
                       return (
                         <td
                           key={toDateKey(d)}
@@ -200,12 +226,12 @@ export default function Schedule({
                           className={`relative align-top p-1 min-w-0 overflow-hidden ${appointment.color} dark:bg-primary-900/40 dark:border-primary-600 dark:text-primary-200 border-2 border-primary-600/50 dark:border-primary-500/50 cursor-pointer hover:opacity-80 transition-opacity`}
                           onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                         >
-                          <Tooltip content={`${appointment.label}\n${formatTime(appointment.start, timeFormat)} - ${formatTime(appointment.end, timeFormat)}`}>
+                          <Tooltip content={`${displayText}\n${timeRange}`}>
                             <span className="text-xs font-medium truncate block">
-                              {appointment.label}
+                              {displayText}
                             </span>
                             <span className="text-xs text-gray-600 dark:text-primary-300 truncate block mt-0.5">
-                              {formatTime(appointment.start, timeFormat)} - {formatTime(appointment.end, timeFormat)}
+                              {timeRange}
                             </span>
                           </Tooltip>
                         </td>

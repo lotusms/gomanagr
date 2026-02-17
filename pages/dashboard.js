@@ -200,6 +200,8 @@ function DashboardContent() {
           timezone={userAccount?.timezone ?? 'UTC'}
           staff={userAccount?.teamMembers ?? DEFAULT_TEAM_MEMBERS}
           appointments={userAccount?.appointments || []}
+          clients={userAccount?.clients || []}
+          services={userAccount?.services || []}
         />
       </div>
     </>

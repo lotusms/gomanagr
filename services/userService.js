@@ -239,10 +239,23 @@ export async function updateTeamMembers(userId, teamMembers) {
 export async function updateClients(userId, clients) {
   try {
     const userAccountRef = doc(db, 'useraccount', userId);
+    
+    // Clean clients array: remove undefined values from each client object
+    const cleanedClients = Array.isArray(clients) 
+      ? clients.map(client => {
+          const cleaned = { id: client.id, name: client.name };
+          // Only include company if it's not undefined
+          if (client.company !== undefined && client.company !== null) {
+            cleaned.company = client.company;
+          }
+          return cleaned;
+        })
+      : [];
+    
     await setDoc(
       userAccountRef,
       {
-        clients: Array.isArray(clients) ? clients : [],
+        clients: cleanedClients,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }

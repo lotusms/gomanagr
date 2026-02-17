@@ -6,7 +6,10 @@ import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
+import ClientForm from '@/components/dashboard/ClientForm';
 import { PageHeader, EmptyState } from '@/components/ui';
+import Drawer from '@/components/ui/Drawer';
+import { PrimaryButton } from '@/components/ui/buttons';
 import { HiPlus } from 'react-icons/hi';
 
 function generateId() {
@@ -19,9 +22,8 @@ function ClientsContent() {
   const [loaded, setLoaded] = useState(false);
   const [clients, setClients] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [addName, setAddName] = useState('');
-  const [addCompany, setAddCompany] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -55,21 +57,45 @@ function ClientsContent() {
     saveClients(next);
   };
 
-  const handleAdd = (e) => {
-    e.preventDefault();
-    const name = addName.trim();
-    if (!name) return;
-    const newClient = {
-      id: generateId(),
-      name,
-      company: addCompany.trim() || undefined,
-    };
-    const next = [...clients, newClient];
-    setClients(next);
-    saveClients(next);
-    setAddName('');
-    setAddCompany('');
-    setShowAdd(false);
+  const handleAdd = () => {
+    setEditingClient(null);
+    setShowAddDrawer(true);
+  };
+
+  const handleEdit = (client) => {
+    setEditingClient(client);
+    setShowAddDrawer(true);
+  };
+
+  const handleSave = async (clientData) => {
+    if (editingClient) {
+      // Update existing client
+      const updatedClient = {
+        ...editingClient,
+        name: clientData.name,
+        company: clientData.company,
+      };
+      const next = clients.map((c) => (c.id === editingClient.id ? updatedClient : c));
+      setClients(next);
+      await saveClients(next);
+    } else {
+      // Add new client
+      const newClient = {
+        id: generateId(),
+        name: clientData.name,
+        company: clientData.company,
+      };
+      const next = [...clients, newClient];
+      setClients(next);
+      await saveClients(next);
+    }
+    setShowAddDrawer(false);
+    setEditingClient(null);
+  };
+
+  const handleCloseDrawer = () => {
+    setShowAddDrawer(false);
+    setEditingClient(null);
   };
 
   return (
@@ -85,77 +111,35 @@ function ClientsContent() {
           description="Manage your client relationships. Stored in your account and synced across the app."
           actions={
             <>
-              <button
+              <PrimaryButton
                 type="button"
-                onClick={() => setShowAdd(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                onClick={handleAdd}
+                className="gap-2"
               >
                 <HiPlus className="w-5 h-5" />
                 Add client
-              </button>
-              {saving && <span className="text-sm text-gray-500">Saving…</span>}
+              </PrimaryButton>
+              {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
             </>
           }
         />
 
         {!loaded ? (
-          <p className="text-gray-500">Loading…</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading…</p>
         ) : (
           <>
-
-            {showAdd && (
-              <form onSubmit={handleAdd} className="bg-gray-50 rounded-lg p-4 flex flex-wrap items-end gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={addName}
-                    onChange={(e) => setAddName(e.target.value)}
-                    placeholder="Client name"
-                    className="rounded border border-gray-300 px-3 py-2 text-sm"
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company (optional)</label>
-                  <input
-                    type="text"
-                    value={addCompany}
-                    onChange={(e) => setAddCompany(e.target.value)}
-                    placeholder="Company name"
-                    className="rounded border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowAdd(false); setAddName(''); setAddCompany(''); }}
-                    className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-
             {clients.length === 0 ? (
               <EmptyState
                 type="clients"
                 action={
-                  <button
+                  <PrimaryButton
                     type="button"
-                    onClick={() => setShowAdd(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+                    onClick={handleAdd}
+                    className="gap-2"
                   >
                     <HiPlus className="w-5 h-5" />
                     Add your first client
-                  </button>
+                  </PrimaryButton>
                 }
               />
             ) : (
@@ -165,6 +149,7 @@ function ClientsContent() {
                     key={client.id}
                     name={client.name}
                     subtitle={client.company}
+                    onClick={() => handleEdit(client)}
                     onRemove={() => handleRemove(client.id)}
                   />
                 ))}
@@ -172,6 +157,20 @@ function ClientsContent() {
             )}
           </>
         )}
+
+        {/* Client Drawer */}
+        <Drawer
+          isOpen={showAddDrawer}
+          onClose={handleCloseDrawer}
+          title={editingClient ? 'Edit Client' : 'Add Client'}
+        >
+          <ClientForm
+            initialClient={editingClient}
+            onSubmit={handleSave}
+            onCancel={handleCloseDrawer}
+            saving={saving}
+          />
+        </Drawer>
       </div>
     </>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, createUserAccount } from '@/services/userService';
+import { getUserAccount, createUserAccount, listStorageFiles, getStoragePublicUrl, removeStorageFiles } from '@/services/userService';
 import { HiCloudUpload, HiX, HiPlus } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
@@ -54,19 +54,9 @@ export default function OrganizationSettings() {
         // If logo URL is missing but logo file exists in storage, get the URL
         if (!logoUrl || logoUrl.trim() === '') {
           try {
-            const { ref: storageRef, listAll, getDownloadURL } = await import('firebase/storage');
-            const { storage } = await import('@/lib/firebase');
-            
-            const userLogosFolderRef = storageRef(storage, `company-logos/${currentUser.uid}`);
-            const listResult = await listAll(userLogosFolderRef);
-            
-            if (listResult.items.length > 0) {
-              // Get the first logo file's download URL
-              const firstLogoRef = listResult.items[0];
-              logoUrl = await getDownloadURL(firstLogoRef);
-              
-              // Save the URL to Firestore for future use
-              const { createUserAccount } = await import('@/services/userService');
+            const paths = await listStorageFiles('company-logos', currentUser.uid);
+            if (paths.length > 0) {
+              logoUrl = getStoragePublicUrl('company-logos', paths[0]);
               const updatedData = await createUserAccount(
                 currentUser.uid,
                 {
@@ -77,15 +67,10 @@ export default function OrganizationSettings() {
                 },
                 null
               );
-              
-              // Dispatch event to update header avatar immediately
               if (typeof window !== 'undefined' && updatedData) {
                 window.dispatchEvent(
                   new CustomEvent('useraccount', {
-                    detail: {
-                      type: 'useraccount-updated',
-                      payload: updatedData,
-                    },
+                    detail: { type: 'useraccount-updated', payload: updatedData },
                   })
                 );
               }
@@ -300,19 +285,12 @@ export default function OrganizationSettings() {
     if (!currentUser) return;
     
     try {
-      // Delete logo from storage
-      const { ref: storageRef, listAll, deleteObject } = await import('firebase/storage');
-      const { storage } = await import('@/lib/firebase');
-      
-      const userLogosFolderRef = storageRef(storage, `company-logos/${currentUser.uid}`);
-      const listResult = await listAll(userLogosFolderRef);
-      
-      // Delete all logo files
-      const deletePromises = listResult.items.map((itemRef) => deleteObject(itemRef));
-      await Promise.all(deletePromises);
-      
-      // Update Firestore to remove logo URL
-      const { createUserAccount } = await import('@/services/userService');
+      const paths = await listStorageFiles('company-logos', currentUser.uid);
+      if (paths.length > 0) {
+        await removeStorageFiles('company-logos', paths);
+      }
+
+      // Update account to remove logo URL
       const updatedData = await createUserAccount(
         currentUser.uid,
         {

@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, updateTeamMembers, updateServices } from '@/services/userService';
+import { getUserAccount, updateTeamMembers, updateServices, uploadFile } from '@/services/userService';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -10,9 +10,9 @@ import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
 import { PageHeader, TeamFilter, ConfirmationDialog, EmptyState } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
 import { PrimaryButton } from '@/components/ui/buttons';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
 import { HiPlus } from 'react-icons/hi';
+
+const TEAM_PHOTOS_BUCKET = 'team-photos';
 
 function generateId() {
   return `tm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -160,9 +160,8 @@ function TeamContent() {
     let pictureUrl = isEdit ? allTeamMembers.find((m) => m.id === editingId)?.pictureUrl ?? '' : '';
     if (pictureFile && currentUser?.uid) {
       try {
-        const photoRef = ref(storage, `team-photos/${currentUser.uid}/${memberId}/${pictureFile.name}`);
-        await uploadBytes(photoRef, pictureFile);
-        pictureUrl = await getDownloadURL(photoRef);
+        const path = `${currentUser.uid}/${memberId}/${pictureFile.name}`;
+        pictureUrl = await uploadFile(TEAM_PHOTOS_BUCKET, path, pictureFile);
       } catch (err) {
         console.error('Failed to upload team photo:', err);
       }
@@ -373,10 +372,10 @@ function TeamContent() {
                 services={userAccount?.services || []}
                 teamMembers={team}
                 onServiceCreated={async (updatedServices) => {
-                  // Save the new service to Firebase
+                  // Save the new service to Supabase
                   if (currentUser?.uid) {
                     try {
-                      console.log('Saving services to Firebase:', updatedServices);
+                      console.log('Saving services to Supabase:', updatedServices);
                       await updateServices(currentUser.uid, updatedServices);
                       setUserAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
                       console.log('Services saved successfully');

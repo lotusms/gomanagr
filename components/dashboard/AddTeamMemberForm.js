@@ -460,7 +460,7 @@ export default function AddTeamMemberForm({
       
       console.log('Updated services array:', updatedServices);
       
-      // Call the callback to update services in parent (saves to Firebase)
+      // Call the callback to update services in parent (saves to Supabase)
       await onServiceCreated(updatedServices);
       
       console.log('Service created successfully');

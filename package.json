@@ -23,6 +23,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toggle-group": "^1.1.11",
+    "@supabase/supabase-js": "^2.97.0",
     "country-state-city": "^3.2.1",
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",

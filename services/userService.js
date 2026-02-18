@@ -1,117 +1,158 @@
-import { doc, setDoc, getDoc, getDocFromServer } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
+
+const BUCKET_LOGO = 'company-logos';
+const BUCKET_TEAM = 'team-photos';
+
+function rowToAccount(row) {
+  if (!row) return null;
+  const base = {
+    userId: row.id,
+    email: row.email,
+    trial: row.trial ?? true,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    purpose: row.purpose,
+    role: row.role,
+    companyName: row.company_name,
+    companyLogo: row.company_logo ?? '',
+    teamSize: row.team_size,
+    companySize: row.company_size,
+    companyLocations: row.company_locations,
+    sectionsToTrack: row.sections_to_track ?? [],
+    referralSource: row.referral_source,
+    selectedPalette: row.selected_palette ?? 'palette1',
+    dismissedTodoIds: row.dismissed_todo_ids ?? [],
+    teamMembers: row.team_members ?? [],
+    clients: row.clients ?? [],
+    services: row.services ?? [],
+    appointments: row.appointments ?? [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+  const profile = row.profile && typeof row.profile === 'object' ? row.profile : {};
+  return { ...profile, ...base };
+}
+
+const KNOWN_KEYS = new Set([
+  'userId', 'email', 'trial', 'firstName', 'lastName', 'purpose', 'role',
+  'companyName', 'companyLogo', 'teamSize', 'companySize', 'companyLocations',
+  'sectionsToTrack', 'referralSource', 'selectedPalette', 'dismissedTodoIds',
+  'teamMembers', 'clients', 'services', 'appointments', 'createdAt', 'updatedAt',
+]);
+
+function accountToRow(data) {
+  const row = { updated_at: new Date().toISOString() };
+  const profile = {};
+  Object.entries(data || {}).forEach(([key, value]) => {
+    if (KNOWN_KEYS.has(key)) {
+      if (key === 'userId') {
+        row.id = value;
+        row.user_id = value; // Ensure user_id always matches id
+      }
+      else if (key === 'firstName') row.first_name = value;
+      else if (key === 'lastName') row.last_name = value;
+      else if (key === 'companyName') row.company_name = value;
+      else if (key === 'companyLogo') row.company_logo = value;
+      else if (key === 'teamSize') row.team_size = value;
+      else if (key === 'companySize') row.company_size = value;
+      else if (key === 'companyLocations') row.company_locations = value;
+      else if (key === 'sectionsToTrack') row.sections_to_track = value;
+      else if (key === 'referralSource') row.referral_source = value;
+      else if (key === 'selectedPalette') row.selected_palette = value;
+      else if (key === 'dismissedTodoIds') row.dismissed_todo_ids = value;
+      else if (key === 'teamMembers') row.team_members = value;
+      else if (key === 'createdAt') row.created_at = value;
+      else row[key] = value;
+    } else {
+      profile[key] = value;
+    }
+  });
+  if (Object.keys(profile).length > 0) row.profile = profile;
+  return row;
+}
 
 /**
- * Create a user account document in Firestore
- * 
- * Collection: useraccount
- * Document ID: userId (same as Firebase Auth user ID)
- * 
- * For the complete document structure and schema, see: @/models/UserAccount
- * 
- * @param {string} userId - The Firebase Auth user ID (also used as document ID)
+ * Upload a file to Supabase Storage and return its public URL.
+ * Buckets "company-logos" and "team-photos" must exist and be public in Supabase Dashboard.
+ */
+export async function uploadFile(bucket, path, file) {
+  const { data, error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+  return urlData.publicUrl;
+}
+
+/** List file paths in a storage folder. prefix e.g. "userId" or "userId/memberId". */
+export async function listStorageFiles(bucket, prefix) {
+  const { data, error } = await supabase.storage.from(bucket).list(prefix || '');
+  if (error) throw error;
+  const paths = [];
+  (data || []).forEach((item) => {
+    if (item.name) {
+      const path = prefix ? `${prefix}/${item.name}` : item.name;
+      paths.push(path);
+    }
+  });
+  return paths;
+}
+
+/** Get public URL for a storage path. */
+export function getStoragePublicUrl(bucket, path) {
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/** Remove one or more files from storage. */
+export async function removeStorageFiles(bucket, paths) {
+  if (!paths.length) return;
+  const { error } = await supabase.storage.from(bucket).remove(paths);
+  if (error) throw error;
+}
+
+/**
+ * Create or update user account (Supabase user_account table).
+ * @param {string} userId - The auth user ID (Supabase auth.uid())
  * @param {object} userData - User account data matching UserAccount schema
- * @param {File|null} logoFile - Optional logo file to upload to Firebase Storage
- * @returns {Promise<object>} The created account data
+ * @param {File|null} logoFile - Optional logo file to upload to Supabase Storage
+ * @returns {Promise<object>} The created/updated account data (camelCase)
  */
 export async function createUserAccount(userId, userData, logoFile = null) {
   try {
     let logoUrl = userData.companyLogo || '';
 
-    // Upload logo if provided
     if (logoFile) {
       try {
-        const logoRef = ref(storage, `company-logos/${userId}/${logoFile.name}`);
-        await uploadBytes(logoRef, logoFile);
-        logoUrl = await getDownloadURL(logoRef);
+        const path = `${userId}/${logoFile.name}`;
+        logoUrl = await uploadFile(BUCKET_LOGO, path, logoFile);
       } catch (storageError) {
         console.error('Logo upload error (continuing without logo):', storageError);
-        // Continue without logo if upload fails
       }
     } else {
-      // If no new logo file, preserve existing logo from Firestore if not provided in userData
-      // This prevents overwriting the logo URL with an empty string
       if (!logoUrl || logoUrl.trim() === '') {
-        try {
-          const userAccountRef = doc(db, 'useraccount', userId);
-          const existingDoc = await getDoc(userAccountRef);
-          if (existingDoc.exists()) {
-            const existingData = existingDoc.data();
-            const existingLogo = existingData?.companyLogo;
-            if (existingLogo && typeof existingLogo === 'string' && existingLogo.trim()) {
-              logoUrl = existingLogo.trim();
-            }
-          }
-        } catch (err) {
-          console.warn('Could not fetch existing logo:', err);
-        }
+        const existing = await getUserAccount(userId);
+        if (existing?.companyLogo?.trim()) logoUrl = existing.companyLogo.trim();
       }
     }
 
-    // Prepare document data
-    const accountData = {
-      ...userData,
-      companyLogo: logoUrl,
-      updatedAt: new Date().toISOString(),
-    };
+    const now = new Date().toISOString();
+    const accountData = { ...userData, companyLogo: logoUrl, updatedAt: now };
+    if (!accountData.createdAt) accountData.createdAt = now;
 
-    // Set createdAt - will be preserved if document already exists (via merge)
-    if (!accountData.createdAt) {
-      accountData.createdAt = new Date().toISOString();
-    }
+    const existing = await getUserAccount(userId);
+    if (existing?.createdAt) accountData.createdAt = existing.createdAt;
 
-    const userAccountRef = doc(db, 'useraccount', userId);
-    
-    try {
-      // Try to check if document exists first
-      let documentExists = false;
-      try {
-        const existingDoc = await getDoc(userAccountRef);
-        documentExists = existingDoc.exists();
-        
-        // If document exists, preserve the original createdAt
-        if (documentExists) {
-          const existingData = existingDoc.data();
-          if (existingData?.createdAt) {
-            accountData.createdAt = existingData.createdAt;
-          }
-        }
-      } catch (checkError) {
-        // If check fails, just proceed with creation
-        // The setDoc call will create the collection automatically if it doesn't exist
-        // We'll only throw an error if setDoc itself fails
-        console.warn('Could not check if document exists, proceeding with create/update:', checkError.message);
-      }
+    const row = accountToRow(accountData);
+    row.id = userId;
+    row.user_id = userId; // Always set user_id = id for RLS compatibility
+    const { data, error } = await supabase
+      .from('user_account')
+      .upsert(row, { onConflict: 'id' })
+      .select()
+      .single();
 
-      // Use merge: true to create if doesn't exist, or update if it does
-      // This ensures the collection is created automatically on first write
-      await setDoc(userAccountRef, accountData, { merge: true });
-
-      console.log(`✅ User account ${documentExists ? 'updated' : 'created'} successfully for user: ${userId}`);
-      return accountData;
-    } catch (firestoreError) {
-      // Check for specific Firestore errors
-      const errorMessage = firestoreError.message || '';
-      const errorCode = firestoreError.code || '';
-      
-      if (
-        errorMessage.includes('not found') || 
-        errorMessage.includes('offline') ||
-        errorCode === 'not-found' ||
-        errorCode === 'unavailable'
-      ) {
-        throw new Error(
-          'Firestore database not enabled or unavailable. Please enable Firestore in Firebase Console:\n\n' +
-          '1. Go to: https://console.firebase.google.com/project/gomanagr-845b4/firestore\n' +
-          '2. Click "Create database"\n' +
-          '3. Choose "Start in production mode" (to use your security rules) or "Start in test mode"\n' +
-          '4. Select a location (e.g., us-central1) and click "Enable"\n\n' +
-          'After enabling, refresh this page and try again.'
-        );
-      }
-      throw firestoreError;
-    }
+    if (error) throw error;
+    console.log(`✅ User account ${existing ? 'updated' : 'created'} successfully for user: ${userId}`);
+    return rowToAccount(data) ?? accountData;
   } catch (error) {
     console.error('Error creating/updating user account:', error);
     throw new Error('Failed to create user account: ' + error.message);
@@ -119,143 +160,72 @@ export async function createUserAccount(userId, userData, logoFile = null) {
 }
 
 /**
- * Get user account data (may use cache).
- * @param {string} userId - The Firebase Auth user ID
- * @returns {Promise<object|null>}
+ * Get user account data.
+ * @param {string} userId - The auth user ID
+ * @returns {Promise<object|null>} Account in camelCase or null
  */
 export async function getUserAccount(userId) {
   try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    const docSnap = await getDoc(userAccountRef);
+    const { data, error } = await supabase
+      .from('user_account')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (docSnap.exists()) {
-      return docSnap.data();
-    }
-    return null;
+    if (error) throw error;
+    return rowToAccount(data);
   } catch (error) {
-    // Handle offline errors gracefully
-    const errorMessage = error.message || '';
-    const errorCode = error.code || '';
-    
-    if (
-      errorMessage.includes('offline') ||
-      errorCode === 'unavailable' ||
-      errorCode === 'failed-precondition'
-    ) {
+    const msg = error.message || '';
+    if (msg.includes('offline') || msg.includes('fetch') || error.code === 'PGRST301') {
       console.warn('Client is offline, returning null. Data will sync when connection is restored.');
       return null;
     }
-    
     console.error('Error getting user account:', error);
     throw new Error('Failed to get user account: ' + error.message);
   }
 }
 
 /**
- * Get user account data from server (bypasses cache). Use after saving so the UI sees the latest data.
- * @param {string} userId - The Firebase Auth user ID
+ * Get user account from server (same as getUserAccount; Supabase has no client cache).
+ * @param {string} userId - The auth user ID
  * @returns {Promise<object|null>}
  */
 export async function getUserAccountFromServer(userId) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    const docSnap = await getDocFromServer(userAccountRef);
-
-    if (docSnap.exists()) {
-      return docSnap.data();
-    }
-    return null;
-  } catch (error) {
-    console.error('Error getting user account from server:', error);
-    return getUserAccount(userId);
-  }
+  return getUserAccount(userId);
 }
 
-/**
- * Update the user's selected theme palette (persists across devices).
- * @param {string} userId - The Firebase Auth user ID
- * @param {string} paletteId - Theme palette ID (e.g. 'palette1', 'palette2')
- * @returns {Promise<void>}
- */
 export async function updateUserTheme(userId, paletteId) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    await setDoc(
-      userAccountRef,
-      {
-        selectedPalette: paletteId,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error('Error updating user theme:', error);
-    throw new Error('Failed to save theme preference: ' + error.message);
-  }
+  const { error } = await supabase
+    .from('user_account')
+    .update({ selected_palette: paletteId, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw new Error('Failed to save theme preference: ' + error.message);
 }
 
-/**
- * Update the user's dismissed dashboard todo IDs (manual or after completion).
- * Persisted so todos stay hidden across sessions. Completed todos (e.g. after a tour)
- * can be added here to auto-dismiss.
- *
- * @param {string} userId - The Firebase Auth user ID
- * @param {string[]} dismissedTodoIds - Full list of todo IDs to treat as dismissed
- * @returns {Promise<void>}
- */
 export async function updateDismissedTodos(userId, dismissedTodoIds) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    await setDoc(
-      userAccountRef,
-      {
-        dismissedTodoIds: Array.isArray(dismissedTodoIds) ? dismissedTodoIds : [],
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error('Error updating dismissed todos:', error);
-    throw new Error('Failed to save dismissed todos: ' + error.message);
-  }
+  const list = Array.isArray(dismissedTodoIds) ? dismissedTodoIds : [];
+  const { error } = await supabase
+    .from('user_account')
+    .update({ dismissed_todo_ids: list, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw new Error('Failed to save dismissed todos: ' + error.message);
 }
 
-/**
- * Update the user's team members (synced with Team page and Today's Appointments staff).
- * @param {string} userId - The Firebase Auth user ID
- * @param {Array<{ id: string, name: string, role?: string }>} teamMembers
- * @returns {Promise<void>}
- */
 export async function updateTeamMembers(userId, teamMembers) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    await setDoc(
-      userAccountRef,
-      {
-        teamMembers: Array.isArray(teamMembers) ? teamMembers : [],
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error('Error updating team members:', error);
-    throw new Error('Failed to save team members: ' + error.message);
-  }
+  const list = Array.isArray(teamMembers) ? teamMembers : [];
+  const { error } = await supabase
+    .from('user_account')
+    .update({ team_members: list, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw new Error('Failed to save team members: ' + error.message);
 }
 
-/**
- * Update the user's clients (synced with Clients page).
- * @param {string} userId - The Firebase Auth user ID
- * @param {Array} clients - Array of client objects (id, name, phone?, email?, company?, companyPhone?, companyAddress?, companyEmail?)
- * @returns {Promise<void>}
- */
-function cleanClientForFirestore(client) {
-  // Recursively remove undefined, null, and empty string values
+function cleanClient(client) {
   const cleanValue = (value) => {
     if (value === undefined || value === null) return undefined;
     if (typeof value === 'string' && value.trim() === '') return undefined;
     if (Array.isArray(value)) {
-      const cleaned = value.filter((item) => item !== undefined && item !== null && item !== '');
+      const cleaned = value.filter((item) => item != null && item !== '');
       return cleaned.length > 0 ? cleaned : undefined;
     }
     if (typeof value === 'object' && value !== null) {
@@ -272,128 +242,54 @@ function cleanClientForFirestore(client) {
     }
     return value;
   };
-  
   const cleaned = {};
   for (const [key, value] of Object.entries(client)) {
     const cleanedVal = cleanValue(value);
-    if (cleanedVal !== undefined) {
-      cleaned[key] = cleanedVal;
-    }
+    if (cleanedVal !== undefined) cleaned[key] = cleanedVal;
   }
-  
-  // Ensure id and name are always present
   if (!cleaned.id && client.id) cleaned.id = client.id;
   if (!cleaned.name && client.name) cleaned.name = client.name;
-  
   return cleaned;
 }
 
 export async function updateClients(userId, clients) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    const cleanedClients = Array.isArray(clients) ? clients.map(cleanClientForFirestore) : [];
-    
-    await setDoc(
-      userAccountRef,
-      {
-        clients: cleanedClients,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error('Error updating clients:', error);
-    throw new Error('Failed to save clients: ' + error.message);
-  }
+  const cleaned = Array.isArray(clients) ? clients.map(cleanClient) : [];
+  const { error } = await supabase
+    .from('user_account')
+    .update({ clients: cleaned, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw new Error('Failed to save clients: ' + error.message);
 }
 
-/**
- * Update the user's services (synced with Services page).
- * @param {string} userId - The Firebase Auth user ID
- * @param {Array<{ id: string, name: string, description?: string, assignedTeamMemberIds: string[] }>} services
- * @returns {Promise<void>}
- */
 export async function updateServices(userId, services) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    await setDoc(
-      userAccountRef,
-      {
-        services: Array.isArray(services) ? services : [],
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error('Error updating services:', error);
-    throw new Error('Failed to save services: ' + error.message);
-  }
+  const list = Array.isArray(services) ? services : [];
+  const { error } = await supabase
+    .from('user_account')
+    .update({ services: list, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw new Error('Failed to save services: ' + error.message);
 }
 
-/**
- * Add or update an appointment
- * @param {string} userId - The Firebase Auth user ID
- * @param {Object} appointment - Appointment object to add/update
- * @returns {Promise<void>}
- */
 export async function saveAppointment(userId, appointment) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    const docSnap = await getDoc(userAccountRef);
-
-    let appointments = [];
-    if (docSnap.exists()) {
-      appointments = docSnap.data().appointments || [];
-    }
-
-    // Remove existing appointment with same ID if updating
-    const filteredAppointments = appointments.filter((apt) => apt.id !== appointment.id);
-    
-    // Add the new/updated appointment
-    filteredAppointments.push(appointment);
-
-    await setDoc(
-      userAccountRef,
-      {
-        appointments: filteredAppointments,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error('Error saving appointment:', error);
-    throw new Error('Failed to save appointment: ' + error.message);
-  }
+  const { data: existing } = await supabase.from('user_account').select('appointments').eq('id', userId).single();
+  const appointments = existing?.appointments ?? [];
+  const filtered = appointments.filter((apt) => apt.id !== appointment.id);
+  filtered.push(appointment);
+  const { error } = await supabase
+    .from('user_account')
+    .update({ appointments: filtered, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw new Error('Failed to save appointment: ' + error.message);
 }
 
-/**
- * Delete an appointment
- * @param {string} userId - The Firebase Auth user ID
- * @param {string} appointmentId - ID of appointment to delete
- * @returns {Promise<void>}
- */
 export async function deleteAppointment(userId, appointmentId) {
-  try {
-    const userAccountRef = doc(db, 'useraccount', userId);
-    const docSnap = await getDoc(userAccountRef);
-
-    if (!docSnap.exists()) {
-      throw new Error('User account not found');
-    }
-
-    const appointments = docSnap.data().appointments || [];
-    const filteredAppointments = appointments.filter((apt) => apt.id !== appointmentId);
-
-    await setDoc(
-      userAccountRef,
-      {
-        appointments: filteredAppointments,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    console.error('Error deleting appointment:', error);
-    throw new Error('Failed to delete appointment: ' + error.message);
-  }
+  const { data } = await supabase.from('user_account').select('appointments').eq('id', userId).single();
+  if (!data) throw new Error('User account not found');
+  const appointments = data.appointments ?? [];
+  const filtered = appointments.filter((apt) => apt.id !== appointmentId);
+  const { error } = await supabase
+    .from('user_account')
+    .update({ appointments: filtered, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw new Error('Failed to delete appointment: ' + error.message);
 }

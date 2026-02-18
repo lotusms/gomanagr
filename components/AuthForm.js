@@ -157,10 +157,18 @@ export default function AuthForm({ mode = 'login', darkMode = false }) {
       </div>
 
       {/* Link to other auth page */}
-      <div className="text-center">
+      <div className="text-center space-y-2">
+        {mode === 'login' && (
+          <Link
+            href="/forgot-password"
+            className="text-primary-200/70 hover:text-primary-200 text-sm transition-all duration-200 hover:underline underline-offset-4 block"
+          >
+            Forgot password?
+          </Link>
+        )}
         <Link
           href={mode === 'login' ? '/signup' : '/login'}
-          className="text-primary-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4"
+          className="text-primary-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4 block"
         >
           {mode === 'login'
             ? "Don't have an account? "

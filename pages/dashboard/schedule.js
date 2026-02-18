@@ -121,7 +121,7 @@ function ScheduleContent() {
       // Add to existing clients
       const updatedClients = [...clients, newClient];
       
-      // Save to Firebase
+      // Save to Supabase
       await updateClients(currentUser.uid, updatedClients);
       
       // Update local state

@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
@@ -19,68 +19,47 @@ export default function ClientProfilePage() {
   const [userAccount, setUserAccount] = useState(null);
   const [clientData, setClientData] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
+  const fetchClientData = useCallback(async () => {
     if (!currentUser?.uid || !id) return;
     
     setLoaded(false);
-    getUserAccount(currentUser.uid)
-      .then((data) => {
-        setUserAccount(data || null);
-        const clients = (data?.clients && data.clients.length > 0)
-          ? data.clients
-          : DEFAULT_CLIENTS;
-        const foundClient = clients.find((c) => c.id === id);
-        if (foundClient) {
-          // Only update if the client ID actually changed (prevents unnecessary updates)
-          setClientData((prev) => {
-            if (prev?.id === foundClient.id) {
-              return prev; // Return previous reference if ID is the same
-            }
-            return foundClient;
-          });
-        } else if (id === 'new') {
-          // New client
-          setClientData(null);
-        } else {
-          // Client not found, redirect back
-          router.push('/dashboard/clients');
-        }
-      })
-      .catch(() => {
+    try {
+      const data = await getUserAccount(currentUser.uid);
+      setUserAccount(data || null);
+      const clients = (data?.clients && data.clients.length > 0)
+        ? data.clients
+        : DEFAULT_CLIENTS;
+      const foundClient = clients.find((c) => c.id === id);
+      if (foundClient) {
+        setClientData(foundClient);
+      } else if (id === 'new') {
+        // New client
+        setClientData(null);
+      } else {
+        // Client not found, redirect back
         router.push('/dashboard/clients');
-      })
-      .finally(() => setLoaded(true));
+      }
+    } catch (error) {
+      console.error('Failed to fetch client data:', error);
+      router.push('/dashboard/clients');
+    } finally {
+      setLoaded(true);
+    }
   }, [currentUser?.uid, id, router]);
+
+  useEffect(() => {
+    fetchClientData();
+  }, [fetchClientData]);
   
-  // Memoize client to prevent unnecessary re-renders - only update when client ID changes
-  // Use a ref to track the previous client data to prevent unnecessary object recreation
-  const previousClientDataRef = useRef(null);
-  const previousClientIdRef = useRef(null);
-  
-  // Extract the ID value as a primitive for stable comparison
-  const currentClientId = clientData?.id ?? null;
-  
+  // Memoize client - update when clientData changes or refresh is triggered
   const client = useMemo(() => {
     if (id === 'new' || !clientData) {
-      previousClientDataRef.current = null;
-      previousClientIdRef.current = null;
       return null;
     }
-    
-    // Only create new object reference if the ID actually changed
-    if (previousClientIdRef.current !== currentClientId) {
-      previousClientDataRef.current = clientData;
-      previousClientIdRef.current = currentClientId;
-      return clientData;
-    }
-    
-    // If ID is the same, return the previous reference to maintain stability
-    // This prevents ClientProfile from re-initializing when userAccount updates
-    return previousClientDataRef.current;
-    // Only depend on the primitive ID value - don't depend on clientData object reference
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentClientId, id]); // Only depend on ID, not clientData object reference
+    return clientData;
+  }, [clientData, id, refreshKey]); // Include refreshKey to force updates on refresh
 
   if (!loaded) {
     return (
@@ -126,15 +105,18 @@ export default function ClientProfilePage() {
             />
 
             <ClientProfile
-              key={id === 'new' ? 'new-client' : client?.id || 'client'}
+              key={id === 'new' ? 'new-client' : `${client?.id || 'client'}-${refreshKey}`}
               initialClient={id === 'new' ? null : client}
               userAccount={userAccount}
               onSave={(savedClientId) => {
-                // After save, refresh and stay on page (or redirect to new client ID if it was new)
+                // After save, refresh data and navigate if needed
                 if (id === 'new' && savedClientId) {
+                  // New client was created, navigate to its page
                   router.push(`/dashboard/clients/${savedClientId}`);
                 } else {
-                  router.push(`/dashboard/clients/${id}`);
+                  // Existing client was updated, refresh the data
+                  setRefreshKey(prev => prev + 1);
+                  fetchClientData();
                 }
               }}
               onCancel={() => {

@@ -1,28 +1,26 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 import { updateClients, getUserAccount, saveAppointment, deleteAppointment, getUserAccountFromServer } from '@/services/userService';
-import * as Label from '@radix-ui/react-label';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import InputField from '@/components/ui/InputField';
-import { AddressAutocomplete, TextareaField } from '@/components/ui';
+import CurrencyInput from '@/components/ui/CurrencyInput';
+import { AddressAutocomplete, TextareaField, EmptyState } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
 import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
-import { HiChevronDown, HiChevronRight, HiPlus, HiTrash } from 'react-icons/hi';
+import { HiChevronDown, HiChevronRight, HiPlus, HiTrash, HiDocumentText } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
-import Toggle from '@/components/ui/Toggle';
-import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
-import Checkbox from '@/components/ui/Checkbox';
 import Drawer from '@/components/ui/Drawer';
 import AppointmentForm from '@/components/dashboard/AppointmentForm';
 import { generateClientId } from '@/utils/clientIdGenerator';
 import ResponsiveSectionWrapper from './ResponsiveSectionWrapper';
 import BasicInfoSection from './sections/BasicInfoSection';
 import ClientAppointmentsCalendar from './ClientAppointmentsCalendar';
-import { TIMEZONES, LANGUAGES, INDUSTRIES, COMPANY_SIZES, PAYMENT_TERMS, CURRENCIES } from './clientProfileConstants';
+import { TIMEZONES, LANGUAGES, INDUSTRIES, COMPANY_SIZES, PAYMENT_TERMS, CURRENCIES, PRICING_TIERS } from './clientProfileConstants';
 
 function normalizeCountryValue(value) {
   if (!value) return '';
@@ -49,6 +47,7 @@ export default function ClientProfile({
   onCancel,
 }) {
   const { currentUser } = useAuth();
+  const { success, error: showError } = useToast();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -95,7 +94,7 @@ export default function ClientProfile({
   
   // Financial
   const [paymentTerms, setPaymentTerms] = useState('');
-  const [paymentHistory, setPaymentHistory] = useState('');
+  const [paymentHistory, setPaymentHistory] = useState([]);
   const [pricingTier, setPricingTier] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [activeRetainersBalance, setActiveRetainersBalance] = useState('');
@@ -219,7 +218,16 @@ export default function ClientProfile({
         
         // Financial
         setPaymentTerms(clientData.paymentTerms || '');
-        setPaymentHistory(clientData.paymentHistory || '');
+        // Handle both old string format and new array format
+        const paymentHistoryData = clientData.paymentHistory;
+        if (Array.isArray(paymentHistoryData)) {
+          setPaymentHistory(paymentHistoryData);
+        } else if (typeof paymentHistoryData === 'string' && paymentHistoryData.trim()) {
+          // Legacy: if it's a string, convert to empty array (old format)
+          setPaymentHistory([]);
+        } else {
+          setPaymentHistory([]);
+        }
         setPricingTier(clientData.pricingTier || '');
         setDefaultCurrency(clientData.defaultCurrency || 'USD');
         setActiveRetainersBalance(clientData.activeRetainersBalance || '');
@@ -371,7 +379,7 @@ export default function ClientProfile({
         secondaryContactPhone: secondaryContactPhone.trim() ? unformatPhone(secondaryContactPhone.trim()) : undefined,
         secondaryContactEmail: secondaryContactEmail.trim() ? secondaryContactEmail.trim() : undefined,
         paymentTerms: paymentTerms || undefined,
-        paymentHistory: paymentHistory || undefined,
+        paymentHistory: paymentHistory.length > 0 ? paymentHistory : undefined,
         pricingTier: pricingTier || undefined,
         defaultCurrency,
         activeRetainersBalance: activeRetainersBalance || undefined,
@@ -408,11 +416,30 @@ export default function ClientProfile({
       
       await updateClients(currentUser.uid, updatedClients);
       
-      if (onSave) onSave(clientData.id);
-      router.push(`/dashboard/clients/${clientData.id}`);
+      success(initialClient ? 'Client updated successfully' : 'Client created successfully');
+      
+      if (onSave) {
+        onSave(clientData.id);
+      } else {
+        // Fallback: navigate if no onSave callback provided
+        setTimeout(() => {
+          router.push(`/dashboard/clients/${clientData.id}`);
+        }, 500);
+      }
     } catch (error) {
       console.error('Failed to save client:', error);
-      setErrors({ submit: 'Failed to save client. Please try again.' });
+      const errorMessage = error.message || 'Failed to save client. Please try again.';
+      
+      // Show detailed error message
+      if (errorMessage.includes('RLS') || errorMessage.includes('permission') || errorMessage.includes('policy')) {
+        showError('Permission denied. Please ensure you are logged in and try again.');
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        showError('Network error. Please check your connection and try again.');
+      } else {
+        showError(errorMessage);
+      }
+      
+      setErrors({ submit: errorMessage });
     } finally {
       setSaving(false);
     }
@@ -789,33 +816,24 @@ export default function ClientProfile({
       label: 'Financial Information',
       content: (
         <div className="space-y-4">
-          <Dropdown
-            id="paymentTerms"
-            label="Payment Terms"
-            value={paymentTerms || undefined}
-            onChange={(e) => setPaymentTerms(e.target.value)}
-            options={PAYMENT_TERMS.map((term) => ({ value: term, label: term }))}
-            placeholder="Select payment terms..."
-            variant="light"
-          />
-          <TextareaField
-            id="paymentHistory"
-            label="Payment History"
-            value={paymentHistory}
-            onChange={(e) => setPaymentHistory(e.target.value)}
-            placeholder="Payment history notes..."
-            rows={4}
-            variant="light"
-          />
-          <InputField
-            id="pricingTier"
-            label="Pricing Tier"
-            value={pricingTier}
-            onChange={(e) => setPricingTier(e.target.value)}
-            placeholder="e.g., Standard, Premium, Enterprise"
-            variant="light"
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Dropdown
+              id="paymentTerms"
+              label="Payment Terms"
+              value={paymentTerms || undefined}
+              onChange={(e) => setPaymentTerms(e.target.value)}
+              options={PAYMENT_TERMS.map((term) => ({ value: term, label: term }))}
+              placeholder="Select payment terms..."
+              variant="light"
+            />
+            <Dropdown
+              id="pricingTier"
+              label="Pricing Tier"
+              value={pricingTier}
+              onChange={(e) => setPricingTier(e.target.value)}
+              options={PRICING_TIERS}
+              variant="light"
+            />
             <Dropdown
               id="defaultCurrency"
               label="Default Currency"
@@ -824,15 +842,109 @@ export default function ClientProfile({
               options={CURRENCIES}
               variant="light"
             />
-            <InputField
+            <CurrencyInput
               id="activeRetainersBalance"
               label="Active Retainers Balance"
-              type="number"
               value={activeRetainersBalance}
               onChange={(e) => setActiveRetainersBalance(e.target.value)}
+              currency={defaultCurrency || 'USD'}
               placeholder="0.00"
               variant="light"
             />
+          </div>
+          <div>
+            <label className={getLabelClasses('light')}>
+              Payment History
+            </label>
+            {paymentHistory.length === 0 ? (
+              <EmptyState
+                type="custom"
+                title="No payments yet"
+                description="Payment history will appear here once payments are recorded."
+                icon={HiDocumentText}
+                className="mt-2"
+              />
+            ) : (
+              <div className="mt-2 overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Payment Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Project Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Invoice #
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Receipt #
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Payment Type
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {paymentHistory.map((payment, index) => {
+                      const paymentDate = payment.paymentDate ? new Date(payment.paymentDate) : null;
+                      const isPastDue = payment.status === 'past due';
+                      const isPaid = payment.status === 'paid';
+                      const isPastDate = paymentDate && paymentDate < new Date();
+                      
+                      return (
+                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            {paymentDate ? (
+                              <span className={isPastDate ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-900 dark:text-gray-100'}>
+                                {paymentDate.toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 dark:text-gray-500">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            {isPastDue ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                                Past Due
+                              </span>
+                            ) : isPaid ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                Paid
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                {payment.status || 'Pending'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {payment.projectName || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {payment.invoiceNumber || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {payment.receiptNumber || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {payment.paymentType || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       ),
@@ -1578,27 +1690,37 @@ export default function ClientProfile({
             services={userAccount?.services || []}
             clients={userAccount?.clients || []}
             onClientAdd={async (clientData) => {
-              const existingIds = (userAccount?.clients || []).map((c) => c.id).filter(Boolean);
-              const newClientId = generateClientId(existingIds);
-              const newClient = { id: newClientId, ...clientData };
-              const updatedClients = [...(userAccount?.clients || []), newClient];
-              await updateClients(currentUser.uid, updatedClients);
-              return newClientId;
+              try {
+                const existingIds = (userAccount?.clients || []).map((c) => c.id).filter(Boolean);
+                const newClientId = generateClientId(existingIds);
+                const newClient = { id: newClientId, ...clientData };
+                const updatedClients = [...(userAccount?.clients || []), newClient];
+                await updateClients(currentUser.uid, updatedClients);
+                success('Client added to appointment');
+                return newClientId;
+              } catch (error) {
+                console.error('Failed to add client:', error);
+                showError('Failed to add client. Please try again.');
+                throw error;
+              }
             }}
             onSubmit={async (appointmentData) => {
               if (!currentUser?.uid) return;
               try {
                 await saveAppointment(currentUser.uid, appointmentData);
+                success(editingAppointment ? 'Appointment updated successfully' : 'Appointment created successfully');
                 // Refresh user account to get updated appointments
                 const updatedAccount = await getUserAccountFromServer(currentUser.uid);
                 // Update userAccount prop would need to be handled by parent
                 setShowAppointmentDrawer(false);
                 setEditingAppointment(null);
                 // Reload page to refresh appointments
-                window.location.reload();
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500);
               } catch (error) {
                 console.error('Failed to save appointment:', error);
-                alert('Failed to save appointment. Please try again.');
+                showError('Failed to save appointment. Please try again.');
               }
             }}
             onDelete={editingAppointment ? async () => {
@@ -1606,12 +1728,15 @@ export default function ClientProfile({
               if (!confirm('Are you sure you want to delete this appointment?')) return;
               try {
                 await deleteAppointment(currentUser.uid, editingAppointment.id);
+                success('Appointment deleted successfully');
                 setShowAppointmentDrawer(false);
                 setEditingAppointment(null);
-                window.location.reload();
+                setTimeout(() => {
+                  window.location.reload();
+                }, 500);
               } catch (error) {
                 console.error('Failed to delete appointment:', error);
-                alert('Failed to delete appointment. Please try again.');
+                showError('Failed to delete appointment. Please try again.');
               }
             } : undefined}
             onCancel={() => {

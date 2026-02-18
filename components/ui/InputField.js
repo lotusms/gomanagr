@@ -63,7 +63,7 @@ const InputField = forwardRef(({
         : 'border-yellow-500 bg-yellow-900/20 text-white placeholder-white/50')
     : '';
   // Use less padding for date inputs to bring calendar icon closer to edge
-  const iconPadding = type === 'date' ? 'pr-3' : 'pr-10';
+  const iconPadding = type === 'number' ? 'pr-3' : type === 'date' ? 'pr-3' : 'pr-10';
 
   const errorTextClass = isLight ? 'mt-1 text-sm text-red-600' : 'mt-1 text-sm text-red-300';
 

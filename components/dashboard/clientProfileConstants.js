@@ -70,6 +70,14 @@ export const PAYMENT_TERMS = [
   'Custom',
 ];
 
+// Pricing tiers
+export const PRICING_TIERS = [
+  'Standard',
+  'Premium',
+  'Enterprise',
+  'Custom',
+];
+
 // Currencies
 export const CURRENCIES = [
   { value: 'USD', label: 'USD ($)' },

@@ -197,7 +197,11 @@ export async function getUserAccountFromServer(userId) {
 export async function updateUserTheme(userId, paletteId) {
   const { error } = await supabase
     .from('user_account')
-    .update({ selected_palette: paletteId, updated_at: new Date().toISOString() })
+    .update({ 
+      selected_palette: paletteId, 
+      user_id: userId, // Ensure user_id is set for RLS
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', userId);
   if (error) throw new Error('Failed to save theme preference: ' + error.message);
 }
@@ -206,7 +210,11 @@ export async function updateDismissedTodos(userId, dismissedTodoIds) {
   const list = Array.isArray(dismissedTodoIds) ? dismissedTodoIds : [];
   const { error } = await supabase
     .from('user_account')
-    .update({ dismissed_todo_ids: list, updated_at: new Date().toISOString() })
+    .update({ 
+      dismissed_todo_ids: list, 
+      user_id: userId, // Ensure user_id is set for RLS
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', userId);
   if (error) throw new Error('Failed to save dismissed todos: ' + error.message);
 }
@@ -215,7 +223,11 @@ export async function updateTeamMembers(userId, teamMembers) {
   const list = Array.isArray(teamMembers) ? teamMembers : [];
   const { error } = await supabase
     .from('user_account')
-    .update({ team_members: list, updated_at: new Date().toISOString() })
+    .update({ 
+      team_members: list, 
+      user_id: userId, // Ensure user_id is set for RLS
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', userId);
   if (error) throw new Error('Failed to save team members: ' + error.message);
 }
@@ -256,16 +268,27 @@ export async function updateClients(userId, clients) {
   const cleaned = Array.isArray(clients) ? clients.map(cleanClient) : [];
   const { error } = await supabase
     .from('user_account')
-    .update({ clients: cleaned, updated_at: new Date().toISOString() })
+    .update({ 
+      clients: cleaned, 
+      user_id: userId, // Ensure user_id is set for RLS
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', userId);
-  if (error) throw new Error('Failed to save clients: ' + error.message);
+  if (error) {
+    console.error('Supabase updateClients error:', error);
+    throw new Error('Failed to save clients: ' + error.message);
+  }
 }
 
 export async function updateServices(userId, services) {
   const list = Array.isArray(services) ? services : [];
   const { error } = await supabase
     .from('user_account')
-    .update({ services: list, updated_at: new Date().toISOString() })
+    .update({ 
+      services: list, 
+      user_id: userId, // Ensure user_id is set for RLS
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', userId);
   if (error) throw new Error('Failed to save services: ' + error.message);
 }
@@ -277,7 +300,11 @@ export async function saveAppointment(userId, appointment) {
   filtered.push(appointment);
   const { error } = await supabase
     .from('user_account')
-    .update({ appointments: filtered, updated_at: new Date().toISOString() })
+    .update({ 
+      appointments: filtered, 
+      user_id: userId, // Ensure user_id is set for RLS
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', userId);
   if (error) throw new Error('Failed to save appointment: ' + error.message);
 }
@@ -289,7 +316,11 @@ export async function deleteAppointment(userId, appointmentId) {
   const filtered = appointments.filter((apt) => apt.id !== appointmentId);
   const { error } = await supabase
     .from('user_account')
-    .update({ appointments: filtered, updated_at: new Date().toISOString() })
+    .update({ 
+      appointments: filtered, 
+      user_id: userId, // Ensure user_id is set for RLS
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', userId);
   if (error) throw new Error('Failed to delete appointment: ' + error.message);
 }

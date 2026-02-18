@@ -39,6 +39,8 @@ export default function AddressAutocomplete({
   const suggestionsRef = useRef(null);
   const sessionTokenRef = useRef(null);
   const debounceRef = useRef(null);
+  const blurTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
 
   // Initialize Google Maps Places API (New)
   useEffect(() => {
@@ -153,6 +155,7 @@ export default function AddressAutocomplete({
   // Handle input change with debouncing
   const handleInputChange = (e) => {
     const inputValue = e.target.value;
+    isTypingRef.current = true;
     
     // Call onChange immediately for controlled input
     if (onChange) {
@@ -164,9 +167,23 @@ export default function AddressAutocomplete({
       clearTimeout(debounceRef.current);
     }
 
-    // Debounce API call
-    debounceRef.current = setTimeout(() => {
-      fetchSuggestions(inputValue);
+      // Debounce API call
+    debounceRef.current = setTimeout(async () => {
+      await fetchSuggestions(inputValue);
+      // After suggestions are fetched, check if we should maintain focus
+      // Only reset typing flag after a short delay to allow for continued typing
+      setTimeout(() => {
+        isTypingRef.current = false;
+      }, 100);
+      // Ensure input maintains focus after suggestions appear
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        });
+      }
     }, 300);
   };
 
@@ -299,6 +316,13 @@ export default function AddressAutocomplete({
   const handleKeyDown = (e) => {
     // Handle space key specially - ensure it doesn't cause focus loss or form submission
     if (e.key === ' ' || e.keyCode === 32) {
+      // Clear blur timeout to prevent focus loss
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
+      isTypingRef.current = true;
+      
       // If a suggestion is highlighted, reset it but still allow space to be typed
       if (activeIndex >= 0 && isOpen) {
         setActiveIndex(-1);
@@ -420,10 +444,11 @@ export default function AddressAutocomplete({
           onKeyDown={handleKeyDown}
           onFocus={(e) => {
             // Clear any pending blur timeout
-            if (inputRef.current?._blurTimeout) {
-              clearTimeout(inputRef.current._blurTimeout);
-              inputRef.current._blurTimeout = null;
+            if (blurTimeoutRef.current) {
+              clearTimeout(blurTimeoutRef.current);
+              blurTimeoutRef.current = null;
             }
+            isTypingRef.current = true;
             
             if (suggestions.length > 0) {
               setIsOpen(true);
@@ -432,8 +457,17 @@ export default function AddressAutocomplete({
           onBlur={(e) => {
             // Don't close dropdown immediately on blur - wait a bit to allow clicks on suggestions
             // This prevents the dropdown from closing when space is pressed or when clicking suggestions
-            const blurTimeout = setTimeout(() => {
-              // Check if focus moved to a suggestion or back to input
+            // Also check if user is actively typing (debounce in progress)
+            if (blurTimeoutRef.current) {
+              clearTimeout(blurTimeoutRef.current);
+            }
+            
+            blurTimeoutRef.current = setTimeout(() => {
+              // Don't close if user is typing or if focus moved to a suggestion
+              if (isTypingRef.current) {
+                return;
+              }
+              
               const activeElement = document.activeElement;
               const clickedSuggestion = suggestionsRef.current?.contains(activeElement);
               const backToInput = activeElement === inputRef.current;
@@ -443,11 +477,6 @@ export default function AddressAutocomplete({
                 setActiveIndex(-1);
               }
             }, 200);
-            
-            // Store timeout to clear if focus returns quickly
-            if (inputRef.current) {
-              inputRef.current._blurTimeout = blurTimeout;
-            }
           }}
           placeholder={placeholder}
           disabled={disabled || isLoading}

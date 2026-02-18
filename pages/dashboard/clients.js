@@ -1,29 +1,24 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateClients } from '@/services/userService';
-import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
-import ClientForm from '@/components/dashboard/ClientForm';
-import { PageHeader, EmptyState } from '@/components/ui';
-import Drawer from '@/components/ui/Drawer';
+import { PageHeader, EmptyState, ConfirmationDialog } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { HiPlus } from 'react-icons/hi';
 
-function generateId() {
-  return `cl-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
 function ClientsContent() {
   const { currentUser } = useAuth();
+  const router = useRouter();
   const [userAccount, setUserAccount] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [clients, setClients] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [showAddDrawer, setShowAddDrawer] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -31,12 +26,22 @@ function ClientsContent() {
     getUserAccount(currentUser.uid)
       .then((data) => {
         setUserAccount(data || null);
-        const list = (data?.clients && data.clients.length > 0)
-          ? data.clients
-          : DEFAULT_CLIENTS;
-        setClients(list);
+        // Handle case where data is null (offline or no account yet)
+        if (!data || !data.clients || data.clients.length === 0) {
+          setClients([]);
+          return;
+        }
+        // Filter to show only active clients (status !== 'inactive')
+        // Default to 'active' if status is not set
+        const activeClients = data.clients.filter((c) => (c.status || 'active') !== 'inactive');
+        setClients(activeClients);
       })
-      .catch(() => setClients(DEFAULT_CLIENTS))
+      .catch((error) => {
+        console.warn('Failed to load clients (may be offline):', error);
+        // If offline or error, set empty array - data will load when connection is restored
+        setClients([]);
+        setUserAccount(null);
+      })
       .finally(() => setLoaded(true));
   }, [currentUser?.uid]);
 
@@ -46,56 +51,62 @@ function ClientsContent() {
     updateClients(currentUser.uid, nextClients)
       .then(() => {
         setUserAccount((prev) => (prev ? { ...prev, clients: nextClients } : null));
-        setClients(nextClients);
+        // Filter to show only active clients in the display
+        const activeClients = nextClients.filter((c) => (c.status || 'active') !== 'inactive');
+        setClients(activeClients);
       })
       .catch((err) => console.error('Failed to save clients:', err))
       .finally(() => setSaving(false));
   };
 
-  const handleRemove = (id) => {
-    const next = clients.filter((c) => c.id !== id);
-    saveClients(next);
+  const handleRemove = (client) => {
+    setClientToDelete(client);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!clientToDelete || !currentUser?.uid) return;
+    
+    setSaving(true);
+    try {
+      // Get all clients (including inactive ones)
+      const account = await getUserAccount(currentUser.uid);
+      const allClients = account?.clients || [];
+      
+      // Update the client's status to 'inactive' instead of removing
+      const updatedClients = allClients.map((c) =>
+        c.id === clientToDelete.id ? { ...c, status: 'inactive' } : c
+      );
+      
+      // Save updated clients
+      await updateClients(currentUser.uid, updatedClients);
+      
+      // Update local state - filter out inactive clients
+      const activeClients = updatedClients.filter((c) => (c.status || 'active') !== 'inactive');
+      setClients(activeClients);
+      setUserAccount((prev) => (prev ? { ...prev, clients: updatedClients } : null));
+      
+      setDeleteDialogOpen(false);
+      setClientToDelete(null);
+    } catch (err) {
+      console.error('Failed to deactivate client:', err);
+      alert('Failed to deactivate client. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setClientToDelete(null);
   };
 
   const handleAdd = () => {
-    setEditingClient(null);
-    setShowAddDrawer(true);
+    router.push('/dashboard/clients/new');
   };
 
   const handleEdit = (client) => {
-    setEditingClient(client);
-    setShowAddDrawer(true);
-  };
-
-  const handleSave = async (clientData) => {
-    if (editingClient) {
-      // Update existing client
-      const updatedClient = {
-        ...editingClient,
-        name: clientData.name,
-        company: clientData.company,
-      };
-      const next = clients.map((c) => (c.id === editingClient.id ? updatedClient : c));
-      setClients(next);
-      await saveClients(next);
-    } else {
-      // Add new client
-      const newClient = {
-        id: generateId(),
-        name: clientData.name,
-        company: clientData.company,
-      };
-      const next = [...clients, newClient];
-      setClients(next);
-      await saveClients(next);
-    }
-    setShowAddDrawer(false);
-    setEditingClient(null);
-  };
-
-  const handleCloseDrawer = () => {
-    setShowAddDrawer(false);
-    setEditingClient(null);
+    router.push(`/dashboard/clients/${client.id}`);
   };
 
   return (
@@ -150,28 +161,29 @@ function ClientsContent() {
                     name={client.name}
                     subtitle={client.company}
                     onClick={() => handleEdit(client)}
-                    onRemove={() => handleRemove(client.id)}
+                    onRemove={() => handleRemove(client)}
+                    isClient={true}
+                    hasCompany={!!(client.company && client.company.trim())}
                   />
                 ))}
               </div>
             )}
           </>
         )}
-
-        {/* Client Drawer */}
-        <Drawer
-          isOpen={showAddDrawer}
-          onClose={handleCloseDrawer}
-          title={editingClient ? 'Edit Client' : 'Add Client'}
-        >
-          <ClientForm
-            initialClient={editingClient}
-            onSubmit={handleSave}
-            onCancel={handleCloseDrawer}
-            saving={saving}
-          />
-        </Drawer>
       </div>
+
+      {/* Deactivate Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Deactivate Client"
+        message={`Are you sure you want to deactivate "${clientToDelete?.name || 'this client'}"? The client will be removed from your active clients list, but their information will be retained for future reference.`}
+        confirmText="Deactivate Client"
+        cancelText="Cancel"
+        confirmationWord="deactivate"
+        variant="danger"
+      />
     </>
   );
 }

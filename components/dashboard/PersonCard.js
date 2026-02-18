@@ -9,18 +9,21 @@ import { useMemo } from 'react';
  * @param {string} [src] - Image URL (e.g. team member pictureUrl); when set, shows as avatar
  * @param {() => void} [onClick] - If provided, card is clickable (e.g. open edit)
  * @param {() => void} [onRemove] - If provided, shows a remove button
+ * @param {boolean} [isClient] - If true, shows icon instead of avatar/initials
+ * @param {boolean} [hasCompany] - If true and isClient, shows company icon instead of person icon
  */
-export default function PersonCard({ name, subtitle, src, onClick, onRemove }) {
+export default function PersonCard({ name, subtitle, src, onClick, onRemove, isClient = false, hasCompany = false }) {
   const hasImage = src && src.trim() !== '';
 
-  // Get initials for avatar
+  // Get initials for avatar (only for team members)
   const initials = useMemo(() => {
+    if (isClient) return null; // Clients use icons, not initials
     const parts = name.trim().split(' ');
     if (parts.length >= 2) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
-  }, [name]);
+  }, [name, isClient]);
 
   return (
     <div
@@ -50,7 +53,24 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove }) {
       <div className="relative z-10 flex flex-col items-center justify-center p-6 min-h-[200px]">
         {/* Avatar section */}
         <div className="mb-4 relative">
-          {hasImage ? (
+          {isClient ? (
+            // Client: Show icon (person or company)
+            <div className={`
+              w-20 h-20 rounded-full flex items-center justify-center
+              bg-white/20 backdrop-blur-sm
+              ring-4 ring-white/30 dark:ring-gray-800/30
+              shadow-xl
+              text-white
+              group-hover:scale-110 transition-transform duration-300
+            `}>
+              {hasCompany ? (
+                <HiOfficeBuilding className="w-10 h-10" />
+              ) : (
+                <HiUser className="w-10 h-10" />
+              )}
+            </div>
+          ) : hasImage ? (
+            // Team: Show image if available
             <div className="w-20 h-20 rounded-full overflow-hidden ring-4 ring-white/30 dark:ring-gray-800/30 shadow-xl">
               <img 
                 src={src} 
@@ -59,6 +79,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove }) {
               />
             </div>
           ) : (
+            // Team: Show initials if no image
             <div className={`
               w-20 h-20 rounded-full flex items-center justify-center
               bg-white/20 backdrop-blur-sm

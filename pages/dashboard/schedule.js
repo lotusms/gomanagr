@@ -110,7 +110,8 @@ function ScheduleContent() {
     
     try {
       // Generate new client ID
-      const newClientId = `cl-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const existingIds = (userAccount?.clients || clients).map((c) => c.id).filter(Boolean);
+      const newClientId = generateClientId(existingIds);
       const newClient = {
         id: newClientId,
         name: clientData.name,

@@ -38,25 +38,9 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
   }
   const displayName = getDisplayName(account, currentUser?.email ?? '');
   
-  // Use company logo if available, otherwise fall back to initials
-  // Only show initials if userAccount has loaded and there's no logo
-  // Check for non-empty string (logo URLs can be various formats: http, https, data:, Firebase Storage URLs, etc.)
   const hasLogo = logoUrl.length > 0;
   const accountLoaded = userAccount !== null || previewAccount !== null;
-  
-  // Debug logging
-  if (accountLoaded && account) {
-    console.log('[UserMenu] Account check:', {
-      hasLogo,
-      logoUrl: logoUrl ? logoUrl.substring(0, 50) + '...' : 'empty',
-      rawLogo,
-      rawLogoType: typeof rawLogo,
-      accountKeys: Object.keys(account).filter(k => k.includes('logo') || k.includes('Logo'))
-    });
-  }
-  
-  // Don't show initials until we know for sure there's no logo
-  // This prevents the flash of initials while account data is loading
+    
   const shouldShowInitials = accountLoaded && !hasLogo;
 
   return (

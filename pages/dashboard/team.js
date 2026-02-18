@@ -44,9 +44,15 @@ function TeamContent() {
         const list = (data?.teamMembers && data.teamMembers.length > 0)
           ? data.teamMembers
           : DEFAULT_TEAM_MEMBERS;
-        setTeam(list);
+        // Filter to show only active team members (status !== 'inactive')
+        // Default to 'active' if status is not set
+        const activeTeam = list.filter((m) => (m.status || 'active') !== 'inactive');
+        setTeam(activeTeam);
       })
-      .catch(() => setTeam(DEFAULT_TEAM_MEMBERS))
+      .catch(() => {
+        const activeTeam = DEFAULT_TEAM_MEMBERS.filter((m) => (m.status || 'active') !== 'inactive');
+        setTeam(activeTeam);
+      })
       .finally(() => setLoaded(true));
   }, [currentUser?.uid]);
 
@@ -82,7 +88,9 @@ function TeamContent() {
     updateTeamMembers(currentUser.uid, cleanedTeam)
       .then(() => {
         setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
-        setTeam(cleanedTeam);
+        // Filter to show only active team members in the display
+        const activeTeam = cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
+        setTeam(activeTeam);
       })
       .catch((err) => console.error('Failed to save team:', err))
       .finally(() => setSaving(false));
@@ -94,12 +102,38 @@ function TeamContent() {
     setDeleteDialogOpen(true);
   };
 
-  const handleRemoveConfirm = () => {
-    if (memberToDelete) {
-      const next = team.filter((m) => m.id !== memberToDelete.id);
-      saveTeam(next);
+  const handleRemoveConfirm = async () => {
+    if (!memberToDelete || !currentUser?.uid) return;
+    
+    setSaving(true);
+    try {
+      // Get all team members (including inactive ones)
+      const account = await getUserAccount(currentUser.uid);
+      const allTeamMembers = account?.teamMembers || [];
+      
+      // Update the team member's status to 'inactive' instead of removing
+      const updatedTeamMembers = allTeamMembers.map((m) =>
+        m.id === memberToDelete.id ? { ...m, status: 'inactive' } : m
+      );
+      
+      // Clean all team members to remove undefined values before saving
+      const cleanedTeam = updatedTeamMembers.map(cleanTeamMember);
+      
+      // Save updated team members
+      await updateTeamMembers(currentUser.uid, cleanedTeam);
+      
+      // Update local state - filter out inactive team members
+      const activeTeam = cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
+      setTeam(activeTeam);
+      setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
+      
       setDeleteDialogOpen(false);
       setMemberToDelete(null);
+    } catch (err) {
+      console.error('Failed to deactivate team member:', err);
+      alert('Failed to deactivate team member. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -111,7 +145,19 @@ function TeamContent() {
   const handleSaveMember = async (data, pictureFile, editingId) => {
     const isEdit = !!editingId;
     const memberId = isEdit ? editingId : generateId();
-    let pictureUrl = isEdit ? team.find((m) => m.id === editingId)?.pictureUrl ?? '' : '';
+    
+    // Get all team members (including inactive) when editing to preserve inactive members
+    let allTeamMembers = team;
+    if (isEdit && currentUser?.uid) {
+      try {
+        const account = await getUserAccount(currentUser.uid);
+        allTeamMembers = account?.teamMembers || team;
+      } catch (err) {
+        console.error('Failed to fetch all team members:', err);
+      }
+    }
+    
+    let pictureUrl = isEdit ? allTeamMembers.find((m) => m.id === editingId)?.pictureUrl ?? '' : '';
     if (pictureFile && currentUser?.uid) {
       try {
         const photoRef = ref(storage, `team-photos/${currentUser.uid}/${memberId}/${pictureFile.name}`);
@@ -149,12 +195,20 @@ function TeamContent() {
       personalityTraits: data.personalityTraits?.length ? data.personalityTraits : undefined,
       yearsExperience: data.yearsExperience,
       pictureUrl: pictureUrl || undefined,
+      status: isEdit ? (allTeamMembers.find((m) => m.id === editingId)?.status || 'active') : 'active', // Default to 'active' for new members, preserve existing status for edits
     });
-    const next = isEdit
-      ? team.map((m) => (m.id === editingId ? updatedMember : m))
-      : [...team, updatedMember];
-    setTeam(next);
-    saveTeam(next);
+    
+    // Update all team members (including inactive) when editing, or add new member
+    const nextAllMembers = isEdit
+      ? allTeamMembers.map((m) => (m.id === editingId ? updatedMember : m))
+      : [...allTeamMembers, updatedMember];
+    
+    // Update local active team display
+    const activeTeam = nextAllMembers.filter((m) => (m.status || 'active') !== 'inactive');
+    setTeam(activeTeam);
+    
+    // Save all team members (including inactive)
+    saveTeam(nextAllMembers);
 
     // Update services to reflect team member assignments
     if (data.selectedServiceIds !== undefined && userAccount?.services) {
@@ -341,11 +395,11 @@ function TeamContent() {
               isOpen={deleteDialogOpen}
               onClose={handleRemoveCancel}
               onConfirm={handleRemoveConfirm}
-              title="Delete Team Member"
-              message={`Are you sure you want to delete ${memberToDelete?.name || 'this team member'}? This action cannot be undone and will remove all associated data.`}
-              confirmText="Delete"
+              title="Deactivate Team Member"
+              message={`Are you sure you want to deactivate ${memberToDelete?.name || 'this team member'}? The team member will be removed from your active team list, but their information will be retained for future reference.`}
+              confirmText="Deactivate"
               cancelText="Cancel"
-              confirmationWord="delete"
+              confirmationWord="deactivate"
               variant="danger"
             />
 

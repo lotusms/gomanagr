@@ -133,6 +133,19 @@ export async function getUserAccount(userId) {
     }
     return null;
   } catch (error) {
+    // Handle offline errors gracefully
+    const errorMessage = error.message || '';
+    const errorCode = error.code || '';
+    
+    if (
+      errorMessage.includes('offline') ||
+      errorCode === 'unavailable' ||
+      errorCode === 'failed-precondition'
+    ) {
+      console.warn('Client is offline, returning null. Data will sync when connection is restored.');
+      return null;
+    }
+    
     console.error('Error getting user account:', error);
     throw new Error('Failed to get user account: ' + error.message);
   }
@@ -233,24 +246,52 @@ export async function updateTeamMembers(userId, teamMembers) {
 /**
  * Update the user's clients (synced with Clients page).
  * @param {string} userId - The Firebase Auth user ID
- * @param {Array<{ id: string, name: string, company?: string }>} clients
+ * @param {Array} clients - Array of client objects (id, name, phone?, email?, company?, companyPhone?, companyAddress?, companyEmail?)
  * @returns {Promise<void>}
  */
+function cleanClientForFirestore(client) {
+  // Recursively remove undefined, null, and empty string values
+  const cleanValue = (value) => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'string' && value.trim() === '') return undefined;
+    if (Array.isArray(value)) {
+      const cleaned = value.filter((item) => item !== undefined && item !== null && item !== '');
+      return cleaned.length > 0 ? cleaned : undefined;
+    }
+    if (typeof value === 'object' && value !== null) {
+      const cleaned = {};
+      let hasValues = false;
+      for (const [key, val] of Object.entries(value)) {
+        const cleanedVal = cleanValue(val);
+        if (cleanedVal !== undefined) {
+          cleaned[key] = cleanedVal;
+          hasValues = true;
+        }
+      }
+      return hasValues ? cleaned : undefined;
+    }
+    return value;
+  };
+  
+  const cleaned = {};
+  for (const [key, value] of Object.entries(client)) {
+    const cleanedVal = cleanValue(value);
+    if (cleanedVal !== undefined) {
+      cleaned[key] = cleanedVal;
+    }
+  }
+  
+  // Ensure id and name are always present
+  if (!cleaned.id && client.id) cleaned.id = client.id;
+  if (!cleaned.name && client.name) cleaned.name = client.name;
+  
+  return cleaned;
+}
+
 export async function updateClients(userId, clients) {
   try {
     const userAccountRef = doc(db, 'useraccount', userId);
-    
-    // Clean clients array: remove undefined values from each client object
-    const cleanedClients = Array.isArray(clients) 
-      ? clients.map(client => {
-          const cleaned = { id: client.id, name: client.name };
-          // Only include company if it's not undefined
-          if (client.company !== undefined && client.company !== null) {
-            cleaned.company = client.company;
-          }
-          return cleaned;
-        })
-      : [];
+    const cleanedClients = Array.isArray(clients) ? clients.map(cleanClientForFirestore) : [];
     
     await setDoc(
       userAccountRef,

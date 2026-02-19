@@ -9,7 +9,7 @@ import {
   AddressAutocomplete,
   Drawer,
 } from '@/components/ui';
-import AddServiceForm from '@/components/dashboard/AddServiceForm';
+import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus } from 'react-icons/hi';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
 import { COUNTRIES } from '@/utils/countries';

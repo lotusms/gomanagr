@@ -6,7 +6,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import { ChipsMulti } from '@/components/ui/Chips';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import Drawer from '@/components/ui/Drawer';
-import ClientForm from '@/components/dashboard/ClientForm';
+import ClientForm from '@/components/clients/ClientForm';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 
 /**

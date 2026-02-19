@@ -6,7 +6,7 @@ import { getUserAccount } from '@/services/userService';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import ClientProfile from '@/components/dashboard/ClientProfile';
+import ClientProfile from '@/components/clients/ClientProfile';
 import { PageHeader } from '@/components/ui';
 import { HiArrowLeft } from 'react-icons/hi';
 import Link from 'next/link';

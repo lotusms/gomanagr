@@ -5,7 +5,7 @@ import { getUserAccount, updateServices, updateTeamMembers } from '@/services/us
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader, Drawer, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
-import AddServiceForm from '@/components/dashboard/AddServiceForm';
+import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus, HiX, HiPencil, HiTrash, HiClipboardList, HiUserGroup } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
 

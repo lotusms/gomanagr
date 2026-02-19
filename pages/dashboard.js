@@ -18,8 +18,10 @@ import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import StatsGrid from '@/components/dashboard/StatsGrid';
 
 function getWelcomeName(account, email = '') {
+  // Always prioritize firstName - this is what user entered during signup
   const first = (account?.firstName ?? '').trim();
   if (first) return first;
+  // Only fall back to email handler if firstName is truly missing
   if (email) return email.split('@')[0];
   return '';
 }
@@ -98,13 +100,15 @@ function DashboardContent() {
       getUserAccountFromServer(currentUser.uid)
         .then((data) => {
           setUserAccount(data || null);
-          // Debug: log companyLogo value
+          // Debug: log account data
           if (data) {
             console.log('[Dashboard] Loaded account data:', {
+              firstName: data.firstName,
+              lastName: data.lastName,
+              email: data.email,
               hasCompanyLogo: !!data.companyLogo,
               companyLogoType: typeof data.companyLogo,
               companyLogoValue: data.companyLogo ? String(data.companyLogo).substring(0, 50) : 'empty/null',
-              companyLogoLength: data.companyLogo ? String(data.companyLogo).length : 0
             });
           }
         })
@@ -135,6 +139,15 @@ function DashboardContent() {
 
   const welcomeName = getWelcomeName(userAccount, currentUser?.email ?? '');
   const dismissedTodoIds = accountLoaded ? (userAccount?.dismissedTodoIds ?? []) : null;
+  
+  // Debug: log welcome name calculation
+  if (userAccount) {
+    console.log('[Dashboard] Welcome name calculation:', {
+      firstName: userAccount.firstName,
+      email: currentUser?.email,
+      welcomeName,
+    });
+  }
 
   const handleDismissTodo = (todoId) => {
     if (!currentUser?.uid || !todoId) return;
@@ -198,7 +211,7 @@ function DashboardContent() {
           timeFormat={userAccount?.timeFormat ?? '24h'}
           dateFormat={userAccount?.dateFormat ?? 'MM/DD/YYYY'}
           timezone={userAccount?.timezone ?? 'UTC'}
-          staff={userAccount?.teamMembers ?? DEFAULT_TEAM_MEMBERS}
+          staff={userAccount?.teamMembers ?? []}
           appointments={userAccount?.appointments || []}
           clients={userAccount?.clients || []}
           services={userAccount?.services || []}

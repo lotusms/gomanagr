@@ -42,7 +42,8 @@ function AccountContent() {
           setUserAccount(data || {});
           setFirstName(data?.firstName ?? '');
           setLastName(data?.lastName ?? '');
-          setReportingEmail(data?.reportingEmail ?? '');
+          // Normalize reportingEmail: if empty, use signup email
+          setReportingEmail(data?.reportingEmail || currentUser?.email || '');
           setNameView(data?.nameView ?? 'full');
         })
         .catch(() => setUserAccount({}))
@@ -73,13 +74,16 @@ function AccountContent() {
     if (!currentUser?.uid) return;
     setAccountSaveStatus({ type: null, message: null });
     try {
+      // Normalize reportingEmail: if empty or not provided, use signup email
+      const normalizedReportingEmail = (reportingEmail.trim() || currentUser.email || '').trim();
+      
       const payload = {
         ...userAccount,
         userId: currentUser.uid,
         email: currentUser.email,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        reportingEmail: reportingEmail.trim(),
+        reportingEmail: normalizedReportingEmail, // Always normalized to signup email if empty
         nameView,
       };
       await createUserAccount(currentUser.uid, payload, null);

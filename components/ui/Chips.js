@@ -15,7 +15,7 @@ import { getLabelClasses } from './formControlStyles';
  * @param {string} props.error - Error message to display
  * @param {boolean} props.required - Whether the field is required
  * @param {string} props.className - Additional CSS classes
- * @param {string} props.layout - Layout type: 'flex' (default) or 'vertical' for full-width stacked buttons
+ * @param {string} props.layout - Layout type: 'flex' (default), 'vertical' for full-width stacked buttons, or 'grid' for grid layout
  * @param {string} props.variant - 'dark' (default) or 'light' for light backgrounds
  */
 export function ChipsSingle({
@@ -31,10 +31,17 @@ export function ChipsSingle({
   variant = 'dark',
 }) {
   const isVertical = layout === 'vertical';
+  const isGrid = layout === 'grid';
   const isLight = variant === 'light';
   const labelClass = getLabelClasses(variant);
   const requiredClass = isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1';
   const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
+  
+  const getRootClassName = () => {
+    if (isVertical) return 'space-y-3';
+    if (isGrid) return 'grid grid-cols-1 md:grid-cols-2 gap-2';
+    return 'flex flex-wrap gap-3';
+  };
   
   return (
     <div className={className}>
@@ -49,7 +56,7 @@ export function ChipsSingle({
         id={id}
         value={value || ''}
         onValueChange={onValueChange}
-        className={isVertical ? 'space-y-3' : 'flex flex-wrap gap-3'}
+        className={getRootClassName()}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
       >

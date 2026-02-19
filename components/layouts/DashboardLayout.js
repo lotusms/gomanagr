@@ -125,7 +125,14 @@ export default function DashboardLayout({ children }) {
           <div className="flex items-center space-x-4">
             <div className="hidden sm:block text-sm text-gray-600 dark:text-gray-300">
               <span>Hello, </span>
-              {getDisplayName(previewAccount || userAccount, currentUser?.email ?? '') || currentUser?.email}
+              {(() => {
+                const account = previewAccount || userAccount;
+                // Prioritize firstName for greeting
+                const firstName = (account?.firstName ?? '').trim();
+                if (firstName) return firstName;
+                // Fall back to formatted display name or email
+                return getDisplayName(account, currentUser?.email ?? '') || currentUser?.email;
+              })()}
             </div>
             <UserMenu
               userAccount={userAccount}

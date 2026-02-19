@@ -22,7 +22,7 @@ function ScheduleContent() {
   const [saving, setSaving] = useState(false);
 
   const appointments = userAccount?.appointments || [];
-  const teamMembers = userAccount?.teamMembers || DEFAULT_TEAM_MEMBERS;
+  const teamMembers = userAccount?.teamMembers || [];
   const clients = userAccount?.clients && userAccount.clients.length > 0
     ? userAccount.clients
     : DEFAULT_CLIENTS;

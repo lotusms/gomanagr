@@ -62,7 +62,12 @@ export default function PasswordField({
           type="button"
           onClick={() => setShowPassword(!showPassword)}
           disabled={disabled}
-          className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          tabIndex={-1}
+          className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            variant === 'dark' 
+              ? 'text-white hover:text-white/80' 
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
           aria-label={showPassword ? 'Hide password' : 'Show password'}
         >
           {showPassword ? (

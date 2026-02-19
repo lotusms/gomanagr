@@ -29,6 +29,16 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
   };
 
   const account = previewAccount ? { ...userAccount, ...previewAccount } : userAccount;
+  
+  // Debug: log account data
+  console.log('[UserMenu] Account data:', {
+    hasAccount: !!account,
+    firstName: account?.firstName,
+    lastName: account?.lastName,
+    email: currentUser?.email,
+    companyLogo: account?.companyLogo,
+  });
+  
   // Get logo URL and ensure it's a valid non-empty string
   const rawLogo = account?.companyLogo;
   // Handle all possible cases: string, null, undefined, number, etc.
@@ -38,10 +48,24 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
   }
   const displayName = getDisplayName(account, currentUser?.email ?? '');
   
+  // For avatar initials, use firstName and lastName directly (not displayName which may be formatted)
+  const firstName = (account?.firstName ?? '').trim();
+  const lastName = (account?.lastName ?? '').trim();
+  const initialsName = firstName || lastName ? `${firstName} ${lastName}`.trim() : displayName;
+  
   const hasLogo = logoUrl.length > 0;
   const accountLoaded = userAccount !== null || previewAccount !== null;
-    
   const shouldShowInitials = accountLoaded && !hasLogo;
+  
+  // Debug: log avatar calculation
+  console.log('[UserMenu] Avatar calculation:', {
+    hasLogo,
+    shouldShowInitials,
+    initialsName,
+    displayName,
+    firstName,
+    lastName,
+  });
 
   return (
     <div className="relative" ref={ref}>
@@ -54,7 +78,7 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
         {accountLoaded ? (
           <Avatar
             src={hasLogo ? logoUrl : undefined}
-            name={shouldShowInitials ? displayName : undefined}
+            name={shouldShowInitials ? initialsName : undefined}
             size="sm"
             className={!hasLogo ? 'bg-primary-600 text-white' : 'bg-white'}
           />

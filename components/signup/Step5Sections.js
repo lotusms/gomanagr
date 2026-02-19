@@ -1,4 +1,5 @@
-import { ChipsMulti } from '@/components/ui';
+import { useState, useMemo } from 'react';
+import { ChipsMulti, Checkbox } from '@/components/ui';
 
 const SECTIONS_OPTIONS = [
   'Client management',
@@ -15,11 +16,23 @@ const SECTIONS_OPTIONS = [
   'Resources Management',
 ];
 
-export default function Step4Sections({ data, updateData, errors }) {
+export default function Step5Sections({ data, updateData, errors }) {
   const selectedSections = data.sectionsToTrack || [];
 
   const handleSectionsChange = (newSections) => {
     updateData({ sectionsToTrack: newSections });
+  };
+
+  const allSelected = useMemo(() => {
+    return selectedSections.length === SECTIONS_OPTIONS.length;
+  }, [selectedSections]);
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      updateData({ sectionsToTrack: [...SECTIONS_OPTIONS] });
+    } else {
+      updateData({ sectionsToTrack: [] });
+    }
   };
 
   return (
@@ -27,6 +40,16 @@ export default function Step4Sections({ data, updateData, errors }) {
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">What sections are you looking to track or manage?</h2>
         <p className="text-primary-200">Select all that apply - more can be added later</p>
+      </div>
+
+      <div className="pb-2 border-b border-white/20">
+        <Checkbox
+          id="selectAllSections"
+          checked={allSelected}
+          onCheckedChange={handleSelectAll}
+        >
+          <span className="text-white font-medium">Select All</span>
+        </Checkbox>
       </div>
 
       <ChipsMulti

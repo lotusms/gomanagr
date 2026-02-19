@@ -8,7 +8,7 @@ const REFERRAL_OPTIONS = [
   'Other',
 ];
 
-export default function Step5Referral({ data, updateData, errors }) {
+export default function Step6Referral({ data, updateData, errors }) {
   const handleReferralChange = (source) => {
     updateData({ referralSource: source });
   };

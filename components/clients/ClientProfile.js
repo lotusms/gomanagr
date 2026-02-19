@@ -101,7 +101,7 @@ export default function ClientProfile({
   const [activeProjects, setActiveProjects] = useState([]);
   const [completedProjects, setCompletedProjects] = useState([]);
   const [expandedProjectKey, setExpandedProjectKey] = useState(null); // 'active-0' | 'completed-1' | null
-  const [legalCaseNumber, setLegalCaseNumber] = useState('');
+  
   const [linkedFiles, setLinkedFiles] = useState([]);
   const [deliverables, setDeliverables] = useState([]);
   const [approvals, setApprovals] = useState([]);
@@ -234,7 +234,6 @@ export default function ClientProfile({
         // Projects
         setActiveProjects(clientData.activeProjects || []);
         setCompletedProjects(clientData.completedProjects || []);
-        setLegalCaseNumber(clientData.legalCaseNumber || '');
         setLinkedFiles(clientData.linkedFiles || []);
         setDeliverables(clientData.deliverables || []);
         setApprovals(clientData.approvals || []);
@@ -384,7 +383,6 @@ export default function ClientProfile({
         activeRetainersBalance: activeRetainersBalance || undefined,
         activeProjects: activeProjects.length > 0 ? activeProjects : undefined,
         completedProjects: completedProjects.length > 0 ? completedProjects : undefined,
-        legalCaseNumber: legalCaseNumber.trim() || undefined,
         linkedFiles: linkedFiles.length > 0 ? linkedFiles : undefined,
         deliverables: deliverables.length > 0 ? deliverables : undefined,
         approvals: approvals.length > 0 ? approvals : undefined,
@@ -577,7 +575,6 @@ export default function ClientProfile({
         <ProjectsDetailsSection
           activeProjects={activeProjects}
           completedProjects={completedProjects}
-          legalCaseNumber={legalCaseNumber}
           linkedFiles={linkedFiles}
           deliverables={deliverables}
           approvals={approvals}
@@ -585,11 +582,26 @@ export default function ClientProfile({
           expandedProjectKey={expandedProjectKey}
           onActiveProjectsChange={setActiveProjects}
           onCompletedProjectsChange={setCompletedProjects}
-          onLegalCaseNumberChange={(e) => setLegalCaseNumber(e.target.value)}
           onLinkedFilesChange={setLinkedFiles}
           onDeliverablesChange={setDeliverables}
           onApprovalsChange={setApprovals}
           onExpandedProjectKeyChange={setExpandedProjectKey}
+          clientId={initialClient?.id || clientId}
+          onRefresh={async () => {
+            // Refresh client data after project is added
+            if (currentUser?.uid && (initialClient?.id || clientId)) {
+              try {
+                const account = await getUserAccount(currentUser.uid);
+                const client = account?.clients?.find((c) => c.id === (initialClient?.id || clientId));
+                if (client) {
+                  setActiveProjects(client.activeProjects || []);
+                  setCompletedProjects(client.completedProjects || []);
+                }
+              } catch (error) {
+                console.error('Failed to refresh client data:', error);
+              }
+            }
+          }}
         />
       ),
     },
@@ -651,7 +663,7 @@ export default function ClientProfile({
     taxId, timezone, language, primaryContactName, primaryContactPhone, primaryContactEmail,
     secondaryContactName, secondaryContactPhone, secondaryContactEmail,
     paymentTerms, paymentHistory, pricingTier, defaultCurrency, activeRetainersBalance,
-    activeProjects, completedProjects, expandedProjectKey, legalCaseNumber, linkedFiles, deliverables, approvals,
+    activeProjects, completedProjects, expandedProjectKey, linkedFiles, deliverables, approvals,
     emails, messages, calls, meetingNotes, internalNotes,
     contracts, proposals, invoices, attachments, sharedAssets,
     clientAppointments, userAccount, handleCompanyNameChange, saving,

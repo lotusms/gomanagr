@@ -1,4 +1,4 @@
-import { HiTrash, HiUser, HiOfficeBuilding } from 'react-icons/hi';
+import { HiTrash, HiUser, HiOfficeBuilding, HiShieldCheck } from 'react-icons/hi';
 import { useMemo } from 'react';
 
 /**
@@ -11,8 +11,9 @@ import { useMemo } from 'react';
  * @param {() => void} [onRemove] - If provided, shows a remove button
  * @param {boolean} [isClient] - If true, shows icon instead of avatar/initials
  * @param {boolean} [hasCompany] - If true and isClient, shows company icon instead of person icon
+ * @param {boolean} [isAdmin] - If true, shows a shield icon to indicate admin status
  */
-export default function PersonCard({ name, subtitle, src, onClick, onRemove, isClient = false, hasCompany = false }) {
+export default function PersonCard({ name, subtitle, src, onClick, onRemove, isClient = false, hasCompany = false, isAdmin = false }) {
   const hasImage = src && src.trim() !== '';
 
   // Get initials for avatar (only for team members)
@@ -95,10 +96,19 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, isC
           <div className="absolute -inset-2 rounded-full border-2 border-white/20 dark:border-gray-700/20 animate-pulse" />
         </div>
 
-        {/* Name */}
-        <h3 className="text-xl font-bold text-white mb-1 text-center truncate w-full px-2 drop-shadow-lg">
-          {name}
-        </h3>
+        {/* Name with Admin Badge */}
+        <div className="flex items-center justify-center gap-2 mb-1 px-2 w-full">
+          <h3 className="text-xl font-bold text-white text-center truncate drop-shadow-lg flex-1">
+            {name}
+          </h3>
+          {isAdmin && (
+            <HiShieldCheck 
+              className="w-5 h-5 text-yellow-300 flex-shrink-0 drop-shadow-lg" 
+              title="Admin"
+              aria-label="Admin"
+            />
+          )}
+        </div>
 
         {/* Company/Subtitle */}
         {subtitle && (

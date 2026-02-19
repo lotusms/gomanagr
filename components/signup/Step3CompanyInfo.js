@@ -2,8 +2,6 @@ import { useState, useRef } from 'react';
 import { InputField, ChipsSingle } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 
-const TEAM_SIZE_OPTIONS = ['Myself', '2-5', '6-10', '11-25', '26+'];
-const COMPANY_SIZE_OPTIONS = ['Myself', '2-5', '6-10', '11-25', '26-50', '51-100', '101+'];
 const COMPANY_LOCATIONS_OPTIONS = ['1', '2-5', '6-10', '11-20', '21-50', '51+'];
 
 export default function Step3CompanyInfo({ data, updateData, errors }) {
@@ -36,14 +34,6 @@ export default function Step3CompanyInfo({ data, updateData, errors }) {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
-
-  const handleTeamSizeChange = (size) => {
-    updateData({ teamSize: size });
-  };
-
-  const handleCompanySizeChange = (size) => {
-    updateData({ companySize: size });
   };
 
   const handleLocationsChange = (locations) => {
@@ -107,26 +97,6 @@ export default function Step3CompanyInfo({ data, updateData, errors }) {
           <p className="text-xs text-primary-200">You can add this later</p>
         </div>
       </div>
-
-      <ChipsSingle
-        id="teamSize"
-        label="Team Size"
-        options={TEAM_SIZE_OPTIONS}
-        value={data.teamSize}
-        onValueChange={handleTeamSizeChange}
-        error={errors.teamSize}
-        required
-      />
-
-      <ChipsSingle
-        id="companySize"
-        label="Company Size"
-        options={COMPANY_SIZE_OPTIONS}
-        value={data.companySize}
-        onValueChange={handleCompanySizeChange}
-        error={errors.companySize}
-        required
-      />
 
       <ChipsSingle
         id="companyLocations"

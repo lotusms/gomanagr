@@ -1,15 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import Step1EmailPassword from './Step1EmailPassword';
 import Step2PersonalInfo from './Step2PersonalInfo';
 import Step3CompanyInfo from './Step3CompanyInfo';
-import Step4Sections from './Step4Sections';
-import Step5Referral from './Step5Referral';
+import Step4IndustryInfo from './Step4IndustryInfo';
+import Step5Sections from './Step5Sections';
+import Step6Referral from './Step6Referral';
 import { createUserAccount } from '@/services/userService';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 export default function MultiStepSignup() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function MultiStepSignup() {
   const [emailExists, setEmailExists] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false); // Track if email verification completed
   const [emailCheckFailed, setEmailCheckFailed] = useState(false); // Track if check failed (quota, etc)
+  const lastSubmitAttempt = useRef(null); // Track last submit attempt to prevent rapid submissions
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -32,9 +34,8 @@ export default function MultiStepSignup() {
     companyName: '',
     logoPreview: null,
     logoFile: null,
-    teamSize: '',
-    companySize: '',
     companyLocations: '',
+    industry: '',
     sectionsToTrack: [],
     referralSource: '',
   });
@@ -63,9 +64,14 @@ export default function MultiStepSignup() {
       } else if (data.email && emailExists) {
         // Don't set error here - let Step1EmailPassword handle the display with link
         // Error will be set by handleEmailCheck
-      } else if (data.email && emailCheckFailed) {
+      } else if (data.email && emailCheckFailed && emailExists) {
+        // Only show error if email exists AND check failed
+        // If quota exceeded, allow progression (signup will catch duplicate)
         newErrors.email = 'Email verification failed. Please try again.';
       } else if (data.email && !emailExists && emailVerified && /\S+@\S+\.\S+/.test(data.email)) {
+        delete newErrors.email;
+      } else if (data.email && emailCheckFailed && !emailExists) {
+        // Quota exceeded but email doesn't exist - allow progression
         delete newErrors.email;
       }
       if (data.password && data.password.length < 6) {
@@ -89,18 +95,20 @@ export default function MultiStepSignup() {
 
     if (step === 3) {
       if (data.companyName) delete newErrors.companyName;
-      if (data.teamSize) delete newErrors.teamSize;
-      if (data.companySize) delete newErrors.companySize;
       if (data.companyLocations) delete newErrors.companyLocations;
     }
 
     if (step === 4) {
+      if (data.industry) delete newErrors.industry;
+    }
+
+    if (step === 5) {
       if (data.sectionsToTrack && Array.isArray(data.sectionsToTrack) && data.sectionsToTrack.length > 0) {
         delete newErrors.sectionsToTrack;
       }
     }
 
-    if (step === 5) {
+    if (step === 6) {
       if (data.referralSource) delete newErrors.referralSource;
     }
 
@@ -147,9 +155,10 @@ export default function MultiStepSignup() {
       
       // Basic email format validation
       const emailFormatValid = formData.email && /\S+@\S+\.\S+/.test(formData.email);
-      // Email must be verified, NOT exist (available for signup), and check didn't fail
-      // CRITICAL: emailExists = true means email is ALREADY REGISTERED → BLOCK signup
-      const emailAvailable = emailFormatValid && emailVerified && !emailExists && !emailCheckFailed;
+      // Email checking is optional - don't block signup if check fails or isn't done
+      // Only block if we're CERTAIN the email exists (emailExists = true)
+      // Supabase will handle duplicate emails during signup
+      const emailAvailable = emailFormatValid && !emailExists;
       const passwordValid = formData.password && formData.password.length >= 6;
       const confirmPasswordValid = formData.confirmPassword && 
                                    formData.password === formData.confirmPassword;
@@ -171,18 +180,20 @@ export default function MultiStepSignup() {
 
     if (step === 3) {
       return formData.companyName && 
-             formData.teamSize && 
-             formData.companySize && 
              formData.companyLocations;
     }
 
     if (step === 4) {
+      return formData.industry !== '';
+    }
+
+    if (step === 5) {
       return formData.sectionsToTrack && 
              Array.isArray(formData.sectionsToTrack) && 
              formData.sectionsToTrack.length > 0;
     }
 
-    if (step === 5) {
+    if (step === 6) {
       return formData.referralSource !== '';
     }
 
@@ -195,7 +206,9 @@ export default function MultiStepSignup() {
     if (step === 1) {
       if (!formData.email) newErrors.email = 'Email is required';
       else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-      else if (emailCheckFailed) {
+      else if (emailCheckFailed && emailExists) {
+        // Only block if email exists AND check failed
+        // If quota exceeded, allow progression (signup will catch duplicate)
         newErrors.email = 'Email verification failed. Please try again.';
       }
       // Don't set error for emailExists here - Step1EmailPassword will display it with login link
@@ -217,18 +230,20 @@ export default function MultiStepSignup() {
 
     if (step === 3) {
       if (!formData.companyName) newErrors.companyName = 'Company name is required';
-      if (!formData.teamSize) newErrors.teamSize = 'Please select team size';
-      if (!formData.companySize) newErrors.companySize = 'Please select company size';
       if (!formData.companyLocations) newErrors.companyLocations = 'Please select company locations';
     }
 
     if (step === 4) {
+      if (!formData.industry) newErrors.industry = 'Please select your industry';
+    }
+
+    if (step === 5) {
       if (!formData.sectionsToTrack || formData.sectionsToTrack.length === 0) {
         newErrors.sectionsToTrack = 'Please select at least one section';
       }
     }
 
-    if (step === 5) {
+    if (step === 6) {
       if (!formData.referralSource) newErrors.referralSource = 'Please select how you heard about us';
     }
 
@@ -268,43 +283,200 @@ export default function MultiStepSignup() {
     }
   };
 
+  // Focus first input field when step changes
+  useEffect(() => {
+    // Small delay to ensure DOM is updated after step change
+    const timer = setTimeout(() => {
+      // Find the first focusable element in the current step
+      const stepContainer = document.querySelector('[data-step-container]');
+      if (stepContainer) {
+        // Priority 1: Try to find first text input field (excluding hidden inputs and password toggle buttons)
+        const firstInput = stepContainer.querySelector(
+          'input[type="text"]:not([tabindex="-1"]):not([type="hidden"]), ' +
+          'input[type="email"]:not([tabindex="-1"]):not([type="hidden"]), ' +
+          'input[type="tel"]:not([tabindex="-1"]):not([type="hidden"]), ' +
+          'input[type="number"]:not([tabindex="-1"]):not([type="hidden"]), ' +
+          'textarea:not([tabindex="-1"])'
+        );
+        if (firstInput) {
+          firstInput.focus();
+          return;
+        }
+        
+        // Priority 2: Try to find first RadioGroup item (for ChipsSingle components)
+        const firstRadio = stepContainer.querySelector(
+          '[role="radio"]:not([tabindex="-1"]), ' +
+          'button[data-state]:not([tabindex="-1"])'
+        );
+        if (firstRadio) {
+          firstRadio.focus();
+          return;
+        }
+        
+        // Priority 3: Try to find first checkbox (for Select All in Step 5)
+        const firstCheckbox = stepContainer.querySelector(
+          '[role="checkbox"]:not([tabindex="-1"]), ' +
+          'input[type="checkbox"]:not([tabindex="-1"])'
+        );
+        if (firstCheckbox) {
+          firstCheckbox.focus();
+          return;
+        }
+        
+        // Priority 4: Try to find first focusable button (excluding password toggle)
+        const firstButton = stepContainer.querySelector(
+          'button:not([tabindex="-1"]):not([aria-label*="password" i])'
+        );
+        if (firstButton) {
+          firstButton.focus();
+        }
+      }
+    }, 150); // Slightly longer delay to ensure React has finished rendering
+
+    return () => clearTimeout(timer);
+  }, [currentStep]);
+
   const handleSubmit = async () => {
     if (!validateStep(TOTAL_STEPS)) return;
 
+    // Prevent rapid-fire submissions (minimum 2 seconds between attempts)
+    const now = Date.now();
+    if (lastSubmitAttempt.current && (now - lastSubmitAttempt.current) < 2000) {
+      setErrors({ 
+        submit: 'Please wait a moment before trying again.' 
+      });
+      return;
+    }
+    lastSubmitAttempt.current = now;
+
     setLoading(true);
+    setErrors({}); // Clear previous errors
     try {
       // Create Firebase auth user
       const userCredential = await signup(formData.email, formData.password);
       const userId = userCredential.user.uid;
 
+      // Ensure firstName and lastName are trimmed
+      const firstName = (formData.firstName || '').trim();
+      const lastName = (formData.lastName || '').trim();
+      const companyName = (formData.companyName || '').trim();
+      
+      // Create account owner as the first and only team member
+      // This ensures the current user is always available as a team member
+      // The account owner is automatically the admin of the organization
+      const accountOwnerTeamMember = {
+        id: `owner-${userId}`,
+        name: `${firstName} ${lastName}`.trim() || formData.email.split('@')[0] || 'Account Owner',
+        firstName: firstName,
+        lastName: lastName,
+        email: formData.email,
+        role: formData.role,
+        company: companyName,
+        industry: formData.industry || '',
+        status: 'active',
+        isOwner: true,
+        isAdmin: true, // Account creator is always admin
+      };
+      
+      console.log('[Signup] Creating account owner as team member:', {
+        userId,
+        teamMemberId: accountOwnerTeamMember.id,
+        name: accountOwnerTeamMember.name,
+        email: accountOwnerTeamMember.email,
+        isAdmin: accountOwnerTeamMember.isAdmin,
+      });
+
       // Prepare user account data
+      // reportingEmail always uses the signup email - this is normalized behavior
+      const reportingEmail = formData.email.trim();
+      
       const userAccountData = {
         userId,
         email: formData.email,
         trial: formData.trial !== false,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        firstName: firstName,
+        lastName: lastName,
         purpose: formData.purpose,
         role: formData.role,
         companyName: formData.companyName,
         companyLogo: formData.logoPreview || '',
-        teamSize: formData.teamSize,
-        companySize: formData.companySize,
         companyLocations: formData.companyLocations,
+        industry: formData.industry || '',
         sectionsToTrack: formData.sectionsToTrack || [],
         referralSource: formData.referralSource,
+        reportingEmail: reportingEmail, // Always use signup email as reporting email
+        teamMembers: [accountOwnerTeamMember], // Only the account owner, no defaults
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      // Save to Firestore
-      await createUserAccount(userId, userAccountData, formData.logoFile);
+      // Debug: Log what we're about to save
+      console.log('[Signup] About to create user account with data:', {
+        userId,
+        email: userAccountData.email,
+        firstName: userAccountData.firstName,
+        lastName: userAccountData.lastName,
+        reportingEmail: userAccountData.reportingEmail,
+        companyName: userAccountData.companyName,
+        industry: userAccountData.industry,
+        teamMembersCount: userAccountData.teamMembers?.length || 0,
+        hasLogoFile: !!formData.logoFile,
+      });
 
-      // Redirect to dashboard
+      // Save to Supabase user_account table
+      try {
+        const result = await createUserAccount(userId, userAccountData, formData.logoFile);
+        console.log('[Signup] Account created successfully:', {
+          userId,
+          resultFirstName: result?.firstName,
+          resultLastName: result?.lastName,
+          resultEmail: result?.email,
+        });
+      } catch (accountError) {
+        console.error('[Signup] Failed to create user account:', {
+          error: accountError,
+          message: accountError.message,
+          stack: accountError.stack,
+          userId,
+          email: userAccountData.email,
+        });
+        // Don't redirect if account creation failed - user needs to retry
+        throw new Error(`Account creation failed: ${accountError.message || 'Unknown error'}. Please try again or contact support.`);
+      }
+
+      // Redirect to dashboard only after successful account creation
       router.push('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
-      setErrors({ submit: error.message || 'Failed to create account. Please try again.' });
+      const errorMessage = error.message || 'Failed to create account. Please try again.';
+      
+      // Handle rate limit errors - show helpful message
+      if (errorMessage.toLowerCase().includes('rate limit') || 
+          errorMessage.toLowerCase().includes('too many') ||
+          errorMessage.toLowerCase().includes('exceeded')) {
+        // Check if we're in development mode
+        const isDevelopment = process.env.NODE_ENV === 'development' || 
+                              (typeof window !== 'undefined' && window.location.hostname === 'localhost');
+        
+        if (isDevelopment) {
+          setErrors({ 
+            submit: errorMessage + '\n\n💡 Development Tip: Configure Supabase Dashboard → Authentication → Settings → "Disable email confirmations" to reduce rate limits during testing.'
+          });
+        } else {
+          setErrors({ 
+            submit: errorMessage
+          });
+        }
+      } else if (errorMessage.toLowerCase().includes('already registered') ||
+                 errorMessage.toLowerCase().includes('user already exists') ||
+                 errorMessage.toLowerCase().includes('email already')) {
+        // Handle duplicate email errors
+        setErrors({ 
+          submit: 'This email is already registered. Please sign in instead or use a different email address.' 
+        });
+      } else {
+        setErrors({ submit: errorMessage });
+      }
     } finally {
       setLoading(false);
     }
@@ -327,9 +499,11 @@ export default function MultiStepSignup() {
       case 3:
         return <Step3CompanyInfo data={formData} updateData={updateData} errors={errors} />;
       case 4:
-        return <Step4Sections data={formData} updateData={updateData} errors={errors} />;
+        return <Step4IndustryInfo data={formData} updateData={updateData} errors={errors} />;
       case 5:
-        return <Step5Referral data={formData} updateData={updateData} errors={errors} />;
+        return <Step5Sections data={formData} updateData={updateData} errors={errors} />;
+      case 6:
+        return <Step6Referral data={formData} updateData={updateData} errors={errors} />;
       default:
         return null;
     }
@@ -367,7 +541,9 @@ export default function MultiStepSignup() {
             </div>
           )}
 
-          {renderStep()}
+          <div data-step-container>
+            {renderStep()}
+          </div>
 
           {/* Navigation Buttons */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/20">
@@ -386,16 +562,13 @@ export default function MultiStepSignup() {
                 loading || 
                 // CRITICAL: Always disable if email exists (already registered)
                 (currentStep === 1 && emailExists) ||
-                !isStepValid(currentStep) || 
-                (currentStep === 1 && (!emailVerified || emailCheckFailed))
+                !isStepValid(currentStep)
               }
               title={
                 currentStep === 1 && emailExists
                   ? 'This user already exists. Use a different email or login.'
                   : !isStepValid(currentStep) 
-                    ? currentStep === 1 && (!emailVerified || emailCheckFailed)
-                      ? 'Email verification is required before proceeding'
-                      : 'Please complete all required fields'
+                    ? 'Please complete all required fields'
                     : ''
               }
               className="transform transition-all duration-200 hover:scale-105 active:scale-95"

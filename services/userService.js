@@ -5,12 +5,23 @@ const BUCKET_TEAM = 'team-photos';
 
 function rowToAccount(row) {
   if (!row) return null;
+  const profile = row.profile && typeof row.profile === 'object' ? row.profile : {};
+  
+  // Debug: log what we're converting
+  console.log('[rowToAccount] Converting row:', {
+    hasRow: !!row,
+    first_name: row.first_name,
+    last_name: row.last_name,
+    profileFirstName: profile.firstName,
+    profileLastName: profile.lastName,
+  });
+  
   const base = {
     userId: row.id,
     email: row.email,
     trial: row.trial ?? true,
-    firstName: row.first_name,
-    lastName: row.last_name,
+    firstName: (row.first_name || profile.firstName || '').trim(),
+    lastName: (row.last_name || profile.lastName || '').trim(),
     purpose: row.purpose,
     role: row.role,
     companyName: row.company_name,
@@ -18,8 +29,10 @@ function rowToAccount(row) {
     teamSize: row.team_size,
     companySize: row.company_size,
     companyLocations: row.company_locations,
+    industry: row.industry,
     sectionsToTrack: row.sections_to_track ?? [],
     referralSource: row.referral_source,
+    reportingEmail: (row.reporting_email || profile.reportingEmail || row.email || '').trim(), // Normalized: always defaults to signup email
     selectedPalette: row.selected_palette ?? 'palette1',
     dismissedTodoIds: row.dismissed_todo_ids ?? [],
     teamMembers: row.team_members ?? [],
@@ -29,7 +42,7 @@ function rowToAccount(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-  const profile = row.profile && typeof row.profile === 'object' ? row.profile : {};
+  // Merge profile, but base fields take precedence
   return { ...profile, ...base };
 }
 
@@ -38,6 +51,7 @@ const KNOWN_KEYS = new Set([
   'companyName', 'companyLogo', 'teamSize', 'companySize', 'companyLocations',
   'sectionsToTrack', 'referralSource', 'selectedPalette', 'dismissedTodoIds',
   'teamMembers', 'clients', 'services', 'appointments', 'createdAt', 'updatedAt',
+  'industry', 'reportingEmail', // reportingEmail is handled specially - stored in profile JSONB
 ]);
 
 function accountToRow(data) {
@@ -49,8 +63,8 @@ function accountToRow(data) {
         row.id = value;
         row.user_id = value; // Ensure user_id always matches id
       }
-      else if (key === 'firstName') row.first_name = value;
-      else if (key === 'lastName') row.last_name = value;
+      else if (key === 'firstName') row.first_name = value ? String(value).trim() : '';
+      else if (key === 'lastName') row.last_name = value ? String(value).trim() : '';
       else if (key === 'companyName') row.company_name = value;
       else if (key === 'companyLogo') row.company_logo = value;
       else if (key === 'teamSize') row.team_size = value;
@@ -62,12 +76,36 @@ function accountToRow(data) {
       else if (key === 'dismissedTodoIds') row.dismissed_todo_ids = value;
       else if (key === 'teamMembers') row.team_members = value;
       else if (key === 'createdAt') row.created_at = value;
+      else if (key === 'updatedAt') row.updated_at = value;
+      else if (key === 'industry') row.industry = value;
+      else if (key === 'reportingEmail') {
+        // ALWAYS store reportingEmail in profile JSONB, NOT as reporting_email column
+        // This avoids the "column not found" error since the column doesn't exist
+        // Normalize reportingEmail: always use signup email if empty
+        profile.reportingEmail = (value || data.email || '').trim();
+      }
       else row[key] = value;
     } else {
       profile[key] = value;
     }
   });
-  if (Object.keys(profile).length > 0) row.profile = profile;
+  
+  // CRITICAL: Ensure reportingEmail is ALWAYS in profile (even if not provided)
+  // This prevents the "column not found" error - reportingEmail is NEVER stored as a column
+  if (!profile.reportingEmail && data.email) {
+    // If reportingEmail wasn't provided, default to email (normalized behavior)
+    profile.reportingEmail = data.email.trim();
+  }
+  
+  // Always set profile on row (even if empty) to ensure reportingEmail is stored
+  row.profile = profile;
+  
+  // CRITICAL: Remove reporting_email from row if it somehow exists (shouldn't happen)
+  if (row.reporting_email !== undefined) {
+    console.warn('[userService] WARNING: reporting_email found in row after accountToRow, removing:', row.reporting_email);
+    delete row.reporting_email;
+  }
+  
   return row;
 }
 
@@ -111,6 +149,7 @@ export async function removeStorageFiles(bucket, paths) {
 
 /**
  * Create or update user account (Supabase user_account table).
+ * Uses API route with service role key to bypass RLS during signup.
  * @param {string} userId - The auth user ID (Supabase auth.uid())
  * @param {object} userData - User account data matching UserAccount schema
  * @param {File|null} logoFile - Optional logo file to upload to Supabase Storage
@@ -120,6 +159,7 @@ export async function createUserAccount(userId, userData, logoFile = null) {
   try {
     let logoUrl = userData.companyLogo || '';
 
+    // Upload logo file if provided (client-side upload)
     if (logoFile) {
       try {
         const path = `${userId}/${logoFile.name}`;
@@ -128,6 +168,7 @@ export async function createUserAccount(userId, userData, logoFile = null) {
         console.error('Logo upload error (continuing without logo):', storageError);
       }
     } else {
+      // If no logo file but no logoUrl, try to preserve existing logo
       if (!logoUrl || logoUrl.trim() === '') {
         const existing = await getUserAccount(userId);
         if (existing?.companyLogo?.trim()) logoUrl = existing.companyLogo.trim();
@@ -138,21 +179,46 @@ export async function createUserAccount(userId, userData, logoFile = null) {
     const accountData = { ...userData, companyLogo: logoUrl, updatedAt: now };
     if (!accountData.createdAt) accountData.createdAt = now;
 
+    // Check if account already exists to preserve createdAt
     const existing = await getUserAccount(userId);
     if (existing?.createdAt) accountData.createdAt = existing.createdAt;
 
-    const row = accountToRow(accountData);
-    row.id = userId;
-    row.user_id = userId; // Always set user_id = id for RLS compatibility
-    const { data, error } = await supabase
-      .from('user_account')
-      .upsert(row, { onConflict: 'id' })
-      .select()
-      .single();
+    // Call API route that uses service role key to bypass RLS
+    const response = await fetch('/api/create-user-account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        userData: accountData,
+      }),
+    });
 
-    if (error) throw error;
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // If response is not JSON, try to get text
+        const text = await response.text().catch(() => 'Unknown error');
+        errorData = { message: text || `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      const errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+      console.error('[createUserAccount] API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorMessage,
+        fullError: errorData,
+      });
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
     console.log(`✅ User account ${existing ? 'updated' : 'created'} successfully for user: ${userId}`);
-    return rowToAccount(data) ?? accountData;
+    return result;
   } catch (error) {
     console.error('Error creating/updating user account:', error);
     throw new Error('Failed to create user account: ' + error.message);
@@ -173,7 +239,99 @@ export async function getUserAccount(userId) {
       .maybeSingle();
 
     if (error) throw error;
-    return rowToAccount(data);
+    
+    // Debug: log raw data from database
+    if (data) {
+      console.log('[getUserAccount] Raw database row:', {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        company_logo: data.company_logo,
+        profile: data.profile,
+      });
+    }
+    
+    const account = rowToAccount(data);
+    
+    // Debug: log converted account
+    if (account) {
+      console.log('[getUserAccount] Converted account:', {
+        firstName: account.firstName,
+        lastName: account.lastName,
+        email: account.email,
+        companyLogo: account.companyLogo,
+      });
+    }
+    
+    // If account doesn't exist but user is authenticated, try to create it
+    if (!account && userId) {
+      console.warn('[getUserAccount] Account not found for authenticated user, attempting to auto-create...');
+      try {
+        // Get current session to extract email and user metadata
+        const { data: { session } } = await supabase.auth.getSession();
+        const email = session?.user?.email;
+        const userMetadata = session?.user?.user_metadata || {};
+        
+        // Try to extract firstName/lastName from metadata or email
+        let firstName = userMetadata.firstName || userMetadata.first_name || '';
+        let lastName = userMetadata.lastName || userMetadata.last_name || '';
+        
+        // If not in metadata, try to parse from email (fallback)
+        if (!firstName && email) {
+          const emailParts = email.split('@')[0].split(/[._-]/);
+          if (emailParts.length >= 2) {
+            firstName = emailParts[0];
+            lastName = emailParts.slice(1).join(' ');
+          }
+        }
+        
+        if (email) {
+          console.log('[getUserAccount] Auto-creating account for:', { 
+            userId, 
+            email,
+            firstName: firstName || '(empty)',
+            lastName: lastName || '(empty)',
+          });
+          // Create account via API route with available data
+          const response = await fetch('/api/fix-missing-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: userId,
+              email: email,
+              firstName: firstName,
+              lastName: lastName,
+            }),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('[getUserAccount] Successfully auto-created missing account:', result);
+            // Retry fetching the account
+            const { data: newData, error: retryError } = await supabase
+              .from('user_account')
+              .select('*')
+              .eq('id', userId)
+              .maybeSingle();
+            
+            if (retryError) {
+              console.error('[getUserAccount] Error fetching newly created account:', retryError);
+            } else if (newData) {
+              return rowToAccount(newData);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error('[getUserAccount] Failed to auto-create account:', response.status, errorText);
+          }
+        } else {
+          console.warn('[getUserAccount] Cannot auto-create account: email not available in session');
+        }
+      } catch (fixError) {
+        console.error('[getUserAccount] Exception during auto-fix:', fixError);
+      }
+    }
+    
+    return account;
   } catch (error) {
     const msg = error.message || '';
     if (msg.includes('offline') || msg.includes('fetch') || error.code === 'PGRST301') {

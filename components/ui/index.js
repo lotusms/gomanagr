@@ -3,6 +3,7 @@ export { default as Avatar } from './Avatar';
 export { default as Checkbox } from './Checkbox';
 export { default as ChipsArrayBuilder } from './ChipsArrayBuilder';
 export { default as ConfirmationDialog } from './ConfirmationDialog';
+export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as CurrencyInput } from './CurrencyInput';
 export { default as DateField } from './DateField';
 export { default as Drawer } from './Drawer';

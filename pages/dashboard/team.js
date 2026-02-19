@@ -41,17 +41,17 @@ function TeamContent() {
     getUserAccount(currentUser.uid)
       .then((data) => {
         setUserAccount(data || null);
-        const list = (data?.teamMembers && data.teamMembers.length > 0)
-          ? data.teamMembers
-          : DEFAULT_TEAM_MEMBERS;
+        // Only use teamMembers from account, no default fallback
+        // Empty array means no team members yet (only account owner should exist)
+        const list = data?.teamMembers ?? [];
         // Filter to show only active team members (status !== 'inactive')
         // Default to 'active' if status is not set
         const activeTeam = list.filter((m) => (m.status || 'active') !== 'inactive');
         setTeam(activeTeam);
       })
       .catch(() => {
-        const activeTeam = DEFAULT_TEAM_MEMBERS.filter((m) => (m.status || 'active') !== 'inactive');
-        setTeam(activeTeam);
+        // On error, show empty team (no defaults)
+        setTeam([]);
       })
       .finally(() => setLoaded(true));
   }, [currentUser?.uid]);
@@ -439,6 +439,7 @@ function TeamContent() {
                     src={member.pictureUrl}
                     onClick={() => openDrawerForEdit(member)}
                     onRemove={() => handleRemoveClick(member.id)}
+                    isAdmin={member.isAdmin === true}
                   />
                 ))}
               </div>

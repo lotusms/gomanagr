@@ -1,12 +1,187 @@
-import { HiPlus, HiTrash } from 'react-icons/hi';
+import { useState } from 'react';
+import { HiPlus, HiTrash, HiFolder, HiCheckCircle, HiPaperClip, HiGift, HiShieldCheck } from 'react-icons/hi';
 import InputField from '@/components/ui/InputField';
 import ProjectCard from '../../dashboard/ProjectCard';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
+import { PrimaryButton } from '@/components/ui/buttons';
+import Drawer from '@/components/ui/Drawer';
+import AddProjectForm from './AddProjectForm';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useAuth } from '@/lib/AuthContext';
+import { getUserAccount, updateClients } from '@/services/userService';
+import { useToast } from '@/components/ui/Toast';
+
+/**
+ * Reusable project section component (Active/Completed Projects)
+ */
+function ProjectSection({
+  title,
+  description,
+  icon: Icon,
+  iconBgColor,
+  iconColor,
+  projects,
+  variant,
+  defaultCurrency,
+  expandedProjectKey,
+  onProjectsChange,
+  onExpandedProjectKeyChange,
+  emptyMessage,
+  emptyDescription,
+  addButtonText,
+  onAddProject, // Callback to open add project form
+  onDeleteProject, // Callback to delete project (variant, index)
+}) {
+  const projectKeyPrefix = variant === 'active' ? 'active' : 'completed';
+  
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg ${iconBgColor} flex items-center justify-center`}>
+            <Icon className={`w-5 h-5 ${iconColor}`} />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+          </div>
+        </div>
+        <PrimaryButton
+          onClick={onAddProject}
+        >
+          <HiPlus className="w-4 h-4" />
+          {addButtonText}
+        </PrimaryButton>
+      </div>
+      
+      {projects.length === 0 ? (
+        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
+          <Icon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">{emptyMessage}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">{emptyDescription}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((project, idx) => (
+            <ProjectCard
+              key={`${projectKeyPrefix}-${idx}`}
+              project={project}
+              index={idx}
+              variant={variant}
+              currency={defaultCurrency || 'USD'}
+              expanded={expandedProjectKey === `${projectKeyPrefix}-${idx}`}
+              onToggleExpand={() => onExpandedProjectKeyChange((k) => (k === `${projectKeyPrefix}-${idx}` ? null : `${projectKeyPrefix}-${idx}`))}
+              onUpdate={(i, updated) => {
+                const next = [...projects];
+                next[i] = updated;
+                onProjectsChange(next);
+              }}
+              onRemove={(i) => onDeleteProject(variant, i)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Reusable list item component for Linked Files, Deliverables, and Approvals
+ */
+function ListItemCard({ id, value, onChange, onRemove, placeholder, icon: Icon, index }) {
+  return (
+    <div className="group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200">
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 mt-1">
+          <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
+            <Icon className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <InputField
+            id={id}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            variant="light"
+            className="mb-0"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          title="Remove"
+        >
+          <HiTrash className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Reusable section for list-based items (Linked Files, Deliverables, Approvals)
+ */
+function ListSection({ 
+  title, 
+  items, 
+  onAdd, 
+  onChange, 
+  onRemove, 
+  placeholder, 
+  icon: Icon,
+  emptyMessage,
+  emptyDescription 
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className={`${getLabelClasses('light')} mb-0 flex items-center gap-2`}>
+          {Icon && <Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" />}
+          {title}
+        </label>
+        <PrimaryButton
+          onClick={onAdd}
+        >
+          <HiPlus className="w-4 h-4" />
+          Add {title}
+        </PrimaryButton>
+      </div>
+      
+      {items.length === 0 ? (
+        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center">
+          <Icon className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{emptyMessage}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{emptyDescription}</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item, idx) => (
+            <ListItemCard
+              key={idx}
+              id={`${title.toLowerCase().replace(/\s+/g, '-')}-${idx}`}
+              value={item}
+              onChange={(e) => {
+                const updated = [...items];
+                updated[idx] = e.target.value;
+                onChange(updated);
+              }}
+              onRemove={() => onRemove(items.filter((_, i) => i !== idx))}
+              placeholder={placeholder}
+              icon={Icon}
+              index={idx}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProjectsDetailsSection({
   activeProjects,
   completedProjects,
-  legalCaseNumber,
   linkedFiles,
   deliverables,
   approvals,
@@ -14,202 +189,281 @@ export default function ProjectsDetailsSection({
   expandedProjectKey,
   onActiveProjectsChange,
   onCompletedProjectsChange,
-  onLegalCaseNumberChange,
   onLinkedFilesChange,
   onDeliverablesChange,
   onApprovalsChange,
   onExpandedProjectKeyChange,
+  clientId,
+  onRefresh, // Callback to refresh data after saving
 }) {
+  const { currentUser } = useAuth();
+  const { success, error: showError } = useToast();
+  const [showAddProjectDrawer, setShowAddProjectDrawer] = useState(false);
+  const [addingProjectVariant, setAddingProjectVariant] = useState(null); // 'active' or 'completed'
+  const [savingProject, setSavingProject] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null); // { variant: 'active'|'completed', index: number }
+
+  const handleAddProject = (variant) => {
+    setAddingProjectVariant(variant);
+    setShowAddProjectDrawer(true);
+  };
+
+  const handleProjectSubmit = async (projectData) => {
+    if (!currentUser?.uid || !clientId) {
+      throw new Error('User or client information missing');
+    }
+
+    setSavingProject(true);
+    try {
+      // Get current user account data
+      const account = await getUserAccount(currentUser.uid);
+      const clients = account?.clients || [];
+      
+      // Find the client to update
+      const clientIndex = clients.findIndex((c) => c.id === clientId);
+      if (clientIndex === -1) {
+        throw new Error('Client not found');
+      }
+
+      const client = clients[clientIndex];
+      const projectArray = addingProjectVariant === 'active' 
+        ? (client.activeProjects || [])
+        : (client.completedProjects || []);
+
+      // Add the new project
+      const updatedProjects = [...projectArray, projectData];
+      
+      // Update the client
+      const updatedClient = {
+        ...client,
+        [addingProjectVariant === 'active' ? 'activeProjects' : 'completedProjects']: updatedProjects,
+      };
+
+      // Update clients array
+      const updatedClients = [...clients];
+      updatedClients[clientIndex] = updatedClient;
+
+      // Save to Supabase
+      await updateClients(currentUser.uid, updatedClients);
+
+      // Update local state
+      if (addingProjectVariant === 'active') {
+        onActiveProjectsChange(updatedProjects);
+      } else {
+        onCompletedProjectsChange(updatedProjects);
+      }
+
+      success('Project added successfully');
+      setShowAddProjectDrawer(false);
+      setAddingProjectVariant(null);
+
+      // Refresh parent data if callback provided
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      throw error;
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const handleCancelAddProject = () => {
+    setShowAddProjectDrawer(false);
+    setAddingProjectVariant(null);
+  };
+
+  const handleDeleteProject = (variant, index) => {
+    setProjectToDelete({ variant, index });
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!currentUser?.uid || !clientId || !projectToDelete) {
+      showError('Missing information to delete project');
+      setShowDeleteDialog(false);
+      setProjectToDelete(null);
+      return;
+    }
+
+    setDeletingProject(true);
+    try {
+      // Get current user account data
+      const account = await getUserAccount(currentUser.uid);
+      const clients = account?.clients || [];
+      
+      // Find the client to update
+      const clientIndex = clients.findIndex((c) => c.id === clientId);
+      if (clientIndex === -1) {
+        throw new Error('Client not found');
+      }
+
+      const client = clients[clientIndex];
+      const projectArray = projectToDelete.variant === 'active' 
+        ? (client.activeProjects || [])
+        : (client.completedProjects || []);
+
+      // Remove the project
+      const updatedProjects = projectArray.filter((_, idx) => idx !== projectToDelete.index);
+      
+      // Update the client
+      const updatedClient = {
+        ...client,
+        [projectToDelete.variant === 'active' ? 'activeProjects' : 'completedProjects']: updatedProjects,
+      };
+
+      // Update clients array
+      const updatedClients = [...clients];
+      updatedClients[clientIndex] = updatedClient;
+
+      // Save to Supabase
+      await updateClients(currentUser.uid, updatedClients);
+
+      // Update local state
+      if (projectToDelete.variant === 'active') {
+        onActiveProjectsChange(updatedProjects);
+      } else {
+        onCompletedProjectsChange(updatedProjects);
+      }
+
+      // Close any expanded project
+      onExpandedProjectKeyChange(null);
+
+      success('Project deleted successfully');
+      setShowDeleteDialog(false);
+      setProjectToDelete(null);
+
+      // Refresh parent data if callback provided
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      showError(error.message || 'Failed to delete project. Please try again.');
+    } finally {
+      setDeletingProject(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+    setProjectToDelete(null);
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Active Projects</h3>
-        {activeProjects.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">No active projects</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            {activeProjects.map((project, idx) => (
-              <ProjectCard
-                key={`active-${idx}`}
-                project={project}
-                index={idx}
-                variant="active"
-                currency={defaultCurrency || 'USD'}
-                expanded={expandedProjectKey === `active-${idx}`}
-                onToggleExpand={() => onExpandedProjectKeyChange((k) => (k === `active-${idx}` ? null : `active-${idx}`))}
-                onUpdate={(i, updated) => {
-                  const next = [...activeProjects];
-                  next[i] = updated;
-                  onActiveProjectsChange(next);
-                }}
-                onRemove={(i) => {
-                  onActiveProjectsChange(activeProjects.filter((_, index) => index !== i));
-                  onExpandedProjectKeyChange(null);
-                }}
-              />
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => onActiveProjectsChange([...activeProjects, { name: '', id: '', notes: '', estimate: '', address: '', invoices: '' }])}
-          className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-        >
-          <HiPlus className="w-4 h-4" />
-          Add Active Project
-        </button>
+    <>
+      <div className="space-y-8">
+        {/* Active Projects Section */}
+        <ProjectSection
+          title="Active Projects"
+          description="Current projects in progress"
+          icon={HiFolder}
+          iconBgColor="bg-green-50 dark:bg-green-900/20"
+          iconColor="text-green-600 dark:text-green-400"
+          projects={activeProjects}
+          variant="active"
+          defaultCurrency={defaultCurrency}
+          expandedProjectKey={expandedProjectKey}
+          onProjectsChange={onActiveProjectsChange}
+          onExpandedProjectKeyChange={onExpandedProjectKeyChange}
+          emptyMessage="No active projects"
+          emptyDescription="Add your first active project to get started"
+          addButtonText="Add Active Project"
+          onAddProject={() => handleAddProject('active')}
+          onDeleteProject={handleDeleteProject}
+        />
+        
+        {/* Completed Projects Section */}
+        <ProjectSection
+          title="Completed Projects"
+          description="Previously completed projects"
+          icon={HiCheckCircle}
+          iconBgColor="bg-green-50 dark:bg-green-900/20"
+          iconColor="text-green-600 dark:text-green-400"
+          projects={completedProjects}
+          variant="completed"
+          defaultCurrency={defaultCurrency}
+          expandedProjectKey={expandedProjectKey}
+          onProjectsChange={onCompletedProjectsChange}
+          onExpandedProjectKeyChange={onExpandedProjectKeyChange}
+          emptyMessage="No completed projects"
+          emptyDescription="Completed projects will appear here"
+          addButtonText="Add Completed Project"
+          onAddProject={() => handleAddProject('completed')}
+          onDeleteProject={handleDeleteProject}
+        />
+        
+        {/* Linked Files, Deliverables, and Approvals */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ListSection
+          title="Linked Files"
+          items={linkedFiles}
+          onAdd={() => onLinkedFilesChange([...linkedFiles, ''])}
+          onChange={onLinkedFilesChange}
+          onRemove={onLinkedFilesChange}
+          placeholder="File name or URL"
+          icon={HiPaperClip}
+          emptyMessage="No linked files"
+          emptyDescription="Add files related to this project"
+        />
+        
+        <ListSection
+          title="Deliverables"
+          items={deliverables}
+          onAdd={() => onDeliverablesChange([...deliverables, ''])}
+          onChange={onDeliverablesChange}
+          onRemove={onDeliverablesChange}
+          placeholder="Deliverable name"
+          icon={HiGift}
+          emptyMessage="No deliverables"
+          emptyDescription="Add project deliverables"
+        />
+        
+        <ListSection
+          title="Approvals"
+          items={approvals}
+          onAdd={() => onApprovalsChange([...approvals, ''])}
+          onChange={onApprovalsChange}
+          onRemove={onApprovalsChange}
+          placeholder="Approval name or reference"
+          icon={HiShieldCheck}
+          emptyMessage="No approvals"
+          emptyDescription="Add required approvals"
+        />
+        </div>
       </div>
-      
-      <div>
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Completed/Previous Projects</h3>
-        {completedProjects.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">No completed projects</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            {completedProjects.map((project, idx) => (
-              <ProjectCard
-                key={`completed-${idx}`}
-                project={project}
-                index={idx}
-                variant="completed"
-                currency={defaultCurrency || 'USD'}
-                expanded={expandedProjectKey === `completed-${idx}`}
-                onToggleExpand={() => onExpandedProjectKeyChange((k) => (k === `completed-${idx}` ? null : `completed-${idx}`))}
-                onUpdate={(i, updated) => {
-                  const next = [...completedProjects];
-                  next[i] = updated;
-                  onCompletedProjectsChange(next);
-                }}
-                onRemove={(i) => {
-                  onCompletedProjectsChange(completedProjects.filter((_, index) => index !== i));
-                  onExpandedProjectKeyChange(null);
-                }}
-              />
-            ))}
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => onCompletedProjectsChange([...completedProjects, { name: '', id: '', notes: '', estimate: '', address: '', invoices: '' }])}
-          className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+
+      {/* Add Project Drawer */}
+      {showAddProjectDrawer && (
+        <Drawer
+          isOpen={showAddProjectDrawer}
+          onClose={handleCancelAddProject}
+          title={addingProjectVariant === 'active' ? 'Add Active Project' : 'Add Completed Project'}
         >
-          <HiPlus className="w-4 h-4" />
-          Add Completed Project
-        </button>
-      </div>
-      
-      <InputField
-        id="legalCaseNumber"
-        label="Legal Case Number"
-        value={legalCaseNumber}
-        onChange={onLegalCaseNumberChange}
-        variant="light"
+          <AddProjectForm
+            currency={defaultCurrency || 'USD'}
+            onSubmit={handleProjectSubmit}
+            onCancel={handleCancelAddProject}
+            loading={savingProject}
+          />
+        </Drawer>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Delete Project"
+        message={`Are you sure you want to delete this project? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        loading={deletingProject}
       />
-      
-      <div>
-        <label className={`${getLabelClasses('light')} mb-2`}>Linked Files</label>
-        <div className="space-y-2">
-          {linkedFiles.map((file, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <InputField
-                id={`linked-file-${idx}`}
-                value={file}
-                onChange={(e) => {
-                  const updated = [...linkedFiles];
-                  updated[idx] = e.target.value;
-                  onLinkedFilesChange(updated);
-                }}
-                variant="light"
-              />
-              <button
-                type="button"
-                onClick={() => onLinkedFilesChange(linkedFiles.filter((_, i) => i !== idx))}
-                className="text-red-600 dark:text-red-400"
-              >
-                <HiTrash className="w-5 h-5" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => onLinkedFilesChange([...linkedFiles, ''])}
-            className="text-sm text-primary-600 dark:text-primary-400"
-          >
-            <HiPlus className="w-4 h-4 inline mr-1" />
-            Add Linked File
-          </button>
-        </div>
-      </div>
-      
-      <div>
-        <label className={`${getLabelClasses('light')} mb-2`}>Deliverables</label>
-        <div className="space-y-2">
-          {deliverables.map((deliverable, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <InputField
-                id={`deliverable-${idx}`}
-                value={deliverable}
-                onChange={(e) => {
-                  const updated = [...deliverables];
-                  updated[idx] = e.target.value;
-                  onDeliverablesChange(updated);
-                }}
-                variant="light"
-              />
-              <button
-                type="button"
-                onClick={() => onDeliverablesChange(deliverables.filter((_, i) => i !== idx))}
-                className="text-red-600 dark:text-red-400"
-              >
-                <HiTrash className="w-5 h-5" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => onDeliverablesChange([...deliverables, ''])}
-            className="text-sm text-primary-600 dark:text-primary-400"
-          >
-            <HiPlus className="w-4 h-4 inline mr-1" />
-            Add Deliverable
-          </button>
-        </div>
-      </div>
-      
-      <div>
-        <label className={`${getLabelClasses('light')} mb-2`}>Approvals</label>
-        <div className="space-y-2">
-          {approvals.map((approval, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <InputField
-                id={`approval-${idx}`}
-                value={approval}
-                onChange={(e) => {
-                  const updated = [...approvals];
-                  updated[idx] = e.target.value;
-                  onApprovalsChange(updated);
-                }}
-                variant="light"
-              />
-              <button
-                type="button"
-                onClick={() => onApprovalsChange(approvals.filter((_, i) => i !== idx))}
-                className="text-red-600 dark:text-red-400"
-              >
-                <HiTrash className="w-5 h-5" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => onApprovalsChange([...approvals, ''])}
-            className="text-sm text-primary-600 dark:text-primary-400"
-          >
-            <HiPlus className="w-4 h-4 inline mr-1" />
-            Add Approval
-          </button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

@@ -13,6 +13,7 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
   const [emailVerified, setEmailVerified] = useState(false); // Track if verification completed successfully
   const debounceTimer = useRef(null);
   const lastCheckedEmail = useRef('');
+  const emailCheckDebounceTimer = useRef(null);
 
   // Store the last check result to maintain state even when skipping re-check
   const lastCheckResult = useRef(null);
@@ -67,10 +68,15 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
 
       setEmailExists(result.exists);
 
-      // If quota exceeded or other error, block progression
-      if (result.error === 'quota-exceeded' || result.error) {
-        setEmailCheckError(result.message || 'Email verification failed. Please try again.');
-        setEmailVerified(false);
+      // If quota exceeded, don't block - allow signup to proceed (it will catch duplicate email)
+      if (result.error === 'quota-exceeded') {
+        // Don't set error - allow signup to proceed and handle duplicate email error
+        setEmailCheckError(null);
+        setEmailVerified(true); // Allow progression - signup will catch duplicate
+      } else if (result.error) {
+        // Other errors - show warning but don't block
+        setEmailCheckError(result.message || 'Email verification unavailable. You can still proceed.');
+        setEmailVerified(true); // Allow progression
       } else {
         // Verification completed successfully
         // Only set verified to true if email doesn't exist (is available)
@@ -82,12 +88,13 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
 
       // Call callbacks AFTER state updates
       if (onEmailCheck) {
-        const checkFailed = result.error === 'quota-exceeded' || !!result.error;
+        // Don't treat quota-exceeded as a failure - allow signup to proceed
+        const checkFailed = result.error && result.error !== 'quota-exceeded';
         onEmailCheck(result.exists, checkFailed);
       }
       if (onEmailVerified) {
-        // Only verified if email doesn't exist (is available)
-        const verified = !result.exists && result.error !== 'quota-exceeded' && !result.error;
+        // Verified if email doesn't exist OR if quota exceeded (allow signup to handle it)
+        const verified = (!result.exists || result.error === 'quota-exceeded') && result.error !== 'server-error';
         onEmailVerified(verified);
       }
     } catch (error) {
@@ -188,13 +195,43 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     }
   }, []);
 
-  // Check email on blur (when user leaves the field)
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (emailCheckDebounceTimer.current) {
+        clearTimeout(emailCheckDebounceTimer.current);
+      }
+    };
+  }, []);
+
+  // Check email on blur if it's valid and different from last checked
   const handleEmailBlur = async () => {
     hasUserInteracted.current = true;
     
-    // Only check if email is valid
-    if (email && email.includes('@')) {
-      await performEmailCheck(email);
+    const trimmedEmail = email.trim();
+    
+    // Only check if email is valid and different from last checked
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      return;
+    }
+    
+    // Skip if we already checked this email
+    if (trimmedEmail === lastCheckedEmail.current && lastCheckResult.current !== null) {
+      return;
+    }
+    
+    // Perform email check
+    if (performEmailCheckRef.current) {
+      setCheckingEmail(true);
+      setEmailCheckError(null);
+      try {
+        await performEmailCheckRef.current(trimmedEmail);
+      } catch (error) {
+        console.error('Email check error:', error);
+        // Don't block signup if check fails - Supabase will catch duplicates
+      } finally {
+        setCheckingEmail(false);
+      }
     }
   };
 
@@ -218,6 +255,11 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         onEmailVerified(false);
       }
     }
+
+    // Email checking is now optional and non-blocking
+    // We only check on blur to reduce API calls and prevent rate limiting
+    // Supabase will handle duplicate emails during signup
+    // Debounce removed to eliminate unnecessary API calls during typing
   };
 
   const handlePasswordChange = (e) => {

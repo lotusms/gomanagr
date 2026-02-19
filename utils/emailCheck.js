@@ -19,6 +19,20 @@ export async function checkEmailExists(email) {
       body: JSON.stringify({ email }),
     });
 
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // If we get HTML (like a 404 page), handle it gracefully
+      const text = await response.text();
+      console.error('Non-JSON response from /api/check-email:', text.substring(0, 200));
+      return {
+        exists: false,
+        methods: [],
+        error: 'api-error',
+        message: 'Email verification service is unavailable. Please try again later.',
+      };
+    }
+
     const data = await response.json();
 
     if (!response.ok) {

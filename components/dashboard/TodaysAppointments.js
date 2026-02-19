@@ -56,7 +56,7 @@ export default function TodaysAppointments({
   clients = [],
   services = [],
 }) {
-  const staff = (staffProp && staffProp.length > 0) ? staffProp : DEFAULT_TEAM_MEMBERS;
+  const staff = staffProp || [];
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
   

@@ -8,6 +8,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader, EmptyState } from '@/components/ui';
 import ProjectCard from '@/components/dashboard/ProjectCard';
 import { PrimaryButton } from '@/components/ui/buttons';
+import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
 
 /**
  * Flatten all projects from all clients with client info for display.
@@ -57,6 +58,12 @@ function ProjectsContent() {
     return flattenProjectsFromClients(clients);
   }, [userAccount?.clients]);
 
+  // Get dynamic project terms based on account industry
+  const projectTermPlural = useMemo(() => getProjectTermForIndustry(userAccount?.industry), [userAccount?.industry]);
+  const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
+  const projectTermLower = projectTerm.toLowerCase();
+  const projectTermPluralLower = projectTermPlural.toLowerCase();
+
   useEffect(() => {
     if (!currentUser?.uid) return;
 
@@ -72,11 +79,11 @@ function ProjectsContent() {
     return (
       <>
         <Head>
-          <title>Projects - GoManagr</title>
-          <meta name="description" content="Manage your projects" />
+          <title>{projectTermPlural} - GoManagr</title>
+          <meta name="description" content={`Manage your ${projectTermPluralLower}`} />
         </Head>
         <div className="space-y-6">
-          <PageHeader title="Projects" description="Manage and track your projects" />
+          <PageHeader title={projectTermPlural} description={`Manage and track your ${projectTermPluralLower}`} />
           <div className="flex justify-center min-h-[200px] items-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
           </div>
@@ -88,20 +95,21 @@ function ProjectsContent() {
   return (
     <>
       <Head>
-        <title>Projects - GoManagr</title>
-        <meta name="description" content="Manage your projects" />
+        <title>{projectTermPlural} - GoManagr</title>
+        <meta name="description" content={`Manage your ${projectTermPluralLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title="Projects"
-          description="All projects from your clients. Edit projects from the client profile."
+          title={projectTermPlural}
+          description={`All ${projectTermPluralLower} from your clients. Edit ${projectTermPluralLower} from the client profile.`}
         />
 
         {projectsWithClients.length === 0 ? (
           <EmptyState
-            type="projects"
-            description="Projects are added from client profiles. Add clients and add projects in their Projects tab."
+            type="custom"
+            title={`No ${projectTermPluralLower} yet`}
+            description={`${projectTermPlural} are added from client profiles. Add clients and add ${projectTermPluralLower} in their ${projectTermPlural} tab.`}
             action={
               <Link href="/dashboard/clients">
                 <PrimaryButton className="gap-2">Go to Clients</PrimaryButton>

@@ -8,7 +8,10 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
 import { PageHeader, EmptyState, ConfirmationDialog } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
-import { HiPlus } from 'react-icons/hi';
+import Drawer from '@/components/ui/Drawer';
+import ClientSettings from '@/components/clients/ClientSettings';
+import { shouldShowCompanyDetails } from '@/components/clients/clientProfileConstants';
+import { HiPlus, HiCog } from 'react-icons/hi';
 
 function ClientsContent() {
   const { currentUser } = useAuth();
@@ -19,6 +22,7 @@ function ClientsContent() {
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -121,7 +125,7 @@ function ClientsContent() {
           title="Clients"
           description="Manage your client relationships. Stored in your account and synced across the app."
           actions={
-            <>
+            <div className="flex items-center gap-3">
               <PrimaryButton
                 type="button"
                 onClick={handleAdd}
@@ -130,8 +134,17 @@ function ClientsContent() {
                 <HiPlus className="w-5 h-5" />
                 Add client
               </PrimaryButton>
+              <button
+                type="button"
+                onClick={() => setSettingsDrawerOpen(true)}
+                className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Client Settings"
+                aria-label="Client Settings"
+              >
+                <HiCog className="w-5 h-5" />
+              </button>
               {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
-            </>
+            </div>
           }
         />
 
@@ -155,17 +168,25 @@ function ClientsContent() {
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {clients.map((client) => (
-                  <PersonCard
-                    key={client.id}
-                    name={client.name}
-                    subtitle={client.company}
-                    onClick={() => handleEdit(client)}
-                    onRemove={() => handleRemove(client)}
-                    isClient={true}
-                    hasCompany={!!(client.company && client.company.trim())}
-                  />
-                ))}
+                {clients.map((client) => {
+                  // Check if company details section is enabled
+                  const showCompanyDetails = shouldShowCompanyDetails(
+                    userAccount?.clientSettings,
+                    userAccount?.industry
+                  );
+                  
+                  return (
+                    <PersonCard
+                      key={client.id}
+                      name={client.name}
+                      subtitle={showCompanyDetails ? client.company : undefined}
+                      onClick={() => handleEdit(client)}
+                      onRemove={() => handleRemove(client)}
+                      isClient={true}
+                      hasCompany={showCompanyDetails && !!(client.company && client.company.trim())}
+                    />
+                  );
+                })}
               </div>
             )}
           </>
@@ -184,6 +205,16 @@ function ClientsContent() {
         confirmationWord="deactivate"
         variant="danger"
       />
+
+      {/* Client Settings Drawer */}
+      <Drawer
+        isOpen={settingsDrawerOpen}
+        onClose={() => setSettingsDrawerOpen(false)}
+        title="Client Settings"
+        width="50vw"
+      >
+        <ClientSettings />
+      </Drawer>
     </>
   );
 }

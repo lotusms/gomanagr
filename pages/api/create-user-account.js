@@ -31,7 +31,7 @@ try {
 // Helper function to convert camelCase account data to snake_case row
 function accountToRow(data) {
   const KNOWN_KEYS = new Set([
-    'userId', 'email', 'trial', 'firstName', 'lastName', 'purpose', 'role',
+    'userId', 'email', 'trial', 'trialEndsAt', 'firstName', 'lastName', 'purpose', 'role',
     'companyName', 'companyLogo', 'teamSize', 'companySize', 'companyLocations',
     'sectionsToTrack', 'referralSource', 'selectedPalette', 'dismissedTodoIds',
     'teamMembers', 'clients', 'services', 'appointments', 'createdAt', 'updatedAt',
@@ -62,6 +62,13 @@ function accountToRow(data) {
       else if (key === 'createdAt') row.created_at = value;
       else if (key === 'updatedAt') row.updated_at = value;
       else if (key === 'industry') row.industry = value;
+      else if (key === 'trialEndsAt') {
+        // Store trialEndsAt in profile JSONB if column doesn't exist, otherwise as column
+        if (value) {
+          row.trial_ends_at = value;
+          profile.trialEndsAt = value; // Also store in profile as backup
+        }
+      }
       else if (key === 'reportingEmail') {
         // ALWAYS store reportingEmail in profile JSONB, NEVER as reporting_email column
         // This prevents the "column not found" error since the column doesn't exist
@@ -333,6 +340,7 @@ export default async function handler(req, res) {
       userId: data.id,
       email: data.email,
       trial: data.trial ?? true,
+      trialEndsAt: data.trial_ends_at || profile.trialEndsAt || null,
       firstName: data.first_name || profile.firstName || '',
       lastName: data.last_name || profile.lastName || '',
       purpose: data.purpose,

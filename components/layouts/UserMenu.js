@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Avatar from '@/components/ui/Avatar';
 import { getDisplayName } from '@/lib/UserAccountContext';
+import { isAdminOrDeveloper } from '@/lib/userPermissions';
 
 /**
  * User avatar button and dropdown menu (My Account, Settings, Logout).
@@ -57,6 +58,9 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
   const accountLoaded = userAccount !== null || previewAccount !== null;
   const shouldShowInitials = accountLoaded && !hasLogo;
   
+  // Check if user is admin or developer
+  const canAccessDeveloper = accountLoaded && isAdminOrDeveloper(account, currentUser?.uid);
+  
   // Debug: log avatar calculation
   console.log('[UserMenu] Avatar calculation:', {
     hasLogo,
@@ -98,12 +102,28 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, onL
             My Account
           </Link>
           <Link
+            href="/dashboard/subscriptions"
+            onClick={() => setOpen(false)}
+            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Subscriptions
+          </Link>
+          <Link
             href="/dashboard/settings"
             onClick={() => setOpen(false)}
             className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Settings
           </Link>
+          {process.env.NODE_ENV === 'development' && canAccessDeveloper && (
+            <Link
+              href="/dashboard/developer"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              Developer
+            </Link>
+          )}
           <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
           <button
             type="button"

@@ -201,7 +201,7 @@ function DashboardContent() {
           </h1>
         </div>
 
-        <StatsGrid />
+        <StatsGrid userAccount={userAccount} />
 
         <DashboardTodos items={todoItems} onDismiss={handleDismissTodo} />
 

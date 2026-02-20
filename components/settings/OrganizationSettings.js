@@ -7,6 +7,7 @@ import InputField from '@/components/ui/InputField';
 import { AddressAutocomplete } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { COUNTRIES } from '@/utils/countries';
+import { INDUSTRIES } from '@/components/clients/clientProfileConstants';
 
 // Business hours: every hour from 00:00 to 23:00 (value stored as HH:00)
 const BUSINESS_HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
@@ -27,6 +28,7 @@ export default function OrganizationSettings() {
     companyName: '',
     companyLogo: '',
     logoFile: null,
+    industry: '',
     organizationCountry: '',
     organizationAddress: '',
     organizationAddress2: '',
@@ -139,6 +141,7 @@ export default function OrganizationSettings() {
           companyName: userData.companyName || '',
           companyLogo: logoUrl,
           logoFile: null,
+          industry: userData.industry || '',
           organizationCountry: userData.organizationCountry || '',
           organizationAddress: userData.organizationAddress || '',
           organizationAddress2: userData.organizationAddress2 || '',
@@ -156,6 +159,7 @@ export default function OrganizationSettings() {
           companyName: '',
           companyLogo: '',
           logoFile: null,
+          industry: '',
           organizationCountry: '',
           organizationAddress: '',
           organizationAddress2: '',
@@ -422,18 +426,30 @@ export default function OrganizationSettings() {
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Manage your organization profile, members, and preferences</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Organization Name */}
-        <InputField
-          id="companyName"
-          label="Organization Name"
-          type="text"
-          value={formData.companyName}
-          onChange={handleInputChange}
-          placeholder="Enter organization name"
-          required
-          variant="light"
-          inputProps={{ name: 'companyName' }}
-        />
+        {/* Organization Name and Industry */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField
+            id="companyName"
+            label="Organization Name"
+            type="text"
+            value={formData.companyName}
+            onChange={handleInputChange}
+            placeholder="Enter organization name"
+            required
+            variant="light"
+            inputProps={{ name: 'companyName' }}
+          />
+          <Dropdown
+            id="industry"
+            name="industry"
+            label="Industry"
+            value={formData.industry || undefined}
+            onChange={handleInputChange}
+            options={INDUSTRIES.map((ind) => ({ value: ind, label: ind }))}
+            placeholder="Select industry..."
+            variant="light"
+          />
+        </div>
 
         {/* Logo / Branding */}
         <div>

@@ -145,7 +145,7 @@ export default function DashboardLayout({ children }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} />
+        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} />
 
         {/* Main Content */}
         <main

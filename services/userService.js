@@ -20,6 +20,7 @@ function rowToAccount(row) {
     userId: row.id,
     email: row.email,
     trial: row.trial ?? true,
+    trialEndsAt: row.trial_ends_at || profile.trialEndsAt || null,
     firstName: (row.first_name || profile.firstName || '').trim(),
     lastName: (row.last_name || profile.lastName || '').trim(),
     purpose: row.purpose,
@@ -39,6 +40,7 @@ function rowToAccount(row) {
     clients: row.clients ?? [],
     services: row.services ?? [],
     appointments: row.appointments ?? [],
+    developerMode: profile.developerMode ?? false, // Developer mode flag (stored in profile JSONB)
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -47,7 +49,7 @@ function rowToAccount(row) {
 }
 
 const KNOWN_KEYS = new Set([
-  'userId', 'email', 'trial', 'firstName', 'lastName', 'purpose', 'role',
+  'userId', 'email', 'trial', 'trialEndsAt', 'firstName', 'lastName', 'purpose', 'role',
   'companyName', 'companyLogo', 'teamSize', 'companySize', 'companyLocations',
   'sectionsToTrack', 'referralSource', 'selectedPalette', 'dismissedTodoIds',
   'teamMembers', 'clients', 'services', 'appointments', 'createdAt', 'updatedAt',
@@ -78,6 +80,13 @@ function accountToRow(data) {
       else if (key === 'createdAt') row.created_at = value;
       else if (key === 'updatedAt') row.updated_at = value;
       else if (key === 'industry') row.industry = value;
+      else if (key === 'trialEndsAt') {
+        // Store trialEndsAt in profile JSONB if column doesn't exist, otherwise as column
+        if (value) {
+          row.trial_ends_at = value;
+          profile.trialEndsAt = value; // Also store in profile as backup
+        }
+      }
       else if (key === 'reportingEmail') {
         // ALWAYS store reportingEmail in profile JSONB, NOT as reporting_email column
         // This avoids the "column not found" error since the column doesn't exist
@@ -465,6 +474,36 @@ export async function saveAppointment(userId, appointment) {
     })
     .eq('id', userId);
   if (error) throw new Error('Failed to save appointment: ' + error.message);
+}
+
+/**
+ * Delete user account (both database record and auth user)
+ * @param {string} userId - The auth user ID
+ * @returns {Promise<void>}
+ */
+export async function deleteUserAccount(userId) {
+  const response = await fetch('/api/delete-user-account', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ userId }),
+  });
+
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      const text = await response.text().catch(() => 'Unknown error');
+      errorData = { message: text || `HTTP ${response.status}: ${response.statusText}` };
+    }
+    
+    const errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+    throw new Error(errorMessage);
+  }
+
+  return await response.json();
 }
 
 export async function deleteAppointment(userId, appointmentId) {

@@ -98,12 +98,12 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, isC
 
         {/* Name with Admin Badge */}
         <div className="flex items-center justify-center gap-2 mb-1 px-2 w-full">
-          <h3 className="text-xl font-bold text-white text-center truncate drop-shadow-lg flex-1">
+          <h3 className="text-xl font-bold text-white text-center truncate drop-shadow-lg">
             {name}
           </h3>
           {isAdmin && (
             <HiShieldCheck 
-              className="w-5 h-5 text-yellow-300 flex-shrink-0 drop-shadow-lg" 
+              className="w-5 h-5 text-white flex-shrink-0 drop-shadow-lg" 
               title="Admin"
               aria-label="Admin"
             />

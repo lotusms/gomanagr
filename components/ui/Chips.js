@@ -15,8 +15,9 @@ import { getLabelClasses } from './formControlStyles';
  * @param {string} props.error - Error message to display
  * @param {boolean} props.required - Whether the field is required
  * @param {string} props.className - Additional CSS classes
- * @param {string} props.layout - Layout type: 'flex' (default), 'vertical' for full-width stacked buttons, or 'grid' for grid layout
+ * @param {string} props.layout - Layout type: 'flex' (default), 'vertical' for full-width stacked buttons, 'grid' for grid layout, or 'grouped' for inline chips with shared borders
  * @param {string} props.variant - 'dark' (default) or 'light' for light backgrounds
+ * @param {boolean} props.mini - If true, renders smaller chips with reduced padding and text size
  */
 export function ChipsSingle({
   id,
@@ -29,18 +30,87 @@ export function ChipsSingle({
   className = '',
   layout = 'flex',
   variant = 'dark',
+  mini = false,
 }) {
   const isVertical = layout === 'vertical';
   const isGrid = layout === 'grid';
+  const isGrouped = layout === 'grouped';
   const isLight = variant === 'light';
   const labelClass = getLabelClasses(variant);
   const requiredClass = isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1';
   const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
   
+  // Mini variant sizing
+  const paddingClass = mini 
+    ? (isVertical ? 'px-3 py-2' : 'px-2 py-1')
+    : (isVertical ? 'px-6 py-4' : 'px-4 py-2');
+  const textSizeClass = mini ? 'text-sm' : 'text-base';
+  const gapClass = mini ? 'gap-2' : 'gap-3';
+  
   const getRootClassName = () => {
-    if (isVertical) return 'space-y-3';
-    if (isGrid) return 'grid grid-cols-1 md:grid-cols-2 gap-2';
-    return 'flex flex-wrap gap-3';
+    if (isVertical) return mini ? 'space-y-2' : 'space-y-3';
+    if (isGrid) return mini ? 'grid grid-cols-1 md:grid-cols-2 gap-1.5' : 'grid grid-cols-1 md:grid-cols-2 gap-2';
+    if (isGrouped) return 'inline-flex';
+    return `flex flex-wrap ${gapClass}`;
+  };
+  
+  // Ensure value is valid (matches one of the options) or default to first option
+  const validValue = value && options.includes(value) ? value : (options[0] || '');
+  
+  const getChipClassName = (option, index) => {
+    const isSelected = validValue === option;
+    const isFirst = index === 0;
+    const isLast = index === options.length - 1;
+    
+    // Base classes
+    let baseClasses = `${paddingClass} ${textSizeClass} font-medium transition cursor-pointer text-left focus:outline-none`;
+    
+    // Border radius for grouped layout
+    if (isGrouped) {
+      if (isFirst && isLast) {
+        baseClasses += mini ? ' rounded-md' : ' rounded-lg';
+      } else if (isFirst) {
+        baseClasses += mini ? ' rounded-l-md rounded-r-none' : ' rounded-l-lg rounded-r-none';
+      } else if (isLast) {
+        baseClasses += mini ? ' rounded-r-md rounded-l-none' : ' rounded-r-lg rounded-l-none';
+      } else {
+        baseClasses += ' rounded-none';
+      }
+    } else {
+      baseClasses += mini ? ' rounded-md' : ' rounded-lg';
+    }
+    
+    // Border classes for grouped layout
+    if (isGrouped) {
+      if (isSelected) {
+        baseClasses += ' bg-primary-600 text-white border-2 border-primary-400';
+        if (!isFirst) {
+          baseClasses += ' -ml-[2px]';
+        }
+      } else {
+        if (isLight) {
+          baseClasses += ' bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600';
+        } else {
+          baseClasses += ' bg-white/10 text-white border-2 border-white/30 hover:bg-white/20';
+        }
+        if (!isFirst) {
+          baseClasses += ' -ml-[2px]';
+        }
+      }
+    } else {
+      // Non-grouped border classes
+      if (isSelected) {
+        baseClasses += ' bg-primary-600 text-white border-2 border-primary-400';
+      } else {
+        if (isLight) {
+          baseClasses += ' bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600';
+        } else {
+          baseClasses += ' bg-white/10 text-white border-2 border-white/30 hover:bg-white/20';
+        }
+      }
+    }
+    
+    return baseClasses;
   };
   
   return (
@@ -54,32 +124,22 @@ export function ChipsSingle({
       </Label.Root>
       <RadioGroup.Root
         id={id}
-        value={value || ''}
+        value={validValue}
         onValueChange={onValueChange}
         className={getRootClassName()}
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
       >
-        {options.map((option) => (
+        {options.map((option, index) => (
           <RadioGroup.Item
             key={option}
             value={option}
-            className={`
-              ${isVertical ? 'w-full px-6 py-4' : 'px-4 py-2'} rounded-lg font-medium transition cursor-pointer text-left
-              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-900 dark:focus:ring-offset-gray-900
-              ${
-                value === option
-                  ? 'bg-primary-600 text-white border-2 border-primary-400'
-                  : isLight
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    : 'bg-white/10 text-white border-2 border-white/30 hover:bg-white/20'
-              }
-            `}
+            className={getChipClassName(option, index)}
           >
             <div className={isVertical ? 'flex items-center justify-between' : ''}>
               <span>{option}</span>
-              {isVertical && value === option && (
-                <span className="text-xl">✓</span>
+              {isVertical && validValue === option && (
+                <span className={mini ? 'text-sm' : 'text-xl'}>✓</span>
               )}
             </div>
           </RadioGroup.Item>
@@ -106,10 +166,11 @@ export function ChipsSingle({
  * @param {string} props.error - Error message to display
  * @param {boolean} props.required - Whether the field is required
  * @param {string} props.className - Additional CSS classes
- * @param {string} props.layout - Layout type: 'grid' or 'flex' (default: 'flex')
+ * @param {string} props.layout - Layout type: 'grid', 'flex' (default), or 'grouped' for inline chips with shared borders
  * @param {string} props.variant - 'dark' (default) or 'light' for light backgrounds
  * @param {Object} props.optionData - Optional map of option values to objects with avatar, name, etc.
  * @param {Function} props.renderOption - Optional custom render function for options
+ * @param {boolean} props.mini - If true, renders smaller chips with reduced padding and text size
  */
 export function ChipsMulti({
   id,
@@ -124,11 +185,13 @@ export function ChipsMulti({
   variant = 'dark',
   optionData = {},
   renderOption,
+  mini = false,
 }) {
   const handleValueChange = (newValue) => {
     if (onValueChange) onValueChange(newValue);
   };
 
+  const isGrouped = layout === 'grouped';
   const isLight = variant === 'light';
   const labelClass = getLabelClasses(variant);
   const requiredClass = isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1';
@@ -139,8 +202,57 @@ export function ChipsMulti({
     ? 'bg-primary-600 text-white border border-primary-600'
     : 'bg-primary-600 text-white border-2 border-primary-400';
   const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
-  const chipPadding = isLight ? 'px-3 py-0.5 text-sm rounded-full' : 'px-4 py-3 rounded-lg';
-  const checkSize = isLight ? 'text-sm' : 'text-xl';
+  
+  // Mini variant sizing
+  const chipPadding = mini
+    ? (isLight ? 'px-2 py-0.5 text-xs rounded-full' : 'px-2 py-1 text-sm rounded-md')
+    : (isLight ? 'px-3 py-0.5 text-sm rounded-full' : 'px-4 py-3 rounded-lg');
+  const checkSize = mini ? 'text-xs' : (isLight ? 'text-sm' : 'text-xl');
+  const gapClass = mini ? 'gap-1.5' : 'gap-2';
+  
+  const getChipClassName = (option, index) => {
+    const isSelected = value?.includes(option);
+    const isFirst = index === 0;
+    const isLast = index === options.length - 1;
+    
+    // Base padding and text size
+    let baseClasses = chipPadding;
+    
+    // Border radius for grouped layout
+    if (isGrouped) {
+      // Remove rounded classes and apply grouped-specific rounding
+      baseClasses = baseClasses.replace(/rounded-\w+/g, '');
+      if (isFirst && isLast) {
+        baseClasses += mini ? ' rounded-md' : ' rounded-lg';
+      } else if (isFirst) {
+        baseClasses += mini ? ' rounded-l-md rounded-r-none' : ' rounded-l-lg rounded-r-none';
+      } else if (isLast) {
+        baseClasses += mini ? ' rounded-r-md rounded-l-none' : ' rounded-r-lg rounded-l-none';
+      } else {
+        baseClasses += ' rounded-none';
+      }
+    }
+    
+    // Border classes for grouped layout
+    if (isGrouped) {
+      if (isSelected) {
+        baseClasses += ` ${selectedClass}`;
+        if (!isFirst) {
+          baseClasses += ' -ml-[2px]';
+        }
+      } else {
+        baseClasses += ` ${unselectedClass}`;
+        if (!isFirst) {
+          baseClasses += ' -ml-[2px]';
+        }
+      }
+    } else {
+      // Non-grouped: use existing classes
+      baseClasses += isSelected ? ` ${selectedClass}` : ` ${unselectedClass}`;
+    }
+    
+    return `${baseClasses} font-medium text-left transition cursor-pointer flex items-center gap-2 focus:outline-none`;
+  };
 
   return (
     <div className={className}>
@@ -153,11 +265,17 @@ export function ChipsMulti({
         type="multiple"
         value={value || []}
         onValueChange={handleValueChange}
-        className={layout === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-2' : 'flex flex-wrap gap-2'}
+        className={
+          layout === 'grid' 
+            ? `grid grid-cols-1 md:grid-cols-2 ${gapClass}` 
+            : isGrouped 
+              ? 'inline-flex' 
+              : `flex flex-wrap ${gapClass}`
+        }
         aria-invalid={!!error}
         aria-describedby={error ? `${id}-error` : undefined}
       >
-        {options.map((option) => {
+        {options.map((option, index) => {
           const data = optionData[option] || {};
           const isSelected = value?.includes(option);
           
@@ -165,11 +283,7 @@ export function ChipsMulti({
             <ToggleGroup.Item
               key={option}
               value={option}
-              className={`
-                ${chipPadding} font-medium text-left transition cursor-pointer flex items-center gap-2
-                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-transparent
-                ${isSelected ? selectedClass : unselectedClass}
-              `}
+              className={getChipClassName(option, index)}
             >
               {renderOption ? (
                 renderOption(option, isSelected, data)

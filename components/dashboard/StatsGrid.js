@@ -1,16 +1,22 @@
+import { useMemo } from 'react';
 import {
   HiFolder,
   HiClipboardList,
   HiUsers,
   HiCheckCircle,
 } from 'react-icons/hi';
+import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
 
-const STATS = [
-  { title: 'Total Projects', value: '12', change: '+2', color: 'bg-blue-500', Icon: HiFolder },
-  { title: 'Active Tasks', value: '8', change: '+3', color: 'bg-green-500', Icon: HiClipboardList },
-  { title: 'Team Members', value: '24', change: '+1', color: 'bg-primary-500', Icon: HiUsers },
-  { title: 'Completed', value: '156', change: '+12', color: 'bg-orange-500', Icon: HiCheckCircle },
-];
+function getStats(accountIndustry) {
+  const projectTerm = getProjectTermForIndustry(accountIndustry);
+  
+  return [
+    { title: `Total ${projectTerm}`, value: '12', change: '+2', color: 'bg-blue-500', Icon: HiFolder },
+    { title: 'Active Tasks', value: '8', change: '+3', color: 'bg-green-500', Icon: HiClipboardList },
+    { title: 'Team Members', value: '24', change: '+1', color: 'bg-primary-500', Icon: HiUsers },
+    { title: 'Completed', value: '156', change: '+12', color: 'bg-orange-500', Icon: HiCheckCircle },
+  ];
+}
 
 const StatCard = ({ title, value, change, color, Icon }) => (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
@@ -29,10 +35,17 @@ const StatCard = ({ title, value, change, color, Icon }) => (
     </div>
 );
 
-export default function StatsGrid() {
+/**
+ * StatsGrid Component
+ * @param {Object} props
+ * @param {Object} props.userAccount - User account object containing industry field
+ */
+export default function StatsGrid({ userAccount }) {
+  const stats = useMemo(() => getStats(userAccount?.industry), [userAccount?.industry]);
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {STATS.map((stat, index) => (
+      {stats.map((stat, index) => (
         <StatCard key={index} {...stat} />
       ))}
     </div>

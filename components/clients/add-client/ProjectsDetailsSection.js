@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { HiPlus, HiTrash, HiFolder, HiCheckCircle, HiPaperClip, HiGift, HiShieldCheck } from 'react-icons/hi';
 import InputField from '@/components/ui/InputField';
 import ProjectCard from '../../dashboard/ProjectCard';
@@ -10,6 +10,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateClients } from '@/services/userService';
 import { useToast } from '@/components/ui/Toast';
+import { getProjectTermForIndustry, getProjectTermSingular } from '../clientProfileConstants';
 
 /**
  * Reusable project section component (Active/Completed Projects)
@@ -195,6 +196,7 @@ export default function ProjectsDetailsSection({
   onExpandedProjectKeyChange,
   clientId,
   onRefresh, // Callback to refresh data after saving
+  companyIndustry, // Industry to determine dynamic project term
 }) {
   const { currentUser } = useAuth();
   const { success, error: showError } = useToast();
@@ -204,6 +206,12 @@ export default function ProjectsDetailsSection({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null); // { variant: 'active'|'completed', index: number }
+
+  // Get dynamic project term based on industry
+  const projectTermPlural = useMemo(() => getProjectTermForIndustry(companyIndustry), [companyIndustry]);
+  const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
+  const projectTermLower = projectTerm.toLowerCase();
+  const projectTermPluralLower = projectTermPlural.toLowerCase();
 
   const handleAddProject = (variant) => {
     setAddingProjectVariant(variant);
@@ -255,7 +263,7 @@ export default function ProjectsDetailsSection({
         onCompletedProjectsChange(updatedProjects);
       }
 
-      success('Project added successfully');
+      success(`${projectTerm} added successfully`);
       setShowAddProjectDrawer(false);
       setAddingProjectVariant(null);
 
@@ -332,7 +340,7 @@ export default function ProjectsDetailsSection({
       // Close any expanded project
       onExpandedProjectKeyChange(null);
 
-      success('Project deleted successfully');
+      success(`${projectTerm} deleted successfully`);
       setShowDeleteDialog(false);
       setProjectToDelete(null);
 
@@ -342,7 +350,7 @@ export default function ProjectsDetailsSection({
       }
     } catch (error) {
       console.error('Failed to delete project:', error);
-      showError(error.message || 'Failed to delete project. Please try again.');
+      showError(error.message || `Failed to delete ${projectTermLower}. Please try again.`);
     } finally {
       setDeletingProject(false);
     }
@@ -358,28 +366,28 @@ export default function ProjectsDetailsSection({
       <div className="space-y-8">
         {/* Active Projects Section */}
         <ProjectSection
-          title="Active Projects"
-          description="Current projects in progress"
+          title={`Active ${projectTermPlural}`}
+          description={`Current ${projectTermLower} in progress`}
           icon={HiFolder}
-          iconBgColor="bg-green-50 dark:bg-green-900/20"
-          iconColor="text-green-600 dark:text-green-400"
+          iconBgColor="bg-blue-50 dark:bg-blue-900/20"
+          iconColor="text-blue-600 dark:text-blue-400"
           projects={activeProjects}
           variant="active"
           defaultCurrency={defaultCurrency}
           expandedProjectKey={expandedProjectKey}
           onProjectsChange={onActiveProjectsChange}
           onExpandedProjectKeyChange={onExpandedProjectKeyChange}
-          emptyMessage="No active projects"
-          emptyDescription="Add your first active project to get started"
-          addButtonText="Add Active Project"
+          emptyMessage={`No active ${projectTermPluralLower}`}
+          emptyDescription={`Add your first active ${projectTermLower} to get started`}
+          addButtonText={`Add Active ${projectTerm}`}
           onAddProject={() => handleAddProject('active')}
           onDeleteProject={handleDeleteProject}
         />
         
         {/* Completed Projects Section */}
         <ProjectSection
-          title="Completed Projects"
-          description="Previously completed projects"
+          title={`Completed ${projectTermPlural}`}
+          description={`Previously completed ${projectTermLower}`}
           icon={HiCheckCircle}
           iconBgColor="bg-green-50 dark:bg-green-900/20"
           iconColor="text-green-600 dark:text-green-400"
@@ -389,9 +397,9 @@ export default function ProjectsDetailsSection({
           expandedProjectKey={expandedProjectKey}
           onProjectsChange={onCompletedProjectsChange}
           onExpandedProjectKeyChange={onExpandedProjectKeyChange}
-          emptyMessage="No completed projects"
-          emptyDescription="Completed projects will appear here"
-          addButtonText="Add Completed Project"
+          emptyMessage={`No completed ${projectTermPluralLower}`}
+          emptyDescription={`Completed ${projectTermPluralLower} will appear here`}
+          addButtonText={`Add Completed ${projectTerm}`}
           onAddProject={() => handleAddProject('completed')}
           onDeleteProject={handleDeleteProject}
         />
@@ -407,7 +415,7 @@ export default function ProjectsDetailsSection({
           placeholder="File name or URL"
           icon={HiPaperClip}
           emptyMessage="No linked files"
-          emptyDescription="Add files related to this project"
+          emptyDescription={`Add files related to this ${projectTermLower}`}
         />
         
         <ListSection
@@ -419,7 +427,7 @@ export default function ProjectsDetailsSection({
           placeholder="Deliverable name"
           icon={HiGift}
           emptyMessage="No deliverables"
-          emptyDescription="Add project deliverables"
+          emptyDescription={`Add ${projectTermLower} deliverables`}
         />
         
         <ListSection
@@ -441,7 +449,7 @@ export default function ProjectsDetailsSection({
         <Drawer
           isOpen={showAddProjectDrawer}
           onClose={handleCancelAddProject}
-          title={addingProjectVariant === 'active' ? 'Add Active Project' : 'Add Completed Project'}
+          title={addingProjectVariant === 'active' ? `Add Active ${projectTerm}` : `Add Completed ${projectTerm}`}
         >
           <AddProjectForm
             currency={defaultCurrency || 'USD'}
@@ -457,8 +465,8 @@ export default function ProjectsDetailsSection({
         isOpen={showDeleteDialog}
         onClose={handleCancelDelete}
         onConfirm={handleConfirmDelete}
-        title="Delete Project"
-        message={`Are you sure you want to delete this project? This action cannot be undone.`}
+        title={`Delete ${projectTerm}`}
+        message={`Are you sure you want to delete this ${projectTermLower}? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"

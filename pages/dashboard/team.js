@@ -34,6 +34,7 @@ function TeamContent() {
     genders: [],
     personalityTraits: [],
   });
+  const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -44,17 +45,19 @@ function TeamContent() {
         // Only use teamMembers from account, no default fallback
         // Empty array means no team members yet (only account owner should exist)
         const list = data?.teamMembers ?? [];
-        // Filter to show only active team members (status !== 'inactive')
+        // Filter team members based on showInactive setting
         // Default to 'active' if status is not set
-        const activeTeam = list.filter((m) => (m.status || 'active') !== 'inactive');
-        setTeam(activeTeam);
+        const filteredList = showInactive 
+          ? list // Show all members including inactive
+          : list.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+        setTeam(filteredList);
       })
       .catch(() => {
         // On error, show empty team (no defaults)
         setTeam([]);
       })
       .finally(() => setLoaded(true));
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, showInactive]);
 
   // Helper function to clean team member objects by removing undefined values
   const cleanTeamMember = (member) => {
@@ -88,9 +91,11 @@ function TeamContent() {
     updateTeamMembers(currentUser.uid, cleanedTeam)
       .then(() => {
         setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
-        // Filter to show only active team members in the display
-        const activeTeam = cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
-        setTeam(activeTeam);
+        // Filter team members based on showInactive setting
+        const filteredList = showInactive 
+          ? cleanedTeam // Show all members including inactive
+          : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+        setTeam(filteredList);
       })
       .catch((err) => console.error('Failed to save team:', err))
       .finally(() => setSaving(false));
@@ -122,9 +127,11 @@ function TeamContent() {
       // Save updated team members
       await updateTeamMembers(currentUser.uid, cleanedTeam);
       
-      // Update local state - filter out inactive team members
-      const activeTeam = cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
-      setTeam(activeTeam);
+      // Update local state - filter based on showInactive setting
+      const filteredList = showInactive 
+        ? cleanedTeam // Show all members including inactive
+        : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+      setTeam(filteredList);
       setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
       
       setDeleteDialogOpen(false);
@@ -202,9 +209,11 @@ function TeamContent() {
       ? allTeamMembers.map((m) => (m.id === editingId ? updatedMember : m))
       : [...allTeamMembers, updatedMember];
     
-    // Update local active team display
-    const activeTeam = nextAllMembers.filter((m) => (m.status || 'active') !== 'inactive');
-    setTeam(activeTeam);
+    // Update local team display based on showInactive setting
+    const filteredList = showInactive 
+      ? nextAllMembers // Show all members including inactive
+      : nextAllMembers.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+    setTeam(filteredList);
     
     // Save all team members (including inactive)
     saveTeam(nextAllMembers);
@@ -428,6 +437,13 @@ function TeamContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[...filteredTeam].sort((a, b) => {
+                  // Pin admins at the beginning
+                  const aIsAdmin = a.isAdmin === true;
+                  const bIsAdmin = b.isAdmin === true;
+                  if (aIsAdmin && !bIsAdmin) return -1;
+                  if (!aIsAdmin && bIsAdmin) return 1;
+                  
+                  // Sort alphabetically for both admins and non-admins
                   const nameA = (a.name || '').toLowerCase();
                   const nameB = (b.name || '').toLowerCase();
                   return nameA.localeCompare(nameB);

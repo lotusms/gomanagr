@@ -19,6 +19,7 @@ import ProjectsDetailsSection from './add-client/ProjectsDetailsSection';
 import CommunicationLogSection from './add-client/CommunicationLogSection';
 import DocumentsFilesSection from './add-client/DocumentsFilesSection';
 import ClientAppointmentsCalendar from '../dashboard/ClientAppointmentsCalendar';
+import { getProjectTermForIndustry, shouldShowCompanyFinancialSections } from './clientProfileConstants';
 
 function normalizeCountryValue(value) {
   if (!value) return '';
@@ -443,7 +444,44 @@ export default function ClientProfile({
   };
   
   // Prepare all sections for ResponsiveSectionWrapper
-  const sections = useMemo(() => [
+  const sections = useMemo(() => {
+    const projectTermPlural = getProjectTermForIndustry(userAccount?.industry);
+    const clientSettings = userAccount?.clientSettings || {};
+    
+    // Determine tab visibility
+    // Use visibleTabs array from clientSettings if available
+    // Otherwise, use defaults based on industry (for company/financial) or default to showing all
+    let visibleTabs;
+    if (clientSettings.visibleTabs && Array.isArray(clientSettings.visibleTabs)) {
+      // Use saved array
+      visibleTabs = clientSettings.visibleTabs;
+    } else if (clientSettings) {
+      // Convert old individual boolean settings to array (backward compatibility)
+      visibleTabs = [];
+      if (clientSettings.showCompanyDetails !== false) visibleTabs.push('company');
+      if (clientSettings.showFinancialInformation !== false) visibleTabs.push('financial');
+      if (clientSettings.showProjectsDetails !== false) visibleTabs.push('projects');
+      if (clientSettings.showCommunicationLog !== false) visibleTabs.push('communication');
+      if (clientSettings.showDocumentsFiles !== false) visibleTabs.push('documents');
+      if (clientSettings.showAppointmentsSchedule !== false) visibleTabs.push('scheduling');
+    } else {
+      // Use defaults based on industry
+      visibleTabs = ['projects', 'communication', 'documents', 'scheduling'];
+      const shouldShowCompanyFinancial = shouldShowCompanyFinancialSections(userAccount?.industry);
+      if (shouldShowCompanyFinancial) {
+        visibleTabs.push('company', 'financial');
+      }
+    }
+    
+    // Create helper functions to check if tabs should be shown
+    const showCompanyDetails = visibleTabs.includes('company');
+    const showFinancialInformation = visibleTabs.includes('financial');
+    const showProjectsDetails = visibleTabs.includes('projects');
+    const showCommunicationLog = visibleTabs.includes('communication');
+    const showDocumentsFiles = visibleTabs.includes('documents');
+    const showAppointmentsSchedule = visibleTabs.includes('scheduling');
+    
+    const allSections = [
     {
       value: 'basic',
       label: 'Basic Information',
@@ -474,188 +512,204 @@ export default function ClientProfile({
         </div>
       ),
     },
-    {
-      value: 'company',
-      label: 'Company Details',
-      content: (
-        <CompanyDetailsSection
-          companyName={companyName}
-          companyPhone={companyPhone}
-          companyEmail={companyEmail}
-          companyWebsite={companyWebsite}
-          companyIndustry={companyIndustry}
-          companySize={companySize}
-          billingAddressDifferent={billingAddressDifferent}
-          companyAddress1={companyAddress1}
-          companyAddress2={companyAddress2}
-          companyCity={companyCity}
-          companyState={companyState}
-          companyPostalCode={companyPostalCode}
-          companyCountry={companyCountry}
-          billingAddress1={billingAddress1}
-          billingAddress2={billingAddress2}
-          billingCity={billingCity}
-          billingState={billingState}
-          billingPostalCode={billingPostalCode}
-          billingCountry={billingCountry}
-          taxId={taxId}
-          timezone={timezone}
-          language={language}
-          primaryContactName={primaryContactName}
-          primaryContactPhone={primaryContactPhone}
-          primaryContactEmail={primaryContactEmail}
-          secondaryContactName={secondaryContactName}
-          secondaryContactPhone={secondaryContactPhone}
-          secondaryContactEmail={secondaryContactEmail}
-          sortedCountries={sortedCountries}
-          companyAvailableStates={companyAvailableStates}
-          billingAvailableStates={billingAvailableStates}
-          saving={saving}
-          onCompanyNameChange={handleCompanyNameChange}
-          onCompanyPhoneChange={(e) => setCompanyPhone(e.target.value)}
-          onCompanyEmailChange={(e) => setCompanyEmail(e.target.value)}
-          onCompanyWebsiteChange={(e) => setCompanyWebsite(e.target.value)}
-          onCompanyIndustryChange={(e) => setCompanyIndustry(e.target.value)}
-          onCompanySizeChange={(e) => setCompanySize(e.target.value)}
-          onBillingAddressDifferentChange={setBillingAddressDifferent}
-          onCompanyAddress1Change={(e) => {
-            // Handle both event objects and direct string values (from AddressAutocomplete)
-            const value = typeof e === 'string' ? e : e.target.value;
-            setCompanyAddress1(value);
-          }}
-          onCompanyAddress2Change={(e) => setCompanyAddress2(e.target.value)}
-          onCompanyCityChange={(e) => setCompanyCity(e.target.value)}
-          onCompanyStateChange={(e) => setCompanyState(e.target.value)}
-          onCompanyPostalCodeChange={(e) => setCompanyPostalCode(e.target.value)}
-          onCompanyCountryChange={(e) => setCompanyCountry(e.target.value)}
-          onBillingAddress1Change={(e) => {
-            // Handle both event objects and direct string values (from AddressAutocomplete)
-            const value = typeof e === 'string' ? e : e.target.value;
-            setBillingAddress1(value);
-          }}
-          onBillingAddress2Change={(e) => setBillingAddress2(e.target.value)}
-          onBillingCityChange={(e) => setBillingCity(e.target.value)}
-          onBillingStateChange={(e) => setBillingState(e.target.value)}
-          onBillingPostalCodeChange={(e) => setBillingPostalCode(e.target.value)}
-          onBillingCountryChange={(e) => setBillingCountry(e.target.value)}
-          onTaxIdChange={(e) => setTaxId(e.target.value)}
-          onTimezoneChange={(e) => setTimezone(e.target.value)}
-          onLanguageChange={(e) => setLanguage(e.target.value)}
-          onPrimaryContactNameChange={(e) => setPrimaryContactName(e.target.value)}
-          onPrimaryContactPhoneChange={(e) => setPrimaryContactPhone(e.target.value)}
-          onPrimaryContactEmailChange={(e) => setPrimaryContactEmail(e.target.value)}
-          onSecondaryContactNameChange={(e) => setSecondaryContactName(e.target.value)}
-          onSecondaryContactPhoneChange={(e) => setSecondaryContactPhone(e.target.value)}
-          onSecondaryContactEmailChange={(e) => setSecondaryContactEmail(e.target.value)}
-          normalizeCountryValue={normalizeCountryValue}
-        />
-      ),
-    },
-    {
-      value: 'financial',
-      label: 'Financial Information',
-      content: (
-        <FinancialInformationSection
-          paymentTerms={paymentTerms}
-          pricingTier={pricingTier}
-          defaultCurrency={defaultCurrency}
-          activeRetainersBalance={activeRetainersBalance}
-          paymentHistory={paymentHistory}
-          onPaymentTermsChange={(e) => setPaymentTerms(e.target.value)}
-          onPricingTierChange={(e) => setPricingTier(e.target.value)}
-          onDefaultCurrencyChange={(e) => setDefaultCurrency(e.target.value)}
-          onActiveRetainersBalanceChange={(e) => setActiveRetainersBalance(e.target.value)}
-        />
-      ),
-    },
-    {
-      value: 'projects',
-      label: 'Projects Details',
-      content: (
-        <ProjectsDetailsSection
-          activeProjects={activeProjects}
-          completedProjects={completedProjects}
-          linkedFiles={linkedFiles}
-          deliverables={deliverables}
-          approvals={approvals}
-          defaultCurrency={defaultCurrency}
-          expandedProjectKey={expandedProjectKey}
-          onActiveProjectsChange={setActiveProjects}
-          onCompletedProjectsChange={setCompletedProjects}
-          onLinkedFilesChange={setLinkedFiles}
-          onDeliverablesChange={setDeliverables}
-          onApprovalsChange={setApprovals}
-          onExpandedProjectKeyChange={setExpandedProjectKey}
-          clientId={initialClient?.id || clientId}
-          onRefresh={async () => {
-            // Refresh client data after project is added
-            if (currentUser?.uid && (initialClient?.id || clientId)) {
-              try {
-                const account = await getUserAccount(currentUser.uid);
-                const client = account?.clients?.find((c) => c.id === (initialClient?.id || clientId));
-                if (client) {
-                  setActiveProjects(client.activeProjects || []);
-                  setCompletedProjects(client.completedProjects || []);
+    ...(showCompanyDetails 
+      ? [{
+          value: 'company',
+          label: 'Company Details',
+          content: (
+            <CompanyDetailsSection
+              companyName={companyName}
+              companyPhone={companyPhone}
+              companyEmail={companyEmail}
+              companyWebsite={companyWebsite}
+              companyIndustry={companyIndustry}
+              companySize={companySize}
+              billingAddressDifferent={billingAddressDifferent}
+              companyAddress1={companyAddress1}
+              companyAddress2={companyAddress2}
+              companyCity={companyCity}
+              companyState={companyState}
+              companyPostalCode={companyPostalCode}
+              companyCountry={companyCountry}
+              billingAddress1={billingAddress1}
+              billingAddress2={billingAddress2}
+              billingCity={billingCity}
+              billingState={billingState}
+              billingPostalCode={billingPostalCode}
+              billingCountry={billingCountry}
+              taxId={taxId}
+              timezone={timezone}
+              language={language}
+              primaryContactName={primaryContactName}
+              primaryContactPhone={primaryContactPhone}
+              primaryContactEmail={primaryContactEmail}
+              secondaryContactName={secondaryContactName}
+              secondaryContactPhone={secondaryContactPhone}
+              secondaryContactEmail={secondaryContactEmail}
+              sortedCountries={sortedCountries}
+              companyAvailableStates={companyAvailableStates}
+              billingAvailableStates={billingAvailableStates}
+              saving={saving}
+              onCompanyNameChange={handleCompanyNameChange}
+              onCompanyPhoneChange={(e) => setCompanyPhone(e.target.value)}
+              onCompanyEmailChange={(e) => setCompanyEmail(e.target.value)}
+              onCompanyWebsiteChange={(e) => setCompanyWebsite(e.target.value)}
+              onCompanyIndustryChange={(e) => setCompanyIndustry(e.target.value)}
+              onCompanySizeChange={(e) => setCompanySize(e.target.value)}
+              onBillingAddressDifferentChange={setBillingAddressDifferent}
+              onCompanyAddress1Change={(e) => {
+                // Handle both event objects and direct string values (from AddressAutocomplete)
+                const value = typeof e === 'string' ? e : e.target.value;
+                setCompanyAddress1(value);
+              }}
+              onCompanyAddress2Change={(e) => setCompanyAddress2(e.target.value)}
+              onCompanyCityChange={(e) => setCompanyCity(e.target.value)}
+              onCompanyStateChange={(e) => setCompanyState(e.target.value)}
+              onCompanyPostalCodeChange={(e) => setCompanyPostalCode(e.target.value)}
+              onCompanyCountryChange={(e) => setCompanyCountry(e.target.value)}
+              onBillingAddress1Change={(e) => {
+                // Handle both event objects and direct string values (from AddressAutocomplete)
+                const value = typeof e === 'string' ? e : e.target.value;
+                setBillingAddress1(value);
+              }}
+              onBillingAddress2Change={(e) => setBillingAddress2(e.target.value)}
+              onBillingCityChange={(e) => setBillingCity(e.target.value)}
+              onBillingStateChange={(e) => setBillingState(e.target.value)}
+              onBillingPostalCodeChange={(e) => setBillingPostalCode(e.target.value)}
+              onBillingCountryChange={(e) => setBillingCountry(e.target.value)}
+              onTaxIdChange={(e) => setTaxId(e.target.value)}
+              onTimezoneChange={(e) => setTimezone(e.target.value)}
+              onLanguageChange={(e) => setLanguage(e.target.value)}
+              onPrimaryContactNameChange={(e) => setPrimaryContactName(e.target.value)}
+              onPrimaryContactPhoneChange={(e) => setPrimaryContactPhone(e.target.value)}
+              onPrimaryContactEmailChange={(e) => setPrimaryContactEmail(e.target.value)}
+              onSecondaryContactNameChange={(e) => setSecondaryContactName(e.target.value)}
+              onSecondaryContactPhoneChange={(e) => setSecondaryContactPhone(e.target.value)}
+              onSecondaryContactEmailChange={(e) => setSecondaryContactEmail(e.target.value)}
+              normalizeCountryValue={normalizeCountryValue}
+            />
+          ),
+        }] 
+      : []),
+    ...(showFinancialInformation 
+      ? [{
+          value: 'financial',
+          label: 'Financial Information',
+          content: (
+            <FinancialInformationSection
+              paymentTerms={paymentTerms}
+              pricingTier={pricingTier}
+              defaultCurrency={defaultCurrency}
+              activeRetainersBalance={activeRetainersBalance}
+              paymentHistory={paymentHistory}
+              onPaymentTermsChange={(e) => setPaymentTerms(e.target.value)}
+              onPricingTierChange={(e) => setPricingTier(e.target.value)}
+              onDefaultCurrencyChange={(e) => setDefaultCurrency(e.target.value)}
+              onActiveRetainersBalanceChange={(e) => setActiveRetainersBalance(e.target.value)}
+            />
+          ),
+        }] 
+    : []),
+    ...(showProjectsDetails 
+      ? [{
+          value: 'projects',
+          label: `${projectTermPlural} Details`,
+          content: (
+            <ProjectsDetailsSection
+              activeProjects={activeProjects}
+              completedProjects={completedProjects}
+              linkedFiles={linkedFiles}
+              deliverables={deliverables}
+              approvals={approvals}
+              defaultCurrency={defaultCurrency}
+              expandedProjectKey={expandedProjectKey}
+              onActiveProjectsChange={setActiveProjects}
+              onCompletedProjectsChange={setCompletedProjects}
+              onLinkedFilesChange={setLinkedFiles}
+              onDeliverablesChange={setDeliverables}
+              onApprovalsChange={setApprovals}
+              onExpandedProjectKeyChange={setExpandedProjectKey}
+              clientId={initialClient?.id || clientId}
+              companyIndustry={companyIndustry}
+              onRefresh={async () => {
+                // Refresh client data after project is added
+                if (currentUser?.uid && (initialClient?.id || clientId)) {
+                  try {
+                    const account = await getUserAccount(currentUser.uid);
+                    const client = account?.clients?.find((c) => c.id === (initialClient?.id || clientId));
+                    if (client) {
+                      setActiveProjects(client.activeProjects || []);
+                      setCompletedProjects(client.completedProjects || []);
+                    }
+                  } catch (error) {
+                    console.error('Failed to refresh client data:', error);
+                  }
                 }
-              } catch (error) {
-                console.error('Failed to refresh client data:', error);
-              }
-            }
-          }}
-        />
-      ),
-    },
-    {
-      value: 'communication',
-      label: 'Communication Log',
-      content: (
-        <CommunicationLogSection
-          emails={emails}
-          messages={messages}
-          calls={calls}
-          meetingNotes={meetingNotes}
-          internalNotes={internalNotes}
-          onEmailsChange={setEmails}
-          onMessagesChange={setMessages}
-          onCallsChange={setCalls}
-          onMeetingNotesChange={setMeetingNotes}
-          onInternalNotesChange={(e) => setInternalNotes(e.target.value)}
-        />
-      ),
-    },
-    {
-      value: 'documents',
-      label: 'Documents & Files',
-      content: (
-        <DocumentsFilesSection
-          contracts={contracts}
-          proposals={proposals}
-          invoices={invoices}
-          attachments={attachments}
-          sharedAssets={sharedAssets}
-          onContractsChange={setContracts}
-          onProposalsChange={setProposals}
-          onInvoicesChange={setInvoices}
-          onAttachmentsChange={setAttachments}
-          onSharedAssetsChange={setSharedAssets}
-        />
-      ),
-    },
-    {
-      value: 'scheduling',
-      label: 'Appointments & Schedule',
-      content: (
-        <ClientAppointmentsCalendar
-          appointments={clientAppointments}
-          userAccount={userAccount}
-          onAppointmentClick={(appointment) => {
-            setEditingAppointment(appointment);
-            setShowAppointmentDrawer(true);
-          }}
-        />
-      ),
-    },
-  ], [
+              }}
+            />
+          ),
+        }] 
+      : []),
+    ...(showCommunicationLog 
+      ? [{
+          value: 'communication',
+          label: 'Communication Log',
+          content: (
+            <CommunicationLogSection
+              emails={emails}
+              messages={messages}
+              calls={calls}
+              meetingNotes={meetingNotes}
+              internalNotes={internalNotes}
+              onEmailsChange={setEmails}
+              onMessagesChange={setMessages}
+              onCallsChange={setCalls}
+              onMeetingNotesChange={setMeetingNotes}
+              onInternalNotesChange={(e) => setInternalNotes(e.target.value)}
+            />
+          ),
+        }] 
+      : []),
+    ...(showDocumentsFiles 
+      ? [{
+          value: 'documents',
+          label: 'Documents & Files',
+          content: (
+            <DocumentsFilesSection
+              contracts={contracts}
+              proposals={proposals}
+              invoices={invoices}
+              attachments={attachments}
+              sharedAssets={sharedAssets}
+              onContractsChange={setContracts}
+              onProposalsChange={setProposals}
+              onInvoicesChange={setInvoices}
+              onAttachmentsChange={setAttachments}
+              onSharedAssetsChange={setSharedAssets}
+            />
+          ),
+        }] 
+      : []),
+    ...(showAppointmentsSchedule 
+      ? [{
+          value: 'scheduling',
+          label: 'Appointments & Schedule',
+          content: (
+            <ClientAppointmentsCalendar
+              appointments={clientAppointments}
+              userAccount={userAccount}
+              onAppointmentClick={(appointment) => {
+                setEditingAppointment(appointment);
+                setShowAppointmentDrawer(true);
+              }}
+            />
+          ),
+        }] 
+      : []),
+    ];
+    
+    return allSections;
+  }, [
     firstName, lastName, clientId, status, phone, email, preferredCommunication, errors,
     companyName, companyPhone, companyEmail, companyWebsite, companyIndustry, companySize,
     companyAddress1, companyAddress2, companyCity, companyState, companyPostalCode, companyCountry,
@@ -668,6 +722,7 @@ export default function ClientProfile({
     contracts, proposals, invoices, attachments, sharedAssets,
     clientAppointments, userAccount, handleCompanyNameChange, saving,
     sortedCountries, companyAvailableStates, billingAvailableStates,
+    userAccount?.clientSettings?.visibleTabs,
   ]);
   
   return (

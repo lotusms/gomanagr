@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useMemo } from 'react';
 import {
   HiFolder,
   HiUsers,
@@ -19,26 +20,31 @@ import {
   HiClipboardList,
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
+import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
 
-const NAVIGATION = [
-  { name: 'Home', href: '/dashboard', icon: HiHome },
-  { name: 'Projects', href: '/dashboard/projects', icon: HiFolder },
-  { name: 'Team', href: '/dashboard/team', icon: HiUsers },
-  { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
-  { divider: true },
-  { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
-  { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
-  { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
-  { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
-  { name: 'Jobs', href: '/dashboard/jobs', icon: HiBriefcase },
-  { name: 'Invoices', href: '/dashboard/invoices', icon: HiDocumentText },
-  { divider: true },
-  { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
-  { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
-  { name: 'Expenses', href: '/dashboard/expenses', icon: HiCurrencyDollar },
-  { name: 'Timesheets', href: '/dashboard/timesheets', icon: HiClock },
-  { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid },
-];
+function getNavigationItems(accountIndustry) {
+  const projectTerm = getProjectTermForIndustry(accountIndustry);
+  
+  return [
+    { name: 'Home', href: '/dashboard', icon: HiHome },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
+    { name: 'Team', href: '/dashboard/team', icon: HiUsers },
+    { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
+    { divider: true },
+    { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
+    { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
+    { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
+    { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
+    { name: 'Jobs', href: '/dashboard/jobs', icon: HiBriefcase },
+    { name: 'Invoices', href: '/dashboard/invoices', icon: HiDocumentText },
+    { divider: true },
+    { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
+    { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
+    { name: 'Expenses', href: '/dashboard/expenses', icon: HiCurrencyDollar },
+    { name: 'Timesheets', href: '/dashboard/timesheets', icon: HiClock },
+    { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid },
+  ];
+}
 
 const MD_BREAKPOINT = 768;
 
@@ -47,9 +53,14 @@ const MD_BREAKPOINT = 768;
  * @param {Object} props
  * @param {boolean} props.open - Whether the sidebar is expanded (shows labels).
  * @param {(open: boolean) => void} props.onToggle - Called when toggle button is used, or when a nav link is clicked on mobile (sm and below) to collapse.
+ * @param {Object} props.userAccount - User account object containing industry field
  */
-export default function DashboardSidebar({ open, onToggle }) {
+export default function DashboardSidebar({ open, onToggle, userAccount }) {
   const router = useRouter();
+  
+  const navigationItems = useMemo(() => {
+    return getNavigationItems(userAccount?.industry);
+  }, [userAccount?.industry]);
 
   const handleNavClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < MD_BREAKPOINT) {
@@ -67,7 +78,7 @@ export default function DashboardSidebar({ open, onToggle }) {
 
       <div className="h-full overflow-y-auto overflow-x-hidden">
         <nav className={`py-3 space-y-0.5 transition-all duration-300 ${open ? 'px-3' : 'px-2'}`}>
-          {NAVIGATION.map((item, index) => {
+          {navigationItems.map((item, index) => {
             if (item.divider) {
               return <hr key={`divider-${index}`} className="border-gray-200 dark:border-gray-700 my-1.5" />;
             }

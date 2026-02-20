@@ -174,8 +174,22 @@ export default function AppointmentForm({
   }, [timeSlots, isTimeSlotConflicting, isTimeSlotInPast]);
 
   // Generate team member options (must be before useEffect that uses them)
+  // Sort: admins first, then alphabetically
   const teamMemberOptions = useMemo(() => {
-    return teamMembers.map((member) => ({
+    const sorted = [...teamMembers].sort((a, b) => {
+      // Pin admins at the beginning
+      const aIsAdmin = a.isAdmin === true;
+      const bIsAdmin = b.isAdmin === true;
+      if (aIsAdmin && !bIsAdmin) return -1;
+      if (!aIsAdmin && bIsAdmin) return 1;
+      
+      // Sort alphabetically for both admins and non-admins
+      const nameA = (a.name || 'Unnamed').toLowerCase();
+      const nameB = (b.name || 'Unnamed').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    
+    return sorted.map((member) => ({
       value: member.id,
       label: member.name || 'Unnamed',
     }));

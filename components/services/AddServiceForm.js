@@ -97,8 +97,15 @@ export default function AddServiceForm({
     setErrors({});
   }, [initialService?.id, JSON.stringify(preselectedTeamMemberIds)]); // Use JSON.stringify for array comparison
 
-  // Sort team members alphabetically by name
+  // Sort team members: admins first, then alphabetically by name
   const sortedTeamMembers = [...teamMembers].sort((a, b) => {
+    // Pin admins at the beginning
+    const aIsAdmin = a.isAdmin === true;
+    const bIsAdmin = b.isAdmin === true;
+    if (aIsAdmin && !bIsAdmin) return -1;
+    if (!aIsAdmin && bIsAdmin) return 1;
+    
+    // Sort alphabetically for both admins and non-admins
     const nameA = (a.name || 'Unnamed').toLowerCase();
     const nameB = (b.name || 'Unnamed').toLowerCase();
     return nameA.localeCompare(nameB);

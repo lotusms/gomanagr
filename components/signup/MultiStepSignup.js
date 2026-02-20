@@ -390,10 +390,15 @@ export default function MultiStepSignup() {
       // reportingEmail always uses the signup email - this is normalized behavior
       const reportingEmail = formData.email.trim();
       
+      // Calculate trial end date (14 days from now)
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 14);
+      
       const userAccountData = {
         userId,
         email: formData.email,
         trial: formData.trial !== false,
+        trialEndsAt: formData.trial !== false ? trialEndDate.toISOString() : null,
         firstName: firstName,
         lastName: lastName,
         purpose: formData.purpose,

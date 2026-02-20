@@ -7,15 +7,6 @@ function rowToAccount(row) {
   if (!row) return null;
   const profile = row.profile && typeof row.profile === 'object' ? row.profile : {};
   
-  // Debug: log what we're converting
-  console.log('[rowToAccount] Converting row:', {
-    hasRow: !!row,
-    first_name: row.first_name,
-    last_name: row.last_name,
-    profileFirstName: profile.firstName,
-    profileLastName: profile.lastName,
-  });
-  
   const base = {
     userId: row.id,
     email: row.email,
@@ -121,12 +112,77 @@ function accountToRow(data) {
 /**
  * Upload a file to Supabase Storage and return its public URL.
  * Buckets "company-logos" and "team-photos" must exist and be public in Supabase Dashboard.
+ * NOTE: For team photos, use uploadTeamPhoto instead (uses API route with service role).
  */
 export async function uploadFile(bucket, path, file) {
   const { data, error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
   if (error) throw error;
   const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
   return urlData.publicUrl;
+}
+
+/**
+ * Upload a team member photo via API route (uses service role to bypass RLS).
+ * @param {string} userId - The user ID (owner of the team)
+ * @param {string} memberId - The team member ID
+ * @param {File} photoFile - The photo file to upload
+ * @returns {Promise<string>} The public URL of the uploaded photo
+ */
+export async function uploadTeamPhoto(userId, memberId, photoFile) {
+  try {
+    // Convert file to base64 for sending to API
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(photoFile);
+    });
+    
+    const photoData = {
+      base64,
+      filename: photoFile.name,
+      contentType: photoFile.type || 'image/png'
+    };
+
+    // Call API route that uses service role key to bypass RLS
+    const response = await fetch('/api/upload-team-photo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        memberId,
+        photoData
+      }),
+    });
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        const text = await response.text().catch(() => 'Unknown error');
+        errorData = { message: text || `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      const errorMessage = errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+      console.error('[uploadTeamPhoto] API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorMessage,
+        fullError: errorData,
+      });
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result.photoUrl;
+  } catch (error) {
+    console.error('Error uploading team photo:', error);
+    throw new Error('Failed to upload team photo: ' + error.message);
+  }
 }
 
 /** List file paths in a storage folder. prefix e.g. "userId" or "userId/memberId". */
@@ -157,43 +213,52 @@ export async function removeStorageFiles(bucket, paths) {
 }
 
 /**
- * Create or update user account (Supabase user_account table).
+ * Create or update user account (Supabase user_profiles table).
  * Uses API route with service role key to bypass RLS during signup.
  * @param {string} userId - The auth user ID (Supabase auth.uid())
  * @param {object} userData - User account data matching UserAccount schema
  * @param {File|null} logoFile - Optional logo file to upload to Supabase Storage
+ * @param {string|null} inviteToken - Optional invite token for joining existing organization
  * @returns {Promise<object>} The created/updated account data (camelCase)
  */
-export async function createUserAccount(userId, userData, logoFile = null) {
+export async function createUserAccount(userId, userData, logoFile = null, inviteToken = null) {
   try {
-    let logoUrl = userData.companyLogo || '';
-
-    // Upload logo file if provided (client-side upload)
-    if (logoFile) {
-      try {
-        const path = `${userId}/${logoFile.name}`;
-        logoUrl = await uploadFile(BUCKET_LOGO, path, logoFile);
-      } catch (storageError) {
-        console.error('Logo upload error (continuing without logo):', storageError);
-      }
-    } else {
-      // If no logo file but no logoUrl, try to preserve existing logo
-      if (!logoUrl || logoUrl.trim() === '') {
-        const existing = await getUserAccount(userId);
-        if (existing?.companyLogo?.trim()) logoUrl = existing.companyLogo.trim();
-      }
-    }
-
     const now = new Date().toISOString();
-    const accountData = { ...userData, companyLogo: logoUrl, updatedAt: now };
+    const accountData = { ...userData, updatedAt: now };
     if (!accountData.createdAt) accountData.createdAt = now;
 
     // Check if account already exists to preserve createdAt
     const existing = await getUserAccount(userId);
     if (existing?.createdAt) accountData.createdAt = existing.createdAt;
 
+    // Prepare logo data if file is provided
+    // Logo will be uploaded server-side to organization-specific path
+    let logoData = null;
+    if (logoFile) {
+      try {
+        // Convert file to base64 for sending to API
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(logoFile);
+        });
+        
+        logoData = {
+          base64,
+          filename: logoFile.name,
+          contentType: logoFile.type || 'image/png'
+        };
+      } catch (logoErr) {
+        console.error('Error preparing logo data:', logoErr);
+        // Continue without logo
+      }
+    }
+
     // Call API route that uses service role key to bypass RLS
-    const response = await fetch('/api/create-user-account', {
+    // Use v2 API for multi-tenant organization support
+    // Logo will be uploaded server-side to organization-specific path
+    const response = await fetch('/api/create-user-account-v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -201,6 +266,8 @@ export async function createUserAccount(userId, userData, logoFile = null) {
       body: JSON.stringify({
         userId,
         userData: accountData,
+        inviteToken: inviteToken || null, // Pass invite token parameter
+        logoData: logoData, // Pass logo data for server-side upload
       }),
     });
 
@@ -222,7 +289,11 @@ export async function createUserAccount(userId, userData, logoFile = null) {
         fullError: errorData,
       });
       
-      throw new Error(errorMessage);
+      // Preserve error data for cleanup status checking
+      const error = new Error(errorMessage);
+      error.responseData = errorData;
+      error.status = response.status;
+      throw error;
     }
 
     const result = await response.json();
@@ -242,35 +313,15 @@ export async function createUserAccount(userId, userData, logoFile = null) {
 export async function getUserAccount(userId) {
   try {
     const { data, error } = await supabase
-      .from('user_account')
+      .from('user_profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
 
     if (error) throw error;
     
-    // Debug: log raw data from database
-    if (data) {
-      console.log('[getUserAccount] Raw database row:', {
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        company_logo: data.company_logo,
-        profile: data.profile,
-      });
-    }
     
     const account = rowToAccount(data);
-    
-    // Debug: log converted account
-    if (account) {
-      console.log('[getUserAccount] Converted account:', {
-        firstName: account.firstName,
-        lastName: account.lastName,
-        email: account.email,
-        companyLogo: account.companyLogo,
-      });
-    }
     
     // If account doesn't exist but user is authenticated, try to create it
     if (!account && userId) {
@@ -318,7 +369,7 @@ export async function getUserAccount(userId) {
             console.log('[getUserAccount] Successfully auto-created missing account:', result);
             // Retry fetching the account
             const { data: newData, error: retryError } = await supabase
-              .from('user_account')
+              .from('user_profiles')
               .select('*')
               .eq('id', userId)
               .maybeSingle();
@@ -363,7 +414,7 @@ export async function getUserAccountFromServer(userId) {
 
 export async function updateUserTheme(userId, paletteId) {
   const { error } = await supabase
-    .from('user_account')
+    .from('user_profiles')
     .update({ 
       selected_palette: paletteId, 
       user_id: userId, // Ensure user_id is set for RLS
@@ -376,7 +427,7 @@ export async function updateUserTheme(userId, paletteId) {
 export async function updateDismissedTodos(userId, dismissedTodoIds) {
   const list = Array.isArray(dismissedTodoIds) ? dismissedTodoIds : [];
   const { error } = await supabase
-    .from('user_account')
+    .from('user_profiles')
     .update({ 
       dismissed_todo_ids: list, 
       user_id: userId, // Ensure user_id is set for RLS
@@ -388,15 +439,71 @@ export async function updateDismissedTodos(userId, dismissedTodoIds) {
 
 export async function updateTeamMembers(userId, teamMembers) {
   const list = Array.isArray(teamMembers) ? teamMembers : [];
-  const { error } = await supabase
-    .from('user_account')
+  
+  console.log('[updateTeamMembers] Starting update for userId:', userId, 'teamMembers count:', list.length);
+  
+  // First verify the profile exists and user has access
+  const { data: existingProfile, error: checkError } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('id', userId)
+    .single();
+  
+  if (checkError) {
+    console.error('[updateTeamMembers] Profile check failed:', {
+      error: checkError.message,
+      code: checkError.code,
+      details: checkError.details,
+      hint: checkError.hint,
+      userId
+    });
+    throw new Error('Profile not found or access denied: ' + checkError.message);
+  }
+  
+  if (!existingProfile) {
+    console.error('[updateTeamMembers] Profile does not exist for userId:', userId);
+    throw new Error('Profile not found for user: ' + userId);
+  }
+  
+  console.log('[updateTeamMembers] Profile exists, proceeding with update');
+  
+  // Update only team_members and updated_at (don't update user_id as it shouldn't change)
+  // Explicitly use .update() not .upsert() to prevent accidental inserts
+  const { data, error } = await supabase
+    .from('user_profiles')
     .update({ 
       team_members: list, 
-      user_id: userId, // Ensure user_id is set for RLS
       updated_at: new Date().toISOString() 
     })
-    .eq('id', userId);
-  if (error) throw new Error('Failed to save team members: ' + error.message);
+    .eq('id', userId)
+    .select(); // Select to verify update worked
+    
+  if (error) {
+    console.error('[updateTeamMembers] Update failed with RLS error:', {
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      userId,
+      operation: 'UPDATE',
+      table: 'user_profiles'
+    });
+    
+    // Check if error suggests INSERT instead of UPDATE
+    if (error.message.includes('new row') || error.code === '42501') {
+      console.error('[updateTeamMembers] ERROR: This looks like an INSERT operation was attempted, but we used .update()');
+      console.error('[updateTeamMembers] This suggests an RLS policy issue or Supabase client bug');
+    }
+    
+    throw new Error('Failed to save team members: ' + error.message);
+  }
+  
+  if (!data || data.length === 0) {
+    console.warn('[updateTeamMembers] Update returned no rows - this might indicate RLS blocked the update');
+    throw new Error('Update completed but no rows were returned. Check RLS policies.');
+  }
+  
+  console.log('[updateTeamMembers] Update successful, rows updated:', data.length);
 }
 
 function cleanClient(client) {
@@ -434,7 +541,7 @@ function cleanClient(client) {
 export async function updateClients(userId, clients) {
   const cleaned = Array.isArray(clients) ? clients.map(cleanClient) : [];
   const { error } = await supabase
-    .from('user_account')
+    .from('user_profiles')
     .update({ 
       clients: cleaned, 
       user_id: userId, // Ensure user_id is set for RLS
@@ -450,7 +557,7 @@ export async function updateClients(userId, clients) {
 export async function updateServices(userId, services) {
   const list = Array.isArray(services) ? services : [];
   const { error } = await supabase
-    .from('user_account')
+    .from('user_profiles')
     .update({ 
       services: list, 
       user_id: userId, // Ensure user_id is set for RLS
@@ -461,12 +568,12 @@ export async function updateServices(userId, services) {
 }
 
 export async function saveAppointment(userId, appointment) {
-  const { data: existing } = await supabase.from('user_account').select('appointments').eq('id', userId).single();
+  const { data: existing } = await supabase.from('user_profiles').select('appointments').eq('id', userId).single();
   const appointments = existing?.appointments ?? [];
   const filtered = appointments.filter((apt) => apt.id !== appointment.id);
   filtered.push(appointment);
   const { error } = await supabase
-    .from('user_account')
+    .from('user_profiles')
     .update({ 
       appointments: filtered, 
       user_id: userId, // Ensure user_id is set for RLS
@@ -507,12 +614,12 @@ export async function deleteUserAccount(userId) {
 }
 
 export async function deleteAppointment(userId, appointmentId) {
-  const { data } = await supabase.from('user_account').select('appointments').eq('id', userId).single();
+  const { data } = await supabase.from('user_profiles').select('appointments').eq('id', userId).single();
   if (!data) throw new Error('User account not found');
   const appointments = data.appointments ?? [];
   const filtered = appointments.filter((apt) => apt.id !== appointmentId);
   const { error } = await supabase
-    .from('user_account')
+    .from('user_profiles')
     .update({ 
       appointments: filtered, 
       user_id: userId, // Ensure user_id is set for RLS

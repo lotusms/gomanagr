@@ -119,18 +119,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing userId or userData' });
   }
 
-  // Debug: Log incoming data
-  console.log('[API] Received account creation request:', {
-    userId,
-    email: userData?.email,
-    firstName: userData?.firstName,
-    lastName: userData?.lastName,
-    reportingEmail: userData?.reportingEmail,
-    companyName: userData?.companyName,
-    hasTeamMembers: !!userData?.teamMembers,
-    teamMembersCount: userData?.teamMembers?.length || 0,
-  });
-
   try {
     const now = new Date().toISOString();
     const accountData = { 
@@ -210,30 +198,6 @@ export default async function handler(req, res) {
     if (row.first_name === undefined) row.first_name = '';
     if (row.last_name === undefined) row.last_name = '';
 
-    // Debug: log what we're saving (comprehensive)
-    console.log('[API] Converting to row format:', {
-      userId,
-      accountData: {
-        firstName: accountData.firstName,
-        lastName: accountData.lastName,
-        email: accountData.email,
-        reportingEmail: accountData.reportingEmail,
-        companyName: accountData.companyName,
-        industry: accountData.industry,
-        teamMembersCount: accountData.teamMembers?.length || 0,
-      },
-      row: {
-        first_name: row.first_name,
-        last_name: row.last_name,
-        email: row.email,
-        company_name: row.company_name,
-        industry: row.industry,
-        team_members_count: row.team_members?.length || 0,
-        profile: row.profile ? Object.keys(row.profile) : null,
-        profile_reportingEmail: row.profile?.reportingEmail, // reportingEmail is stored in profile JSONB
-      },
-    });
-
     // Try to upsert with all fields first
     let { data, error } = await supabaseAdmin
       .from('user_account')
@@ -264,19 +228,7 @@ export default async function handler(req, res) {
         row.profile.reportingEmail = (row.reporting_email || row.email || '').trim();
         delete row.reporting_email;
       }
-      
-      // Debug: Log what we're retrying with
-      console.log('[API] Retrying upsert after removing problematic columns:', {
-        userId,
-        first_name: row.first_name,
-        last_name: row.last_name,
-        email: row.email,
-        company_name: row.company_name,
-        team_members_count: row.team_members?.length || 0,
-        profile_keys: row.profile ? Object.keys(row.profile) : [],
-        profile_reportingEmail: row.profile?.reportingEmail,
-      });
-      
+            
       // Retry without the problematic column
       const retryResult = await supabaseAdmin
         .from('user_account')
@@ -320,19 +272,6 @@ export default async function handler(req, res) {
       });
       throw error;
     }
-
-    // Debug: Log what was actually saved
-    console.log('[API] Account saved successfully:', {
-      userId,
-      savedData: {
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        company_name: data.company_name,
-        team_members_count: data.team_members?.length || 0,
-        profile_keys: data.profile ? Object.keys(data.profile) : [],
-      },
-    });
 
     // Convert row back to camelCase for response
     const profile = data.profile && typeof data.profile === 'object' ? data.profile : {};

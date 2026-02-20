@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase';
 import Step1EmailPassword from './Step1EmailPassword';
 import Step2PersonalInfo from './Step2PersonalInfo';
 import Step3CompanyInfo from './Step3CompanyInfo';
@@ -22,6 +23,7 @@ export default function MultiStepSignup() {
   const [emailVerified, setEmailVerified] = useState(false); // Track if email verification completed
   const [emailCheckFailed, setEmailCheckFailed] = useState(false); // Track if check failed (quota, etc)
   const lastSubmitAttempt = useRef(null); // Track last submit attempt to prevent rapid submissions
+  const [inviteToken, setInviteToken] = useState(null); // Store invite token from URL
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -36,9 +38,18 @@ export default function MultiStepSignup() {
     logoFile: null,
     companyLocations: '',
     industry: '',
-    sectionsToTrack: [],
+    sectionsToTrack: null, // No default - user must explicitly choose
     referralSource: '',
   });
+
+  // Check for invite token in URL
+  useEffect(() => {
+    const { invite } = router.query;
+    if (invite && typeof invite === 'string') {
+      setInviteToken(invite);
+      // TODO: Optionally fetch invite details to pre-fill email or show org name
+    }
+  }, [router.query]);
 
   const updateData = (updates) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -188,7 +199,9 @@ export default function MultiStepSignup() {
     }
 
     if (step === 5) {
-      return formData.sectionsToTrack && 
+      // Check if sectionsToTrack is not null/undefined and has items
+      return formData.sectionsToTrack !== null && 
+             formData.sectionsToTrack !== undefined &&
              Array.isArray(formData.sectionsToTrack) && 
              formData.sectionsToTrack.length > 0;
     }
@@ -238,7 +251,7 @@ export default function MultiStepSignup() {
     }
 
     if (step === 5) {
-      if (!formData.sectionsToTrack || formData.sectionsToTrack.length === 0) {
+      if (!formData.sectionsToTrack || !Array.isArray(formData.sectionsToTrack) || formData.sectionsToTrack.length === 0) {
         newErrors.sectionsToTrack = 'Please select at least one section';
       }
     }
@@ -407,7 +420,9 @@ export default function MultiStepSignup() {
         companyLogo: formData.logoPreview || '',
         companyLocations: formData.companyLocations,
         industry: formData.industry || '',
-        sectionsToTrack: formData.sectionsToTrack || [],
+        sectionsToTrack: Array.isArray(formData.sectionsToTrack) && formData.sectionsToTrack.length > 0 
+          ? formData.sectionsToTrack 
+          : [], // Only set default here at submission time if still null/empty
         referralSource: formData.referralSource,
         reportingEmail: reportingEmail, // Always use signup email as reporting email
         teamMembers: [accountOwnerTeamMember], // Only the account owner, no defaults
@@ -428,9 +443,9 @@ export default function MultiStepSignup() {
         hasLogoFile: !!formData.logoFile,
       });
 
-      // Save to Supabase user_account table
+      // Save to Supabase user_profiles table and create organization
       try {
-        const result = await createUserAccount(userId, userAccountData, formData.logoFile);
+        const result = await createUserAccount(userId, userAccountData, formData.logoFile, inviteToken);
         console.log('[Signup] Account created successfully:', {
           userId,
           resultFirstName: result?.firstName,
@@ -445,8 +460,58 @@ export default function MultiStepSignup() {
           userId,
           email: userAccountData.email,
         });
+        
+        // Check if API already attempted cleanup
+        let cleanupNeeded = true;
+        let cleanupStatus = 'unknown';
+        
+        // Try to extract cleanup info from error response data if available
+        if (accountError.responseData) {
+          const errorData = accountError.responseData;
+          if (errorData.cleanupAttempted && errorData.cleanupSuccess) {
+            cleanupNeeded = false;
+            cleanupStatus = 'completed-by-api';
+            console.log('[Signup] API already performed cleanup');
+          } else if (errorData.cleanupAttempted && !errorData.cleanupSuccess) {
+            cleanupStatus = 'failed-by-api';
+            console.log('[Signup] API attempted cleanup but it failed');
+          }
+        }
+        
+        // CRITICAL: Delete auth user if profile creation failed
+        // This prevents orphaned auth users
+        // Only attempt if API didn't already try
+        if (cleanupNeeded) {
+          try {
+            console.log('[Signup] Attempting to delete auth user due to profile creation failure:', userId);
+            // Use API route to delete (client can't use admin functions)
+            const deleteResponse = await fetch('/api/delete-auth-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId }),
+            });
+            
+            if (deleteResponse.ok) {
+              cleanupStatus = 'completed-by-client';
+              console.log('[Signup] Auth user deleted successfully');
+            } else {
+              cleanupStatus = 'failed-by-client';
+              const deleteError = await deleteResponse.json().catch(() => ({ message: 'Unknown error' }));
+              console.error('[Signup] Failed to delete auth user (may need manual cleanup):', deleteError);
+            }
+          } catch (deleteErr) {
+            cleanupStatus = 'exception-during-cleanup';
+            console.error('[Signup] Error during auth user cleanup:', deleteErr);
+            // Continue - we'll show error to user
+          }
+        }
+        
         // Don't redirect if account creation failed - user needs to retry
-        throw new Error(`Account creation failed: ${accountError.message || 'Unknown error'}. Please try again or contact support.`);
+        const errorMessage = cleanupStatus.includes('completed') 
+          ? `Account creation failed: ${accountError.message || 'Unknown error'}. The account has been cleaned up. Please try again.`
+          : `Account creation failed: ${accountError.message || 'Unknown error'}. Please try again or contact support if the issue persists.`;
+        
+        throw new Error(errorMessage);
       }
 
       // Redirect to dashboard only after successful account creation

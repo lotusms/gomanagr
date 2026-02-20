@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount, listStorageFiles, getStoragePublicUrl, removeStorageFiles } from '@/services/userService';
+import { getUserOrganization, updateOrganization, createOrganization, addUserToOrganization } from '@/services/organizationService';
 import { HiCloudUpload, HiX, HiPlus } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
@@ -49,130 +50,141 @@ export default function OrganizationSettings() {
   const loadUserData = async () => {
     try {
       setLoading(true);
-      const userData = await getUserAccount(currentUser.uid);
-      if (userData) {
-        let logoUrl = userData.companyLogo || '';
-        
-        // If logo URL is missing but logo file exists in storage, get the URL
-        if (!logoUrl || logoUrl.trim() === '') {
-          try {
-            const paths = await listStorageFiles('company-logos', currentUser.uid);
-            if (paths.length > 0) {
-              logoUrl = getStoragePublicUrl('company-logos', paths[0]);
-              const updatedData = await createUserAccount(
-                currentUser.uid,
-                {
-                  ...userData,
-                  companyLogo: logoUrl,
-                  userId: currentUser.uid,
-                  email: currentUser.email,
-                },
-                null
-              );
-              if (typeof window !== 'undefined' && updatedData) {
-                window.dispatchEvent(
-                  new CustomEvent('useraccount', {
-                    detail: { type: 'useraccount-updated', payload: updatedData },
-                  })
-                );
-              }
-            }
-          } catch (err) {
-            console.error('No logo found in storage or error retrieving:', err);
-          }
+      
+      // Fetch both user account and organization data
+      const [userData, orgData] = await Promise.all([
+        getUserAccount(currentUser.uid).catch((err) => {
+          console.error('[OrganizationSettings] Error fetching user account:', err);
+          return null;
+        }),
+        getUserOrganization(currentUser.uid).catch((err) => {
+          console.error('[OrganizationSettings] Error fetching organization:', err);
+          return null;
+        })
+      ]);
+      
+      console.log('[OrganizationSettings] Loaded data:', {
+        hasUserData: !!userData,
+        hasOrgData: !!orgData,
+        orgData: orgData,
+        userDataCompanyName: userData?.companyName,
+        userDataCompanyLogo: userData?.companyLogo,
+        userDataIndustry: userData?.industry,
+      });
+      
+      // Use organization data for name, logo, and industry (multi-tenant source of truth)
+      const orgName = orgData?.name || userData?.companyName || '';
+      const orgLogo = orgData?.logo_url || userData?.companyLogo || '';
+      const orgIndustry = orgData?.industry || userData?.industry || '';
+      
+      console.log('[OrganizationSettings] Resolved values:', {
+        orgName,
+        orgLogo,
+        orgIndustry,
+      });
+      
+      // Set logo preview from organization logo
+      if (orgLogo && orgLogo.trim() !== '') {
+        setLogoPreview(orgLogo);
+      } else {
+        setLogoPreview(null);
+      }
+      
+      // If organization doesn't exist but user data exists, try to create it
+      if (!orgData && userData && userData.companyName) {
+        console.warn('[OrganizationSettings] Organization not found! Attempting to create from user data...');
+        try {
+          const newOrg = await createOrganization({
+            name: userData.companyName || 'My Organization',
+            logo_url: userData.companyLogo || '',
+            industry: userData.industry || '',
+            company_size: userData.companySize || '',
+            company_locations: userData.companyLocations || '',
+            team_size: userData.teamSize || '',
+            sections_to_track: userData.sectionsToTrack || [],
+            trial: userData.trial !== undefined ? userData.trial : true,
+            trial_ends_at: userData.trialEndsAt || null,
+            selected_palette: userData.selectedPalette || 'palette1',
+          });
+          
+          // Add user to organization as admin
+          await addUserToOrganization(newOrg.id, currentUser.uid, 'admin');
+          
+          console.log('[OrganizationSettings] Created organization:', newOrg);
+          
+          // Reload data with new organization
+          return loadUserData();
+        } catch (createErr) {
+          console.error('[OrganizationSettings] Failed to create organization:', createErr);
+          setError('Organization not found and could not be created. Please contact support.');
         }
-        
-        // Set logo preview FIRST before setting formData to ensure it displays
-        if (logoUrl && logoUrl.trim() !== '') {
-          setLogoPreview(logoUrl);
-        } else {
-          setLogoPreview(null);
-        }
-        
-        // Build locations array - always include HQ location
-        const hqAddress = userData.organizationAddress || '';
-        const existingLocations = userData.locations || [];
-        let locations = [];
-        
-        // If HQ address exists, add it as first location (as object with full details)
-        if (hqAddress.trim()) {
-          locations = [{
-            address: hqAddress.trim(),
-            address2: userData.organizationAddress2 || '',
-            city: userData.organizationCity || '',
-            state: userData.organizationState || '',
-            postalCode: userData.organizationPostalCode || '',
-            country: userData.organizationCountry || '',
-          }];
-        }
-        
-        // Add other locations (convert strings to objects if needed, excluding HQ)
-        existingLocations.forEach(loc => {
-          if (loc) {
-            // If it's already an object, use it
-            if (typeof loc === 'object' && loc.address) {
-              const locAddress = loc.address.trim();
-              // Only add if it's different from HQ address
-              if (locAddress && locAddress !== hqAddress.trim()) {
-                locations.push({
-                  address: locAddress,
-                  address2: loc.address2 || '',
-                  city: loc.city || '',
-                  state: loc.state || '',
-                  postalCode: loc.postalCode || '',
-                  country: loc.country || '',
-                });
-              }
-            } else if (typeof loc === 'string' && loc.trim() && loc.trim() !== hqAddress.trim()) {
-              // Convert string to object format
+      }
+      
+      // Build locations array - always include HQ location
+      const hqAddress = userData?.organizationAddress || '';
+      const existingLocations = userData?.locations || [];
+      let locations = [];
+      
+      // If HQ address exists, add it as first location (as object with full details)
+      if (hqAddress.trim()) {
+        locations = [{
+          address: hqAddress.trim(),
+          address2: userData.organizationAddress2 || '',
+          city: userData.organizationCity || '',
+          state: userData.organizationState || '',
+          postalCode: userData.organizationPostalCode || '',
+          country: userData.organizationCountry || '',
+        }];
+      }
+      
+      // Add other locations (convert strings to objects if needed, excluding HQ)
+      existingLocations.forEach(loc => {
+        if (loc) {
+          // If it's already an object, use it
+          if (typeof loc === 'object' && loc.address) {
+            const locAddress = loc.address.trim();
+            // Only add if it's different from HQ address
+            if (locAddress && locAddress !== hqAddress.trim()) {
               locations.push({
-                address: loc.trim(),
-                address2: '',
-                city: '',
-                state: '',
-                postalCode: '',
-                country: '',
+                address: locAddress,
+                address2: loc.address2 || '',
+                city: loc.city || '',
+                state: loc.state || '',
+                postalCode: loc.postalCode || '',
+                country: loc.country || '',
               });
             }
+          } else if (typeof loc === 'string' && loc.trim() && loc.trim() !== hqAddress.trim()) {
+            // Convert string to object format
+            locations.push({
+              address: loc.trim(),
+              address2: '',
+              city: '',
+              state: '',
+              postalCode: '',
+              country: '',
+            });
           }
-        });
-        
-        setFormData({
-          companyName: userData.companyName || '',
-          companyLogo: logoUrl,
-          logoFile: null,
-          industry: userData.industry || '',
-          organizationCountry: userData.organizationCountry || '',
-          organizationAddress: userData.organizationAddress || '',
-          organizationAddress2: userData.organizationAddress2 || '',
-          organizationCity: userData.organizationCity || '',
-          organizationState: userData.organizationState || '',
-          organizationPostalCode: userData.organizationPostalCode || '',
-          businessHoursStart: userData.businessHoursStart || '08:00',
-          businessHoursEnd: userData.businessHoursEnd || '18:00',
-          locations: locations,
-        });
-      } else {
-        // No user data found, reset everything
-        setLogoPreview(null);
-        setFormData({
-          companyName: '',
-          companyLogo: '',
-          logoFile: null,
-          industry: '',
-          organizationCountry: '',
-          organizationAddress: '',
-          organizationAddress2: '',
-          organizationCity: '',
-          organizationState: '',
-          organizationPostalCode: '',
-          businessHoursStart: '08:00',
-          businessHoursEnd: '18:00',
-          locations: [],
-        });
-      }
+        }
+      });
+      
+      setFormData({
+        companyName: orgName,
+        companyLogo: orgLogo,
+        logoFile: null,
+        industry: orgIndustry,
+        organizationCountry: userData?.organizationCountry || '',
+        organizationAddress: userData?.organizationAddress || '',
+        organizationAddress2: userData?.organizationAddress2 || '',
+        organizationCity: userData?.organizationCity || '',
+        organizationState: userData?.organizationState || '',
+        organizationPostalCode: userData?.organizationPostalCode || '',
+        businessHoursStart: userData?.businessHoursStart || '08:00',
+        businessHoursEnd: userData?.businessHoursEnd || '18:00',
+        locations: locations,
+      });
     } catch (err) {
-      console.error('Error loading user data:', err);
+      console.error('Error loading organization data:', err);
       setError('Failed to load organization settings');
       setLogoPreview(null);
     } finally {
@@ -289,16 +301,23 @@ export default function OrganizationSettings() {
     if (!currentUser) return;
     
     try {
-      const paths = await listStorageFiles('company-logos', currentUser.uid);
-      if (paths.length > 0) {
-        await removeStorageFiles('company-logos', paths);
+      // Get organization data
+      const orgData = await getUserOrganization(currentUser.uid);
+      if (!orgData || !orgData.id) {
+        throw new Error('Organization not found');
       }
 
-      // Update account to remove logo URL
+      // Update organization to remove logo URL
+      await updateOrganization(orgData.id, {
+        logo_url: '',
+      });
+
+      // Also update user account to keep in sync
+      const userData = await getUserAccount(currentUser.uid);
       const updatedData = await createUserAccount(
         currentUser.uid,
         {
-          ...formData,
+          ...userData,
           companyLogo: '',
           userId: currentUser.uid,
           email: currentUser.email,
@@ -344,18 +363,61 @@ export default function OrganizationSettings() {
       setError(null);
       setSuccess(false);
 
+      // Get organization data first
+      const orgData = await getUserOrganization(currentUser.uid);
+      if (!orgData || !orgData.id) {
+        throw new Error('Organization not found. Please contact support.');
+      }
+
       const { logoFile, ...dataToSave } = formData;
       
-      // Preserve existing logo URL if no new logo file is being uploaded
-      // This prevents overwriting the logo URL with an empty string when saving other settings
-      if (!logoFile) {
-        // Get current account data to preserve existing logo
-        const currentAccount = await getUserAccount(currentUser.uid);
-        if (currentAccount?.companyLogo && currentAccount.companyLogo.trim()) {
-          dataToSave.companyLogo = currentAccount.companyLogo;
+      // Handle logo upload to organization-specific path if new logo provided
+      let logoUrl = formData.companyLogo || '';
+      if (logoFile) {
+        try {
+          // Convert file to base64 for API upload
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(logoFile);
+          });
+          
+          // Upload logo via API to organization-specific path
+          const uploadResponse = await fetch('/api/upload-organization-logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              organizationId: orgData.id,
+              logoData: {
+                base64,
+                filename: logoFile.name,
+                contentType: logoFile.type || 'image/png'
+              }
+            }),
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload logo');
+          }
+
+          const uploadResult = await uploadResponse.json();
+          logoUrl = uploadResult.logoUrl || logoUrl;
+        } catch (logoErr) {
+          console.error('Error uploading logo:', logoErr);
+          setError('Failed to upload logo. Please try again.');
+          return;
         }
       }
       
+      // Update organization data (name, logo, industry)
+      const updatedOrg = await updateOrganization(orgData.id, {
+        name: dataToSave.companyName || '',
+        logo_url: logoUrl,
+        industry: dataToSave.industry || '',
+      });
+
+      // Update user account data for other fields (locations, business hours, etc.)
       // Ensure HQ location is always first in locations array
       const hqAddress = dataToSave.organizationAddress || '';
       let locations = dataToSave.locations || [];
@@ -368,36 +430,39 @@ export default function OrganizationSettings() {
         locations = [hqAddress.trim(), ...locations];
       }
       
-      const savedData = await createUserAccount(
+      const userData = await getUserAccount(currentUser.uid);
+      const savedUserData = await createUserAccount(
         currentUser.uid,
         {
+          ...userData,
           ...dataToSave,
+          companyLogo: logoUrl, // Keep in sync with organization
           locations: locations,
           userId: currentUser.uid,
           email: currentUser.email,
         },
-        logoFile || null
+        null // Logo already uploaded, don't upload again
       );
 
       // Update logo preview with the saved logo URL
-      if (savedData && savedData.companyLogo) {
-        setLogoPreview(savedData.companyLogo);
-        setFormData((prev) => ({ ...prev, companyLogo: savedData.companyLogo, logoFile: null }));
+      if (logoUrl && logoUrl.trim() !== '') {
+        setLogoPreview(logoUrl);
+        setFormData((prev) => ({ ...prev, companyLogo: logoUrl, logoFile: null }));
       }
       
       // Dispatch event to update header avatar
-      if (typeof window !== 'undefined' && savedData) {
+      if (typeof window !== 'undefined' && savedUserData) {
         window.dispatchEvent(
           new CustomEvent('useraccount', {
             detail: {
               type: 'useraccount-updated',
-              payload: savedData,
+              payload: { ...savedUserData, companyLogo: logoUrl },
             },
           })
         );
       }
       
-      // Reload user data to ensure everything is in sync
+      // Reload data to ensure everything is in sync
       await loadUserData();
 
       setSuccess(true);

@@ -88,6 +88,11 @@ const InputField = forwardRef(({
           disabled={disabled}
           placeholder={placeholder}
           className={`${inputClass} ${checkingClass} ${iconPadding}`}
+          style={
+            variant === 'dark' && !checking && !hasErrorState_
+              ? { color: 'white', WebkitTextFillColor: 'white' } // Force white text immediately for dark variant
+              : undefined
+          }
           aria-invalid={hasError || hasErrorState ? 'true' : 'false'}
           aria-describedby={displayError ? `${id}-error` : undefined}
           {...inputProps}

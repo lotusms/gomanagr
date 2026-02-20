@@ -54,11 +54,12 @@ export function ChipsSingle({
     return `flex flex-wrap ${gapClass}`;
   };
   
-  // Ensure value is valid (matches one of the options) or default to first option
-  const validValue = value && options.includes(value) ? value : (options[0] || '');
+  // Ensure value is valid (matches one of the options), but don't default to first option
+  // Only use a value if it's explicitly provided and matches an option
+  const validValue = value && options.includes(value) ? value : undefined;
   
   const getChipClassName = (option, index) => {
-    const isSelected = validValue === option;
+    const isSelected = validValue === option && validValue !== undefined;
     const isFirst = index === 0;
     const isLast = index === options.length - 1;
     
@@ -138,7 +139,7 @@ export function ChipsSingle({
           >
             <div className={isVertical ? 'flex items-center justify-between' : ''}>
               <span>{option}</span>
-              {isVertical && validValue === option && (
+              {isVertical && validValue === option && validValue !== undefined && (
                 <span className={mini ? 'text-sm' : 'text-xl'}>✓</span>
               )}
             </div>

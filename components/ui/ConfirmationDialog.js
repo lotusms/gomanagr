@@ -12,25 +12,31 @@ import InputField from './InputField';
  * @param {boolean} props.isOpen - Whether the dialog is open
  * @param {() => void} props.onClose - Callback when dialog is closed (canceled)
  * @param {() => void} props.onConfirm - Callback when user confirms the action
+ * @param {() => void} props.onSecondaryConfirm - Optional secondary confirm action (e.g., soft delete)
  * @param {string} props.title - Dialog title
  * @param {string} props.message - Warning message to display
  * @param {string} props.confirmText - Text for the confirm button (default: "Delete")
+ * @param {string} props.secondaryConfirmText - Text for the secondary confirm button (if provided)
  * @param {string} props.cancelText - Text for the cancel button (default: "Cancel")
  * @param {string} props.confirmationWord - Word user must type to confirm (default: "delete")
  * @param {string} props.confirmationLabel - Label for the confirmation input (default: "Type '{confirmationWord}' to confirm")
  * @param {string} props.variant - 'danger' (default) for destructive actions, 'warning' for warnings
+ * @param {boolean} props.requireConfirmationForSecondary - Whether secondary action requires confirmation word (default: false)
  */
 export default function ConfirmationDialog({
   isOpen,
   onClose,
   onConfirm,
+  onSecondaryConfirm,
   title = 'Confirm Action',
   message = 'Are you sure you want to proceed? This action cannot be undone.',
   confirmText = 'Delete',
+  secondaryConfirmText,
   cancelText = 'Cancel',
   confirmationWord = 'delete',
   confirmationLabel,
   variant = 'danger',
+  requireConfirmationForSecondary = false,
 }) {
   const [confirmationInput, setConfirmationInput] = useState('');
   const [error, setError] = useState('');
@@ -53,6 +59,18 @@ export default function ConfirmationDialog({
     setError('');
   };
 
+  const handleSecondaryConfirm = () => {
+    if (requireConfirmationForSecondary && confirmationInput.toLowerCase().trim() !== confirmationWord.toLowerCase()) {
+      setError(`Please type "${confirmationWord}" to confirm`);
+      return;
+    }
+    if (onSecondaryConfirm) {
+      onSecondaryConfirm();
+      setConfirmationInput('');
+      setError('');
+    }
+  };
+
   const handleCancel = () => {
     setConfirmationInput('');
     setError('');
@@ -60,6 +78,7 @@ export default function ConfirmationDialog({
   };
 
   const isConfirmEnabled = confirmationInput.toLowerCase().trim() === confirmationWord.toLowerCase();
+  const isSecondaryConfirmEnabled = !requireConfirmationForSecondary || isConfirmEnabled;
 
   const variantStyles = {
     danger: {
@@ -133,24 +152,39 @@ export default function ConfirmationDialog({
             </div>
 
             {/* Action buttons */}
-            <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <div className={`flex ${onSecondaryConfirm ? 'justify-between' : 'justify-end'} gap-3 pt-2 border-t border-gray-100 dark:border-gray-700`}>
               <SecondaryButton 
                 onClick={handleCancel} 
                 className="px-6 py-2.5 font-medium"
               >
                 {cancelText}
               </SecondaryButton>
-              <PrimaryButton
-                onClick={handleConfirm}
-                disabled={!isConfirmEnabled}
-                className={`px-6 py-2.5 font-semibold transition-all duration-200 ${
-                  !isConfirmEnabled 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : `${styles.confirmButton} shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]`
-                }`}
-              >
-                {confirmText}
-              </PrimaryButton>
+              <div className="flex gap-3">
+                {onSecondaryConfirm && (
+                  <PrimaryButton
+                    onClick={handleSecondaryConfirm}
+                    disabled={!isSecondaryConfirmEnabled}
+                    className={`px-6 py-2.5 font-semibold transition-all duration-200 ${
+                      !isSecondaryConfirmEnabled 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500 border-gray-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]'
+                    }`}
+                  >
+                    {secondaryConfirmText}
+                  </PrimaryButton>
+                )}
+                <PrimaryButton
+                  onClick={handleConfirm}
+                  disabled={!isConfirmEnabled}
+                  className={`px-6 py-2.5 font-semibold transition-all duration-200 ${
+                    !isConfirmEnabled 
+                      ? 'opacity-50 cursor-not-allowed' 
+                      : `${styles.confirmButton} shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]`
+                  }`}
+                >
+                  {confirmText}
+                </PrimaryButton>
+              </div>
             </div>
           </div>
         </Dialog.Content>

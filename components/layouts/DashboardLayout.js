@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/layouts/UserMenu';
 import DashboardSidebar from '@/components/layouts/DashboardSidebar';
@@ -50,6 +51,7 @@ export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [userAccount, setUserAccount] = useState(null);
   const [previewAccount, setPreviewAccount] = useState(null);
+  const [organization, setOrganization] = useState(null);
 
   // Persist sidebar state so it survives layout remounts on navigation (md+ stays open/closed as-is)
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
+    getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -138,6 +141,7 @@ export default function DashboardLayout({ children }) {
               userAccount={userAccount}
               previewAccount={previewAccount}
               currentUser={currentUser}
+              organization={organization}
               onLogout={handleLogout}
             />
           </div>

@@ -356,8 +356,8 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
       <div className="flex items-center space-x-2">
         <Checkbox
           id="trial"
-          checked={data.trial !== false}
-          onCheckedChange={(checked) => updateData({ trial: checked === true })}
+          checked={data.trial === true}
+          onCheckedChange={(checked) => updateData({ trial: checked === true ? true : false })}
         >
           <span className="text-white">Free trial enabled - Start with full access, no credit card required</span>
         </Checkbox>

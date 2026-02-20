@@ -27,7 +27,7 @@ export default function Step6Referral({ data, updateData, errors }) {
         value={data.referralSource}
         onValueChange={handleReferralChange}
         error={errors.referralSource}
-        layout="vertical"
+        layout="grid"
       />
     </div>
   );

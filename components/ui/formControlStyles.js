@@ -7,8 +7,9 @@
 export const FORM_CONTROL_HEIGHT = 'h-9';
 
 // Base classes for all text-like controls (input, trigger)
+// Note: transition excludes color to prevent text color flashing
 export const FORM_CONTROL_BASE =
-  'w-full px-3 text-sm rounded-md border outline-none transition disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-full px-3 text-sm rounded-md border outline-none transition-[border-color,background-color,box-shadow] disabled:opacity-50 disabled:cursor-not-allowed';
 
 // Focus state (same for all)
 export const FORM_CONTROL_FOCUS =
@@ -22,8 +23,8 @@ export const FORM_CONTROL_LIGHT_LABEL = 'block text-sm font-semibold text-gray-7
 
 // Dark variant (e.g. login, dark backgrounds)
 export const FORM_CONTROL_DARK_DEFAULT =
-  'border-white/30 bg-white/10 text-white placeholder-white/50';
-export const FORM_CONTROL_DARK_ERROR = 'border-red-500 bg-red-900/20';
+  'border-white/30 bg-white/10 text-white placeholder-white/50 autofill:!text-white autofill:!bg-white/10';
+export const FORM_CONTROL_DARK_ERROR = 'border-red-500 bg-red-900/20 text-white';
 export const FORM_CONTROL_DARK_LABEL = 'block text-sm font-medium text-white mb-2';
 
 // Combined: use for input/trigger element

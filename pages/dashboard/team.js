@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, updateTeamMembers, updateServices, uploadFile } from '@/services/userService';
+import { getUserAccount, updateTeamMembers, updateServices, uploadTeamPhoto } from '@/services/userService';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -11,8 +11,6 @@ import { PageHeader, TeamFilter, ConfirmationDialog, EmptyState } from '@/compon
 import Drawer from '@/components/ui/Drawer';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { HiPlus } from 'react-icons/hi';
-
-const TEAM_PHOTOS_BUCKET = 'team-photos';
 
 function generateId() {
   return `tm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -107,7 +105,8 @@ function TeamContent() {
     setDeleteDialogOpen(true);
   };
 
-  const handleRemoveConfirm = async () => {
+  // Soft delete: Deactivate team member (sets status to 'inactive')
+  const handleDeactivateConfirm = async () => {
     if (!memberToDelete || !currentUser?.uid) return;
     
     setSaving(true);
@@ -144,6 +143,42 @@ function TeamContent() {
     }
   };
 
+  // Hard delete: Permanently remove team member from array
+  const handleDeleteConfirm = async () => {
+    if (!memberToDelete || !currentUser?.uid) return;
+    
+    setSaving(true);
+    try {
+      // Get all team members (including inactive ones)
+      const account = await getUserAccount(currentUser.uid);
+      const allTeamMembers = account?.teamMembers || [];
+      
+      // Permanently remove the team member from the array
+      const updatedTeamMembers = allTeamMembers.filter((m) => m.id !== memberToDelete.id);
+      
+      // Clean all team members to remove undefined values before saving
+      const cleanedTeam = updatedTeamMembers.map(cleanTeamMember);
+      
+      // Save updated team members
+      await updateTeamMembers(currentUser.uid, cleanedTeam);
+      
+      // Update local state - filter based on showInactive setting
+      const filteredList = showInactive 
+        ? cleanedTeam // Show all members including inactive
+        : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+      setTeam(filteredList);
+      setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
+      
+      setDeleteDialogOpen(false);
+      setMemberToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete team member:', err);
+      alert('Failed to delete team member. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRemoveCancel = () => {
     setDeleteDialogOpen(false);
     setMemberToDelete(null);
@@ -167,8 +202,7 @@ function TeamContent() {
     let pictureUrl = isEdit ? allTeamMembers.find((m) => m.id === editingId)?.pictureUrl ?? '' : '';
     if (pictureFile && currentUser?.uid) {
       try {
-        const path = `${currentUser.uid}/${memberId}/${pictureFile.name}`;
-        pictureUrl = await uploadFile(TEAM_PHOTOS_BUCKET, path, pictureFile);
+        pictureUrl = await uploadTeamPhoto(currentUser.uid, memberId, pictureFile);
       } catch (err) {
         console.error('Failed to upload team photo:', err);
       }
@@ -402,12 +436,14 @@ function TeamContent() {
             <ConfirmationDialog
               isOpen={deleteDialogOpen}
               onClose={handleRemoveCancel}
-              onConfirm={handleRemoveConfirm}
-              title="Deactivate Team Member"
-              message={`Are you sure you want to deactivate ${memberToDelete?.name || 'this team member'}? The team member will be removed from your active team list, but their information will be retained for future reference.`}
-              confirmText="Deactivate"
+              onSecondaryConfirm={handleDeactivateConfirm}
+              onConfirm={handleDeleteConfirm}
+              title="Remove Team Member"
+              message={`What would you like to do with ${memberToDelete?.name || 'this team member'}? You can deactivate them (soft delete) to keep their information for future reference, or permanently delete them from your team.`}
+              secondaryConfirmText="Deactivate"
+              confirmText="Delete Permanently"
               cancelText="Cancel"
-              confirmationWord="deactivate"
+              confirmationWord="delete"
               variant="danger"
             />
 

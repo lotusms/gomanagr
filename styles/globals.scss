@@ -105,3 +105,22 @@ code {
     transform: scale(1.1);
   }
 }
+
+/* Fix for input text color flashing - prevent browser autofill from changing text color */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: white !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* For dark variant inputs specifically */
+input.bg-white\/10:-webkit-autofill,
+input.bg-white\/10:-webkit-autofill:hover,
+input.bg-white\/10:-webkit-autofill:focus,
+input.bg-white\/10:-webkit-autofill:active {
+  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.1) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

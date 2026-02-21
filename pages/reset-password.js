@@ -22,38 +22,59 @@ export default function ResetPasswordPage() {
   const [validToken, setValidToken] = useState(false);
 
   useEffect(() => {
-    // Supabase handles password reset tokens via URL hash fragments
-    // Listen for auth state changes to detect when token is processed
+    const hashParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash?.substring(1) || '') : null;
+    const hasRecoveryInUrl = hashParams?.get('type') === 'recovery' && hashParams?.get('access_token');
+
+    // If the URL has a recovery token, we must NOT trust the current session — it might be
+    // another user (e.g. admin) in the same browser. Only set validToken after Supabase
+    // has processed the recovery hash and emitted PASSWORD_RECOVERY (session = user who requested reset).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || (session && event === 'SIGNED_IN')) {
+      if (event === 'PASSWORD_RECOVERY') {
         setValidToken(true);
         setCheckingToken(false);
-      } else if (event === 'SIGNED_OUT' && !session) {
-        // Check if we have a recovery token in URL
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const type = hashParams.get('type');
-        
-        if (!accessToken || type !== 'recovery') {
-          setValidToken(false);
-          setCheckingToken(false);
-        }
+        return;
+      }
+      if (hasRecoveryInUrl) {
+        // URL has recovery token; don't trust any other event until we get PASSWORD_RECOVERY
+        return;
+      }
+      if (session && event === 'SIGNED_IN') {
+        setValidToken(true);
+        setCheckingToken(false);
       }
     });
 
-    // Also check current session
+    if (hasRecoveryInUrl) {
+      // Clear any existing session (e.g. admin in same browser) so the recovery token
+      // can establish the correct user's session. Then Supabase will process the hash
+      // and emit PASSWORD_RECOVERY with the team member's session.
+      supabase.auth.signOut().finally(() => {
+        // Hash is processed by Supabase client after load; wait for PASSWORD_RECOVERY
+      });
+      const fallback = setTimeout(() => {
+        setValidToken(false);
+        setCheckingToken(false);
+      }, 10000);
+      return () => {
+        subscription.unsubscribe();
+        clearTimeout(fallback);
+      };
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setValidToken(true);
-      }
+      if (session) setValidToken(true);
       setCheckingToken(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    // If user becomes authenticated (via token), allow password reset
+    // Only use currentUser to set validToken when there is NO recovery token in the URL.
+    // When there is a recovery token, the current session might still be the wrong user (admin);
+    // we must wait for PASSWORD_RECOVERY so the session is the person resetting their password.
+    if (typeof window === 'undefined') return;
+    const hashParams = new URLSearchParams(window.location.hash?.substring(1) || '');
+    if (hashParams.get('type') === 'recovery') return;
     if (currentUser) {
       setValidToken(true);
       setCheckingToken(false);

@@ -47,11 +47,14 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Service unavailable' });
   }
 
-  const { organizationId, email, role = 'member', invitedByUserId, expiresInDays = 7 } = req.body;
+  const { organizationId, email, role = 'member', invitedByUserId, expiresInDays = 7, inviteeData } = req.body;
 
   if (!organizationId || !email || !invitedByUserId) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+
+  // inviteeData: optional snapshot of team member (firstName, lastName, name, role, company, industry, etc.)
+  const inviteeDataSafe = inviteeData && typeof inviteeData === 'object' ? inviteeData : null;
 
   if (!['admin', 'developer', 'member'].includes(role)) {
     return res.status(400).json({ error: 'Invalid role' });
@@ -86,6 +89,7 @@ export default async function handler(req, res) {
         used: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        ...(inviteeDataSafe && { invitee_data: inviteeDataSafe }),
       })
       .select()
       .single();
@@ -94,7 +98,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ...invite,
-      inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/signup?invite=${token}`,
+      inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/accept-invite?invite=${token}`,
     });
   } catch (error) {
     console.error('[API] Error creating invite:', error);

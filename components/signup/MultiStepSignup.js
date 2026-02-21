@@ -430,18 +430,6 @@ export default function MultiStepSignup() {
         updatedAt: new Date().toISOString(),
       };
 
-      // Debug: Log what we're about to save
-      console.log('[Signup] About to create user account with data:', {
-        userId,
-        email: userAccountData.email,
-        firstName: userAccountData.firstName,
-        lastName: userAccountData.lastName,
-        reportingEmail: userAccountData.reportingEmail,
-        companyName: userAccountData.companyName,
-        industry: userAccountData.industry,
-        teamMembersCount: userAccountData.teamMembers?.length || 0,
-        hasLogoFile: !!formData.logoFile,
-      });
 
       // Save to Supabase user_profiles table and create organization
       try {

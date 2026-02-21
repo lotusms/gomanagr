@@ -2,6 +2,7 @@ import Head from 'next/head';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateTeamMembers, updateServices, uploadTeamPhoto } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -10,6 +11,7 @@ import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
 import { PageHeader, TeamFilter, ConfirmationDialog, EmptyState } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
 import { PrimaryButton } from '@/components/ui/buttons';
+import { useToast } from '@/components/ui/Toast';
 import { HiPlus } from 'react-icons/hi';
 
 function generateId() {
@@ -18,6 +20,7 @@ function generateId() {
 
 function TeamContent() {
   const { currentUser } = useAuth();
+  const toast = useToast();
   const [userAccount, setUserAccount] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [team, setTeam] = useState([]);
@@ -33,6 +36,7 @@ function TeamContent() {
     personalityTraits: [],
   });
   const [showInactive, setShowInactive] = useState(false);
+  const [organization, setOrganization] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -56,6 +60,11 @@ function TeamContent() {
       })
       .finally(() => setLoaded(true));
   }, [currentUser?.uid, showInactive]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
+  }, [currentUser?.uid]);
 
   // Helper function to clean team member objects by removing undefined values
   const cleanTeamMember = (member) => {
@@ -137,7 +146,7 @@ function TeamContent() {
       setMemberToDelete(null);
     } catch (err) {
       console.error('Failed to deactivate team member:', err);
-      alert('Failed to deactivate team member. Please try again.');
+      toast.error('Failed to deactivate team member. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -173,7 +182,7 @@ function TeamContent() {
       setMemberToDelete(null);
     } catch (err) {
       console.error('Failed to delete team member:', err);
-      alert('Failed to delete team member. Please try again.');
+      toast.error('Failed to delete team member. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -187,13 +196,13 @@ function TeamContent() {
   const handleSaveMember = async (data, pictureFile, editingId) => {
     const isEdit = !!editingId;
     const memberId = isEdit ? editingId : generateId();
-    
-    // Get all team members (including inactive) when editing to preserve inactive members
+
+    // Get full team list (including inactive) so we never overwrite with a filtered list
     let allTeamMembers = team;
-    if (isEdit && currentUser?.uid) {
+    if (currentUser?.uid) {
       try {
         const account = await getUserAccount(currentUser.uid);
-        allTeamMembers = account?.teamMembers || team;
+        allTeamMembers = account?.teamMembers ?? team;
       } catch (err) {
         console.error('Failed to fetch all team members:', err);
       }
@@ -218,6 +227,7 @@ function TeamContent() {
       return cleaned;
     };
 
+    const existingMember = isEdit ? allTeamMembers.find((m) => m.id === editingId) : null;
     const updatedMember = removeUndefined({
       id: memberId,
       name: data.name,
@@ -235,22 +245,119 @@ function TeamContent() {
       personalityTraits: data.personalityTraits?.length ? data.personalityTraits : undefined,
       yearsExperience: data.yearsExperience,
       pictureUrl: pictureUrl || undefined,
-      status: isEdit ? (allTeamMembers.find((m) => m.id === editingId)?.status || 'active') : 'active', // Default to 'active' for new members, preserve existing status for edits
+      status: isEdit ? (existingMember?.status || 'active') : 'active',
+      ...(isEdit && existingMember?.invitedAt && { invitedAt: existingMember.invitedAt }),
+      ...(isEdit && existingMember?.userId && { userId: existingMember.userId }),
     });
-    
+
+    let finalMember = updatedMember;
+    if (data.sendInviteToLogin && (data.email || '').trim() && organization?.id && currentUser?.uid) {
+      try {
+        const invRes = await fetch('/api/create-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            organizationId: organization.id,
+            email: (data.email || '').trim(),
+            role: 'member',
+            invitedByUserId: currentUser.uid,
+            inviteeData: {
+              id: updatedMember.id,
+              name: updatedMember.name,
+              firstName: updatedMember.firstName,
+              lastName: updatedMember.lastName,
+              role: updatedMember.role,
+              title: updatedMember.title,
+              email: (data.email || '').trim(),
+              phone: updatedMember.phone,
+              company: updatedMember.company,
+              industry: updatedMember.industry,
+              address: updatedMember.address,
+              location: updatedMember.location,
+              bio: updatedMember.bio,
+              gender: updatedMember.gender,
+              personalityTraits: updatedMember.personalityTraits,
+              yearsExperience: updatedMember.yearsExperience,
+              pictureUrl: updatedMember.pictureUrl,
+            },
+          }),
+        });
+        const invData = await invRes.json();
+        if (invRes.ok && invData.inviteLink) {
+          const emailRes = await fetch('/api/send-invite-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: (data.email || '').trim(),
+              inviteLink: invData.inviteLink,
+              memberName: data.name,
+              inviterName: userAccount?.firstName || userAccount?.name,
+              inviterEmail: currentUser?.email,
+            }),
+          });
+          const emailData = await emailRes.json();
+          finalMember = { ...updatedMember, invitedAt: new Date().toISOString() };
+          if (emailData.sent) {
+            toast.success(`Invite email sent to ${(data.email || '').trim()}`);
+          } else if (emailData.inviteLink) {
+            try {
+              await navigator.clipboard.writeText(emailData.inviteLink);
+              toast.info('Invite link copied to clipboard. Paste it into an email or message and send it to the team member.');
+            } catch {
+              toast.info(`No email was sent. Copy this link and send it to ${(data.email || '').trim()}: ${emailData.inviteLink}`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to create/send invite:', err);
+        toast.warning('Member saved, but the invite could not be sent. You can invite them later from the edit drawer.');
+      }
+    }
+
     // Update all team members (including inactive) when editing, or add new member
     const nextAllMembers = isEdit
-      ? allTeamMembers.map((m) => (m.id === editingId ? updatedMember : m))
-      : [...allTeamMembers, updatedMember];
-    
+      ? allTeamMembers.map((m) => (m.id === editingId ? finalMember : m))
+      : [...allTeamMembers, finalMember];
+
     // Update local team display based on showInactive setting
-    const filteredList = showInactive 
-      ? nextAllMembers // Show all members including inactive
-      : nextAllMembers.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+    const filteredList = showInactive
+      ? nextAllMembers
+      : nextAllMembers.filter((m) => (m.status || 'active') !== 'inactive');
     setTeam(filteredList);
-    
+
     // Save all team members (including inactive)
     saveTeam(nextAllMembers);
+
+    // If this member has an account in the org (signed in with invite), sync their user profile so they see admin updates
+    const memberEmail = (finalMember.email || '').trim();
+    if (memberEmail && organization?.id && currentUser?.uid) {
+      fetch('/api/sync-team-member-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          callerUserId: currentUser.uid,
+          email: memberEmail,
+          teamMemberData: {
+            name: finalMember.name,
+            firstName: finalMember.firstName,
+            lastName: finalMember.lastName,
+            role: finalMember.role,
+            title: finalMember.title,
+            phone: finalMember.phone,
+            company: finalMember.company,
+            industry: finalMember.industry,
+            address: finalMember.address,
+            location: finalMember.location,
+            bio: finalMember.bio,
+            gender: finalMember.gender,
+            personalityTraits: finalMember.personalityTraits,
+            yearsExperience: finalMember.yearsExperience,
+            pictureUrl: finalMember.pictureUrl,
+          },
+        }),
+      }).catch((err) => console.error('Failed to sync team member profile:', err));
+    }
 
     // Update services to reflect team member assignments
     if (data.selectedServiceIds !== undefined && userAccount?.services) {
@@ -319,6 +426,90 @@ function TeamContent() {
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditingMember(null);
+  };
+
+  const handleInviteToLogin = async (member) => {
+    const email = (member?.email || '').trim();
+    if (!email) {
+      toast.warning('This team member has no email. Add an email in the form and save, then invite.');
+      return;
+    }
+    if (!organization?.id || !currentUser?.uid) {
+      toast.error('Unable to send invite. Please try again.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const invRes = await fetch('/api/create-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          email,
+          role: 'member',
+          invitedByUserId: currentUser.uid,
+          inviteeData: {
+            id: member.id,
+            name: member.name,
+            firstName: member.firstName,
+            lastName: member.lastName,
+            role: member.role,
+            title: member.title,
+            email: member.email,
+            phone: member.phone,
+            company: member.company,
+            industry: member.industry,
+            address: member.address,
+            location: member.location,
+            bio: member.bio,
+            gender: member.gender,
+            personalityTraits: member.personalityTraits,
+            yearsExperience: member.yearsExperience,
+            pictureUrl: member.pictureUrl,
+          },
+        }),
+      });
+      const invData = await invRes.json();
+      if (!invRes.ok || !invData.inviteLink) {
+        toast.error(invData.error || invData.message || 'Failed to create invite.');
+        return;
+      }
+      const emailRes = await fetch('/api/send-invite-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email,
+          inviteLink: invData.inviteLink,
+          memberName: member.name,
+          inviterName: userAccount?.firstName || userAccount?.name,
+          inviterEmail: currentUser?.email,
+        }),
+      });
+      const emailData = await emailRes.json();
+      const updatedMember = { ...member, invitedAt: new Date().toISOString() };
+      const account = await getUserAccount(currentUser.uid);
+      const allTeamMembers = account?.teamMembers ?? team;
+      const nextAllMembers = allTeamMembers.map((m) => (m.id === member.id ? updatedMember : m));
+      await updateTeamMembers(currentUser.uid, nextAllMembers.map(cleanTeamMember));
+      setUserAccount((prev) => (prev ? { ...prev, teamMembers: nextAllMembers } : null));
+      const filteredList = showInactive ? nextAllMembers : nextAllMembers.filter((m) => (m.status || 'active') !== 'inactive');
+      setTeam(filteredList);
+      if (emailData.sent) {
+        toast.success(`Invite email sent to ${email}`);
+      } else if (emailData.inviteLink) {
+        try {
+          await navigator.clipboard.writeText(emailData.inviteLink);
+          toast.info('Invite link copied to clipboard. Paste it into an email or message and send it to the team member.');
+        } catch {
+          toast.info(`No email was sent. Copy this link and send it to ${email}: ${emailData.inviteLink}`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to invite:', err);
+      toast.error('Failed to send invite. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Filter team members based on selected filters
@@ -414,14 +605,13 @@ function TeamContent() {
                 organizationCountry={userAccount?.organizationCountry || ''}
                 services={userAccount?.services || []}
                 teamMembers={team}
+                onInviteToLogin={handleInviteToLogin}
                 onServiceCreated={async (updatedServices) => {
                   // Save the new service to Supabase
                   if (currentUser?.uid) {
                     try {
-                      console.log('Saving services to Supabase:', updatedServices);
                       await updateServices(currentUser.uid, updatedServices);
                       setUserAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
-                      console.log('Services saved successfully');
                     } catch (error) {
                       console.error('Error saving services:', error);
                       throw error; // Re-throw to be caught by handleCreateService

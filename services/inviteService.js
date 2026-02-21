@@ -153,5 +153,5 @@ export function getInviteLink(token) {
   const baseUrl = typeof window !== 'undefined' 
     ? window.location.origin 
     : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  return `${baseUrl}/signup?invite=${token}`;
+  return `${baseUrl}/accept-invite?invite=${token}`;
 }

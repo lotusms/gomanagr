@@ -48,19 +48,25 @@ function getNavigationItems(accountIndustry) {
 
 const MD_BREAKPOINT = 768;
 
+const MEMBER_NAV_ITEMS = [
+  { name: 'Team Member', href: '/dashboard/team-member', icon: HiHome },
+];
+
 /**
  * Dashboard sidebar: collapsible nav (icons only when collapsed).
  * @param {Object} props
  * @param {boolean} props.open - Whether the sidebar is expanded (shows labels).
  * @param {(open: boolean) => void} props.onToggle - Called when toggle button is used, or when a nav link is clicked on mobile (sm and below) to collapse.
  * @param {Object} props.userAccount - User account object containing industry field
+ * @param {string} [props.memberRole] - Org role; when 'member', only team-member link is shown
  */
-export default function DashboardSidebar({ open, onToggle, userAccount }) {
+export default function DashboardSidebar({ open, onToggle, userAccount, memberRole }) {
   const router = useRouter();
-  
+
   const navigationItems = useMemo(() => {
+    if (memberRole === 'member') return MEMBER_NAV_ITEMS;
     return getNavigationItems(userAccount?.industry);
-  }, [userAccount?.industry]);
+  }, [memberRole, userAccount?.industry]);
 
   const handleNavClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < MD_BREAKPOINT) {

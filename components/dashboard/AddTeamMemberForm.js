@@ -8,6 +8,7 @@ import {
   Dropdown,
   AddressAutocomplete,
   Drawer,
+  Checkbox,
 } from '@/components/ui';
 import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus } from 'react-icons/hi';
@@ -50,6 +51,7 @@ const GENDER_OPTIONS = [
  * @param {Array} [services] - Array of service objects from userAccount.services
  * @param {Array} [teamMembers] - Array of team members for service assignment
  * @param {Function} [onServiceCreated] - Callback when a new service is created (receives updated services array)
+ * @param {Function} [onInviteToLogin] - Callback when user clicks "Invite to log in" in edit mode (receives member object)
  */
 export default function AddTeamMemberForm({ 
   onSubmit, 
@@ -60,7 +62,8 @@ export default function AddTeamMemberForm({
   organizationCountry = '', 
   services = [], 
   teamMembers = [], 
-  onServiceCreated 
+  onServiceCreated,
+  onInviteToLogin,
 }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -88,6 +91,7 @@ export default function AddTeamMemberForm({
   const [fileInputKey, setFileInputKey] = useState(0);
   const [showServiceDrawer, setShowServiceDrawer] = useState(false);
   const [savingService, setSavingService] = useState(false);
+  const [sendInviteToLogin, setSendInviteToLogin] = useState(false);
 
   const isEdit = !!initialMember?.id;
 
@@ -131,6 +135,7 @@ export default function AddTeamMemberForm({
 
   useEffect(() => {
     if (!initialMember) {
+      setSendInviteToLogin(false);
       setPicturePreviewUrl('');
       return;
     }
@@ -191,34 +196,17 @@ export default function AddTeamMemberForm({
       const savedAddr = String(savedLocation.address || '').trim();
       const savedAddrNormalized = normalizeAddress(savedAddr);
       
-      // Debug logging
-      console.log('[Location Match] Saved location object:', savedLocation);
-      console.log('[Location Match] Saved address:', savedAddr);
-      console.log('[Location Match] Available locations:', locations);
-      console.log('[Location Match] Normalized saved address:', savedAddrNormalized);
-      
       // Try to find exact match first
       let matchingLoc = locations.find(loc => {
         const locAddress = typeof loc === 'string' ? loc.trim() : String(loc.address || '').trim();
         const normalizedLocAddr = normalizeAddress(locAddress);
         const matches = normalizedLocAddr === savedAddrNormalized;
-        console.log(`[Location Match] Comparing "${normalizedLocAddr}" === "${savedAddrNormalized}": ${matches}`);
         return matches;
       });
       
       if (matchingLoc) {
-        // Use the address from the matching location as the dropdown value
-        // Must trim to match the dropdown option values
         locationValue = typeof matchingLoc === 'string' ? matchingLoc.trim() : String(matchingLoc.address || '').trim();
-        console.log('[Location Match] ✓ Found match! Setting location value to:', locationValue);
       } else {
-        // If no match found, don't set a value (location might have been deleted)
-        // This prevents showing an invalid selection
-        console.warn('[Location Match] ✗ No match found for saved location:', savedAddr);
-        console.log('[Location Match] Available location addresses:', locations.map(loc => {
-          const addr = typeof loc === 'string' ? loc : loc.address;
-          return `"${addr}" (normalized: "${normalizeAddress(addr)}")`;
-        }));
         locationValue = undefined;
       }
     } else if (typeof savedLocation === 'string' && savedLocation.trim()) {
@@ -238,18 +226,6 @@ export default function AddTeamMemberForm({
       }
     }
     
-    // Set the location value - this will update the dropdown
-    console.log('[Location Match] Final location value to set:', JSON.stringify(locationValue));
-    console.log('[Location Match] Current location state:', JSON.stringify(location));
-    console.log('[Location Match] Dropdown option values:', locations.map(loc => {
-      const addr = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
-      return JSON.stringify(addr);
-    }));
-    console.log('[Location Match] Value matches an option?', locationValue ? locations.some(loc => {
-      const addr = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
-      return addr === locationValue;
-    }) : false);
-    
     // Set the location value directly - ensure it's exactly what's in the dropdown options
     // Convert undefined to empty string to keep dropdown controlled
     if (locationValue) {
@@ -259,10 +235,8 @@ export default function AddTeamMemberForm({
         return addr === locationValue;
       });
       if (valueExists) {
-        console.log('[Location Match] ✓ Value exists in options, setting location state');
         setLocation(locationValue);
       } else {
-        console.warn('[Location Match] ✗ Value does NOT exist in options!', locationValue);
         setLocation('');
       }
     } else {
@@ -353,6 +327,7 @@ export default function AddTeamMemberForm({
         personalityTraits: personalityTraits.length ? personalityTraits : undefined,
         yearsExperience: yearsExperience.trim() ? Number(yearsExperience) : undefined,
         selectedServiceIds: selectedServiceIds,
+        sendInviteToLogin: sendInviteToLogin && email.trim() ? true : undefined,
       },
       pictureFile,
       initialMember?.id ?? null
@@ -435,9 +410,7 @@ export default function AddTeamMemberForm({
     }
     
     setSavingService(true);
-    try {
-      console.log('Creating service:', serviceData);
-      
+    try {      
       // Ensure the current team member is assigned to the new service
       const currentMemberId = initialMember?.id;
       let assignedIds = [...(serviceData.assignedTeamMemberIds || [])];
@@ -453,19 +426,10 @@ export default function AddTeamMemberForm({
         assignedTeamMemberIds: assignedIds,
       };
       
-      console.log('Service with assignment:', serviceWithAssignment);
-      
       // Add the new service to the services array
       const updatedServices = [...(services || []), serviceWithAssignment];
-      
-      console.log('Updated services array:', updatedServices);
-      
-      // Call the callback to update services in parent (saves to Supabase)
       await onServiceCreated(updatedServices);
-      
-      console.log('Service created successfully');
-      
-      // Automatically select the newly created service
+
       if (!selectedServiceIds.includes(serviceData.id)) {
         setSelectedServiceIds([...selectedServiceIds, serviceData.id]);
       }
@@ -656,6 +620,30 @@ export default function AddTeamMemberForm({
               variant="light"
             />
           </div>
+          {!isEdit && (
+            <Checkbox
+              id="send-invite"
+              label="Send invite to log in (they'll get an email with a link to set their password and join as a team member)"
+              checked={sendInviteToLogin}
+              onCheckedChange={setSendInviteToLogin}
+              disabled={saving || !email.trim()}
+            />
+          )}
+          {isEdit && (email?.trim() || initialMember?.email) && !initialMember?.userId && typeof onInviteToLogin === 'function' && (
+            <div className="flex flex-col items-center gap-2">
+              <SecondaryButton
+                type="button"
+                onClick={() => onInviteToLogin({ ...initialMember, email: email?.trim() || initialMember?.email })}
+                disabled={saving}
+                className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Invite to Join
+              </SecondaryButton>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Send this member an email to set their password and access GoManagr as a member.
+              </span>
+            </div>
+          )}
           <TextareaField
             id="bio"
             label="Bio"

@@ -41,7 +41,13 @@ try {
   supabaseAdmin = null;
 }
 
-// Helper to convert camelCase user data to snake_case row
+// Row keys that go into user_profiles columns (not into profile JSONB)
+const ROW_KEYS = new Set([
+  'userId', 'id', 'email', 'firstName', 'lastName', 'purpose', 'role',
+  'createdAt', 'updatedAt',
+]);
+
+// Helper to convert camelCase user data to snake_case row + profile JSONB
 function userDataToRow(data) {
   const profile = {};
   const row = {
@@ -50,21 +56,28 @@ function userDataToRow(data) {
     email: data.email?.toLowerCase() || '',
     first_name: (data.firstName || '').trim(),
     last_name: (data.lastName || '').trim(),
-    purpose: data.purpose || '',
-    role: data.role || '',
+    purpose: (data.purpose || '').trim(),
+    role: (data.role || '').trim(),
     created_at: data.createdAt || new Date().toISOString(),
     updated_at: data.updatedAt || new Date().toISOString(),
   };
 
-  // Store additional fields in profile JSONB
-  if (data.reportingEmail) profile.reportingEmail = data.reportingEmail.trim();
-  if (data.developerMode !== undefined) profile.developerMode = data.developerMode;
-  if (data.nameView) profile.nameView = data.nameView;
-  
-  if (Object.keys(profile).length > 0) {
-    row.profile = profile;
+  // Put everything else into profile JSONB (name, title, bio, pictureUrl, address, etc.)
+  Object.entries(data || {}).forEach(([key, value]) => {
+    if (ROW_KEYS.has(key) || value === undefined) return;
+    if (key === 'reportingEmail') {
+      profile.reportingEmail = (value || data.email || '').trim();
+      return;
+    }
+    profile[key] = value;
+  });
+  if (data.reportingEmail != null && data.reportingEmail !== '') {
+    profile.reportingEmail = (data.reportingEmail || data.email || '').trim();
   }
+  if (data.developerMode !== undefined) profile.developerMode = data.developerMode;
+  if (data.nameView != null) profile.nameView = data.nameView;
 
+  row.profile = profile;
   return row;
 }
 

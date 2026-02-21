@@ -80,6 +80,17 @@ export default function DashboardLayout({ children }) {
     getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
   }, [currentUser?.uid]);
 
+  const memberRole = organization?.membership?.role;
+
+  // Members can only access the team-member dashboard; redirect all other dashboard routes
+  useEffect(() => {
+    if (memberRole !== 'member') return;
+    const path = router.pathname;
+    if (path !== '/dashboard/team-member') {
+      router.replace('/dashboard/team-member');
+    }
+  }, [memberRole, router.pathname]);
+
   useEffect(() => {
     const handle = (e) => {
       if (e.detail?.type === 'useraccount-preview') setPreviewAccount(e.detail.payload || null);
@@ -149,7 +160,7 @@ export default function DashboardLayout({ children }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} />
+        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} />
 
         {/* Main Content */}
         <main

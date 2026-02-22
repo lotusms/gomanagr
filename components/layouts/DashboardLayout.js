@@ -82,11 +82,12 @@ export default function DashboardLayout({ children }) {
 
   const memberRole = organization?.membership?.role;
 
-  // Members can only access the team-member dashboard; redirect all other dashboard routes
+  // Members can only access team-member routes and Settings
   useEffect(() => {
     if (memberRole !== 'member') return;
     const path = router.pathname;
-    if (path !== '/dashboard/team-member') {
+    const allowed = path.startsWith('/dashboard/team-member') || path === '/dashboard/settings' || path === '/dashboard/schedule';
+    if (!allowed) {
       router.replace('/dashboard/team-member');
     }
   }, [memberRole, router.pathname]);

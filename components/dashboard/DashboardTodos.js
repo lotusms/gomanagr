@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { HiX } from 'react-icons/hi';
 
-export default function DashboardTodos({ items = [], onDismiss }) {
+export default function DashboardTodos({ items = [], onDismiss, onItemClick }) {
   if (items.length === 0) return null;
 
   return (
@@ -38,15 +38,31 @@ export default function DashboardTodos({ items = [], onDismiss }) {
           );
           const cardClass =
             'bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 flex items-start gap-4 relative';
-          return item.href ? (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={`${cardClass} hover:border-primary-200 dark:hover:border-primary-600 hover:shadow-md transition-all`}
-            >
-              {content}
-            </Link>
-          ) : (
+          const isClickable = !item.href && typeof onItemClick === 'function';
+          if (item.href) {
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={`${cardClass} hover:border-primary-200 dark:hover:border-primary-600 hover:shadow-md transition-all`}
+              >
+                {content}
+              </Link>
+            );
+          }
+          if (isClickable) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onItemClick(item)}
+                className={`${cardClass} hover:border-primary-200 dark:hover:border-primary-600 hover:shadow-md transition-all text-left w-full cursor-pointer`}
+              >
+                {content}
+              </button>
+            );
+          }
+          return (
             <div key={item.id} className={cardClass}>
               {content}
             </div>

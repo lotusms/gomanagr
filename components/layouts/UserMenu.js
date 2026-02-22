@@ -55,9 +55,9 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
   const accountLoaded = userAccount !== null || previewAccount !== null;
   const shouldShowInitials = accountLoaded && !hasLogo;
   
-  // Check if user is admin or developer
+  // Team members (role === 'member') see Settings + Logout only in this menu (My Profile is in sidenav)
+  const isTeamMember = organization?.membership?.role === 'member';
   const canAccessDeveloper = accountLoaded && isAdminOrDeveloper(account, currentUser?.uid);
-  
 
   return (
     <div className="relative" ref={ref}>
@@ -82,20 +82,24 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
 
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-[100]">
-          <Link
-            href="/account"
-            onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            My Account
-          </Link>
-          <Link
-            href="/dashboard/subscriptions"
-            onClick={() => setOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            Subscriptions
-          </Link>
+          {!isTeamMember && (
+            <>
+              <Link
+                href="/account"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                My Account
+              </Link>
+              <Link
+                href="/dashboard/subscriptions"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                Subscriptions
+              </Link>
+            </>
+          )}
           <Link
             href="/dashboard/settings"
             onClick={() => setOpen(false)}
@@ -103,7 +107,7 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
           >
             Settings
           </Link>
-          {process.env.NODE_ENV === 'development' && canAccessDeveloper && (
+          {!isTeamMember && process.env.NODE_ENV === 'development' && canAccessDeveloper && (
             <Link
               href="/dashboard/developer"
               onClick={() => setOpen(false)}

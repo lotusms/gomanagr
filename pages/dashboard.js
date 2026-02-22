@@ -1,7 +1,9 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, updateDismissedTodos } from '@/services/userService';
+import { getUserAccount } from '@/services/userService';
+import { createDismissTodoHandler } from '@/utils/dismissTodoHandler';
+import { getUserOrganization, getOrganizationMembers } from '@/services/organizationService';
 import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import { formatDate } from '@/utils/dateTimeFormatters';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -16,6 +18,7 @@ import {
 import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import StatsGrid from '@/components/dashboard/StatsGrid';
+import WebsiteConsultationDialog from '@/components/dashboard/WebsiteConsultationDialog';
 
 function getWelcomeName(account, email = '') {
   // Always prioritize firstName - this is what user entered during signup
@@ -47,8 +50,8 @@ function getTimeOfDay() {
 const TODO_ITEMS = [
   {
     id: 'company-logo',
-    title: 'Add your company logo',
-    description: 'Pull your company logo and brand into GoManagr to use on quotes, invoices, and job forms.',
+    title: 'Add your organization logo',
+    description: 'Pull your organization logo and brand into GoManagr to use on quotes, invoices, and job forms.',
     duration: '2 minutes',
     Icon: HiOfficeBuilding,
     href: '/dashboard/settings', // Organization settings (logo) is the default section
@@ -80,16 +83,18 @@ const TODO_ITEMS = [
   {
     id: 'website',
     title: 'Create a website for your business',
-    description: 'Apply for a website that will be integrated with GoManagr and get your business online.',
+    description: 'Request a consultation with LOTUS Marketing Solutions for a website integrated with GoManagr.',
     duration: '5 minutes',
     Icon: HiGlobe,
-    href: '/dashboard/website',
+    href: null, // Opens consultation dialog instead of navigating
   },
 ];
 
 function DashboardContent() {
   const { currentUser } = useAuth();
   const [userAccount, setUserAccount] = useState(null);
+  const [organization, setOrganization] = useState(null);
+  const [teamMemberCount, setTeamMemberCount] = useState(null);
   const [accountLoaded, setAccountLoaded] = useState(false);
 
   useEffect(() => {
@@ -104,6 +109,21 @@ function DashboardContent() {
         .catch(() => setUserAccount(null))
         .finally(() => setAccountLoaded(true));
     });
+    getUserOrganization(currentUser.uid)
+      .then((org) => {
+        setOrganization(org || null);
+        if (org?.id) {
+          getOrganizationMembers(org.id)
+            .then((members) => setTeamMemberCount(members?.length ?? 0))
+            .catch(() => setTeamMemberCount(0));
+        } else {
+          setTeamMemberCount(null);
+        }
+      })
+      .catch(() => {
+        setOrganization(null);
+        setTeamMemberCount(null);
+      });
   }, [currentUser?.uid]);
 
   // Listen for account updates (e.g., when logo is saved)
@@ -128,37 +148,47 @@ function DashboardContent() {
 
   const welcomeName = getWelcomeName(userAccount, currentUser?.email ?? '');
   const dismissedTodoIds = accountLoaded ? (userAccount?.dismissedTodoIds ?? []) : null;
+  const [websiteDialogOpen, setWebsiteDialogOpen] = useState(false);
 
-  const handleDismissTodo = (todoId) => {
-    if (!currentUser?.uid || !todoId) return;
-    const next = dismissedTodoIds.includes(todoId)
-      ? dismissedTodoIds
-      : [...dismissedTodoIds, todoId];
-    updateDismissedTodos(currentUser.uid, next)
-      .then(() => setUserAccount((prev) => (prev ? { ...prev, dismissedTodoIds: next } : null)))
-      .catch((err) => console.error('Failed to dismiss todo:', err));
-  };
+  const handleDismissTodo = createDismissTodoHandler({
+    userId: currentUser?.uid,
+    dismissedTodoIds,
+    onSuccess: (next) => setUserAccount((prev) => (prev ? { ...prev, dismissedTodoIds: next } : null)),
+  });
 
   const todoItems =
     dismissedTodoIds === null
       ? []
       : TODO_ITEMS.filter((item) => {
           if (dismissedTodoIds.includes(item.id)) return false;
-          // Check if company logo exists and is not empty
+          // Hide "Add your organization logo" if org or user account already has a logo
           if (item.id === 'company-logo') {
-            // Only check if account has loaded
-            if (!accountLoaded || !userAccount) return true; // Show todo if account not loaded yet
-            
-            const rawLogo = userAccount.companyLogo;
-            // Handle various cases: string, null, undefined, empty string, whitespace
-            let logoUrl = '';
-            if (rawLogo !== null && rawLogo !== undefined) {
-              logoUrl = String(rawLogo).trim();
-            }
-            const hasLogo = logoUrl.length > 0;
-            
-            // Hide todo if logo exists
-            if (hasLogo) return false;
+            if (!accountLoaded) return true;
+            const userLogo = (userAccount?.companyLogo != null && userAccount?.companyLogo !== '')
+              ? String(userAccount.companyLogo).trim()
+              : '';
+            const orgLogo = (organization?.logo_url != null && organization?.logo_url !== '')
+              ? String(organization.logo_url).trim()
+              : '';
+            if (userLogo.length > 0 || orgLogo.length > 0) return false;
+          }
+          // Show client-portal todo only when no clients created
+          if (item.id === 'client-portal') {
+            if (!accountLoaded) return true;
+            const hasClients = Array.isArray(userAccount?.clients) && userAccount.clients.length > 0;
+            if (hasClients) return false;
+          }
+          // Show invoicing todo only when no invoices created
+          if (item.id === 'invoicing') {
+            if (!accountLoaded) return true;
+            const hasInvoices = Array.isArray(userAccount?.invoices) && userAccount.invoices.length > 0;
+            if (hasInvoices) return false;
+          }
+          // Show quote todo only when no quotes created
+          if (item.id === 'quote') {
+            if (!accountLoaded) return true;
+            const hasQuotes = Array.isArray(userAccount?.quotes) && userAccount.quotes.length > 0;
+            if (hasQuotes) return false;
           }
           return true;
         });
@@ -181,10 +211,23 @@ function DashboardContent() {
           </h1>
         </div>
 
-        <StatsGrid userAccount={userAccount} />
+        <StatsGrid userAccount={userAccount} teamMemberCount={teamMemberCount} />
 
-        <DashboardTodos items={todoItems} onDismiss={handleDismissTodo} />
+        <DashboardTodos
+          items={todoItems}
+          onDismiss={handleDismissTodo}
+          onItemClick={(item) => item.id === 'website' && setWebsiteDialogOpen(true)}
+        />
+        <WebsiteConsultationDialog
+          open={websiteDialogOpen}
+          onClose={() => setWebsiteDialogOpen(false)}
+          onSuccess={() => handleDismissTodo('website')}
+          defaultEmail={currentUser?.email ?? ''}
+          defaultName={[userAccount?.firstName, userAccount?.lastName].filter(Boolean).join(' ').trim()}
+          defaultCompany={organization?.name ?? ''}
+        />
 
+        {/* Admin dashboard: all staff and all appointments for today */}
         <TodaysAppointments
           businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
           businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}

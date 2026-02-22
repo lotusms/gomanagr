@@ -5,6 +5,7 @@ import InputField from '@/components/ui/InputField';
 import { AddressAutocomplete } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
+import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
 import { HiChevronDown, HiChevronRight } from 'react-icons/hi';
@@ -162,12 +163,11 @@ export default function ClientForm({
           variant="light"
           autoFocus
         />
-        <InputField
+        <PhoneNumberInput
           id="clientPhone"
           label="Phone"
-          type="tel"
           value={phone}
-          onChange={(e) => setPhone(formatPhone(e.target.value))}
+          onChange={setPhone}
           placeholder="(717) 123-4567"
           error={errors.phone}
           variant="light"
@@ -235,12 +235,11 @@ export default function ClientForm({
                   placeholder="Company name"
                   variant="light"
                 />
-                <InputField
+                <PhoneNumberInput
                   id="companyPhone"
                   label="Company phone"
-                  type="tel"
                   value={companyPhone}
-                  onChange={(e) => setCompanyPhone(formatPhone(e.target.value))}
+                  onChange={setCompanyPhone}
                   placeholder="(717) 123-4567"
                   variant="light"
                 />

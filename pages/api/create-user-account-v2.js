@@ -8,10 +8,13 @@
 const { createClient } = require('@supabase/supabase-js');
 
 let supabaseAdmin;
+/** Anon client used only to verify user JWT (who is making the request). */
+let supabaseAnon;
 
 try {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('Supabase Admin not configured for user account creation');
@@ -33,12 +36,39 @@ try {
         persistSession: false
       }
     });
-    
+    if (supabaseUrl && supabaseAnonKey) {
+      supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+      });
+    } else {
+      supabaseAnon = null;
+    }
     console.log('[API] Supabase Admin initialized successfully');
   }
 } catch (error) {
   console.error('Failed to initialize Supabase Admin:', error);
   supabaseAdmin = null;
+  supabaseAnon = null;
+}
+
+/**
+ * Get the authenticated user id from the request (Authorization: Bearer <jwt>).
+ * Returns null if no valid token or verification fails.
+ */
+async function getAuthenticatedUserId(req) {
+  const authHeader = req.headers?.authorization;
+  if (!authHeader || typeof authHeader !== 'string' || !authHeader.toLowerCase().startsWith('bearer ')) {
+    return null;
+  }
+  const token = authHeader.slice(7).trim();
+  if (!token || !supabaseAnon) return null;
+  try {
+    const { data: { user }, error } = await supabaseAnon.auth.getUser(token);
+    if (error || !user?.id) return null;
+    return user.id;
+  } catch (_) {
+    return null;
+  }
 }
 
 // Row keys that go into user_profiles columns (not into profile JSONB)
@@ -108,6 +138,21 @@ export default async function handler(req, res) {
 
   if (!userId || !userData) {
     return res.status(400).json({ error: 'Missing userId or userData' });
+  }
+
+  // Ensure the caller can only update their own account (team member vs admin isolation)
+  const authenticatedUserId = await getAuthenticatedUserId(req);
+  if (authenticatedUserId != null && authenticatedUserId !== userId) {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'You can only update your own account settings.',
+    });
+  }
+  if (authenticatedUserId == null) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Valid session required to update account.',
+    });
   }
 
   // Store userId for cleanup if needed

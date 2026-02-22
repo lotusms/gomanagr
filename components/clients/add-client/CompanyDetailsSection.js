@@ -1,8 +1,7 @@
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import InputField from '@/components/ui/InputField';
-import { AddressAutocomplete } from '@/components/ui';
+import { AddressAutocomplete, PhoneNumberInput } from '@/components/ui';
 import Dropdown from '@/components/ui/Dropdown';
-import { formatPhone } from '@/utils/formatPhone';
 import { INDUSTRIES, COMPANY_SIZES, TIMEZONES, LANGUAGES } from '../clientProfileConstants';
 
 function normalizeCountryValue(value) {
@@ -88,12 +87,11 @@ export default function CompanyDetailsSection({
 
       {/* Company Phone, Email */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <InputField
+        <PhoneNumberInput
           id="companyPhone"
           label="Company Phone"
-          type="tel"
           value={companyPhone}
-          onChange={(e) => onCompanyPhoneChange(formatPhone(e.target.value))}
+          onChange={onCompanyPhoneChange}
           placeholder="(717) 123-4567"
           variant="light"
         />
@@ -358,12 +356,11 @@ export default function CompanyDetailsSection({
               onChange={onPrimaryContactNameChange}
               variant="light"
             />
-            <InputField
+            <PhoneNumberInput
               id="primaryContactPhone"
               label="Phone"
-              type="tel"
               value={primaryContactPhone}
-              onChange={(e) => onPrimaryContactPhoneChange(formatPhone(e.target.value))}
+              onChange={onPrimaryContactPhoneChange}
               placeholder="(717) 123-4567"
               variant="light"
             />
@@ -392,12 +389,11 @@ export default function CompanyDetailsSection({
               onChange={onSecondaryContactNameChange}
               variant="light"
             />
-            <InputField
+            <PhoneNumberInput
               id="secondaryContactPhone"
               label="Phone"
-              type="tel"
               value={secondaryContactPhone}
-              onChange={(e) => onSecondaryContactPhoneChange(formatPhone(e.target.value))}
+              onChange={onSecondaryContactPhoneChange}
               placeholder="(717) 123-4567"
               variant="light"
             />

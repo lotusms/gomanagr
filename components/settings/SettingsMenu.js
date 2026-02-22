@@ -9,11 +9,12 @@ const SETTINGS_SECTIONS = [
   { id: 'billing', label: 'Billing', icon: HiCreditCard },
 ];
 
-export default function SettingsMenu({ activeSection, onSectionChange }) {
+export default function SettingsMenu({ activeSection, onSectionChange, hiddenSections = [] }) {
+  const visibleSections = SETTINGS_SECTIONS.filter((s) => !hiddenSections.includes(s.id));
   return (
     <nav className="flex-shrink-0 w-full lg:w-56">
       <ul className="space-y-1 bg-white dark:bg-gray-800 rounded-lg shadow p-2">
-        {SETTINGS_SECTIONS.map(({ id, label, icon: Icon }) => (
+        {visibleSections.map(({ id, label, icon: Icon }) => (
           <li key={id}>
             <button
               type="button"

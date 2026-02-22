@@ -5,7 +5,7 @@ import { getUserOrganization, updateOrganization, createOrganization, addUserToO
 import { HiCloudUpload, HiX, HiPlus } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
-import { AddressAutocomplete } from '@/components/ui';
+import { AddressAutocomplete, PhoneNumberInput } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { COUNTRIES } from '@/utils/countries';
 import { INDUSTRIES } from '@/components/clients/clientProfileConstants';
@@ -33,6 +33,7 @@ export default function OrganizationSettings() {
     organizationCountry: '',
     organizationAddress: '',
     organizationAddress2: '',
+    organizationPhone: '',
     organizationCity: '',
     organizationState: '',
     organizationPostalCode: '',
@@ -176,6 +177,7 @@ export default function OrganizationSettings() {
         organizationCountry: userData?.organizationCountry || '',
         organizationAddress: userData?.organizationAddress || '',
         organizationAddress2: userData?.organizationAddress2 || '',
+        organizationPhone: userData?.organizationPhone || '',
         organizationCity: userData?.organizationCity || '',
         organizationState: userData?.organizationState || '',
         organizationPostalCode: userData?.organizationPostalCode || '',
@@ -613,7 +615,17 @@ export default function OrganizationSettings() {
             }}
             placeholder="Start typing organization address..."
           />
-          
+          <PhoneNumberInput
+            id="organizationPhone"
+            label="Organization Phone Number"
+            value={formData.organizationPhone}
+            onChange={(formatted) => setFormData((prev) => ({ ...prev, organizationPhone: formatted }))}
+            placeholder="(717) 123-4567"
+            variant="light"
+            inputProps={{ name: 'organizationPhone' }}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Address Line 2 */}
           {formData.organizationAddress && (
             <InputField

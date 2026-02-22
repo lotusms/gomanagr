@@ -504,7 +504,7 @@ export default function ClientProfile({
               setLastName(e.target.value);
               setErrors((prev) => ({ ...prev, lastName: '' }));
             }}
-            onPhoneChange={(e) => setPhone(formatPhone(e.target.value))}
+            onPhoneChange={setPhone}
             onEmailChange={(e) => setEmail(e.target.value)}
             onStatusChange={setStatus}
             onPreferredCommunicationChange={setPreferredCommunication}
@@ -551,7 +551,7 @@ export default function ClientProfile({
               billingAvailableStates={billingAvailableStates}
               saving={saving}
               onCompanyNameChange={handleCompanyNameChange}
-              onCompanyPhoneChange={(e) => setCompanyPhone(e.target.value)}
+              onCompanyPhoneChange={setCompanyPhone}
               onCompanyEmailChange={(e) => setCompanyEmail(e.target.value)}
               onCompanyWebsiteChange={(e) => setCompanyWebsite(e.target.value)}
               onCompanyIndustryChange={(e) => setCompanyIndustry(e.target.value)}
@@ -581,10 +581,10 @@ export default function ClientProfile({
               onTimezoneChange={(e) => setTimezone(e.target.value)}
               onLanguageChange={(e) => setLanguage(e.target.value)}
               onPrimaryContactNameChange={(e) => setPrimaryContactName(e.target.value)}
-              onPrimaryContactPhoneChange={(e) => setPrimaryContactPhone(e.target.value)}
+              onPrimaryContactPhoneChange={setPrimaryContactPhone}
               onPrimaryContactEmailChange={(e) => setPrimaryContactEmail(e.target.value)}
               onSecondaryContactNameChange={(e) => setSecondaryContactName(e.target.value)}
-              onSecondaryContactPhoneChange={(e) => setSecondaryContactPhone(e.target.value)}
+              onSecondaryContactPhoneChange={setSecondaryContactPhone}
               onSecondaryContactEmailChange={(e) => setSecondaryContactEmail(e.target.value)}
               normalizeCountryValue={normalizeCountryValue}
             />

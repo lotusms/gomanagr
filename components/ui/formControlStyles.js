@@ -38,3 +38,12 @@ export const getInputClasses = (variant, hasError) => {
 
 export const getLabelClasses = (variant) =>
   variant === 'light' ? FORM_CONTROL_LIGHT_LABEL : FORM_CONTROL_DARK_LABEL;
+
+// Textarea: same state styling as input but with vertical padding and no fixed height
+export const getTextareaClasses = (variant, hasError) => {
+  const base = `w-full resize-y min-h-[80px] py-2 ${FORM_CONTROL_BASE} ${FORM_CONTROL_FOCUS}`;
+  const state = variant === 'light'
+    ? (hasError ? FORM_CONTROL_LIGHT_ERROR : FORM_CONTROL_LIGHT_DEFAULT)
+    : (hasError ? FORM_CONTROL_DARK_ERROR : FORM_CONTROL_DARK_DEFAULT);
+  return `${base} ${state}`;
+};

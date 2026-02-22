@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -10,11 +10,34 @@ import ThemeSettings from '@/components/settings/ThemeSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import APISettings from '@/components/settings/APISettings';
 import BillingSettings from '@/components/settings/BillingSettings';
+import { useAuth } from '@/lib/AuthContext';
+import { getUserOrganization } from '@/services/organizationService';
+
+const MEMBER_HIDDEN_SECTIONS = ['organization', 'api', 'billing'];
 
 function SettingsContent() {
+  const { currentUser } = useAuth();
   const [activeSection, setActiveSection] = useState('general');
+  const [isTeamMember, setIsTeamMember] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserOrganization(currentUser.uid)
+      .then((org) => setIsTeamMember(org?.membership?.role === 'member'))
+      .catch(() => setIsTeamMember(false));
+  }, [currentUser?.uid]);
+
+  // If team member and current section is hidden, switch to general
+  useEffect(() => {
+    if (isTeamMember && MEMBER_HIDDEN_SECTIONS.includes(activeSection)) {
+      setActiveSection('general');
+    }
+  }, [isTeamMember, activeSection]);
 
   const renderActiveSection = () => {
+    if (isTeamMember && MEMBER_HIDDEN_SECTIONS.includes(activeSection)) {
+      return <GeneralSettings />;
+    }
     switch (activeSection) {
       case 'general':
         return <GeneralSettings />;
@@ -48,7 +71,11 @@ function SettingsContent() {
         />
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          <SettingsMenu activeSection={activeSection} onSectionChange={setActiveSection} />
+          <SettingsMenu
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+            hiddenSections={isTeamMember ? MEMBER_HIDDEN_SECTIONS : []}
+          />
           <div className="flex-1 min-w-0">
             {renderActiveSection()}
           </div>

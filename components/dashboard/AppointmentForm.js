@@ -28,6 +28,7 @@ import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeU
  * @param {Function} props.onCancel - Callback when form is cancelled
  * @param {Function} props.onDelete - Callback when delete is requested (only shown when editing)
  * @param {boolean} props.saving - Whether form is saving
+ * @param {string} [props.staffRestrictedToId] - When set (e.g. team member view), staff is fixed to this id and dropdown is hidden
  */
 export default function AppointmentForm({
   teamMembers = [],
@@ -46,13 +47,14 @@ export default function AppointmentForm({
   onCancel,
   onDelete,
   saving = false,
+  staffRestrictedToId = null,
 }) {
   const startHour = parseHour(businessHoursStart);
   const endHour = parseHour(businessHoursEnd);
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
 
-  // Form state
-  const [staffId, setStaffId] = useState('');
+  // Form state (when staffRestrictedToId is set, staffId is forced to that value)
+  const [staffId, setStaffId] = useState(staffRestrictedToId || '');
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -62,36 +64,55 @@ export default function AppointmentForm({
   const [showClientDrawer, setShowClientDrawer] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Get current date and time in user's timezone
+  // Get current date and time in user's timezone (for date picker, etc.)
   const getCurrentDateTimeInTimezone = useMemo(() => {
     return () => {
       const now = new Date();
       // Format date and time in user's timezone
       const dateStr = now.toLocaleDateString('en-CA', { timeZone: timezone }); // en-CA gives YYYY-MM-DD
-      const timeStr = now.toLocaleTimeString('en-US', { 
+      const timeStr = now.toLocaleTimeString('en-US', {
         timeZone: timezone,
         hour12: false,
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
       return { date: dateStr, time: timeStr };
     };
   }, [timezone]);
 
-  // Get today's date in YYYY-MM-DD format (in user's timezone)
+  // Get current date and time in browser's local timezone (for "past slot" check only).
+  // This ensures slots are disabled based on where the user actually is, not org timezone.
+  const getCurrentDateTimeLocal = useMemo(() => {
+    return () => {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-CA'); // no timeZone = local
+      const timeStr = now.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      return { date: dateStr, time: timeStr };
+    };
+  }, []);
+
+  // Today in user's timezone (for form defaults)
   const todayDateString = useMemo(() => {
     return getCurrentDateTimeInTimezone().date;
   }, [getCurrentDateTimeInTimezone]);
 
-  // Check if a time slot is in the past
+  // Today in local timezone (for past-slot check: "is the selected date today where the user is?")
+  const todayDateStringLocal = useMemo(() => getCurrentDateTimeLocal().date, [getCurrentDateTimeLocal]);
+
+  // Check if a time slot is in the past (use local time so 9:27 local doesn't block slots before 14:30 UTC)
   const isTimeSlotInPast = useMemo(() => {
     return (timeSlot) => {
-      // Only check if date is today
-      if (!date || date !== todayDateString) return false;
+      // Only check if selected date is "today" in the user's actual location
+      if (!date || date !== todayDateStringLocal) return false;
 
-      // Get current time in user's timezone
-      const { time: currentTimeStr } = getCurrentDateTimeInTimezone();
-      const [currentHours, currentMinutes] = currentTimeStr.split(':').map(Number);
+      const { time: currentTimeStr } = getCurrentDateTimeLocal();
+      const parts = currentTimeStr.split(':').map(Number);
+      const currentHours = parts[0] ?? 0;
+      const currentMinutes = parts[1] ?? 0;
 
       // Parse time slot to compare with current time
       // Handle both 12h and 24h formats
@@ -119,10 +140,10 @@ export default function AppointmentForm({
       const slotMinutesSinceMidnight = slotHours * 60 + slotMinutes;
       const currentMinutesSinceMidnight = currentHours * 60 + currentMinutes;
 
-      // Time slot is in the past if it's before current time
+      // Time slot is in the past if it's before current time (in user's local timezone)
       return slotMinutesSinceMidnight < currentMinutesSinceMidnight;
     };
-  }, [date, todayDateString, getCurrentDateTimeInTimezone, timeFormat]);
+  }, [date, todayDateStringLocal, getCurrentDateTimeLocal, timeFormat]);
 
   // Check if a time slot conflicts with existing appointments for the selected staff member
   const isTimeSlotConflicting = useMemo(() => {
@@ -264,6 +285,13 @@ export default function AppointmentForm({
     }
   }, [staffId, services, initialAppointment]);
 
+  // When staff is restricted (team member view), keep staffId in sync
+  useEffect(() => {
+    if (staffRestrictedToId) {
+      setStaffId(staffRestrictedToId);
+    }
+  }, [staffRestrictedToId]);
+
   // Clear startTime if it becomes disabled when staffId or date changes
   // Also clear if date becomes past or startTime becomes past
   useEffect(() => {
@@ -296,7 +324,7 @@ export default function AppointmentForm({
   // Only runs when initialAppointment.id changes (switching appointments) or when options become available
   useEffect(() => {
     if (!initialAppointment) {
-      setStaffId('');
+      setStaffId(staffRestrictedToId || '');
       setStartTime('');
       setEndTime('');
       return;
@@ -310,7 +338,9 @@ export default function AppointmentForm({
     const staffOpt = teamMemberOptions.find(
       (opt) => String(opt.value) === String(initialAppointment.staffId)
     );
-    if (staffOpt) {
+    if (staffRestrictedToId) {
+      setStaffId(staffRestrictedToId);
+    } else if (staffOpt) {
       setStaffId(String(staffOpt.value));
     } else {
       setStaffId('');
@@ -340,29 +370,29 @@ export default function AppointmentForm({
   // Validate form
   const validate = () => {
     const newErrors = {};
-
-    if (!staffId) {
+    const effectiveStaffId = staffRestrictedToId || staffId;
+    if (!effectiveStaffId) {
       newErrors.staffId = 'Please select a team member';
     }
 
     if (!date) {
       newErrors.date = 'Please select a date';
     } else {
-      // Check if date is in the past (using user's timezone)
-      const currentDateTime = getCurrentDateTimeInTimezone();
-      const todayInTimezone = currentDateTime.date;
-      
-      if (date < todayInTimezone) {
+      // Check if date is in the past (use local date so "today" matches where the user is)
+      const todayLocal = getCurrentDateTimeLocal().date;
+      if (date < todayLocal) {
         newErrors.date = 'Cannot schedule appointments in the past';
       }
     }
 
     if (!startTime) {
       newErrors.startTime = 'Please select a start time';
-    } else if (date === todayDateString) {
-      // Check if start time is in the past (only if date is today, using user's timezone)
-      const currentDateTime = getCurrentDateTimeInTimezone();
-      const [currentHours, currentMinutes] = currentDateTime.time.split(':').map(Number);
+    } else if (date === todayDateStringLocal) {
+      // Check if start time is in the past (use local time so 9:30 is valid when it's 9:29)
+      const currentDateTime = getCurrentDateTimeLocal();
+      const parts = currentDateTime.time.split(':').map(Number);
+      const currentHours = parts[0] ?? 0;
+      const currentMinutes = parts[1] ?? 0;
       
       // Parse start time (handle both 12h and 24h formats)
       let startHours, startMinutes;
@@ -383,7 +413,7 @@ export default function AppointmentForm({
       
       const startMinutesSinceMidnight = startHours * 60 + startMinutes;
       const currentMinutesSinceMidnight = currentHours * 60 + currentMinutes;
-      
+      // Only treat as past if start is strictly before current time (9:30 is ok when it's 9:29)
       if (startMinutesSinceMidnight < currentMinutesSinceMidnight) {
         newErrors.startTime = 'Cannot schedule appointments in the past';
       }
@@ -432,7 +462,7 @@ export default function AppointmentForm({
 
     const appointmentData = {
       id: initialAppointment?.id || `apt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      staffId,
+      staffId: staffRestrictedToId || staffId,
       date,
       start: startTime,
       end: endTime,
@@ -446,26 +476,31 @@ export default function AppointmentForm({
     onSubmit(appointmentData);
   };
 
+  const effectiveStaffId = staffRestrictedToId || staffId;
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <div>
-          <Dropdown
-            key={`staffId-${staffId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
-            id="staffId"
-            label="Team Member"
-            value={staffId}
-            onChange={(e) => {
-              setStaffId(e.target.value ?? '');
-              setErrors((prev) => ({ ...prev, staffId: '' }));
-            }}
-            options={teamMemberOptions}
-            placeholder="Select team member..."
-            required
-            error={errors.staffId}
-          />
-          {errors.staffId && <p className="mt-1 text-sm text-red-600">{errors.staffId}</p>}
-        </div>
+        {!staffRestrictedToId ? (
+          <div>
+            <Dropdown
+              key={`staffId-${staffId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
+              id="staffId"
+              label="Team Member"
+              value={staffId}
+              onChange={(e) => {
+                setStaffId(e.target.value ?? '');
+                setErrors((prev) => ({ ...prev, staffId: '' }));
+              }}
+              options={teamMemberOptions}
+              placeholder="Select team member..."
+              required
+              error={errors.staffId}
+            />
+            {errors.staffId && <p className="mt-1 text-sm text-red-600">{errors.staffId}</p>}
+          </div>
+        ) : (
+          <div />
+        )}
 
         <div>
           <DateField

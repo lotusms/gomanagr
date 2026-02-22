@@ -1,8 +1,8 @@
 import InputField from '@/components/ui/InputField';
+import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import * as Label from '@radix-ui/react-label';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
-import { formatPhone } from '@/utils/formatPhone';
 
 export default function BasicInfoSection({
   firstName,
@@ -101,10 +101,9 @@ export default function BasicInfoSection({
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          <InputField
+          <PhoneNumberInput
             id="phone"
             label="Phone"
-            type="tel"
             value={phone}
             onChange={onPhoneChange}
             placeholder="(717) 123-4567"

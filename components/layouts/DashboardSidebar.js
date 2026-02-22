@@ -10,7 +10,6 @@ import {
   HiInbox,
   HiDocumentSearch,
   HiBriefcase,
-  HiDocumentText,
   HiSpeakerphone,
   HiChartBar,
   HiCurrencyDollar,
@@ -36,11 +35,11 @@ function getNavigationItems(accountIndustry) {
     { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
     { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
     { name: 'Jobs', href: '/dashboard/jobs', icon: HiBriefcase },
-    { name: 'Invoices', href: '/dashboard/invoices', icon: HiDocumentText },
+    { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { divider: true },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
     { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
-    { name: 'Expenses', href: '/dashboard/expenses', icon: HiCurrencyDollar },
+    // { name: 'Expenses', href: '/dashboard/expenses', icon: HiCurrencyDollar },
     { name: 'Timesheets', href: '/dashboard/timesheets', icon: HiClock },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid },
   ];
@@ -49,7 +48,9 @@ function getNavigationItems(accountIndustry) {
 const MD_BREAKPOINT = 768;
 
 const MEMBER_NAV_ITEMS = [
-  { name: 'Team Member', href: '/dashboard/team-member', icon: HiHome },
+  { name: 'Dashboard', href: '/dashboard/team-member', icon: HiHome },
+  { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
+  { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
 ];
 
 /**

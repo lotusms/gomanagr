@@ -258,10 +258,14 @@ export async function createUserAccount(userId, userData, logoFile = null, invit
     // Call API route that uses service role key to bypass RLS
     // Use v2 API for multi-tenant organization support
     // Logo will be uploaded server-side to organization-specific path
+    // Send session token so API can verify the caller can only update their own account
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
     const response = await fetch('/api/create-user-account-v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify({
         userId,
@@ -435,6 +439,22 @@ export async function updateDismissedTodos(userId, dismissedTodoIds) {
     })
     .eq('id', userId);
   if (error) throw new Error('Failed to save dismissed todos: ' + error.message);
+}
+
+/**
+ * Dismiss a todo by id: updates server and returns the new dismissed ids list for local state.
+ * Use in dashboard and team-member pages to avoid duplicated logic.
+ * @param {string} userId - Current user id
+ * @param {string} todoId - Todo item id to dismiss
+ * @param {Array<string>} currentDismissedIds - Current dismissed_todo_ids (or null/undefined)
+ * @returns {Promise<string[]|null>} Resolves with the new dismissed ids array, or null if nothing to do
+ */
+export async function dismissTodo(userId, todoId, currentDismissedIds) {
+  if (!userId || !todoId) return null;
+  const list = Array.isArray(currentDismissedIds) ? currentDismissedIds : [];
+  const next = list.includes(todoId) ? list : [...list, todoId];
+  await updateDismissedTodos(userId, next);
+  return next;
 }
 
 export async function updateTeamMembers(userId, teamMembers) {

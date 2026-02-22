@@ -13,6 +13,7 @@ import {
 import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus } from 'react-icons/hi';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
+import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
 
@@ -118,6 +119,15 @@ export default function AddTeamMemberForm({
       label: state.name
     }));
   }, [country]);
+
+  // Email uniqueness: must not be used by another team member (when saving/inviting)
+  const emailDuplicateError = useMemo(() => {
+    const norm = (email || '').trim().toLowerCase();
+    if (!norm) return '';
+    const others = (teamMembers || []).filter((m) => m.id !== initialMember?.id);
+    const taken = others.some((m) => (m.email || '').trim().toLowerCase() === norm);
+    return taken ? 'This email has already been assigned to someone else' : '';
+  }, [email, teamMembers, initialMember?.id]);
 
   // Reset state when country changes if current state is not valid for new country
   useEffect(() => {
@@ -271,6 +281,7 @@ export default function AddTeamMemberForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (emailDuplicateError) return;
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
     if (!trimmedFirst && !trimmedLast) return;
@@ -596,15 +607,11 @@ export default function AddTeamMemberForm({
         {/* Right column */}
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField
+            <PhoneNumberInput
               id="phone"
               label="Phone"
-              type="tel"
               value={phone}
-              onChange={(e) => {
-                const formatted = formatPhone(e.target.value);
-                setPhone(formatted);
-              }}
+              onChange={setPhone}
               placeholder="(717) 123-4567"
               disabled={saving}
               variant="light"
@@ -618,6 +625,7 @@ export default function AddTeamMemberForm({
               placeholder="email@example.com"
               disabled={saving}
               variant="light"
+              error={emailDuplicateError}
             />
           </div>
           {!isEdit && (

@@ -1,8 +1,9 @@
 import Head from 'next/head';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, getUserAccountFromServer, saveAppointment, deleteAppointment, updateClients } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
+import { supabase } from '@/lib/supabase';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import Schedule from '@/components/dashboard/Schedule';
@@ -14,8 +15,11 @@ import Drawer from '@/components/ui/Drawer';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import { generateClientId } from '@/utils/clientIdGenerator';
 
+const REALTIME_SCHEDULE_EVENT = 'schedule-updated';
+
 function ScheduleContent() {
   const { currentUser } = useAuth();
+  const channelRef = useRef(null);
   const [userAccount, setUserAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
   const [orgSchedule, setOrgSchedule] = useState(null);
@@ -91,12 +95,35 @@ function ScheduleContent() {
     fetchOrgSchedule();
   }, [currentUser?.uid, isTeamMember, fetchOrgSchedule]);
 
-  // Poll for schedule changes when team member is on this page (so admin edits appear without manual refresh)
+  // Poll for schedule changes when team member is on this page (fallback if broadcast is missed)
   useEffect(() => {
     if (!currentUser?.uid || !isTeamMember) return;
-    const interval = setInterval(fetchOrgSchedule, 30 * 1000);
+    const interval = setInterval(fetchOrgSchedule, 60 * 1000);
     return () => clearInterval(interval);
   }, [currentUser?.uid, isTeamMember, fetchOrgSchedule]);
+
+  // Supabase Realtime: subscribe to org channel so we get instant updates when admin (or another tab) saves/deletes
+  useEffect(() => {
+    const orgId = organization?.id;
+    if (!orgId || !currentUser?.uid) return;
+
+    const channel = supabase.channel(`org:${orgId}`);
+    channel
+      .on('broadcast', { event: REALTIME_SCHEDULE_EVENT }, () => {
+        if (isTeamMember) {
+          fetchOrgSchedule();
+        } else {
+          getUserAccountFromServer(currentUser.uid).then((data) => setUserAccount(data || null));
+        }
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+    return () => {
+      channel.unsubscribe();
+      channelRef.current = null;
+    };
+  }, [organization?.id, currentUser?.uid, isTeamMember, fetchOrgSchedule]);
 
   const handleAddClick = () => {
     setEditingAppointment(null);
@@ -120,6 +147,12 @@ function ScheduleContent() {
     setEditingAppointment(appointmentData);
     setShowDrawer(true);
   };
+
+  const broadcastScheduleUpdated = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: REALTIME_SCHEDULE_EVENT, payload: {} });
+    }
+  }, []);
 
   const handleSaveAppointment = async (appointmentData) => {
     if (!currentUser?.uid) return;
@@ -147,6 +180,7 @@ function ScheduleContent() {
         const updatedAccount = await getUserAccountFromServer(currentUser.uid);
         setUserAccount(updatedAccount);
       }
+      broadcastScheduleUpdated();
       setShowDrawer(false);
       setEditingAppointment(null);
     } catch (error) {
@@ -188,6 +222,7 @@ function ScheduleContent() {
         const updatedAccount = await getUserAccountFromServer(currentUser.uid);
         setUserAccount(updatedAccount);
       }
+      broadcastScheduleUpdated();
       setDeleteDialogOpen(false);
       setAppointmentToDelete(null);
     } catch (error) {

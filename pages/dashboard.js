@@ -4,7 +4,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { createDismissTodoHandler } from '@/utils/dismissTodoHandler';
 import { getUserOrganization, getOrganizationMembers } from '@/services/organizationService';
-import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import { formatDate } from '@/utils/dateTimeFormatters';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';

@@ -6,6 +6,7 @@ import { getUserOrganization } from '@/services/organizationService';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/layouts/UserMenu';
 import DashboardSidebar from '@/components/layouts/DashboardSidebar';
+import { PATH_TO_SECTION } from '@/config/teamMemberAccess';
 
 const SIDEBAR_STORAGE_KEY = 'gomanagr-sidebar-open';
 const MD_BREAKPOINT = 768;
@@ -52,6 +53,7 @@ export default function DashboardLayout({ children }) {
   const [userAccount, setUserAccount] = useState(null);
   const [previewAccount, setPreviewAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
+  const [memberAccess, setMemberAccess] = useState(null);
 
   // Persist sidebar state so it survives layout remounts on navigation (md+ stays open/closed as-is)
   useEffect(() => {
@@ -82,15 +84,33 @@ export default function DashboardLayout({ children }) {
 
   const memberRole = organization?.membership?.role;
 
-  // Members can only access team-member routes and Settings
+  // Load team member access config when user is a member (controls which sections they can see)
+  useEffect(() => {
+    if (!currentUser?.uid || memberRole !== 'member') return;
+    fetch('/api/get-org-member-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.uid }),
+    })
+      .then((r) => r.json())
+      .then((data) => setMemberAccess(data?.teamMemberSections || null))
+      .catch(() => setMemberAccess(null));
+  }, [currentUser?.uid, memberRole]);
+
+  // Members can only access allowed paths (team-member/*, settings, and sections enabled by admin)
   useEffect(() => {
     if (memberRole !== 'member') return;
     const path = router.pathname;
-    const allowed = path.startsWith('/dashboard/team-member') || path === '/dashboard/settings' || path === '/dashboard/schedule';
+    const baseAllowed =
+      path.startsWith('/dashboard/team-member') || path === '/dashboard/settings';
+    if (baseAllowed) return;
+    if (memberAccess === null) return; // still loading
+    const section = PATH_TO_SECTION[path];
+    const allowed = section ? !!memberAccess?.[section] : false;
     if (!allowed) {
       router.replace('/dashboard/team-member');
     }
-  }, [memberRole, router.pathname]);
+  }, [memberRole, router.pathname, memberAccess]);
 
   useEffect(() => {
     const handle = (e) => {
@@ -161,7 +181,7 @@ export default function DashboardLayout({ children }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} />
+        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} memberAccess={memberAccess} />
 
         {/* Main Content */}
         <main

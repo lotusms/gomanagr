@@ -3,7 +3,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateTeamMembers, updateServices, uploadTeamPhoto } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
-import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';

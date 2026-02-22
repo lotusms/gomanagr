@@ -47,11 +47,17 @@ function getNavigationItems(accountIndustry) {
 
 const MD_BREAKPOINT = 768;
 
-const MEMBER_NAV_ITEMS = [
-  { name: 'Dashboard', href: '/dashboard/team-member', icon: HiHome },
-  { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
-  { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
-];
+function getMemberNavItems(memberAccess, accountIndustry) {
+  const projectTerm = getProjectTermForIndustry(accountIndustry);
+  const items = [
+    { name: 'Dashboard', href: '/dashboard/team-member', icon: HiHome },
+    { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
+  ];
+  if (memberAccess?.schedule) items.push({ name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar });
+  if (memberAccess?.clients) items.push({ name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup });
+  if (memberAccess?.projects) items.push({ name: projectTerm, href: '/dashboard/projects', icon: HiFolder });
+  return items;
+}
 
 /**
  * Dashboard sidebar: collapsible nav (icons only when collapsed).
@@ -59,15 +65,16 @@ const MEMBER_NAV_ITEMS = [
  * @param {boolean} props.open - Whether the sidebar is expanded (shows labels).
  * @param {(open: boolean) => void} props.onToggle - Called when toggle button is used, or when a nav link is clicked on mobile (sm and below) to collapse.
  * @param {Object} props.userAccount - User account object containing industry field
- * @param {string} [props.memberRole] - Org role; when 'member', only team-member link is shown
+ * @param {string} [props.memberRole] - Org role; when 'member', only allowed sections are shown
+ * @param {Object} [props.memberAccess] - For members: { schedule, clients, projects } from admin config
  */
-export default function DashboardSidebar({ open, onToggle, userAccount, memberRole }) {
+export default function DashboardSidebar({ open, onToggle, userAccount, memberRole, memberAccess }) {
   const router = useRouter();
 
   const navigationItems = useMemo(() => {
-    if (memberRole === 'member') return MEMBER_NAV_ITEMS;
+    if (memberRole === 'member') return getMemberNavItems(memberAccess, userAccount?.industry);
     return getNavigationItems(userAccount?.industry);
-  }, [memberRole, userAccount?.industry]);
+  }, [memberRole, memberAccess, userAccount?.industry]);
 
   const handleNavClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < MD_BREAKPOINT) {

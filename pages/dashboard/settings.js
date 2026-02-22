@@ -10,10 +10,11 @@ import ThemeSettings from '@/components/settings/ThemeSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import APISettings from '@/components/settings/APISettings';
 import BillingSettings from '@/components/settings/BillingSettings';
+import TeamAccessSettings from '@/components/settings/TeamAccessSettings';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserOrganization } from '@/services/organizationService';
 
-const MEMBER_HIDDEN_SECTIONS = ['organization', 'api', 'billing'];
+const MEMBER_HIDDEN_SECTIONS = ['organization', 'team-access', 'api', 'billing'];
 
 function SettingsContent() {
   const { currentUser } = useAuth();
@@ -43,6 +44,8 @@ function SettingsContent() {
         return <GeneralSettings />;
       case 'organization':
         return <OrganizationSettings />;
+      case 'team-access':
+        return <TeamAccessSettings />;
       case 'theme':
         return <ThemeSettings />;
       case 'security':

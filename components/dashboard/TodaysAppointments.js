@@ -4,9 +4,8 @@ import Tooltip from '@/components/ui/Tooltip';
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
 import { HiCalendar } from 'react-icons/hi';
-import { DEFAULT_TEAM_MEMBERS } from '@/config/defaultTeamAndClients';
 
-// Staff rows come from dashboard (userAccount.teamMembers); fallback to default team
+// Staff rows come from dashboard (userAccount.teamMembers); use empty array until real team is added
 // Appointments use "HH:00" or "HH:30" for half-hour slot math
 
 /**

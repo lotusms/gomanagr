@@ -38,12 +38,14 @@ function normalizeCountryValue(value) {
  * @param {Object} props.userAccount - User account data
  * @param {Function} props.onSave - Callback when form is saved
  * @param {Function} props.onCancel - Callback when form is cancelled
+ * @param {Function} [props.onSaveClient] - When in org: (clientData, isNew) => Promise. If provided, used instead of updateClients.
  */
 export default function ClientProfile({
   initialClient = null,
   userAccount = null,
   onSave,
   onCancel,
+  onSaveClient,
 }) {
   const { currentUser } = useAuth();
   const { success, error: showError } = useToast();
@@ -399,6 +401,13 @@ export default function ClientProfile({
         sharedAssets: sharedAssets.length > 0 ? sharedAssets : undefined,
       };
       
+      if (onSaveClient) {
+        await onSaveClient(clientData, !initialClient);
+        success(initialClient ? 'Client updated successfully' : 'Client created successfully');
+        if (onSave) onSave(clientData.id);
+        return;
+      }
+
       // Get existing clients
       const account = await getUserAccount(currentUser.uid);
       const existingClients = account?.clients || [];
@@ -772,8 +781,12 @@ export default function ClientProfile({
                 const existingIds = (userAccount?.clients || []).map((c) => c.id).filter(Boolean);
                 const newClientId = generateClientId(existingIds);
                 const newClient = { id: newClientId, ...clientData };
-                const updatedClients = [...(userAccount?.clients || []), newClient];
-                await updateClients(currentUser.uid, updatedClients);
+                if (onSaveClient) {
+                  await onSaveClient(newClient, true);
+                } else {
+                  const updatedClients = [...(userAccount?.clients || []), newClient];
+                  await updateClients(currentUser.uid, updatedClients);
+                }
                 success('Client added to appointment');
                 return newClientId;
               } catch (error) {

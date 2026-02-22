@@ -5,8 +5,6 @@ import { getUserAccount } from '@/services/userService';
 import { createDismissTodoHandler } from '@/utils/dismissTodoHandler';
 import { getUserOrganization } from '@/services/organizationService';
 import { useState, useEffect } from 'react';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 import Link from 'next/link';
@@ -108,8 +106,7 @@ export default function TeamMemberPage() {
       : [];
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
+    <>
         <Head>
           <title>{welcomeName} - GoManagr</title>
         </Head>
@@ -162,7 +159,6 @@ export default function TeamMemberPage() {
           )}
 
         </div>
-      </DashboardLayout>
-    </ProtectedRoute>
+    </>
   );
 }

@@ -1,8 +1,28 @@
 import '../styles/globals.scss';
+import { useRouter } from 'next/router';
 import { AuthProvider } from '@/lib/AuthContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { ToastProvider } from '@/components/ui/Toast';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
 import Script from 'next/script';
+
+function AppContent({ Component, pageProps }) {
+  const router = useRouter();
+  const isDashboard = router.pathname.startsWith('/dashboard');
+
+  if (isDashboard) {
+    return (
+      <ProtectedRoute>
+        <DashboardLayout>
+          <Component {...pageProps} />
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
+
+  return <Component {...pageProps} />;
+}
 
 export default function App({ Component, pageProps }) {
   return (
@@ -18,7 +38,7 @@ export default function App({ Component, pageProps }) {
               }}
             />
           )}
-          <Component {...pageProps} />
+          <AppContent Component={Component} pageProps={pageProps} />
         </ToastProvider>
       </ThemeProvider>
     </AuthProvider>

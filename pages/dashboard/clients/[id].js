@@ -3,9 +3,8 @@ import { useRouter } from 'next/router';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import ClientProfile from '@/components/clients/ClientProfile';
 import { PageHeader } from '@/components/ui';
 import { HiArrowLeft } from 'react-icons/hi';
@@ -20,25 +19,43 @@ export default function ClientProfilePage() {
   const [clientData, setClientData] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [organization, setOrganization] = useState(null);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
+  }, [currentUser?.uid]);
 
   const fetchClientData = useCallback(async () => {
     if (!currentUser?.uid || !id) return;
-    
+
     setLoaded(false);
     try {
-      const data = await getUserAccount(currentUser.uid);
-      setUserAccount(data || null);
-      const clients = (data?.clients && data.clients.length > 0)
-        ? data.clients
-        : DEFAULT_CLIENTS;
+      const account = await getUserAccount(currentUser.uid);
+      const isInOrg = organization != null;
+      const memberRole = organization?.membership?.role;
+
+      let clients;
+      if (isInOrg) {
+        const res = await fetch('/api/get-org-clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.uid }),
+        });
+        const data = await res.json().catch(() => ({}));
+        clients = data?.clients ?? [];
+        setUserAccount(account ? { ...account, clients } : { clients });
+      } else {
+        clients = (account?.clients && account.clients.length > 0) ? account.clients : DEFAULT_CLIENTS;
+        setUserAccount(account || null);
+      }
+
       const foundClient = clients.find((c) => c.id === id);
       if (foundClient) {
         setClientData(foundClient);
       } else if (id === 'new') {
-        // New client
         setClientData(null);
       } else {
-        // Client not found, redirect back
         router.push('/dashboard/clients');
       }
     } catch (error) {
@@ -47,7 +64,7 @@ export default function ClientProfilePage() {
     } finally {
       setLoaded(true);
     }
-  }, [currentUser?.uid, id, router]);
+  }, [currentUser?.uid, id, organization, router]);
 
   useEffect(() => {
     fetchClientData();
@@ -63,16 +80,12 @@ export default function ClientProfilePage() {
 
   if (!loaded) {
     return (
-      <ProtectedRoute>
-        <DashboardLayout>
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading client...</p>
-            </div>
-          </div>
-        </DashboardLayout>
-      </ProtectedRoute>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading client...</p>
+        </div>
+      </div>
     );
   }
 
@@ -81,10 +94,8 @@ export default function ClientProfilePage() {
   }
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <>
-          <Head>
+    <>
+      <Head>
             <title>{client ? `${client.name || 'Client'} - GoManagr` : 'New Client - GoManagr'}</title>
             <meta name="description" content={client ? `View and edit ${client.name}` : 'Add a new client'} />
           </Head>
@@ -108,14 +119,28 @@ export default function ClientProfilePage() {
               key={id === 'new' ? 'new-client' : `${client?.id || 'client'}-${refreshKey}`}
               initialClient={id === 'new' ? null : client}
               userAccount={userAccount}
+              onSaveClient={
+                organization && organization.membership?.role === 'member'
+                  ? async (clientData, isNew) => {
+                      const res = await fetch('/api/update-org-clients', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          userId: currentUser.uid,
+                          client: clientData,
+                          action: isNew ? 'add' : 'update',
+                        }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data.error || 'Failed to save client');
+                    }
+                  : undefined
+              }
               onSave={(savedClientId) => {
-                // After save, refresh data and navigate if needed
                 if (id === 'new' && savedClientId) {
-                  // New client was created, navigate to its page
                   router.push(`/dashboard/clients/${savedClientId}`);
                 } else {
-                  // Existing client was updated, refresh the data
-                  setRefreshKey(prev => prev + 1);
+                  setRefreshKey((prev) => prev + 1);
                   fetchClientData();
                 }
               }}
@@ -124,8 +149,6 @@ export default function ClientProfilePage() {
               }}
             />
           </div>
-        </>
-      </DashboardLayout>
-    </ProtectedRoute>
+    </>
   );
 }

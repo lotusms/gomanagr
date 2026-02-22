@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getTrialStatus } from '@/lib/trialUtils';
@@ -184,10 +182,6 @@ function SubscriptionsContent() {
 
 export default function SubscriptionsPage() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <SubscriptionsContent />
-      </DashboardLayout>
-    </ProtectedRoute>
+    <SubscriptionsContent />
   );
 }

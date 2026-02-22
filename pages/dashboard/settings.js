@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader } from '@/components/ui';
 import SettingsMenu from '@/components/settings/SettingsMenu';
 import GeneralSettings from '@/components/settings/GeneralSettings';
@@ -89,11 +87,5 @@ function SettingsContent() {
 }
 
 export default function SettingsPage() {
-  return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <SettingsContent />
-      </DashboardLayout>
-    </ProtectedRoute>
-  );
+  return <SettingsContent />;
 }

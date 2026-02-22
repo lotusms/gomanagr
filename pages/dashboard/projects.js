@@ -3,8 +3,6 @@ import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader, EmptyState } from '@/components/ui';
 import ProjectCard from '@/components/dashboard/ProjectCard';
 import { PrimaryButton } from '@/components/ui/buttons';
@@ -139,10 +137,6 @@ function ProjectsContent() {
 
 export default function ProjectsPage() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <ProjectsContent />
-      </DashboardLayout>
-    </ProtectedRoute>
+    <ProjectsContent />
   );
 }

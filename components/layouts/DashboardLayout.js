@@ -105,8 +105,14 @@ export default function DashboardLayout({ children }) {
       path.startsWith('/dashboard/team-member') || path === '/dashboard/settings';
     if (baseAllowed) return;
     if (memberAccess === null) return; // still loading
-    const section = PATH_TO_SECTION[path];
-    const allowed = section ? !!memberAccess?.[section] : false;
+    // Allow exact section path or any path under it (e.g. /dashboard/clients/new, /dashboard/clients/[id])
+    let allowed = false;
+    for (const [sectionPath, sectionKey] of Object.entries(PATH_TO_SECTION)) {
+      if (path === sectionPath || path.startsWith(sectionPath + '/')) {
+        allowed = !!memberAccess?.[sectionKey];
+        break;
+      }
+    }
     if (!allowed) {
       router.replace('/dashboard/team-member');
     }

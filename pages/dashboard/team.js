@@ -3,8 +3,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateTeamMembers, updateServices, uploadTeamPhoto } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PersonCard from '@/components/dashboard/PersonCard';
 import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
 import { PageHeader, TeamFilter, ConfirmationDialog, EmptyState } from '@/components/ui';
@@ -694,10 +692,6 @@ function TeamContent() {
 
 export default function TeamPage() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <TeamContent />
-      </DashboardLayout>
-    </ProtectedRoute>
+    <TeamContent />
   );
 }

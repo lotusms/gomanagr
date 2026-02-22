@@ -2,8 +2,6 @@ import Head from 'next/head';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateServices, updateTeamMembers } from '@/services/userService';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader, Drawer, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
 import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus, HiX, HiPencil, HiTrash, HiClipboardList, HiUserGroup } from 'react-icons/hi';
@@ -373,10 +371,6 @@ function ServicesContent() {
 
 export default function ServicesPage() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <ServicesContent />
-      </DashboardLayout>
-    </ProtectedRoute>
+    <ServicesContent />
   );
 }

@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateClients } from '@/services/userService';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { getUserOrganization } from '@/services/organizationService';
 import PersonCard from '@/components/dashboard/PersonCard';
 import { PageHeader, EmptyState, ConfirmationDialog } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
@@ -17,37 +16,61 @@ function ClientsContent() {
   const { currentUser } = useAuth();
   const router = useRouter();
   const [userAccount, setUserAccount] = useState(null);
+  const [organization, setOrganization] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [clients, setClients] = useState([]);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+  const [useOrgClients, setUseOrgClients] = useState(false);
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
+    getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     setLoaded(false);
-    getUserAccount(currentUser.uid)
-      .then((data) => {
-        setUserAccount(data || null);
-        // Handle case where data is null (offline or no account yet)
-        if (!data || !data.clients || data.clients.length === 0) {
-          setClients([]);
-          return;
-        }
-        // Filter to show only active clients (status !== 'inactive')
-        // Default to 'active' if status is not set
-        const activeClients = data.clients.filter((c) => (c.status || 'active') !== 'inactive');
-        setClients(activeClients);
+    const isInOrg = organization != null;
+    const memberRole = organization?.membership?.role;
+    const admin = memberRole === 'admin';
+
+    if (isInOrg) {
+      setUseOrgClients(true);
+      setIsOrgAdmin(admin);
+      fetch('/api/get-org-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
       })
-      .catch((error) => {
-        console.warn('Failed to load clients (may be offline):', error);
-        // If offline or error, set empty array - data will load when connection is restored
-        setClients([]);
-        setUserAccount(null);
-      })
-      .finally(() => setLoaded(true));
-  }, [currentUser?.uid]);
+        .then((r) => r.json())
+        .then((data) => {
+          const list = data?.clients ?? [];
+          const activeClients = list.filter((c) => (c.status || 'active') !== 'inactive');
+          setClients(activeClients);
+        })
+        .catch(() => setClients([]))
+        .finally(() => setLoaded(true));
+    } else {
+      setUseOrgClients(false);
+      setIsOrgAdmin(false);
+      getUserAccount(currentUser.uid)
+        .then((data) => {
+          if (!data?.clients?.length) {
+            setClients([]);
+            return;
+          }
+          const activeClients = data.clients.filter((c) => (c.status || 'active') !== 'inactive');
+          setClients(activeClients);
+        })
+        .catch(() => setClients([]))
+        .finally(() => setLoaded(true));
+    }
+  }, [currentUser?.uid, organization]);
 
   const saveClients = (nextClients) => {
     if (!currentUser?.uid) return;
@@ -55,7 +78,6 @@ function ClientsContent() {
     updateClients(currentUser.uid, nextClients)
       .then(() => {
         setUserAccount((prev) => (prev ? { ...prev, clients: nextClients } : null));
-        // Filter to show only active clients in the display
         const activeClients = nextClients.filter((c) => (c.status || 'active') !== 'inactive');
         setClients(activeClients);
       })
@@ -70,31 +92,46 @@ function ClientsContent() {
 
   const handleDeleteConfirm = async () => {
     if (!clientToDelete || !currentUser?.uid) return;
-    
+
     setSaving(true);
     try {
-      // Get all clients (including inactive ones)
-      const account = await getUserAccount(currentUser.uid);
-      const allClients = account?.clients || [];
-      
-      // Update the client's status to 'inactive' instead of removing
-      const updatedClients = allClients.map((c) =>
-        c.id === clientToDelete.id ? { ...c, status: 'inactive' } : c
-      );
-      
-      // Save updated clients
-      await updateClients(currentUser.uid, updatedClients);
-      
-      // Update local state - filter out inactive clients
-      const activeClients = updatedClients.filter((c) => (c.status || 'active') !== 'inactive');
-      setClients(activeClients);
-      setUserAccount((prev) => (prev ? { ...prev, clients: updatedClients } : null));
-      
+      if (useOrgClients) {
+        const res = await fetch('/api/update-org-clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.uid,
+            client: { ...clientToDelete, status: 'inactive' },
+            action: 'deactivate',
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to deactivate');
+        // Refetch so member sees only their assigned list again
+        const refetch = await fetch('/api/get-org-clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.uid }),
+        });
+        const refetchData = await refetch.json().catch(() => ({}));
+        const list = refetchData?.clients ?? [];
+        setClients(list.filter((c) => (c.status || 'active') !== 'inactive'));
+      } else {
+        const account = await getUserAccount(currentUser.uid);
+        const allClients = account?.clients || [];
+        const updatedClients = allClients.map((c) =>
+          c.id === clientToDelete.id ? { ...c, status: 'inactive' } : c
+        );
+        await updateClients(currentUser.uid, updatedClients);
+        const activeClients = updatedClients.filter((c) => (c.status || 'active') !== 'inactive');
+        setClients(activeClients);
+        setUserAccount((prev) => (prev ? { ...prev, clients: updatedClients } : null));
+      }
       setDeleteDialogOpen(false);
       setClientToDelete(null);
     } catch (err) {
       console.error('Failed to deactivate client:', err);
-      alert('Failed to deactivate client. Please try again.');
+      alert(err.message || 'Failed to deactivate client. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -220,11 +257,5 @@ function ClientsContent() {
 }
 
 export default function ClientsPage() {
-  return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <ClientsContent />
-      </DashboardLayout>
-    </ProtectedRoute>
-  );
+  return <ClientsContent />;
 }

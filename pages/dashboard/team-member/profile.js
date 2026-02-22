@@ -16,8 +16,6 @@ import { formatPhone, unformatPhone } from '@/utils/formatPhone';
 import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
 import { uploadTeamPhoto } from '@/services/userService';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { HiArrowLeft, HiUser, HiPhone, HiLocationMarker, HiBriefcase } from 'react-icons/hi';
 
 function normalizeCountryValue(value) {
@@ -188,21 +186,18 @@ export default function TeamMemberProfilePage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Head><title>{firstName}{ !lastName ? '' : ' ' + lastName}'s Profile - GoManagr</title></Head>
-          <div className="flex items-center justify-center min-h-[40vh]">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-500 border-t-transparent" />
-          </div>
-        </DashboardLayout>
-      </ProtectedRoute>
+      <>
+        <Head><title>{firstName}{ !lastName ? '' : ' ' + lastName}'s Profile - GoManagr</title></Head>
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-500 border-t-transparent" />
+        </div>
+      </>
     );
   }
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <Head><title>{firstName}{ !lastName ? '' : ' ' + lastName}'s Profile - GoManagr</title></Head>
+    <>
+      <Head><title>{firstName}{ !lastName ? '' : ' ' + lastName}'s Profile - GoManagr</title></Head>
         <div className="space-y-6">
           <Link
             href="/dashboard/team-member"
@@ -473,7 +468,6 @@ export default function TeamMemberProfilePage() {
             </div>
           </form>
         </div>
-      </DashboardLayout>
-    </ProtectedRoute>
+    </>
   );
 }

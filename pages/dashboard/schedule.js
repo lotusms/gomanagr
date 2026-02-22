@@ -4,8 +4,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, getUserAccountFromServer, saveAppointment, deleteAppointment, updateClients } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { supabase } from '@/lib/supabase';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import Schedule from '@/components/dashboard/Schedule';
 import AppointmentForm from '@/components/dashboard/AppointmentForm';
 import { PageHeader, ConfirmationDialog } from '@/components/ui';
@@ -360,10 +358,6 @@ function ScheduleContent() {
 
 export default function SchedulePage() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <ScheduleContent />
-      </DashboardLayout>
-    </ProtectedRoute>
+    <ScheduleContent />
   );
 }

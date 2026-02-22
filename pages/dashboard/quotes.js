@@ -1,6 +1,4 @@
 import Head from 'next/head';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { PageHeader, EmptyState } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { HiPlus } from 'react-icons/hi';
@@ -40,11 +38,5 @@ function QuotesContent() {
 }
 
 export default function QuotesPage() {
-  return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <QuotesContent />
-      </DashboardLayout>
-    </ProtectedRoute>
-  );
+  return <QuotesContent />;
 }

@@ -1,6 +1,4 @@
 import Head from 'next/head';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import Paywall from '@/components/subscriptions/Paywall';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';

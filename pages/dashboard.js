@@ -5,8 +5,6 @@ import { getUserAccount } from '@/services/userService';
 import { createDismissTodoHandler } from '@/utils/dismissTodoHandler';
 import { getUserOrganization, getOrganizationMembers } from '@/services/organizationService';
 import { formatDate } from '@/utils/dateTimeFormatters';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import {
   HiClipboardList,
   HiOfficeBuilding,
@@ -245,10 +243,6 @@ function DashboardContent() {
 
 export default function Dashboard() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <DashboardContent />
-      </DashboardLayout>
-    </ProtectedRoute>
+    <DashboardContent />
   );
 }

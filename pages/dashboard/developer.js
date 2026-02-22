@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
@@ -197,10 +195,6 @@ function DeveloperContent() {
 
 export default function DeveloperPage() {
   return (
-    <ProtectedRoute>
-      <DashboardLayout>
-        <DeveloperContent />
-      </DashboardLayout>
-    </ProtectedRoute>
+    <DeveloperContent />
   );
 }

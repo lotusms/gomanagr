@@ -96,14 +96,35 @@ export default function DashboardLayout({ children }) {
       .finally(() => setOrgLoaded(true));
   }, [currentUser?.uid]);
 
-  // Force logout only when org fetch succeeded and user has no org (e.g. revoked team member). Never on fetch failure (admin must not be logged out).
+  // Force logout when org fetch succeeded and user has no org (e.g. revoked). Full-page redirect so session/state is fully cleared.
   useEffect(() => {
     if (!orgLoaded || orgFetchFailed || !currentUser?.uid || organization !== null) return;
     (async () => {
       await logout();
-      router.replace('/login?revoked=1');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login?revoked=1';
+      } else {
+        router.replace('/login?revoked=1');
+      }
     })();
   }, [orgLoaded, orgFetchFailed, currentUser?.uid, organization, logout, router]);
+
+  // Periodic re-check: if user was revoked while app was open, detect and kick out (every 60s on dashboard).
+  useEffect(() => {
+    if (!currentUser?.uid || organization === null) return;
+    const interval = setInterval(async () => {
+      try {
+        const org = await getUserOrganization(currentUser.uid);
+        if (org == null) {
+          await logout();
+          if (typeof window !== 'undefined') window.location.href = '/login?revoked=1';
+        }
+      } catch (_) {
+        // Ignore errors (e.g. network) so we don't log out on transient failures
+      }
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentUser?.uid, organization, logout]);
 
   const memberRole = organization?.membership?.role;
   const isOwner = useMemo(

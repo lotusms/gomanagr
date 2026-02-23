@@ -305,6 +305,7 @@ export default async function handler(req, res) {
 
     let organizationId;
     let membershipRole = 'admin';
+    let userAlreadyInOrg = false;
 
     // Step 2: Handle organization creation/assignment
     if (inviteToken) {
@@ -344,36 +345,48 @@ export default async function handler(req, res) {
         })
         .eq('token', inviteToken);
     } else {
-      // Case A: Normal signup - create new organization
-      // Create organization first (without logo, we'll add it after upload)
-      const orgData = {
-        name: userData.companyName || 'My Organization',
-        logo_url: '', // Will be set after logo upload
-        industry: userData.industry || '',
-        company_size: userData.companySize || '',
-        company_locations: userData.companyLocations || '',
-        team_size: userData.teamSize || '',
-        sections_to_track: userData.sectionsToTrack || [],
-        trial: userData.trial !== undefined ? userData.trial : true,
-        trial_ends_at: userData.trialEndsAt || null,
-        selected_palette: userData.selectedPalette || 'palette1',
-        created_at: now,
-        updated_at: now,
-      };
+      // Case A: Normal signup - use existing org if user already in one, else create one
+      const { data: existingMembership } = await supabaseAdmin
+        .from('org_members')
+        .select('organization_id')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
 
-      const { data: organization, error: orgError } = await supabaseAdmin
-        .from('organizations')
-        .insert(orgData)
-        .select()
-        .single();
+      if (existingMembership?.organization_id) {
+        organizationId = existingMembership.organization_id;
+        membershipRole = 'admin';
+        userAlreadyInOrg = true;
+      } else {
+        const orgData = {
+          name: userData.companyName || 'My Organization',
+          logo_url: '',
+          industry: userData.industry || '',
+          company_size: userData.companySize || '',
+          company_locations: userData.companyLocations || '',
+          team_size: userData.teamSize || '',
+          sections_to_track: userData.sectionsToTrack || [],
+          trial: userData.trial !== undefined ? userData.trial : true,
+          trial_ends_at: userData.trialEndsAt || null,
+          selected_palette: userData.selectedPalette || 'palette1',
+          created_at: now,
+          updated_at: now,
+        };
 
-      if (orgError) {
-        console.error('[API] Error creating organization:', orgError);
-        throw orgError;
+        const { data: organization, error: orgError } = await supabaseAdmin
+          .from('organizations')
+          .insert(orgData)
+          .select()
+          .single();
+
+        if (orgError) {
+          console.error('[API] Error creating organization:', orgError);
+          throw orgError;
+        }
+
+        organizationId = organization.id;
+        membershipRole = 'admin';
       }
-
-      organizationId = organization.id;
-      membershipRole = 'admin'; // Creator is always admin
 
       // Upload logo to organization-specific path if provided
       if (logoData && logoData.base64 && organizationId) {
@@ -421,45 +434,37 @@ export default async function handler(req, res) {
       }
     }
 
-    // Step 3: Add user to organization
-    const { data: membership, error: memberError } = await supabaseAdmin
-      .from('org_members')
-      .insert({
-        organization_id: organizationId,
-        user_id: userId,
-        role: membershipRole,
-        created_at: now,
-        updated_at: now,
-      })
-      .select()
-      .single();
+    // Step 3: Add user to organization (skip if already in an org, e.g. from previous signup)
+    if (!userAlreadyInOrg) {
+      const { data: membership, error: memberError } = await supabaseAdmin
+        .from('org_members')
+        .insert({
+          organization_id: organizationId,
+          user_id: userId,
+          role: membershipRole,
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
 
-    if (memberError) {
-      console.error('[API] Error creating org membership:', memberError);
-      
-      // CRITICAL: Cleanup BEFORE returning error
-      let cleanupSuccess = false;
-      try {
-        // Delete profile first
-        await supabaseAdmin.from('user_profiles').delete().eq('id', userId);
-        // Then delete auth user
-        const deleteResult = await supabaseAdmin.auth.admin.deleteUser(userId);
-        if (!deleteResult.error) {
-          cleanupSuccess = true;
-          console.log('[API] Cleaned up auth user and profile due to membership creation failure');
-        } else {
-          console.error('[API] Failed to delete auth user:', deleteResult.error);
+      if (memberError) {
+        console.error('[API] Error creating org membership:', memberError);
+        let cleanupSuccess = false;
+        try {
+          await supabaseAdmin.from('user_profiles').delete().eq('id', userId);
+          const deleteResult = await supabaseAdmin.auth.admin.deleteUser(userId);
+          if (!deleteResult.error) cleanupSuccess = true;
+        } catch (cleanupErr) {
+          console.error('[API] Failed to cleanup after membership error:', cleanupErr);
         }
-      } catch (cleanupErr) {
-        console.error('[API] Failed to cleanup after membership error:', cleanupErr);
+        return res.status(500).json({
+          error: 'membership-creation-failed',
+          message: memberError.message || 'Failed to create organization membership',
+          cleanupAttempted: true,
+          cleanupSuccess,
+        });
       }
-      
-      return res.status(500).json({ 
-        error: 'membership-creation-failed',
-        message: memberError.message || 'Failed to create organization membership',
-        cleanupAttempted: true,
-        cleanupSuccess
-      });
     }
 
     // Step 4: Add user as team member in user_profiles.team_members array
@@ -542,7 +547,7 @@ export default async function handler(req, res) {
         industry: fullOrg?.industry || userData.industry || '',
         membership: {
           role: membershipRole,
-          createdAt: membership.created_at,
+          createdAt: userAlreadyInOrg ? now : membership?.created_at ?? now,
         },
       },
       teamMembers: updatedTeamMembers, // Include team members in response

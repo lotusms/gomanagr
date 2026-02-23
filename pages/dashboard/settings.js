@@ -11,30 +11,46 @@ import BillingSettings from '@/components/settings/BillingSettings';
 import TeamAccessSettings from '@/components/settings/TeamAccessSettings';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserOrganization } from '@/services/organizationService';
+import { getUserAccount } from '@/services/userService';
 
-const MEMBER_HIDDEN_SECTIONS = ['organization', 'team-access', 'api', 'billing'];
+const MEMBER_HIDDEN_SECTIONS = ['organization', 'team-access', 'api', 'billing', 'security'];
+const ADMIN_NON_OWNER_HIDDEN_SECTIONS = ['organization', 'team-access', 'api', 'billing', 'security'];
 
 function SettingsContent() {
   const { currentUser } = useAuth();
   const [activeSection, setActiveSection] = useState('general');
-  const [isTeamMember, setIsTeamMember] = useState(false);
+  const [memberRole, setMemberRole] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid)
-      .then((org) => setIsTeamMember(org?.membership?.role === 'member'))
-      .catch(() => setIsTeamMember(false));
+      .then((org) => setMemberRole(org?.membership?.role || null))
+      .catch(() => setMemberRole(null));
   }, [currentUser?.uid]);
 
-  // If team member and current section is hidden, switch to general
   useEffect(() => {
-    if (isTeamMember && MEMBER_HIDDEN_SECTIONS.includes(activeSection)) {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid)
+      .then((data) => {
+        const team = data?.teamMembers || [];
+        setIsOwner(team.some((m) => m.id === `owner-${currentUser.uid}`));
+      })
+      .catch(() => setIsOwner(false));
+  }, [currentUser?.uid]);
+
+  const isTeamMember = memberRole === 'member';
+  const isAdminNonOwner = (memberRole === 'admin' || memberRole === 'developer') && !isOwner;
+  const hiddenSections = isTeamMember ? MEMBER_HIDDEN_SECTIONS : isAdminNonOwner ? ADMIN_NON_OWNER_HIDDEN_SECTIONS : [];
+
+  useEffect(() => {
+    if (hiddenSections.length && hiddenSections.includes(activeSection)) {
       setActiveSection('general');
     }
-  }, [isTeamMember, activeSection]);
+  }, [hiddenSections, activeSection]);
 
   const renderActiveSection = () => {
-    if (isTeamMember && MEMBER_HIDDEN_SECTIONS.includes(activeSection)) {
+    if (hiddenSections.includes(activeSection)) {
       return <GeneralSettings />;
     }
     switch (activeSection) {
@@ -75,7 +91,7 @@ function SettingsContent() {
           <SettingsMenu
             activeSection={activeSection}
             onSectionChange={setActiveSection}
-            hiddenSections={isTeamMember ? MEMBER_HIDDEN_SECTIONS : []}
+            hiddenSections={hiddenSections}
           />
           <div className="flex-1 min-w-0">
             {renderActiveSection()}

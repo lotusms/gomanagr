@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Invalid or expired invite' });
     }
     if (invite.used) {
-      return res.status(410).json({ error: 'This invite has already been used' });
+      return res.status(410).json({ error: 'This invite is no longer valid. It may have been used or revoked.' });
     }
     if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
       return res.status(410).json({ error: 'This invite has expired' });

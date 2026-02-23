@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
@@ -53,6 +53,8 @@ export default function DashboardLayout({ children }) {
   const [userAccount, setUserAccount] = useState(null);
   const [previewAccount, setPreviewAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
+  const [orgLoaded, setOrgLoaded] = useState(false);
+  const [orgFetchFailed, setOrgFetchFailed] = useState(false);
   const [memberAccess, setMemberAccess] = useState(null);
 
   // Persist sidebar state so it survives layout remounts on navigation (md+ stays open/closed as-is)
@@ -78,11 +80,35 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     if (!currentUser?.uid) return;
+    setOrgLoaded(false);
+    setOrgFetchFailed(false);
     getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
-    getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
+    getUserOrganization(currentUser.uid)
+      .then((org) => {
+        setOrgFetchFailed(false);
+        setOrganization(org || null);
+      })
+      .catch(() => {
+        setOrgFetchFailed(true);
+        // Do not set organization to null on error - avoid logging out admin on transient failures
+      })
+      .finally(() => setOrgLoaded(true));
   }, [currentUser?.uid]);
 
+  // Force logout only when org fetch succeeded and user has no org (e.g. revoked team member). Never on fetch failure (admin must not be logged out).
+  useEffect(() => {
+    if (!orgLoaded || orgFetchFailed || !currentUser?.uid || organization !== null) return;
+    (async () => {
+      await logout();
+      router.replace('/login?revoked=1');
+    })();
+  }, [orgLoaded, orgFetchFailed, currentUser?.uid, organization, logout, router]);
+
   const memberRole = organization?.membership?.role;
+  const isOwner = useMemo(
+    () => (userAccount?.teamMembers || []).some((m) => m.id === `owner-${currentUser?.uid}`),
+    [userAccount?.teamMembers, currentUser?.uid]
+  );
 
   // Load team member access config when user is a member (controls which sections they can see)
   useEffect(() => {
@@ -105,7 +131,7 @@ export default function DashboardLayout({ children }) {
       path.startsWith('/dashboard/team-member') || path === '/dashboard/settings';
     if (baseAllowed) return;
     if (memberAccess === null) return; // still loading
-    // Allow exact section path or any path under it (e.g. /dashboard/clients/new, /dashboard/clients/[id])
+    if (path === '/dashboard/services' || path.startsWith('/dashboard/services/')) return;
     let allowed = false;
     for (const [sectionPath, sectionKey] of Object.entries(PATH_TO_SECTION)) {
       if (path === sectionPath || path.startsWith(sectionPath + '/')) {
@@ -180,6 +206,7 @@ export default function DashboardLayout({ children }) {
               previewAccount={previewAccount}
               currentUser={currentUser}
               organization={organization}
+              isOwner={isOwner}
               onLogout={handleLogout}
             />
           </div>
@@ -187,7 +214,7 @@ export default function DashboardLayout({ children }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} memberAccess={memberAccess} />
+        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} memberAccess={memberAccess} isOwner={isOwner} />
 
         {/* Main Content */}
         <main

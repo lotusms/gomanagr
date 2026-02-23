@@ -5,11 +5,12 @@ import { getUserAccount, updateTeamMembers, updateServices, uploadTeamPhoto } fr
 import { getUserOrganization } from '@/services/organizationService';
 import PersonCard from '@/components/dashboard/PersonCard';
 import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
-import { PageHeader, TeamFilter, ConfirmationDialog, EmptyState } from '@/components/ui';
+import { PageHeader, TeamFilter, ConfirmationDialog, EmptyState, InputField } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
-import { PrimaryButton } from '@/components/ui/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
-import { HiPlus } from 'react-icons/hi';
+import * as Dialog from '@radix-ui/react-dialog';
+import { HiPlus, HiX } from 'react-icons/hi';
 
 function generateId() {
   return `tm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -34,6 +35,15 @@ function TeamContent() {
   });
   const [showInactive, setShowInactive] = useState(false);
   const [organization, setOrganization] = useState(null);
+  const [orgMembers, setOrgMembers] = useState([]);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteDialogMember, setInviteDialogMember] = useState(null);
+  const [inviteDialogEmail, setInviteDialogEmail] = useState('');
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [memberToRevoke, setMemberToRevoke] = useState(null);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [orgMembersLoaded, setOrgMembersLoaded] = useState(false);
+  const [pendingInvitesLoaded, setPendingInvitesLoaded] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -62,6 +72,34 @@ function TeamContent() {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!organization?.id || !currentUser?.uid) return;
+    setOrgMembersLoaded(false);
+    fetch('/api/get-org-members', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizationId: organization.id, callerUserId: currentUser.uid }),
+    })
+      .then((r) => r.json())
+      .then((data) => setOrgMembers(data?.members ?? []))
+      .catch(() => setOrgMembers([]))
+      .finally(() => setOrgMembersLoaded(true));
+  }, [organization?.id, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!organization?.id || !currentUser?.uid) return;
+    setPendingInvitesLoaded(false);
+    fetch('/api/get-org-invites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizationId: organization.id, callerUserId: currentUser.uid }),
+    })
+      .then((r) => r.json())
+      .then((data) => setPendingInvites(data?.invites ?? []))
+      .catch(() => setPendingInvites([]))
+      .finally(() => setPendingInvitesLoaded(true));
+  }, [organization?.id, currentUser?.uid]);
 
   // Helper function to clean team member objects by removing undefined values
   const cleanTeamMember = (member) => {
@@ -225,6 +263,10 @@ function TeamContent() {
     };
 
     const existingMember = isEdit ? allTeamMembers.find((m) => m.id === editingId) : null;
+    const isAdmin = isEdit
+      ? (data.isAdmin !== undefined ? data.isAdmin : (existingMember?.isAdmin ?? false))
+      : false;
+    const isOwner = isEdit ? (existingMember?.isOwner ?? false) : false;
     const updatedMember = removeUndefined({
       id: memberId,
       name: data.name,
@@ -243,6 +285,8 @@ function TeamContent() {
       yearsExperience: data.yearsExperience,
       pictureUrl: pictureUrl || undefined,
       status: isEdit ? (existingMember?.status || 'active') : 'active',
+      isAdmin,
+      isOwner,
       ...(isEdit && existingMember?.invitedAt && { invitedAt: existingMember.invitedAt }),
       ...(isEdit && existingMember?.userId && { userId: existingMember.userId }),
     });
@@ -356,6 +400,19 @@ function TeamContent() {
       }).catch((err) => console.error('Failed to sync team member profile:', err));
     }
 
+    if (data.isAdmin !== undefined && organization?.id && currentUser?.uid && (finalMember.userId || (finalMember.email || '').trim())) {
+      fetch('/api/update-org-member-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          callerUserId: currentUser.uid,
+          ...(finalMember.userId ? { targetUserId: finalMember.userId } : { targetEmail: (finalMember.email || '').trim() }),
+          role: finalMember.isAdmin ? 'admin' : 'member',
+        }),
+      }).catch((err) => console.error('Failed to sync org role:', err));
+    }
+
     // Update services to reflect team member assignments
     if (data.selectedServiceIds !== undefined && userAccount?.services) {
       const currentServices = [...(userAccount.services || [])];
@@ -423,6 +480,107 @@ function TeamContent() {
   const closeDrawer = () => {
     setDrawerOpen(false);
     setEditingMember(null);
+  };
+
+  const openInviteDialog = (member) => {
+    setInviteDialogMember(member);
+    setInviteDialogEmail((member?.email || '').trim());
+    setInviteDialogOpen(true);
+  };
+
+  const closeInviteDialog = () => {
+    setInviteDialogOpen(false);
+    setInviteDialogMember(null);
+    setInviteDialogEmail('');
+  };
+
+  const handleInviteFromDialog = async () => {
+    const email = inviteDialogEmail.trim();
+    if (!email) {
+      toast.warning('Enter an email address to invite.');
+      return;
+    }
+    if (!inviteDialogMember) return;
+    await handleInviteToLogin({ ...inviteDialogMember, email });
+    closeInviteDialog();
+  };
+
+  const openRevokeDialog = (member, userId) => {
+    setMemberToRevoke({ member, userId });
+    setRevokeDialogOpen(true);
+  };
+
+  const handleRevokeConfirm = async () => {
+    if (!memberToRevoke?.member || !organization?.id || !currentUser?.uid) return;
+    const email = (memberToRevoke.member.email || '').trim();
+    if (!email) {
+      toast.error('This team member has no email; cannot revoke.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/revoke-org-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          userId: memberToRevoke.userId || undefined,
+          organizationId: organization.id,
+          callerUserId: currentUser.uid,
+          memberName: memberToRevoke.member.name,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to revoke access.');
+        return;
+      }
+      toast.success('Access revoked. They have been signed out and cannot use invite links or sign in again.');
+      const revokedUserId = memberToRevoke.userId;
+      setRevokeDialogOpen(false);
+      setMemberToRevoke(null);
+      const emailNorm = email.toLowerCase().trim();
+
+      // Optimistically update UI so the card switches to Invite immediately
+      setPendingInvites((prev) => (prev || []).filter((inv) => (inv.email || '').toLowerCase().trim() !== emailNorm));
+      setOrgMembers((prev) => (prev || []).filter((om) => om.user_id !== revokedUserId));
+      fetch('/api/get-org-members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: organization.id, callerUserId: currentUser.uid }),
+      })
+        .then((r) => r.json())
+        .then((data) => setOrgMembers(data?.members ?? []))
+        .catch(() => {});
+      fetch('/api/get-org-invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: organization.id, callerUserId: currentUser.uid }),
+      })
+        .then((r) => r.json())
+        .then((d) => setPendingInvites(d?.invites ?? []))
+        .catch(() => {});
+
+      // Clear invitedAt and userId on the revoked member so the card shows Invite (re-invite) again
+      const account = await getUserAccount(currentUser.uid);
+      const allTeamMembers = account?.teamMembers ?? [];
+      const nextAllMembers = allTeamMembers.map((m) => {
+        const em = (m.email || '').toLowerCase().trim();
+        if (em !== emailNorm) return m;
+        const { invitedAt, userId: _uid, ...rest } = m;
+        return rest;
+      });
+      const cleanedTeam = nextAllMembers.map(cleanTeamMember);
+      await updateTeamMembers(currentUser.uid, cleanedTeam);
+      setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
+      const filteredList = showInactive ? cleanedTeam : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
+      setTeam(filteredList);
+    } catch (err) {
+      console.error('Revoke error:', err);
+      toast.error('Failed to revoke access.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleInviteToLogin = async (member) => {
@@ -508,6 +666,80 @@ function TeamContent() {
       setSaving(false);
     }
   };
+
+  // Map team member email -> org member user_id (for Revoke; exclude current user and admins)
+  const memberEmailToUserId = useMemo(() => {
+    const map = {};
+    (orgMembers || []).forEach((om) => {
+      if (om.user_id === currentUser?.uid) return;
+      if (om.role === 'admin') return;
+      const email = (om.user?.email || '').toLowerCase().trim();
+      if (email) map[email] = om.user_id;
+    });
+    return map;
+  }, [orgMembers, currentUser?.uid]);
+
+  // Set of user_ids in the org (non-admin, not self) — so we can show Revoke by userId when email doesn't match profile
+  const orgMemberUserIds = useMemo(() => {
+    const set = new Set();
+    (orgMembers || []).forEach((om) => {
+      if (om.user_id === currentUser?.uid) return;
+      if (om.role === 'admin') return;
+      set.add(om.user_id);
+    });
+    return set;
+  }, [orgMembers, currentUser?.uid]);
+
+  // Emails that have a pending invite (not yet accepted) — show Revoke instead of Invite
+  const pendingInviteEmails = useMemo(() => {
+    const set = new Set();
+    (pendingInvites || []).forEach((inv) => {
+      const e = (inv.email || '').toLowerCase().trim();
+      if (e) set.add(e);
+    });
+    return set;
+  }, [pendingInvites]);
+
+  const currentUserIsOrgAdmin = useMemo(() => {
+    const role = organization?.membership?.role;
+    return role === 'admin' || role === 'developer';
+  }, [organization?.membership?.role]);
+
+  const currentUserIsOwner = useMemo(() => {
+    const team = userAccount?.teamMembers || [];
+    return team.some((m) => m.id === `owner-${currentUser?.uid}`);
+  }, [userAccount?.teamMembers, currentUser?.uid]);
+
+  const orgAndInvitesLoaded = orgMembersLoaded && pendingInvitesLoaded;
+  useEffect(() => {
+    if (!currentUser?.uid || saving || !orgAndInvitesLoaded) return;
+    const allTeamMembers = userAccount?.teamMembers ?? [];
+    if (allTeamMembers.length === 0) return;
+    const toFix = allTeamMembers.filter((m) => {
+      if (!m.invitedAt) return false;
+      const em = (m.email || '').toLowerCase().trim();
+      if (!em) return false;
+      const hasAccess = !!memberEmailToUserId[em];
+      const hasPending = pendingInviteEmails.has(em);
+      return !hasAccess && !hasPending;
+    });
+    if (toFix.length === 0) return;
+    const emailNorms = new Set(toFix.map((m) => (m.email || '').toLowerCase().trim()));
+    const nextAllMembers = allTeamMembers.map((m) => {
+      const em = (m.email || '').toLowerCase().trim();
+      if (!emailNorms.has(em)) return m;
+      const { invitedAt, userId: _uid, ...rest } = m;
+      return rest;
+    });
+    const cleanedTeam = nextAllMembers.map(cleanTeamMember);
+    updateTeamMembers(currentUser.uid, cleanedTeam)
+      .then(() => {
+        setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
+        const filteredList = showInactive ? cleanedTeam : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
+        setTeam(filteredList);
+      })
+      .catch((err) => console.error('[team] sync revoked members', err));
+  }, [currentUser?.uid, userAccount?.teamMembers, orgMembers, pendingInvites, saving, showInactive, orgAndInvitesLoaded]);
 
   // Filter team members based on selected filters
   const filteredTeam = useMemo(() => {
@@ -603,6 +835,7 @@ function TeamContent() {
                 services={userAccount?.services || []}
                 teamMembers={team}
                 onInviteToLogin={handleInviteToLogin}
+                canPromoteToAdmin={currentUserIsOwner}
                 onServiceCreated={async (updatedServices) => {
                   // Save the new service to Supabase
                   if (currentUser?.uid) {
@@ -631,6 +864,58 @@ function TeamContent() {
               confirmText="Delete Permanently"
               cancelText="Cancel"
               confirmationWord="delete"
+              variant="danger"
+            />
+
+            {/* Invite to join dialog */}
+            <Dialog.Root open={inviteDialogOpen} onOpenChange={(open) => !open && closeInviteDialog()}>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200]" />
+                <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[201] w-full max-w-md p-6 focus:outline-none border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Invite to join
+                    </Dialog.Title>
+                    <Dialog.Close asChild>
+                      <button type="button" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
+                        <HiX className="w-5 h-5" />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    {inviteDialogMember?.name ? `Send an invite to ${inviteDialogMember.name}.` : 'Enter the email address to send an invite.'}
+                  </p>
+                  <InputField
+                    id="invite-email"
+                    label="Email"
+                    type="email"
+                    value={inviteDialogEmail}
+                    onChange={(e) => setInviteDialogEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    variant="light"
+                  />
+                  <div className="flex gap-3 mt-6 justify-end">
+                    <SecondaryButton type="button" onClick={closeInviteDialog}>
+                      Cancel
+                    </SecondaryButton>
+                    <PrimaryButton type="button" onClick={handleInviteFromDialog} disabled={saving}>
+                      {saving ? 'Sending…' : 'Invite to join'}
+                    </PrimaryButton>
+                  </div>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+
+            <ConfirmationDialog
+              isOpen={revokeDialogOpen}
+              onClose={() => { setRevokeDialogOpen(false); setMemberToRevoke(null); }}
+              onConfirm={handleRevokeConfirm}
+              title="Revoke access"
+              message={memberToRevoke?.member ? `Revoke access for ${memberToRevoke.member.name}? They will be removed from the organization, signed out, and will no longer be able to sign in or use any invite link. An email will be sent to them.` : 'Revoke this member\'s access? They will not be able to sign in or use invite links. An email will be sent to them.'}
+              confirmText="Revoke access"
+              cancelText="Cancel"
+              confirmationWord="REVOKE"
+              confirmationLabel="Type REVOKE to confirm"
               variant="danger"
             />
 
@@ -670,17 +955,32 @@ function TeamContent() {
                   const nameA = (a.name || '').toLowerCase();
                   const nameB = (b.name || '').toLowerCase();
                   return nameA.localeCompare(nameB);
-                }).map((member) => (
-                  <PersonCard
-                    key={member.id}
-                    name={member.name}
-                    subtitle={member.role}
-                    src={member.pictureUrl}
-                    onClick={() => openDrawerForEdit(member)}
-                    onRemove={() => handleRemoveClick(member.id)}
-                    isAdmin={member.isAdmin === true}
-                  />
-                ))}
+                }).map((member) => {
+                  const memberEmail = (member.email || '').toLowerCase().trim();
+                  const hasAccessByEmail = !!memberEmailToUserId[memberEmail];
+                  const hasAccessByUserId = !!(member.userId && orgMemberUserIds.has(member.userId));
+                  const hasAccess = hasAccessByEmail || hasAccessByUserId;
+                  const revokeUserId = memberEmailToUserId[memberEmail] || (hasAccessByUserId ? member.userId : null);
+                  // Show Revoke when: in org, or has pending invite from API, or was ever invited (invitedAt)
+                  const hasPendingInvite = memberEmail && (pendingInviteEmails.has(memberEmail) || !!member.invitedAt);
+                  const isCurrentUser = currentUser?.email && (currentUser.email.toLowerCase().trim() === memberEmail);
+                  const showRevokeOnly = (hasAccess || hasPendingInvite) && !isCurrentUser && member.isAdmin !== true;
+                  const showInvite = currentUserIsOrgAdmin && !showRevokeOnly && member.isAdmin !== true;
+                  const showRevoke = currentUserIsOrgAdmin && showRevokeOnly;
+                  return (
+                    <PersonCard
+                      key={member.id}
+                      name={member.name}
+                      subtitle={member.role}
+                      src={member.pictureUrl}
+                      onClick={() => openDrawerForEdit(member)}
+                      onRemove={() => handleRemoveClick(member.id)}
+                      onInvite={showInvite ? () => openInviteDialog(member) : undefined}
+                      onRevoke={showRevoke ? () => openRevokeDialog(member, revokeUserId || null) : undefined}
+                      isAdmin={member.isAdmin === true}
+                    />
+                  );
+                })}
               </div>
             )}
           </>

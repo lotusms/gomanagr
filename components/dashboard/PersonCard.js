@@ -1,19 +1,20 @@
-import { HiTrash, HiUser, HiOfficeBuilding, HiShieldCheck } from 'react-icons/hi';
+import { HiTrash, HiUser, HiOfficeBuilding, HiShieldCheck, HiMail, HiLockClosed } from 'react-icons/hi';
 import { useMemo } from 'react';
+
+const iconButtonClass = `
+  absolute top-3 z-20 p-2 rounded-full
+  bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
+  shadow-lg hover:shadow-xl transition-all duration-200
+  opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100
+`;
 
 /**
  * Modern, vibrant card with gradient background, prominent avatar, and clean typography.
  * Used for team members and clients grids.
- * @param {string} name
- * @param {string} [subtitle]
- * @param {string} [src] - Image URL (e.g. team member pictureUrl); when set, shows as avatar
- * @param {() => void} [onClick] - If provided, card is clickable (e.g. open edit)
- * @param {() => void} [onRemove] - If provided, shows a remove button
- * @param {boolean} [isClient] - If true, shows icon instead of avatar/initials
- * @param {boolean} [hasCompany] - If true and isClient, shows company icon instead of person icon
- * @param {boolean} [isAdmin] - If true, shows a shield icon to indicate admin status
+ * @param {() => void} [onInvite] - If provided, shows an invite button (team member card)
+ * @param {() => void} [onRevoke] - If provided, shows a revoke access button (team member card)
  */
-export default function PersonCard({ name, subtitle, src, onClick, onRemove, isClient = false, hasCompany = false, isAdmin = false }) {
+export default function PersonCard({ name, subtitle, src, onClick, onRemove, onInvite, onRevoke, isClient = false, hasCompany = false, isAdmin = false }) {
   const hasImage = src && src.trim() !== '';
 
   // Get initials for avatar (only for team members)
@@ -119,6 +120,30 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, isC
         )}
       </div>
 
+      {/* Invite button (team card) */}
+      {onInvite && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onInvite(); }}
+          className={`left-3 text-primary-600 hover:text-primary-700 hover:bg-white dark:hover:bg-gray-700 ${iconButtonClass}`}
+          aria-label="Invite to join"
+          title="Invite to join"
+        >
+          <HiMail className="w-5 h-5" />
+        </button>
+      )}
+      {/* Revoke access button (team card) */}
+      {onRevoke && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRevoke(); }}
+          className={`left-3 text-amber-600 hover:text-amber-700 hover:bg-white dark:hover:bg-gray-700 ${iconButtonClass} ${onInvite ? 'left-12' : ''}`}
+          aria-label="Revoke access"
+          title="Revoke access"
+        >
+          <HiLockClosed className="w-5 h-5" />
+        </button>
+      )}
       {/* Remove button */}
       {onRemove && (
         <button
@@ -127,18 +152,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, isC
             e.stopPropagation();
             onRemove();
           }}
-          className="
-            absolute top-3 right-3 z-20
-            p-2 rounded-full
-            bg-white/90 dark:bg-gray-800/90
-            backdrop-blur-sm
-            text-red-500 hover:text-red-600
-            hover:bg-white dark:hover:bg-gray-700
-            shadow-lg hover:shadow-xl
-            transition-all duration-200
-            opacity-0 group-hover:opacity-100
-            transform scale-90 group-hover:scale-100
-          "
+          className={`right-3 text-red-500 hover:text-red-600 hover:bg-white dark:hover:bg-gray-700 ${iconButtonClass}`}
           aria-label="Remove"
         >
           <HiTrash className="w-5 h-5" />

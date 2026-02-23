@@ -11,9 +11,10 @@ import { isAdminOrDeveloper } from '@/lib/userPermissions';
  * @param {Object} [props.previewAccount] - Preview overrides (e.g. from account form)
  * @param {Object} [props.currentUser] - Auth user (email)
  * @param {Object} [props.organization] - Organization data (logo_url)
+ * @param {boolean} [props.isOwner] - Org creator; when true, show Subscriptions and Developer
  * @param {() => Promise<void>} props.onLogout - Called when Logout is clicked (e.g. signOut + redirect)
  */
-export default function UserMenu({ userAccount, previewAccount, currentUser, organization, onLogout }) {
+export default function UserMenu({ userAccount, previewAccount, currentUser, organization, isOwner, onLogout }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -54,9 +55,9 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
   const hasLogo = logoUrl.length > 0;
   const accountLoaded = userAccount !== null || previewAccount !== null;
   const shouldShowInitials = accountLoaded && !hasLogo;
-  
-  // Team members (role === 'member') see Settings + Logout only in this menu (My Profile is in sidenav)
+
   const isTeamMember = organization?.membership?.role === 'member';
+  const isOrgAdmin = organization?.membership?.role === 'admin' || organization?.membership?.role === 'developer';
   const canAccessDeveloper = accountLoaded && isAdminOrDeveloper(account, currentUser?.uid);
 
   return (
@@ -82,6 +83,11 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
 
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-[100]">
+          {isOrgAdmin && (
+            <div className="px-4 py-2 text-xs font-medium text-primary-600 dark:text-primary-400 border-b border-gray-100 dark:border-gray-700">
+              Admin
+            </div>
+          )}
           {!isTeamMember && (
             <>
               <Link
@@ -91,13 +97,15 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
               >
                 My Account
               </Link>
-              <Link
-                href="/dashboard/subscriptions"
-                onClick={() => setOpen(false)}
-                className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                Subscriptions
-              </Link>
+              {isOwner && (
+                <Link
+                  href="/dashboard/subscriptions"
+                  onClick={() => setOpen(false)}
+                  className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Subscriptions
+                </Link>
+              )}
             </>
           )}
           <Link
@@ -107,7 +115,7 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
           >
             Settings
           </Link>
-          {!isTeamMember && process.env.NODE_ENV === 'development' && canAccessDeveloper && (
+          {isOwner && process.env.NODE_ENV === 'development' && canAccessDeveloper && (
             <Link
               href="/dashboard/developer"
               onClick={() => setOpen(false)}

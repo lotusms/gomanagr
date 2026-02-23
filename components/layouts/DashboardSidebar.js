@@ -21,9 +21,8 @@ import {
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
 
-function getNavigationItems(accountIndustry) {
+function getOwnerNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
-  
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
@@ -34,13 +33,30 @@ function getNavigationItems(accountIndustry) {
     { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
     { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
     { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
-    { name: 'Jobs', href: '/dashboard/jobs', icon: HiBriefcase },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { divider: true },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
     { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
-    // { name: 'Expenses', href: '/dashboard/expenses', icon: HiCurrencyDollar },
     { name: 'Timesheets', href: '/dashboard/timesheets', icon: HiClock },
+    { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid },
+  ];
+}
+
+function getAdminNavItems(accountIndustry) {
+  const projectTerm = getProjectTermForIndustry(accountIndustry);
+  return [
+    { name: 'Home', href: '/dashboard', icon: HiHome },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
+    { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
+    { name: 'Team', href: '/dashboard/team', icon: HiUsers },
+    { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
+    { divider: true },
+    { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
+    { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
+    { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
+    { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
+    { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
+    { divider: true },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid },
   ];
 }
@@ -53,9 +69,10 @@ function getMemberNavItems(memberAccess, accountIndustry) {
     { name: 'Dashboard', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
   ];
+  if (memberAccess?.projects) items.push({ name: projectTerm, href: '/dashboard/projects', icon: HiFolder });
   if (memberAccess?.schedule) items.push({ name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar });
   if (memberAccess?.clients) items.push({ name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup });
-  if (memberAccess?.projects) items.push({ name: projectTerm, href: '/dashboard/projects', icon: HiFolder });
+  items.push({ name: 'Services', href: '/dashboard/services', icon: HiClipboardList });
   return items;
 }
 
@@ -67,14 +84,16 @@ function getMemberNavItems(memberAccess, accountIndustry) {
  * @param {Object} props.userAccount - User account object containing industry field
  * @param {string} [props.memberRole] - Org role; when 'member', only allowed sections are shown
  * @param {Object} [props.memberAccess] - For members: { schedule, clients, projects } from admin config
+ * @param {boolean} [props.isOwner] - True for org creator (isOwner=true); controls owner vs admin nav
  */
-export default function DashboardSidebar({ open, onToggle, userAccount, memberRole, memberAccess }) {
+export default function DashboardSidebar({ open, onToggle, userAccount, memberRole, memberAccess, isOwner }) {
   const router = useRouter();
 
   const navigationItems = useMemo(() => {
     if (memberRole === 'member') return getMemberNavItems(memberAccess, userAccount?.industry);
-    return getNavigationItems(userAccount?.industry);
-  }, [memberRole, memberAccess, userAccount?.industry]);
+    if (memberRole === 'admin' || memberRole === 'developer') return isOwner ? getOwnerNavItems(userAccount?.industry) : getAdminNavItems(userAccount?.industry);
+    return getOwnerNavItems(userAccount?.industry);
+  }, [memberRole, memberAccess, userAccount?.industry, isOwner]);
 
   const handleNavClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < MD_BREAKPOINT) {

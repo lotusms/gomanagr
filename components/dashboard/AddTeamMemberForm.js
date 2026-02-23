@@ -65,6 +65,7 @@ export default function AddTeamMemberForm({
   teamMembers = [], 
   onServiceCreated,
   onInviteToLogin,
+  canPromoteToAdmin = false,
 }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -93,6 +94,7 @@ export default function AddTeamMemberForm({
   const [showServiceDrawer, setShowServiceDrawer] = useState(false);
   const [savingService, setSavingService] = useState(false);
   const [sendInviteToLogin, setSendInviteToLogin] = useState(false);
+  const [isAdminCheckbox, setIsAdminCheckbox] = useState(false);
 
   const isEdit = !!initialMember?.id;
 
@@ -173,6 +175,7 @@ export default function AddTeamMemberForm({
     setPictureFile(null);
     setPicturePreviewUrl(initialMember.pictureUrl ?? '');
     setFileInputKey((k) => k + 1);
+    setIsAdminCheckbox(initialMember?.isAdmin === true);
   }, [initialMember?.id]);
 
   // Separate effect to update location when locations array is loaded/updated
@@ -277,6 +280,7 @@ export default function AddTeamMemberForm({
     setPictureFile(null);
     setPicturePreviewUrl('');
     setFileInputKey((k) => k + 1);
+    setIsAdminCheckbox(false);
   };
 
   const handleSubmit = (e) => {
@@ -339,6 +343,7 @@ export default function AddTeamMemberForm({
         yearsExperience: yearsExperience.trim() ? Number(yearsExperience) : undefined,
         selectedServiceIds: selectedServiceIds,
         sendInviteToLogin: sendInviteToLogin && email.trim() ? true : undefined,
+        ...(canPromoteToAdmin && { isAdmin: isAdminCheckbox }),
       },
       pictureFile,
       initialMember?.id ?? null
@@ -508,7 +513,17 @@ export default function AddTeamMemberForm({
               variant="light"
             />
           </div>
-          
+
+          {canPromoteToAdmin && (
+            <Checkbox
+              id="team-member-is-admin"
+              label="Team member is admin"
+              checked={isAdminCheckbox}
+              onCheckedChange={setIsAdminCheckbox}
+              disabled={saving}
+            />
+          )}
+
           {locations && locations.length > 1 && (
             <Dropdown
               key={`location-${location || 'empty'}-${initialMember?.id || 'new'}`}

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import PublicLayout from '@/components/layouts/PublicLayout';
@@ -9,8 +10,10 @@ const THEME_COOKIE = 'gomanagr_palette';
 const DEFAULT_PALETTE = 'palette1';
 
 export default function LoginPage() {
+  const router = useRouter();
   const { currentUser, loading } = useAuth();
   const redirecting = useRef(false);
+  const wasRevoked = router.query.revoked === '1';
 
   useEffect(() => {
     if (!currentUser || redirecting.current) return;
@@ -63,13 +66,18 @@ export default function LoginPage() {
               {/* Content */}
               <div className="relative z-10">
                 {/* Header */}
-                <div className="mb-8 text-center">                 
+                <div className="mb-8 text-center">
                   <h2 className="text-3xl font-bold text-white mb-2 transform transition-all duration-300">
                     Welcome Back
                   </h2>
                   <p className="text-primary-200/70 text-sm">
                     Sign in to continue to your dashboard
                   </p>
+                  {wasRevoked && (
+                    <p className="mt-3 text-amber-200 text-sm bg-amber-500/20 rounded-lg px-3 py-2 border border-amber-400/30">
+                      Your access was revoked. You have been signed out. Contact your admin to request access again.
+                    </p>
+                  )}
                 </div>
 
                 {/* Auth Form */}

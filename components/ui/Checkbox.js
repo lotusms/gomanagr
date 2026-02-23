@@ -1,17 +1,5 @@
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 
-/**
- * Reusable Checkbox Component using Radix UI
- * 
- * @param {Object} props
- * @param {boolean} props.checked - Whether the checkbox is checked
- * @param {Function} props.onCheckedChange - Callback when checked state changes (receives boolean)
- * @param {string} props.id - Unique ID for the checkbox
- * @param {string} props.label - Label text for the checkbox
- * @param {string} props.className - Additional CSS classes
- * @param {boolean} props.disabled - Whether the checkbox is disabled
- * @param {React.ReactNode} props.children - Custom label content (overrides label prop)
- */
 export default function Checkbox({
   checked,
   onCheckedChange,
@@ -26,13 +14,15 @@ export default function Checkbox({
     <div className={`flex items-start space-x-3 ${className}`}>
       <CheckboxPrimitive.Root
         className={`
-          flex h-5 w-5 items-center justify-center rounded border-2
-          bg-white/10 border-white/30
+          flex h-5 w-5 shrink-0 items-center justify-center rounded border-2
+          bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600
           transition-all duration-200
-          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-transparent
+          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
           disabled:cursor-not-allowed disabled:opacity-50
           data-[state=checked]:bg-primary-600 data-[state=checked]:border-primary-600
-          hover:border-primary-400
+          dark:data-[state=checked]:bg-primary-500 dark:data-[state=checked]:border-primary-500
+          hover:border-gray-400 dark:hover:border-gray-500
+          data-[state=checked]:hover:border-primary-600 dark:data-[state=checked]:hover:border-primary-500
         `}
         checked={checked}
         onCheckedChange={onCheckedChange}
@@ -61,7 +51,7 @@ export default function Checkbox({
       {children || (
         <label
           htmlFor={id}
-          className="text-sm text-white dark:text-gray-200 cursor-pointer select-none"
+          className="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer select-none"
         >
           {label}
         </label>

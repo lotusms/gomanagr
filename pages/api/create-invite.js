@@ -96,9 +96,14 @@ export default async function handler(req, res) {
 
     if (inviteError) throw inviteError;
 
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const baseUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+    const inviteLink = `${baseUrl.replace(/\/$/, '')}/accept-invite?invite=${token}`;
+
     return res.status(200).json({
       ...invite,
-      inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/accept-invite?invite=${token}`,
+      inviteLink,
     });
   } catch (error) {
     console.error('[API] Error creating invite:', error);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount, listStorageFiles, getStoragePublicUrl, removeStorageFiles } from '@/services/userService';
-import { getUserOrganization, updateOrganization, createOrganization, addUserToOrganization } from '@/services/organizationService';
+import { getUserOrganization, updateOrganization } from '@/services/organizationService';
 import { HiCloudUpload, HiX, HiPlus } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
@@ -89,36 +89,6 @@ export default function OrganizationSettings() {
         setLogoPreview(orgLogo);
       } else {
         setLogoPreview(null);
-      }
-      
-      // If organization doesn't exist but user data exists, try to create it
-      if (!orgData && userData && userData.companyName) {
-        console.warn('[OrganizationSettings] Organization not found! Attempting to create from user data...');
-        try {
-          const newOrg = await createOrganization({
-            name: userData.companyName || 'My Organization',
-            logo_url: userData.companyLogo || '',
-            industry: userData.industry || '',
-            company_size: userData.companySize || '',
-            company_locations: userData.companyLocations || '',
-            team_size: userData.teamSize || '',
-            sections_to_track: userData.sectionsToTrack || [],
-            trial: userData.trial !== undefined ? userData.trial : true,
-            trial_ends_at: userData.trialEndsAt || null,
-            selected_palette: userData.selectedPalette || 'palette1',
-          });
-          
-          // Add user to organization as admin
-          await addUserToOrganization(newOrg.id, currentUser.uid, 'admin');
-          
-          console.log('[OrganizationSettings] Created organization:', newOrg);
-          
-          // Reload data with new organization
-          return loadUserData();
-        } catch (createErr) {
-          console.error('[OrganizationSettings] Failed to create organization:', createErr);
-          setError('Organization not found and could not be created. Please contact support.');
-        }
       }
       
       // Build locations array - always include HQ location

@@ -12,7 +12,7 @@ import { HiPlus } from 'react-icons/hi';
 import Drawer from '@/components/ui/Drawer';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import { generateClientId } from '@/utils/clientIdGenerator';
-import { isMemberRole, isAdminNonOwnerRole } from '@/config/rolePermissions';
+import { isMemberRole, isAdminRole } from '@/config/rolePermissions';
 
 const REALTIME_SCHEDULE_EVENT = 'schedule-updated';
 
@@ -29,7 +29,7 @@ function ScheduleContent() {
   const [saving, setSaving] = useState(false);
 
   const isTeamMember = isMemberRole(organization?.membership?.role);
-  const isOrgAdmin = isAdminNonOwnerRole(organization?.membership?.role);
+  const isOrgAdmin = isAdminRole(organization?.membership?.role);
 
   const { appointments, teamMembers, clients, schedulePrefs, myStaffId } = useMemo(() => {
     if (isTeamMember && orgSchedule) {
@@ -250,9 +250,8 @@ function ScheduleContent() {
 
   const handleClientAdd = async (clientData) => {
     if (!currentUser?.uid) return null;
-    
+
     try {
-      // Generate new client ID
       const existingIds = (userAccount?.clients || clients).map((c) => c.id).filter(Boolean);
       const newClientId = generateClientId(existingIds);
       const newClient = {
@@ -260,16 +259,39 @@ function ScheduleContent() {
         name: clientData.name,
         company: clientData.company,
       };
-      
-      // Add to existing clients
+
       const updatedClients = [...clients, newClient];
-      
-      // Save to Supabase
       await updateClients(currentUser.uid, updatedClients);
-      
-      // Update local state
       setUserAccount((prev) => (prev ? { ...prev, clients: updatedClients } : null));
-      
+      return newClientId;
+    } catch (error) {
+      console.error('Failed to add client:', error);
+      throw error;
+    }
+  };
+
+  /** Team member: add client via org API (assigned to self), then refetch schedule. */
+  const handleClientAddForOrg = async (clientData) => {
+    if (!currentUser?.uid) return null;
+    try {
+      const existingIds = (clients || []).map((c) => c.id).filter(Boolean);
+      const newClientId = generateClientId(existingIds);
+      const res = await fetch('/api/update-org-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          client: {
+            id: newClientId,
+            name: clientData.name,
+            company: clientData.company,
+          },
+          action: 'add',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to add client');
+      await fetchOrgSchedule();
       return newClientId;
     } catch (error) {
       console.error('Failed to add client:', error);
@@ -287,7 +309,7 @@ function ScheduleContent() {
       <div className="space-y-6">
         <PageHeader
           title="Schedule"
-          description={isTeamMember ? 'Your appointments. Changes sync with your admin.' : 'Refer to the settings page to mamage your schedule settings (date format, time format, timezone, etc.)'}
+          description={isTeamMember ? 'Your appointments only. You can add and edit appointments for yourself; changes sync with your admin.' : 'Refer to the settings page to manage your schedule settings (date format, time format, timezone, etc.)'}
           actions={
             <>
               <PrimaryButton type="button" onClick={handleAddClick} className="gap-2" disabled={isTeamMember && !myStaffId}>
@@ -334,7 +356,7 @@ function ScheduleContent() {
             appointments={appointments}
             services={services}
             clients={clients}
-            onClientAdd={isTeamMember ? undefined : handleClientAdd}
+            onClientAdd={isTeamMember ? handleClientAddForOrg : handleClientAdd}
             staffRestrictedToId={myStaffId}
             onSubmit={handleSaveAppointment}
             onCancel={() => {

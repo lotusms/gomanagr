@@ -26,8 +26,8 @@ function getOwnerNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
-    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Team', href: '/dashboard/team', icon: HiUsers },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
@@ -48,8 +48,8 @@ function getAdminNavItems(accountIndustry) {
   return [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
-    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Team', href: '/dashboard/team', icon: HiUsers },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
@@ -69,10 +69,10 @@ function getMemberNavItems(memberAccess, accountIndustry) {
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
+    { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
+    { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
   ];
-  if (memberAccess?.projects) items.push({ name: projectTerm, href: '/dashboard/projects', icon: HiFolder });
-  if (memberAccess?.schedule) items.push({ name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar });
-  if (memberAccess?.clients) items.push({ name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup });
   items.push({ name: 'Services', href: '/dashboard/services', icon: HiClipboardList });
   return items;
 }

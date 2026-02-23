@@ -477,9 +477,12 @@ export default function AppointmentForm({
   };
 
   const effectiveStaffId = staffRestrictedToId || staffId;
+  const isTeamMemberView = !!staffRestrictedToId;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Row 1: Team Member (admin only) or Date + Start + End in 3 columns */}
+      <div className={isTeamMemberView ? 'grid grid-cols-1 sm:grid-cols-3 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4'}>
         {!staffRestrictedToId ? (
           <div>
             <Dropdown
@@ -498,9 +501,7 @@ export default function AppointmentForm({
             />
             {errors.staffId && <p className="mt-1 text-sm text-red-600">{errors.staffId}</p>}
           </div>
-        ) : (
-          <div />
-        )}
+        ) : null}
 
         <div>
           <DateField
@@ -567,32 +568,31 @@ export default function AppointmentForm({
         </div>
       </div>
 
-      {staffId && serviceNames.length > 0 && (
-        <div>
-          <ChipsMulti
-            id="services"
-            label="Services"
-            options={serviceNames}
-            value={selectedServices}
-            onValueChange={(newServices) => {
-              setSelectedServices(newServices);
-              setErrors((prev) => ({ ...prev, services: '' }));
-            }}
-            variant="light"
-            layout="flex"
-          />
-          {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
-        </div>
-      )}
-
-      {/* Client Section */}
-      <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Client
-          </label>
-          <div className="flex gap-2">
-            <div className="flex-1">
+      {/* Row 2: Services, Client, Notes — 3 columns for team members to avoid empty space */}
+      {isTeamMemberView ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {staffId && serviceNames.length > 0 && (
+            <div>
+              <ChipsMulti
+                id="services"
+                label="Services"
+                options={serviceNames}
+                value={selectedServices}
+                onValueChange={(newServices) => {
+                  setSelectedServices(newServices);
+                  setErrors((prev) => ({ ...prev, services: '' }));
+                }}
+                variant="light"
+                layout="flex"
+              />
+              {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Client
+            </label>
+            <div className="flex gap-2">
               <Dropdown
                 key={`clientId-${clientId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
                 id="clientId"
@@ -609,18 +609,108 @@ export default function AppointmentForm({
                 placeholder="Select client..."
                 error={errors.client}
               />
+              {onClientAdd && (
+                <PrimaryButton
+                  type="button"
+                  onClick={() => setShowClientDrawer(true)}
+                  className="whitespace-nowrap flex-shrink-0"
+                >
+                  Add
+                </PrimaryButton>
+              )}
             </div>
-            <PrimaryButton
-              type="button"
-              onClick={() => setShowClientDrawer(true)}
-              className="whitespace-nowrap"
-            >
-              Add
-            </PrimaryButton>
+            {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
           </div>
-          {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
+          <div>
+            <InputField
+              id="label"
+              type="text"
+              label="Notes"
+              value={label}
+              onChange={(e) => {
+                setLabel(e.target.value);
+                setErrors((prev) => ({ ...prev, label: '' }));
+              }}
+              placeholder="e.g., Client consultation, Team meeting..."
+              error={errors.label}
+              variant="light"
+            />
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {staffId && serviceNames.length > 0 && (
+            <div>
+              <ChipsMulti
+                id="services"
+                label="Services"
+                options={serviceNames}
+                value={selectedServices}
+                onValueChange={(newServices) => {
+                  setSelectedServices(newServices);
+                  setErrors((prev) => ({ ...prev, services: '' }));
+                }}
+                variant="light"
+                layout="flex"
+              />
+              {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
+            </div>
+          )}
+
+          {/* Client Section */}
+          <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Client
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Dropdown
+                    key={`clientId-${clientId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
+                    id="clientId"
+                    label=""
+                    value={clientId}
+                    onChange={(e) => {
+                      setClientId(e.target.value ?? '');
+                      setErrors((prev) => ({ ...prev, client: '' }));
+                    }}
+                    options={[
+                      { value: '', label: 'None' },
+                      ...clientOptions,
+                    ]}
+                    placeholder="Select client..."
+                    error={errors.client}
+                  />
+                </div>
+                <PrimaryButton
+                  type="button"
+                  onClick={() => setShowClientDrawer(true)}
+                  className="whitespace-nowrap"
+                >
+                  Add
+                </PrimaryButton>
+              </div>
+              {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
+            </div>
+          </div>
+
+          <div>
+            <InputField
+              id="label"
+              type="text"
+              label="Notes"
+              value={label}
+              onChange={(e) => {
+                setLabel(e.target.value);
+                setErrors((prev) => ({ ...prev, label: '' }));
+              }}
+              placeholder="e.g., Client consultation, Team meeting..."
+              error={errors.label}
+              variant="light"
+            />
+          </div>
+        </>
+      )}
 
       {/* Client Drawer */}
       <Drawer
@@ -634,22 +724,6 @@ export default function AppointmentForm({
           saving={saving}
         />
       </Drawer>
-
-      <div>
-        <InputField
-          id="label"
-          type="text"
-          label="Notes"
-          value={label}
-          onChange={(e) => {
-            setLabel(e.target.value);
-            setErrors((prev) => ({ ...prev, label: '' }));
-          }}
-          placeholder="e.g., Client consultation, Team meeting..."
-          error={errors.label}
-          variant="light"
-        />
-      </div>
 
       <div className="flex justify-between items-center pt-4 border-t border-gray-200">
         {initialAppointment && onDelete && (

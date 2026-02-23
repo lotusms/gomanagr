@@ -138,7 +138,14 @@ export default function DashboardLayout({ children }) {
     if (memberRole !== 'member') return;
     const path = router.pathname;
     const baseAllowed =
-      path.startsWith('/dashboard/team-member') || path === '/dashboard/settings';
+      path.startsWith('/dashboard/team-member') ||
+      path === '/dashboard/settings' ||
+      path === '/dashboard/schedule' ||
+      path.startsWith('/dashboard/schedule/') ||
+      path === '/dashboard/clients' ||
+      path.startsWith('/dashboard/clients/') ||
+      path === '/dashboard/projects' ||
+      path.startsWith('/dashboard/projects/');
     if (baseAllowed) return;
     if (memberAccess === null) return; // still loading
     if (path === '/dashboard/services' || path.startsWith('/dashboard/services/')) return;

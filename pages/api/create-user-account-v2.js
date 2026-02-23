@@ -140,8 +140,28 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing userId or userData' });
   }
 
-  // Ensure the caller can only update their own account (team member vs admin isolation)
-  const authenticatedUserId = await getAuthenticatedUserId(req);
+  let authenticatedUserId = await getAuthenticatedUserId(req);
+
+  if (authenticatedUserId == null && inviteToken && userData?.email) {
+    const { data: inviteRow, error: inviteErr } = await supabaseAdmin
+      .from('org_invites')
+      .select('email, used, expires_at')
+      .eq('token', inviteToken)
+      .single();
+    if (!inviteErr && inviteRow && !inviteRow.used) {
+      const expired = inviteRow.expires_at && new Date(inviteRow.expires_at) < new Date();
+      const emailMatch = inviteRow.email && userData.email &&
+        inviteRow.email.toLowerCase().trim() === userData.email.toLowerCase().trim();
+      if (!expired && emailMatch) {
+        const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (!authErr && authUser?.user?.email &&
+            authUser.user.email.toLowerCase().trim() === userData.email.toLowerCase().trim()) {
+          authenticatedUserId = userId;
+        }
+      }
+    }
+  }
+
   if (authenticatedUserId != null && authenticatedUserId !== userId) {
     return res.status(403).json({
       error: 'Forbidden',
@@ -151,7 +171,7 @@ export default async function handler(req, res) {
   if (authenticatedUserId == null) {
     return res.status(401).json({
       error: 'Unauthorized',
-      message: 'Valid session required to update account.',
+      message: 'Valid session or valid invite required to create account.',
     });
   }
 
@@ -385,7 +405,7 @@ export default async function handler(req, res) {
         }
 
         organizationId = organization.id;
-        membershipRole = 'admin';
+        membershipRole = 'superadmin';
       }
 
       // Upload logo to organization-specific path if provided
@@ -434,6 +454,7 @@ export default async function handler(req, res) {
       }
     }
 
+    let membershipCreatedAt = now;
     // Step 3: Add user to organization (skip if already in an org, e.g. from previous signup)
     if (!userAlreadyInOrg) {
       const { data: membership, error: memberError } = await supabaseAdmin
@@ -448,6 +469,7 @@ export default async function handler(req, res) {
         .select()
         .single();
 
+      if (!memberError && membership?.created_at) membershipCreatedAt = membership.created_at;
       if (memberError) {
         console.error('[API] Error creating org membership:', memberError);
         let cleanupSuccess = false;
@@ -526,6 +548,11 @@ export default async function handler(req, res) {
       // Don't fail - we already created everything
     }
 
+    // Remove invite record after successful signup (do not keep permanent record)
+    if (inviteToken) {
+      await supabaseAdmin.from('org_invites').delete().eq('token', inviteToken);
+    }
+
     // Return response in format compatible with existing code
     const profile = userProfile.profile && typeof userProfile.profile === 'object' 
       ? userProfile.profile 
@@ -547,7 +574,7 @@ export default async function handler(req, res) {
         industry: fullOrg?.industry || userData.industry || '',
         membership: {
           role: membershipRole,
-          createdAt: userAlreadyInOrg ? now : membership?.created_at ?? now,
+          createdAt: membershipCreatedAt,
         },
       },
       teamMembers: updatedTeamMembers, // Include team members in response

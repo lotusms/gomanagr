@@ -60,6 +60,13 @@ export default async function handler(req, res) {
     }
 
     const orgId = membership.organization_id;
+    const { data: superadminRow } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', orgId)
+      .eq('role', 'superadmin')
+      .limit(1)
+      .maybeSingle();
     const { data: adminRows } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
@@ -67,17 +74,17 @@ export default async function handler(req, res) {
       .eq('role', 'admin')
       .limit(1);
 
-    if (!adminRows?.length) {
+    const profileUserId = superadminRow?.user_id || adminRows?.[0]?.user_id;
+    if (!profileUserId) {
       return res.status(500).json({ error: 'No admin found for organization' });
     }
 
-    const adminUserId = adminRows[0].user_id;
-    const isAdmin = userId === adminUserId;
+    const isAdmin = userId === profileUserId;
 
     const { data: profileRow, error: profileErr } = await supabaseAdmin
       .from('user_profiles')
       .select('appointments')
-      .eq('id', adminUserId)
+      .eq('id', profileUserId)
       .single();
 
     if (profileErr || !profileRow) {
@@ -96,7 +103,7 @@ export default async function handler(req, res) {
       const { data: adminProfile } = await supabaseAdmin
         .from('user_profiles')
         .select('team_members')
-        .eq('id', adminUserId)
+        .eq('id', profileUserId)
         .single();
       const me = (adminProfile?.team_members || []).find(
         (m) => (m.email || '').trim().toLowerCase() === emailNorm
@@ -131,7 +138,7 @@ export default async function handler(req, res) {
         appointments,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', adminUserId);
+      .eq('id', profileUserId);
 
     if (updateErr) {
       console.error('[org-schedule-mutation]', updateErr);

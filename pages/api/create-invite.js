@@ -69,7 +69,7 @@ export default async function handler(req, res) {
       .eq('user_id', invitedByUserId)
       .single();
 
-    if (memberError || !membership || !['admin', 'developer'].includes(membership.role)) {
+    if (memberError || !membership || !['superadmin', 'admin', 'developer'].includes(membership.role)) {
       return res.status(403).json({ error: 'Unauthorized: Only admins and developers can create invites' });
     }
 

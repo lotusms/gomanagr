@@ -101,7 +101,7 @@ export default async function handler(req, res) {
       .eq('user_id', callerUserId)
       .single();
 
-    if (callerErr || !callerMembership || callerMembership.role !== 'admin') {
+    if (callerErr || !callerMembership || !['superadmin', 'admin', 'developer'].includes(callerMembership.role)) {
       return res.status(403).json({ error: 'Only organization admins can revoke access' });
     }
 

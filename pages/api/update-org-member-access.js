@@ -50,7 +50,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Not a member of an organization' });
     }
 
-    if (membership.role !== 'admin') {
+    if (!['superadmin', 'admin', 'developer'].includes(membership.role)) {
       return res.status(403).json({ error: 'Only the organization admin can update team member access' });
     }
 

@@ -14,7 +14,7 @@ const iconButtonClass = `
  * @param {() => void} [onInvite] - If provided, shows an invite button (team member card)
  * @param {() => void} [onRevoke] - If provided, shows a revoke access button (team member card)
  */
-export default function PersonCard({ name, subtitle, src, onClick, onRemove, onInvite, onRevoke, isClient = false, hasCompany = false, isAdmin = false }) {
+export default function PersonCard({ name, subtitle, src, onClick, onRemove, onInvite, onRevoke, isClient = false, hasCompany = false, isAdmin = false, isSuperAdmin = false }) {
   const hasImage = src && src.trim() !== '';
 
   // Get initials for avatar (only for team members)
@@ -97,12 +97,20 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
           <div className="absolute -inset-2 rounded-full border-2 border-white/20 dark:border-gray-700/20 animate-pulse" />
         </div>
 
-        {/* Name with Admin Badge */}
+        {/* Name with Admin / Super Admin Badge */}
         <div className="flex items-center justify-center gap-2 mb-1 px-2 w-full">
           <h3 className="text-xl font-bold text-white text-center truncate drop-shadow-lg">
             {name}
           </h3>
-          {isAdmin && (
+          {isSuperAdmin && (
+            <span className="flex items-center justify-center w-6 h-5 flex-shrink-0" title="Super Admin" aria-label="Super Admin">
+              <div className="relative inline-flex items-center justify-center ml-2">
+                <HiShieldCheck className="w-5 h-5 text-white drop-shadow-lg" aria-hidden />
+                <HiShieldCheck className="w-5 h-5 text-white/90 drop-shadow-lg" aria-hidden />
+              </div>
+            </span>
+          )}
+          {isAdmin && !isSuperAdmin && (
             <HiShieldCheck 
               className="w-5 h-5 text-white flex-shrink-0 drop-shadow-lg" 
               title="Admin"

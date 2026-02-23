@@ -219,9 +219,10 @@ export async function removeStorageFiles(bucket, paths) {
  * @param {object} userData - User account data matching UserAccount schema
  * @param {File|null} logoFile - Optional logo file to upload to Supabase Storage
  * @param {string|null} inviteToken - Optional invite token for joining existing organization
+ * @param {string|null} accessToken - Optional JWT (e.g. from signUp response) for invite flow
  * @returns {Promise<object>} The created/updated account data (camelCase)
  */
-export async function createUserAccount(userId, userData, logoFile = null, inviteToken = null) {
+export async function createUserAccount(userId, userData, logoFile = null, inviteToken = null, accessToken = null) {
   try {
     const now = new Date().toISOString();
     const accountData = { ...userData, updatedAt: now };
@@ -258,14 +259,13 @@ export async function createUserAccount(userId, userData, logoFile = null, invit
     // Call API route that uses service role key to bypass RLS
     // Use v2 API for multi-tenant organization support
     // Logo will be uploaded server-side to organization-specific path
-    // Send session token so API can verify the caller can only update their own account
-    const { data: { session } } = await supabase.auth.getSession();
-    const accessToken = session?.access_token;
+    // Prefer passed-in token (e.g. from signUp) so invite flow has a valid JWT immediately
+    const tokenToSend = accessToken || (await supabase.auth.getSession()).data?.session?.access_token;
     const response = await fetch('/api/create-user-account-v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(tokenToSend ? { Authorization: `Bearer ${tokenToSend}` } : {}),
       },
       body: JSON.stringify({
         userId,

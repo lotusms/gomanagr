@@ -11,6 +11,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { HiPlus, HiX } from 'react-icons/hi';
+import { isOwnerRole, isAdminRole, ORG_ROLE } from '@/config/rolePermissions';
 
 function generateId() {
   return `tm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -267,6 +268,8 @@ function TeamContent() {
       ? (data.isAdmin !== undefined ? data.isAdmin : (existingMember?.isAdmin ?? false))
       : false;
     const isOwner = isEdit ? (existingMember?.isOwner ?? false) : false;
+    const memberEmailNorm = (data.email || existingMember?.email || '').trim().toLowerCase();
+    const resolvedUserId = existingMember?.userId || (memberEmailNorm ? memberEmailToUserId[memberEmailNorm] : null);
     const updatedMember = removeUndefined({
       id: memberId,
       name: data.name,
@@ -288,7 +291,7 @@ function TeamContent() {
       isAdmin,
       isOwner,
       ...(isEdit && existingMember?.invitedAt && { invitedAt: existingMember.invitedAt }),
-      ...(isEdit && existingMember?.userId && { userId: existingMember.userId }),
+      ...(isEdit && (existingMember?.userId || resolvedUserId) && { userId: existingMember?.userId || resolvedUserId }),
     });
 
     let finalMember = updatedMember;
@@ -401,16 +404,28 @@ function TeamContent() {
     }
 
     if (data.isAdmin !== undefined && organization?.id && currentUser?.uid && (finalMember.userId || (finalMember.email || '').trim())) {
+      const rolePayload = {
+        organizationId: organization.id,
+        callerUserId: currentUser.uid,
+        ...(finalMember.userId ? { targetUserId: finalMember.userId } : { targetEmail: (finalMember.email || '').trim() }),
+        role: finalMember.isAdmin ? 'admin' : 'member',
+      };
       fetch('/api/update-org-member-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organizationId: organization.id,
-          callerUserId: currentUser.uid,
-          ...(finalMember.userId ? { targetUserId: finalMember.userId } : { targetEmail: (finalMember.email || '').trim() }),
-          role: finalMember.isAdmin ? 'admin' : 'member',
-        }),
-      }).catch((err) => console.error('Failed to sync org role:', err));
+        body: JSON.stringify(rolePayload),
+      })
+        .then((res) => res.json().then((body) => ({ ok: res.ok, status: res.status, body })))
+        .then(({ ok, body }) => {
+          if (!ok) {
+            const msg = body?.error || body?.message || 'Failed to update org role';
+            toast.error(msg);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to sync org role:', err);
+          toast.error('Failed to update org role. Please try again.');
+        });
     }
 
     // Update services to reflect team member assignments
@@ -672,7 +687,7 @@ function TeamContent() {
     const map = {};
     (orgMembers || []).forEach((om) => {
       if (om.user_id === currentUser?.uid) return;
-      if (om.role === 'admin') return;
+      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN) return;
       const email = (om.user?.email || '').toLowerCase().trim();
       if (email) map[email] = om.user_id;
     });
@@ -684,7 +699,7 @@ function TeamContent() {
     const set = new Set();
     (orgMembers || []).forEach((om) => {
       if (om.user_id === currentUser?.uid) return;
-      if (om.role === 'admin') return;
+      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN) return;
       set.add(om.user_id);
     });
     return set;
@@ -700,15 +715,16 @@ function TeamContent() {
     return set;
   }, [pendingInvites]);
 
-  const currentUserIsOrgAdmin = useMemo(() => {
-    const role = organization?.membership?.role;
-    return role === 'admin' || role === 'developer';
-  }, [organization?.membership?.role]);
+  const currentUserIsOrgAdmin = useMemo(
+    () => isAdminRole(organization?.membership?.role),
+    [organization?.membership?.role]
+  );
 
   const currentUserIsOwner = useMemo(() => {
+    const role = organization?.membership?.role;
     const team = userAccount?.teamMembers || [];
-    return team.some((m) => m.id === `owner-${currentUser?.uid}`);
-  }, [userAccount?.teamMembers, currentUser?.uid]);
+    return isOwnerRole(role) || team.some((m) => m.id === `owner-${currentUser?.uid}`);
+  }, [organization?.membership?.role, userAccount?.teamMembers, currentUser?.uid]);
 
   const orgAndInvitesLoaded = orgMembersLoaded && pendingInvitesLoaded;
   useEffect(() => {
@@ -971,13 +987,14 @@ function TeamContent() {
                     <PersonCard
                       key={member.id}
                       name={member.name}
-                      subtitle={member.role}
+                      subtitle={member.isOwner === true ? 'Super Admin' : member.role}
                       src={member.pictureUrl}
                       onClick={() => openDrawerForEdit(member)}
                       onRemove={() => handleRemoveClick(member.id)}
                       onInvite={showInvite ? () => openInviteDialog(member) : undefined}
                       onRevoke={showRevoke ? () => openRevokeDialog(member, revokeUserId || null) : undefined}
                       isAdmin={member.isAdmin === true}
+                      isSuperAdmin={member.isOwner === true}
                     />
                   );
                 })}

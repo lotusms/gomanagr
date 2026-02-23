@@ -2,5 +2,11 @@
   "buildCommand": "pnpm build",
   "devCommand": "pnpm dev",
   "installCommand": "pnpm install",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cleanup-org-invites",
+      "schedule": "0 0 * * 0"
+    }
+  ]
 }

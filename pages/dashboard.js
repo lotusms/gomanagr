@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { createDismissTodoHandler } from '@/utils/dismissTodoHandler';
@@ -16,6 +17,7 @@ import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import StatsGrid from '@/components/dashboard/StatsGrid';
 import WebsiteConsultationDialog from '@/components/dashboard/WebsiteConsultationDialog';
+import { isAdminNonOwnerRole, isOwnerRole } from '@/config/rolePermissions';
 
 function getWelcomeName(account, email = '') {
   // Always prioritize firstName - this is what user entered during signup
@@ -88,11 +90,20 @@ const TODO_ITEMS = [
 ];
 
 function DashboardContent() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const [userAccount, setUserAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
   const [teamMemberCount, setTeamMemberCount] = useState(null);
   const [accountLoaded, setAccountLoaded] = useState(false);
+  const [orgSchedule, setOrgSchedule] = useState(null);
+
+  useEffect(() => {
+    const role = organization?.membership?.role;
+    if (role !== undefined && role !== null && !isOwnerRole(role)) {
+      router.replace('/dashboard/team-member');
+    }
+  }, [organization?.membership?.role, router]);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -122,6 +133,26 @@ function DashboardContent() {
         setTeamMemberCount(null);
       });
   }, [currentUser?.uid]);
+
+  const isOrgAdmin = isAdminNonOwnerRole(organization?.membership?.role);
+  useEffect(() => {
+    if (!currentUser?.uid || !isOrgAdmin) return;
+    fetch('/api/org-schedule-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.uid }),
+    })
+      .then((r) => r.json())
+      .then((data) => setOrgSchedule(data?.schedule ?? null))
+      .catch(() => setOrgSchedule(null));
+  }, [currentUser?.uid, isOrgAdmin]);
+
+  const scheduleSource = isOrgAdmin && orgSchedule ? orgSchedule : userAccount;
+  const todayStaff = scheduleSource?.teamMembers ?? userAccount?.teamMembers ?? [];
+  const todayAppointments = scheduleSource?.appointments ?? userAccount?.appointments ?? [];
+  const todayClients = scheduleSource?.clients ?? userAccount?.clients ?? [];
+  const todayServices = scheduleSource?.services ?? userAccount?.services ?? [];
+  const schedulePrefs = isOrgAdmin && orgSchedule ? orgSchedule : null;
 
   // Listen for account updates (e.g., when logo is saved)
   useEffect(() => {
@@ -190,6 +221,16 @@ function DashboardContent() {
           return true;
         });
 
+  const isSuperadmin = isOwnerRole(organization?.membership?.role);
+  const showLoader = currentUser?.uid && (!organization || !isSuperadmin);
+  if (showLoader) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" aria-hidden />
+      </div>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -224,17 +265,16 @@ function DashboardContent() {
           defaultCompany={organization?.name ?? ''}
         />
 
-        {/* Admin dashboard: all staff and all appointments for today */}
         <TodaysAppointments
-          businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
-          businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
-          timeFormat={userAccount?.timeFormat ?? '24h'}
-          dateFormat={userAccount?.dateFormat ?? 'MM/DD/YYYY'}
-          timezone={userAccount?.timezone ?? 'UTC'}
-          staff={userAccount?.teamMembers ?? []}
-          appointments={userAccount?.appointments || []}
-          clients={userAccount?.clients || []}
-          services={userAccount?.services || []}
+          businessHoursStart={schedulePrefs?.businessHoursStart ?? userAccount?.businessHoursStart ?? '08:00'}
+          businessHoursEnd={schedulePrefs?.businessHoursEnd ?? userAccount?.businessHoursEnd ?? '18:00'}
+          timeFormat={schedulePrefs?.timeFormat ?? userAccount?.timeFormat ?? '24h'}
+          dateFormat={schedulePrefs?.dateFormat ?? userAccount?.dateFormat ?? 'MM/DD/YYYY'}
+          timezone={schedulePrefs?.timezone ?? userAccount?.timezone ?? 'UTC'}
+          staff={todayStaff}
+          appointments={todayAppointments}
+          clients={todayClients}
+          services={todayServices}
         />
       </div>
     </>

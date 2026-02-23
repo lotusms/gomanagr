@@ -68,7 +68,14 @@ export default async function handler(req, res) {
 
     const orgId = myMembership.organization_id;
 
-    // Find an admin in this org (to read their profile for schedule data)
+    const { data: superadminRow } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', orgId)
+      .eq('role', 'superadmin')
+      .limit(1)
+      .maybeSingle();
+
     const { data: adminRows, error: adminErr } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
@@ -76,17 +83,16 @@ export default async function handler(req, res) {
       .eq('role', 'admin')
       .limit(1);
 
-    if (adminErr || !adminRows?.length) {
+    const profileUserId = superadminRow?.user_id || (adminRows?.[0]?.user_id);
+    if (adminErr || !profileUserId) {
       return res.status(200).json({ schedule: null });
     }
-
-    const adminUserId = adminRows[0].user_id;
 
     // Fetch admin's profile (service role bypasses RLS)
     const { data: profileRow, error: profileErr } = await supabaseAdmin
       .from('user_profiles')
       .select('team_members, appointments, clients, services, profile')
-      .eq('id', adminUserId)
+      .eq('id', profileUserId)
       .single();
 
     if (profileErr || !profileRow) {

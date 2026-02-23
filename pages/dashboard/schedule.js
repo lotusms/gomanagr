@@ -12,6 +12,7 @@ import { HiPlus } from 'react-icons/hi';
 import Drawer from '@/components/ui/Drawer';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import { generateClientId } from '@/utils/clientIdGenerator';
+import { isMemberRole, isAdminNonOwnerRole } from '@/config/rolePermissions';
 
 const REALTIME_SCHEDULE_EVENT = 'schedule-updated';
 
@@ -27,7 +28,8 @@ function ScheduleContent() {
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const isTeamMember = organization?.membership?.role === 'member';
+  const isTeamMember = isMemberRole(organization?.membership?.role);
+  const isOrgAdmin = isAdminNonOwnerRole(organization?.membership?.role);
 
   const { appointments, teamMembers, clients, schedulePrefs, myStaffId } = useMemo(() => {
     if (isTeamMember && orgSchedule) {
@@ -46,6 +48,17 @@ function ScheduleContent() {
         myStaffId: me?.id ?? null,
       };
     }
+    if (isOrgAdmin && orgSchedule) {
+      const teamMembers = orgSchedule.teamMembers || [];
+      const clients = orgSchedule.clients && orgSchedule.clients.length > 0 ? orgSchedule.clients : DEFAULT_CLIENTS;
+      return {
+        appointments: orgSchedule.appointments || [],
+        teamMembers,
+        clients,
+        schedulePrefs: orgSchedule,
+        myStaffId: null,
+      };
+    }
     const teamMembers = userAccount?.teamMembers || [];
     const clients = userAccount?.clients && userAccount.clients.length > 0
       ? userAccount.clients
@@ -57,7 +70,7 @@ function ScheduleContent() {
       schedulePrefs: null,
       myStaffId: null,
     };
-  }, [isTeamMember, orgSchedule, userAccount, currentUser?.email]);
+  }, [isTeamMember, isOrgAdmin, orgSchedule, userAccount, currentUser?.email]);
 
   const businessHoursStart = schedulePrefs?.businessHoursStart ?? userAccount?.businessHoursStart ?? '08:00';
   const businessHoursEnd = schedulePrefs?.businessHoursEnd ?? userAccount?.businessHoursEnd ?? '18:00';
@@ -89,16 +102,15 @@ function ScheduleContent() {
   }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (!currentUser?.uid || !isTeamMember) return;
+    if (!currentUser?.uid || (!isTeamMember && !isOrgAdmin)) return;
     fetchOrgSchedule();
-  }, [currentUser?.uid, isTeamMember, fetchOrgSchedule]);
+  }, [currentUser?.uid, isTeamMember, isOrgAdmin, fetchOrgSchedule]);
 
-  // Poll for schedule changes when team member is on this page (fallback if broadcast is missed)
   useEffect(() => {
-    if (!currentUser?.uid || !isTeamMember) return;
+    if (!currentUser?.uid || (!isTeamMember && !isOrgAdmin)) return;
     const interval = setInterval(fetchOrgSchedule, 60 * 1000);
     return () => clearInterval(interval);
-  }, [currentUser?.uid, isTeamMember, fetchOrgSchedule]);
+  }, [currentUser?.uid, isTeamMember, isOrgAdmin, fetchOrgSchedule]);
 
   // Supabase Realtime: subscribe to org channel so we get instant updates when admin (or another tab) saves/deletes
   useEffect(() => {
@@ -108,7 +120,7 @@ function ScheduleContent() {
     const channel = supabase.channel(`org:${orgId}`);
     channel
       .on('broadcast', { event: REALTIME_SCHEDULE_EVENT }, () => {
-        if (isTeamMember) {
+        if (isTeamMember || isOrgAdmin) {
           fetchOrgSchedule();
         } else {
           getUserAccountFromServer(currentUser.uid).then((data) => setUserAccount(data || null));
@@ -157,7 +169,7 @@ function ScheduleContent() {
     
     setSaving(true);
     try {
-      if (isTeamMember) {
+      if (isTeamMember || isOrgAdmin) {
         const res = await fetch('/api/org-schedule-mutation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -199,7 +211,7 @@ function ScheduleContent() {
     
     setSaving(true);
     try {
-      if (isTeamMember) {
+      if (isTeamMember || isOrgAdmin) {
         const res = await fetch('/api/org-schedule-mutation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

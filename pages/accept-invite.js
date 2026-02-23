@@ -67,7 +67,8 @@ export default function AcceptInvitePage() {
     setSubmitting(true);
     setErrors({});
     try {
-      const { user } = await signup(inviteData.email, password);
+      const result = await signup(inviteData.email, password);
+      const user = result?.user;
       const userId = user?.uid;
       if (!userId) throw new Error('Account created but session not available');
 
@@ -98,10 +99,16 @@ export default function AcceptInvitePage() {
         updatedAt: now,
       };
 
-      await createUserAccount(userId, userAccountData, null, token);
+      const accessToken = result?.session?.access_token;
+      await createUserAccount(userId, userAccountData, null, token, accessToken);
       router.push('/dashboard/team-member');
     } catch (err) {
-      setErrors({ submit: err.message || 'Something went wrong. Please try again.' });
+      const message =
+        err?.responseData?.message ||
+        err?.responseData?.error ||
+        err?.message ||
+        'Something went wrong. Please try again.';
+      setErrors({ submit: message });
       setSubmitting(false);
     }
   };

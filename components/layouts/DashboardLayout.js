@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
+import { isOwnerRole } from '@/config/rolePermissions';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/layouts/UserMenu';
 import DashboardSidebar from '@/components/layouts/DashboardSidebar';
@@ -106,8 +107,10 @@ export default function DashboardLayout({ children }) {
 
   const memberRole = organization?.membership?.role;
   const isOwner = useMemo(
-    () => (userAccount?.teamMembers || []).some((m) => m.id === `owner-${currentUser?.uid}`),
-    [userAccount?.teamMembers, currentUser?.uid]
+    () =>
+      isOwnerRole(memberRole) ||
+      (userAccount?.teamMembers || []).some((m) => m.id === `owner-${currentUser?.uid}`),
+    [memberRole, userAccount?.teamMembers, currentUser?.uid]
   );
 
   // Load team member access config when user is a member (controls which sections they can see)
@@ -122,6 +125,13 @@ export default function DashboardLayout({ children }) {
       .then((data) => setMemberAccess(data?.teamMemberSections || null))
       .catch(() => setMemberAccess(null));
   }, [currentUser?.uid, memberRole]);
+
+  // Only superadmin should see /dashboard; redirect admin and member to team-member home
+  useEffect(() => {
+    if (!orgLoaded || router.pathname !== '/dashboard') return;
+    if (isOwner) return;
+    router.replace('/dashboard/team-member');
+  }, [orgLoaded, router.pathname, isOwner, router]);
 
   // Members can only access allowed paths (team-member/*, settings, and sections enabled by admin)
   useEffect(() => {
@@ -214,7 +224,7 @@ export default function DashboardLayout({ children }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} memberAccess={memberAccess} isOwner={isOwner} />
+        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} memberAccess={memberAccess} isOwner={isOwner} orgLoaded={orgLoaded} />
 
         {/* Main Content */}
         <main

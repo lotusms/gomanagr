@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     }
 
     const orgId = membership.organization_id;
-    const isOrgAdmin = membership.role === 'admin';
+    const isOrgAdmin = ['superadmin', 'admin', 'developer'].includes(membership.role);
 
     const { data: adminRows } = await supabaseAdmin
       .from('org_members')

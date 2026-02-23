@@ -44,8 +44,9 @@ export default async function handler(req, res) {
       .eq('user_id', callerUserId)
       .single();
 
-    if (callerErr || !callerMembership || callerMembership.role !== 'admin') {
-      return res.status(403).json({ error: 'Only org admins can change member roles' });
+    const callerRole = callerMembership?.role;
+    if (callerErr || !callerMembership || callerRole !== 'superadmin') {
+      return res.status(403).json({ error: 'Only the organization owner (superadmin) can change member roles' });
     }
 
     let userIdToUpdate = targetUserId;

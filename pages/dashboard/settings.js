@@ -12,9 +12,13 @@ import TeamAccessSettings from '@/components/settings/TeamAccessSettings';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount } from '@/services/userService';
-
-const MEMBER_HIDDEN_SECTIONS = ['organization', 'team-access', 'api', 'billing', 'security'];
-const ADMIN_NON_OWNER_HIDDEN_SECTIONS = ['organization', 'team-access', 'api', 'billing', 'security'];
+import {
+  isOwnerRole,
+  isAdminRole,
+  isMemberRole,
+  MEMBER_HIDDEN_SETTINGS,
+  ADMIN_NON_OWNER_HIDDEN_SETTINGS,
+} from '@/config/rolePermissions';
 
 function SettingsContent() {
   const { currentUser } = useAuth();
@@ -34,14 +38,16 @@ function SettingsContent() {
     getUserAccount(currentUser.uid)
       .then((data) => {
         const team = data?.teamMembers || [];
-        setIsOwner(team.some((m) => m.id === `owner-${currentUser.uid}`));
+        setIsOwner(
+          isOwnerRole(memberRole) || team.some((m) => m.id === `owner-${currentUser.uid}`)
+        );
       })
       .catch(() => setIsOwner(false));
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, memberRole]);
 
-  const isTeamMember = memberRole === 'member';
-  const isAdminNonOwner = (memberRole === 'admin' || memberRole === 'developer') && !isOwner;
-  const hiddenSections = isTeamMember ? MEMBER_HIDDEN_SECTIONS : isAdminNonOwner ? ADMIN_NON_OWNER_HIDDEN_SECTIONS : [];
+  const isTeamMember = isMemberRole(memberRole);
+  const isAdminNonOwner = isAdminRole(memberRole) && !isOwner;
+  const hiddenSections = isTeamMember ? MEMBER_HIDDEN_SETTINGS : isAdminNonOwner ? ADMIN_NON_OWNER_HIDDEN_SETTINGS : [];
 
   useEffect(() => {
     if (hiddenSections.length && hiddenSections.includes(activeSection)) {

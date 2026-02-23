@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       .eq('user_id', callerUserId)
       .single();
 
-    if (memErr || !membership || !['admin', 'developer'].includes(membership.role)) {
+    if (memErr || !membership || !['superadmin', 'admin', 'developer'].includes(membership.role)) {
       return res.status(403).json({ error: 'Only org admins and developers can list invites' });
     }
 

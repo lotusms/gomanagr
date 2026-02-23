@@ -58,40 +58,110 @@ export default async function handler(req, res) {
       return res.status(200).json({ member: null });
     }
 
+    // Fetch logged-in user's profile once (used for fallback and for merging into sparse team member)
+    const { data: ownProfile, error: profileErr } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, first_name, last_name, email, profile')
+      .eq('id', userId)
+      .single();
+
     const orgId = membership.organization_id;
+    // Include superadmin (org owner) and admin – team_members live on one of these profiles
     const { data: adminRows } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
       .eq('organization_id', orgId)
-      .eq('role', 'admin')
+      .in('role', ['superadmin', 'admin'])
       .limit(1);
 
-    if (!adminRows?.length) {
-      return res.status(200).json({ member: null });
+    let member = null;
+    let adminUserId = null;
+
+    if (adminRows?.length) {
+      const profileOwnerId = adminRows[0].user_id;
+      const { data: adminProfile, error: adminErr } = await supabaseAdmin
+        .from('user_profiles')
+        .select('team_members')
+        .eq('id', profileOwnerId)
+        .single();
+
+      if (!adminErr && adminProfile?.team_members?.length) {
+        const found = (adminProfile.team_members || []).find((m) => {
+          if ((m.email || '').trim().toLowerCase() !== emailNorm) return false;
+          if (m.userId != null && m.userId !== '') return m.userId === userId;
+          return true;
+        });
+        if (found) {
+          member = found;
+          adminUserId = profileOwnerId;
+        }
+      }
     }
 
-    const adminUserId = adminRows[0].user_id;
-    const { data: adminProfile, error: adminErr } = await supabaseAdmin
-      .from('user_profiles')
-      .select('team_members')
-      .eq('id', adminUserId)
-      .single();
-
-    if (adminErr || !adminProfile?.team_members?.length) {
-      return res.status(200).json({ member: null });
+    // If no team member record (e.g. admin viewing own profile), build member from user_profiles (already fetched)
+    if (!member && !profileErr && ownProfile) {
+      const profile = (ownProfile.profile && typeof ownProfile.profile === 'object') ? ownProfile.profile : {};
+      const addr = profile.address && typeof profile.address === 'object' ? profile.address : {};
+      member = {
+        id: ownProfile.id,
+        userId: userId,
+        firstName: (ownProfile.first_name || profile.firstName || '').trim(),
+        lastName: (ownProfile.last_name || profile.lastName || '').trim(),
+        email: (ownProfile.email || authUser.user.email || '').trim(),
+        role: profile.role ?? '',
+        title: profile.title ?? '',
+        phone: profile.phone ?? '',
+        address: {
+          address1: addr.address1 ?? addr.address ?? '',
+          address2: addr.address2 ?? '',
+          city: addr.city ?? '',
+          state: addr.state ?? '',
+          postalCode: addr.postalCode ?? '',
+          country: addr.country ?? '',
+        },
+        bio: profile.bio ?? '',
+        gender: profile.gender ?? '',
+        personalityTraits: Array.isArray(profile.personalityTraits) ? profile.personalityTraits : [],
+        yearsExperience: profile.yearsExperience != null ? profile.yearsExperience : '',
+        pictureUrl: profile.pictureUrl ?? '',
+      };
     }
 
-    // Match by auth email; if the team member has userId set, it must match the logged-in user
-    // so we never return another person's record (e.g. wrong email in auth or duplicate emails).
-    const member = (adminProfile.team_members || []).find((m) => {
-      if ((m.email || '').trim().toLowerCase() !== emailNorm) return false;
-      if (m.userId != null && m.userId !== '') return m.userId === userId;
-      return true;
-    });
+    // Merge in logged-in user's user_profiles so sparse team_member records (e.g. invite-only) get name, phone, etc.
+    if (member && ownProfile) {
+      const profile = (ownProfile.profile && typeof ownProfile.profile === 'object') ? ownProfile.profile : {};
+      const addr = profile.address && typeof profile.address === 'object' ? profile.address : {};
+      const trim = (v) => (v != null && v !== '' ? String(v).trim() : '');
+      const fallback = (a, b) => (trim(a) || trim(b) || (typeof a === 'number' ? a : ''));
+      member = {
+        ...member,
+        id: member.id || ownProfile.id,
+        userId: member.userId || userId,
+        firstName: fallback(member.firstName, ownProfile.first_name || profile.firstName),
+        lastName: fallback(member.lastName, ownProfile.last_name || profile.lastName),
+        email: fallback(member.email, ownProfile.email || authUser.user.email),
+        role: fallback(member.role, profile.role),
+        title: fallback(member.title, profile.title),
+        phone: fallback(member.phone, profile.phone),
+        address: {
+          address1: fallback(member.address?.address1, addr.address1 ?? addr.address),
+          address2: fallback(member.address?.address2, addr.address2),
+          city: fallback(member.address?.city, addr.city),
+          state: fallback(member.address?.state, addr.state),
+          postalCode: fallback(member.address?.postalCode, addr.postalCode),
+          country: fallback(member.address?.country, addr.country),
+        },
+        bio: fallback(member.bio, profile.bio),
+        gender: fallback(member.gender, profile.gender),
+        personalityTraits: Array.isArray(member.personalityTraits) && member.personalityTraits.length ? member.personalityTraits : (Array.isArray(profile.personalityTraits) ? profile.personalityTraits : []),
+        yearsExperience: (member.yearsExperience != null && member.yearsExperience !== '') ? member.yearsExperience : (profile.yearsExperience != null ? profile.yearsExperience : ''),
+        pictureUrl: fallback(member.pictureUrl, profile.pictureUrl),
+      };
+    }
 
     return res.status(200).json({
       member: member || null,
-      adminUserId: member ? adminUserId : null,
+      adminUserId: adminUserId || null,
     });
   } catch (err) {
     console.error('[my-team-member-profile]', err);

@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { createDismissTodoHandler } from '@/utils/dismissTodoHandler';
 import { getUserOrganization } from '@/services/organizationService';
+import { isAdminRole } from '@/config/rolePermissions';
 import { useState, useEffect } from 'react';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
@@ -76,23 +77,34 @@ export default function TeamMemberPage() {
   const pictureUrl = (userAccount?.pictureUrl ?? userAccount?.profile?.pictureUrl ?? '').toString().trim();
   const dismissedTodoIds = accountLoaded ? (userAccount?.dismissedTodoIds ?? []) : [];
 
-  // Team member sees only their own appointments for today (no one else's). Admin dashboard shows all.
-  const { myStaff, myAppointments, schedulePrefs } = useMemo(() => {
-    if (!scheduleAccount || !currentUser?.email) return { myStaff: null, myAppointments: [], schedulePrefs: null };
+  // Admin/superadmin: show everyone's appointments. Member: show only their own.
+  const memberRole = organization?.membership?.role;
+  const showAllAppointments = isAdminRole(memberRole);
+
+  const { staffForToday, appointmentsForToday, schedulePrefs } = useMemo(() => {
+    if (!scheduleAccount) return { staffForToday: [], appointmentsForToday: [], schedulePrefs: null };
+    if (showAllAppointments) {
+      return {
+        staffForToday: scheduleAccount.teamMembers || [],
+        appointmentsForToday: scheduleAccount.appointments || [],
+        schedulePrefs: scheduleAccount,
+      };
+    }
+    if (!currentUser?.email) return { staffForToday: [], appointmentsForToday: [], schedulePrefs: scheduleAccount };
     const emailNorm = (currentUser.email || '').trim().toLowerCase();
     const me = (scheduleAccount.teamMembers || []).find(
       (m) => (m.email || '').trim().toLowerCase() === emailNorm
     );
-    if (!me) return { myStaff: null, myAppointments: [], schedulePrefs: scheduleAccount };
+    if (!me) return { staffForToday: [], appointmentsForToday: [], schedulePrefs: scheduleAccount };
     const myAppointments = (scheduleAccount.appointments || []).filter(
       (a) => String(a.staffId) === String(me.id)
     );
     return {
-      myStaff: [me],
-      myAppointments,
+      staffForToday: [me],
+      appointmentsForToday: myAppointments,
       schedulePrefs: scheduleAccount,
     };
-  }, [scheduleAccount, currentUser?.email]);
+  }, [scheduleAccount, currentUser?.email, showAllAppointments]);
 
   const handleDismissTodo = createDismissTodoHandler({
     userId: currentUser?.uid,
@@ -132,7 +144,9 @@ export default function TeamMemberPage() {
                     Welcome{welcomeName ? `, ${welcomeName}` : ''}
                   </h1>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    You’re signed in as a team member of {orgName}.
+                    {showAllAppointments
+                      ? `You're signed in as an admin of ${orgName}.`
+                      : `You're signed in as a team member of ${orgName}.`}
                   </p>
                 </div>
               </div>
@@ -151,8 +165,8 @@ export default function TeamMemberPage() {
               timeFormat={schedulePrefs.timeFormat}
               dateFormat={schedulePrefs.dateFormat}
               timezone={schedulePrefs.timezone}
-              staff={myStaff || []}
-              appointments={myAppointments || []}
+              staff={staffForToday || []}
+              appointments={appointmentsForToday || []}
               clients={schedulePrefs.clients || []}
               services={schedulePrefs.services || []}
             />

@@ -17,7 +17,7 @@ import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import StatsGrid from '@/components/dashboard/StatsGrid';
 import WebsiteConsultationDialog from '@/components/dashboard/WebsiteConsultationDialog';
-import { isAdminNonOwnerRole, isOwnerRole } from '@/config/rolePermissions';
+import { isAdminRole, isOwnerRole } from '@/config/rolePermissions';
 
 function getWelcomeName(account, email = '') {
   // Always prioritize firstName - this is what user entered during signup
@@ -134,9 +134,10 @@ function DashboardContent() {
       });
   }, [currentUser?.uid]);
 
-  const isOrgAdmin = isAdminNonOwnerRole(organization?.membership?.role);
+  // Superadmin and admin both see everyone's appointments; fetch org schedule for full view
+  const canSeeFullSchedule = isAdminRole(organization?.membership?.role);
   useEffect(() => {
-    if (!currentUser?.uid || !isOrgAdmin) return;
+    if (!currentUser?.uid || !canSeeFullSchedule) return;
     fetch('/api/org-schedule-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -145,14 +146,14 @@ function DashboardContent() {
       .then((r) => r.json())
       .then((data) => setOrgSchedule(data?.schedule ?? null))
       .catch(() => setOrgSchedule(null));
-  }, [currentUser?.uid, isOrgAdmin]);
+  }, [currentUser?.uid, canSeeFullSchedule]);
 
-  const scheduleSource = isOrgAdmin && orgSchedule ? orgSchedule : userAccount;
+  const scheduleSource = canSeeFullSchedule && orgSchedule ? orgSchedule : userAccount;
   const todayStaff = scheduleSource?.teamMembers ?? userAccount?.teamMembers ?? [];
   const todayAppointments = scheduleSource?.appointments ?? userAccount?.appointments ?? [];
   const todayClients = scheduleSource?.clients ?? userAccount?.clients ?? [];
   const todayServices = scheduleSource?.services ?? userAccount?.services ?? [];
-  const schedulePrefs = isOrgAdmin && orgSchedule ? orgSchedule : null;
+  const schedulePrefs = canSeeFullSchedule && orgSchedule ? orgSchedule : null;
 
   // Listen for account updates (e.g., when logo is saved)
   useEffect(() => {

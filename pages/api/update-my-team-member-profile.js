@@ -105,33 +105,66 @@ export default async function handler(req, res) {
       .from('org_members')
       .select('user_id')
       .eq('organization_id', orgId)
-      .eq('role', 'admin')
+      .in('role', ['superadmin', 'admin'])
       .limit(1);
 
-    if (!adminRows?.length) {
-      return res.status(500).json({ error: 'No admin found for organization' });
+    let memberIndex = -1;
+    let adminUserId = null;
+    let adminProfile = null;
+
+    if (adminRows?.length) {
+      adminUserId = adminRows[0].user_id;
+      const { data: ap, error: adminErr } = await supabaseAdmin
+        .from('user_profiles')
+        .select('team_members')
+        .eq('id', adminUserId)
+        .single();
+
+      if (!adminErr && Array.isArray(ap?.team_members)) {
+        adminProfile = ap;
+        memberIndex = adminProfile.team_members.findIndex((m) => {
+          if ((m.email || '').trim().toLowerCase() !== emailNorm) return false;
+          if (m.userId != null && m.userId !== '') return m.userId === userId;
+          return true;
+        });
+      }
     }
 
-    const adminUserId = adminRows[0].user_id;
-    const { data: adminProfile, error: adminErr } = await supabaseAdmin
-      .from('user_profiles')
-      .select('team_members')
-      .eq('id', adminUserId)
-      .single();
-
-    if (adminErr || !Array.isArray(adminProfile?.team_members)) {
-      return res.status(500).json({ error: 'Failed to load team list' });
-    }
-
-    // Match by auth email; if the team member has userId set, it must match the logged-in user.
-    const memberIndex = adminProfile.team_members.findIndex((m) => {
-      if ((m.email || '').trim().toLowerCase() !== emailNorm) return false;
-      if (m.userId != null && m.userId !== '') return m.userId === userId;
-      return true;
-    });
-
+    // User not in any team_members (e.g. admin editing own profile): update only their user_profiles
     if (memberIndex === -1) {
-      return res.status(404).json({ error: 'Team member record not found' });
+      const mergedProfile = buildProfileFromTeamMember(teamMemberData);
+      const existingProfile = (profileRow?.profile && typeof profileRow.profile === 'object') ? profileRow.profile : {};
+      const { error: updateOwnErr } = await supabaseAdmin
+        .from('user_profiles')
+        .update({
+          first_name: (teamMemberData.firstName ?? '').trim() || null,
+          last_name: (teamMemberData.lastName ?? '').trim() || null,
+          profile: { ...existingProfile, ...mergedProfile },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (updateOwnErr) {
+        console.error('[update-my-team-member-profile] own profile', updateOwnErr);
+        return res.status(500).json({ error: 'Failed to update profile' });
+      }
+      const updatedMember = {
+        id: userId,
+        userId,
+        firstName: teamMemberData.firstName ?? '',
+        lastName: teamMemberData.lastName ?? '',
+        email: teamMemberData.email ?? emailNorm,
+        role: teamMemberData.role,
+        title: teamMemberData.title,
+        phone: teamMemberData.phone,
+        address: teamMemberData.address,
+        bio: teamMemberData.bio,
+        gender: teamMemberData.gender,
+        personalityTraits: teamMemberData.personalityTraits,
+        yearsExperience: teamMemberData.yearsExperience,
+        pictureUrl: teamMemberData.pictureUrl,
+      };
+      return res.status(200).json({ ok: true, member: updatedMember });
     }
 
     const existing = adminProfile.team_members[memberIndex];

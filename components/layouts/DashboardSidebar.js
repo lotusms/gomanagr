@@ -47,8 +47,8 @@ function getAdminNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   return [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
-    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Team', href: '/dashboard/team', icon: HiUsers },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },

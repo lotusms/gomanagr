@@ -50,6 +50,7 @@ export default function DashboardLayout({ children }) {
   const { currentUser, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [userAccount, setUserAccount] = useState(null);
+  const [accountLoaded, setAccountLoaded] = useState(false);
   const [previewAccount, setPreviewAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
   const [orgLoaded, setOrgLoaded] = useState(false);
@@ -77,9 +78,13 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     if (!currentUser?.uid) return;
+    setAccountLoaded(false);
     setOrgLoaded(false);
     setOrgFetchFailed(false);
-    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
+    getUserAccount(currentUser.uid)
+      .then((data) => setUserAccount(data || null))
+      .catch(() => setUserAccount(null))
+      .finally(() => setAccountLoaded(true));
     getUserOrganization(currentUser.uid)
       .then((org) => {
         setOrgFetchFailed(false);
@@ -147,6 +152,7 @@ export default function DashboardLayout({ children }) {
     if (memberRole !== 'member') return;
     const path = router.pathname;
     const baseAllowed =
+      path === '/account' ||
       path.startsWith('/dashboard/team-member') ||
       path === '/dashboard/settings' ||
       path === '/dashboard/schedule' ||
@@ -215,12 +221,9 @@ export default function DashboardLayout({ children }) {
           <div className="flex items-center space-x-4">
             <div className="hidden sm:block text-sm text-gray-600 dark:text-gray-300">
               <span>Hello, </span>
-              {(() => {
-                const account = previewAccount || userAccount;
-                const firstName = (account?.firstName ?? '').trim();
-                if (firstName) return firstName;
-                return getDisplayName(account, currentUser?.email ?? '') || currentUser?.email;
-              })()}
+              {accountLoaded && orgLoaded
+                ? (getDisplayName(previewAccount || userAccount, currentUser?.email ?? '') || currentUser?.email)
+                : null}
             </div>
             <UserMenu
               userAccount={userAccount}
@@ -229,6 +232,7 @@ export default function DashboardLayout({ children }) {
               organization={organization}
               isOwner={isOwner}
               onLogout={handleLogout}
+              headerReady={accountLoaded && orgLoaded}
             />
           </div>
         </div>

@@ -1,0 +1,36 @@
+---
+description: Testing standards — tests must assert real behavior and fail when functionality breaks
+globs: __tests__/**/*.js __tests__/**/*.ts __tests__/**/*.jsx __tests__/**/*.tsx
+alwaysApply: false
+---
+
+# Testing standards
+
+Tests must **truly test** behavior. They should fail when screen functionality breaks or doesn't work as expected.
+
+## Principles
+
+1. **Assert user-visible behavior or critical contracts**
+   - Prefer assertions on what the user sees or what happens when they act: text content, labels, roles, disabled state, errors, success messages, redirects.
+   - Example: "when user submits invalid email, 'Please enter a valid email address' is shown" — not just "form exists".
+
+2. **Tests must fail when the feature breaks**
+   - Before adding or changing a test, ask: "If a developer breaks this feature tomorrow, will this test turn red?" If not, strengthen the test (more specific assertions, test the actual flow, or test the real component instead of a heavily mocked one).
+
+3. **Mock only external boundaries**
+   - Mock: router, auth context, API/services, Supabase, env-dependent code.
+   - Do not mock the component or logic under test. Prefer rendering the real UI and asserting on its output so refactors and bugs are caught.
+
+4. **Avoid useless tests**
+   - Avoid tests that only check "something rendered" without verifying the *correct* outcome.
+   - Avoid assertions that are too generic (e.g. only "button exists"); tie them to the scenario (e.g. "Submit is disabled when email is invalid").
+   - Avoid mocking the unit under test so heavily that changing implementation never breaks the test.
+
+5. **Name tests by behavior**
+   - Describe the scenario and expected outcome: "shows error when password is too short", "redirects to / when logout is clicked", "displays Full Name when nameView is full".
+
+## When writing or reviewing tests
+
+- Prefer `getByRole`, `getByLabelText`, or text that the user sees, so tests reflect accessibility and real UI.
+- For async behavior, use `waitFor` / `findBy*` and assert on the final state, not an intermediate one.
+- When a test is flaky or never fails after breaking the feature, fix the test or replace it with one that asserts the real behavior.

@@ -43,15 +43,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Convert base64 to buffer
     const base64Data = logoData.base64.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     
-    // Use organization ID in the path: {organizationId}/logo/{filename}
     const filename = logoData.filename || `logo-${Date.now()}.png`;
     const logoPath = `${organizationId}/logo/${filename}`;
     
-    // Upload to storage bucket using service role
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('company-logos')
       .upload(logoPath, buffer, {
@@ -64,12 +61,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to upload logo', details: uploadError.message });
     }
 
-    // Get public URL
     const { data: urlData } = supabaseAdmin.storage
       .from('company-logos')
       .getPublicUrl(uploadData.path);
     
-    // Update organization with logo URL
     const { error: updateError } = await supabaseAdmin
       .from('organizations')
       .update({ 

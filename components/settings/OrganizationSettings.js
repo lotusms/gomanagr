@@ -10,7 +10,6 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import { COUNTRIES } from '@/utils/countries';
 import { INDUSTRIES } from '@/components/clients/clientProfileConstants';
 
-// Business hours: every hour from 00:00 to 23:00 (value stored as HH:00)
 const BUSINESS_HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   const h = String(i).padStart(2, '0');
   return { value: `${h}:00`, label: `${h}:00` };
@@ -52,7 +51,6 @@ export default function OrganizationSettings() {
     try {
       setLoading(true);
       
-      // Fetch both user account and organization data
       const [userData, orgData] = await Promise.all([
         getUserAccount(currentUser.uid).catch((err) => {
           console.error('[OrganizationSettings] Error fetching user account:', err);
@@ -73,7 +71,6 @@ export default function OrganizationSettings() {
         userDataIndustry: userData?.industry,
       });
       
-      // Use organization data for name, logo, and industry (multi-tenant source of truth)
       const orgName = orgData?.name || userData?.companyName || '';
       const orgLogo = orgData?.logo_url || userData?.companyLogo || '';
       const orgIndustry = orgData?.industry || userData?.industry || '';
@@ -84,19 +81,16 @@ export default function OrganizationSettings() {
         orgIndustry,
       });
       
-      // Set logo preview from organization logo
       if (orgLogo && orgLogo.trim() !== '') {
         setLogoPreview(orgLogo);
       } else {
         setLogoPreview(null);
       }
       
-      // Build locations array - always include HQ location
       const hqAddress = userData?.organizationAddress || '';
       const existingLocations = userData?.locations || [];
       let locations = [];
       
-      // If HQ address exists, add it as first location (as object with full details)
       if (hqAddress.trim()) {
         locations = [{
           address: hqAddress.trim(),
@@ -108,13 +102,10 @@ export default function OrganizationSettings() {
         }];
       }
       
-      // Add other locations (convert strings to objects if needed, excluding HQ)
       existingLocations.forEach(loc => {
         if (loc) {
-          // If it's already an object, use it
           if (typeof loc === 'object' && loc.address) {
             const locAddress = loc.address.trim();
-            // Only add if it's different from HQ address
             if (locAddress && locAddress !== hqAddress.trim()) {
               locations.push({
                 address: locAddress,
@@ -126,7 +117,6 @@ export default function OrganizationSettings() {
               });
             }
           } else if (typeof loc === 'string' && loc.trim() && loc.trim() !== hqAddress.trim()) {
-            // Convert string to object format
             locations.push({
               address: loc.trim(),
               address2: '',
@@ -169,7 +159,6 @@ export default function OrganizationSettings() {
     setFormData((prev) => {
       const updated = { ...prev, [name]: value };
       
-      // If organization address changes, update HQ location in locations array
       if (name === 'organizationAddress' && value.trim()) {
         const hqAddress = value.trim();
         const otherLocations = prev.locations.filter((loc, idx) => idx !== 0);
@@ -183,7 +172,6 @@ export default function OrganizationSettings() {
         }, ...otherLocations];
       }
       
-      // Update HQ location details when address fields change
       if (['organizationAddress2', 'organizationCity', 'organizationState', 'organizationPostalCode', 'organizationCountry'].includes(name)) {
         if (updated.locations.length > 0) {
           updated.locations[0] = {
@@ -207,7 +195,6 @@ export default function OrganizationSettings() {
   const handleAddLocation = (addressData) => {
     const newLocationAddress = addressData.address1 || addressData.fullAddress || '';
     if (newLocationAddress.trim()) {
-      // Check if location already exists
       const locationExists = formData.locations.some(loc => 
         (typeof loc === 'string' ? loc.trim() : loc.address?.trim()) === newLocationAddress.trim()
       );
@@ -227,7 +214,6 @@ export default function OrganizationSettings() {
           locations: [...prev.locations, newLocation],
         }));
         
-        // Clear the input field after a short delay to allow the selection to complete
         setTimeout(() => {
           setNewLocationValue('');
         }, 100);
@@ -236,7 +222,6 @@ export default function OrganizationSettings() {
   };
 
   const handleRemoveLocation = (indexToRemove) => {
-    // Don't allow removing the first location (HQ)
     if (indexToRemove === 0) return;
     
     setFormData((prev) => ({
@@ -257,7 +242,6 @@ export default function OrganizationSettings() {
         return;
       }
       
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result);
@@ -273,18 +257,15 @@ export default function OrganizationSettings() {
     if (!currentUser) return;
     
     try {
-      // Get organization data
       const orgData = await getUserOrganization(currentUser.uid);
       if (!orgData || !orgData.id) {
         throw new Error('Organization not found');
       }
 
-      // Update organization to remove logo URL
       await updateOrganization(orgData.id, {
         logo_url: '',
       });
 
-      // Also update user account to keep in sync
       const userData = await getUserAccount(currentUser.uid);
       const updatedData = await createUserAccount(
         currentUser.uid,
@@ -297,7 +278,6 @@ export default function OrganizationSettings() {
         null
       );
       
-      // Dispatch event to update header avatar
       if (typeof window !== 'undefined' && updatedData) {
         window.dispatchEvent(
           new CustomEvent('useraccount', {
@@ -312,13 +292,11 @@ export default function OrganizationSettings() {
       setLogoPreview(null);
       setFormData((prev) => ({ ...prev, companyLogo: '', logoFile: null }));
       
-      // Reset file input
       const fileInput = document.getElementById('logo');
       if (fileInput) {
         fileInput.value = '';
       }
       
-      // Reload to sync
       await loadUserData();
     } catch (err) {
       console.error('Error removing logo:', err);
@@ -335,7 +313,6 @@ export default function OrganizationSettings() {
       setError(null);
       setSuccess(false);
 
-      // Get organization data first
       const orgData = await getUserOrganization(currentUser.uid);
       if (!orgData || !orgData.id) {
         throw new Error('Organization not found. Please contact support.');
@@ -343,11 +320,9 @@ export default function OrganizationSettings() {
 
       const { logoFile, ...dataToSave } = formData;
       
-      // Handle logo upload to organization-specific path if new logo provided
       let logoUrl = formData.companyLogo || '';
       if (logoFile) {
         try {
-          // Convert file to base64 for API upload
           const base64 = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
@@ -355,7 +330,6 @@ export default function OrganizationSettings() {
             reader.readAsDataURL(logoFile);
           });
           
-          // Upload logo via API to organization-specific path
           const uploadResponse = await fetch('/api/upload-organization-logo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -382,22 +356,17 @@ export default function OrganizationSettings() {
         }
       }
       
-      // Update organization data (name, logo, industry)
       const updatedOrg = await updateOrganization(orgData.id, {
         name: dataToSave.companyName || '',
         logo_url: logoUrl,
         industry: dataToSave.industry || '',
       });
 
-      // Update user account data for other fields (locations, business hours, etc.)
-      // Ensure HQ location is always first in locations array
       const hqAddress = dataToSave.organizationAddress || '';
       let locations = dataToSave.locations || [];
       
-      // Remove HQ from locations if it exists elsewhere
       locations = locations.filter(loc => loc !== hqAddress);
       
-      // Add HQ as first location if it exists
       if (hqAddress.trim()) {
         locations = [hqAddress.trim(), ...locations];
       }
@@ -416,13 +385,11 @@ export default function OrganizationSettings() {
         null // Logo already uploaded, don't upload again
       );
 
-      // Update logo preview with the saved logo URL
       if (logoUrl && logoUrl.trim() !== '') {
         setLogoPreview(logoUrl);
         setFormData((prev) => ({ ...prev, companyLogo: logoUrl, logoFile: null }));
       }
       
-      // Dispatch event to update header avatar
       if (typeof window !== 'undefined' && savedUserData) {
         window.dispatchEvent(
           new CustomEvent('useraccount', {
@@ -434,7 +401,6 @@ export default function OrganizationSettings() {
         );
       }
       
-      // Reload data to ensure everything is in sync
       await loadUserData();
 
       setSuccess(true);
@@ -678,7 +644,6 @@ export default function OrganizationSettings() {
           {/* List of locations */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {formData.locations.map((location, index) => {
-              // Handle both string and object formats
               const locationObj = typeof location === 'string' 
                 ? { address: location, address2: '', city: '', state: '', postalCode: '', country: '' }
                 : location;

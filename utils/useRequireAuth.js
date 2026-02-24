@@ -12,7 +12,6 @@ export function useRequireAuth() {
 
   useEffect(() => {
     if (!loading && !currentUser) {
-      // Use replace instead of push to prevent back button navigation
       router.replace('/login');
     }
   }, [currentUser, loading, router]);

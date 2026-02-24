@@ -33,7 +33,6 @@ export default function Paginator({
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const safeCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
 
-  // Calculate the range of pages to display
   const getVisiblePages = () => {
     if (totalPages <= maxVisiblePages) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -43,7 +42,6 @@ export default function Paginator({
     let start = Math.max(1, safeCurrentPage - half);
     let end = Math.min(totalPages, start + maxVisiblePages - 1);
 
-    // Adjust start if we're near the end
     if (end - start < maxVisiblePages - 1) {
       start = Math.max(1, end - maxVisiblePages + 1);
     }

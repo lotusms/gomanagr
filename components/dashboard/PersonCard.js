@@ -16,10 +16,8 @@ const iconButtonClass = `
  */
 export default function PersonCard({ name, subtitle, src, onClick, onRemove, onInvite, onRevoke, isClient = false, hasCompany = false, isAdmin = false, isSuperAdmin = false }) {
   const hasImage = src && src.trim() !== '';
-
-  // Get initials for avatar (only for team members)
   const initials = useMemo(() => {
-    if (isClient) return null; // Clients use icons, not initials
+    if (isClient) return null;
     const parts = name.trim().split(' ');
     if (parts.length >= 2) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -43,20 +41,15 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
         ${onClick ? 'cursor-pointer' : ''}
       `}
     >
-      {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-primary-600 to-secondary-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:20px_20px]" />
       </div>
 
-      {/* Shine effect on hover */}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
 
-      {/* Content container */}
       <div className="relative z-10 flex flex-col items-center justify-center p-6 min-h-[200px]">
-        {/* Avatar section */}
         <div className="mb-4 relative">
           {isClient ? (
-            // Client: Show icon (person or company)
             <div className={`
               w-20 h-20 rounded-full flex items-center justify-center
               bg-white/20 backdrop-blur-sm
@@ -72,7 +65,6 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
               )}
             </div>
           ) : hasImage ? (
-            // Team: Show image if available
             <div className="w-20 h-20 rounded-full overflow-hidden ring-4 ring-white/30 dark:ring-gray-800/30 shadow-xl">
               <img 
                 src={src} 
@@ -81,7 +73,6 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
               />
             </div>
           ) : (
-            // Team: Show initials if no image
             <div className={`
               w-20 h-20 rounded-full flex items-center justify-center
               bg-white/20 backdrop-blur-sm
@@ -93,11 +84,9 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
               {initials}
             </div>
           )}
-          {/* Decorative ring */}
           <div className="absolute -inset-2 rounded-full border-2 border-white/20 dark:border-gray-700/20 animate-pulse" />
         </div>
 
-        {/* Name with Admin / Super Admin Badge */}
         <div className="flex items-center justify-center gap-2 mb-1 px-2 w-full">
           <h3 className="text-xl font-bold text-white text-center truncate drop-shadow-lg">
             {name}
@@ -119,7 +108,6 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
           )}
         </div>
 
-        {/* Company/Subtitle */}
         {subtitle && (
           <div className="flex items-center gap-1.5 text-white/90 text-sm mt-1">
             <HiOfficeBuilding className="w-4 h-4 flex-shrink-0" />
@@ -128,7 +116,6 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
         )}
       </div>
 
-      {/* Invite button (team card) */}
       {onInvite && (
         <button
           type="button"
@@ -140,7 +127,6 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
           <HiMail className="w-5 h-5" />
         </button>
       )}
-      {/* Revoke access button (team card) */}
       {onRevoke && (
         <button
           type="button"
@@ -152,7 +138,6 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
           <HiLockClosed className="w-5 h-5" />
         </button>
       )}
-      {/* Remove button */}
       {onRemove && (
         <button
           type="button"
@@ -167,7 +152,6 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
         </button>
       )}
 
-      {/* Bottom accent line */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 dark:bg-gray-700/30" />
     </div>
   );

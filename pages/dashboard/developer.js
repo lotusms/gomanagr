@@ -24,11 +24,9 @@ function DeveloperContent() {
           setUserAccount(data || null);
           setDeveloperMode(data?.developerMode === true);
           
-          // Check if user has access (admin or developer)
           const access = isAdminOrDeveloper(data, currentUser.uid);
           setHasAccess(access);
           
-          // Redirect if no access (unless in development mode)
           if (!access && process.env.NODE_ENV === 'production') {
             router.replace('/dashboard');
           }
@@ -77,7 +75,6 @@ function DeveloperContent() {
     );
   }
 
-  // Show access denied if user doesn't have permission (in production)
   if (!hasAccess && process.env.NODE_ENV === 'production') {
     return (
       <>

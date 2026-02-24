@@ -53,7 +53,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // inviteeData: optional snapshot of team member (firstName, lastName, name, role, company, industry, etc.)
   const inviteeDataSafe = inviteeData && typeof inviteeData === 'object' ? inviteeData : null;
 
   if (!['admin', 'developer', 'member'].includes(role)) {
@@ -61,7 +60,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Verify user has permission (admin or developer)
     const { data: membership, error: memberError } = await supabaseAdmin
       .from('org_members')
       .select('role')

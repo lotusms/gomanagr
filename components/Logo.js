@@ -33,14 +33,12 @@ function InlineLogoSvg({ className = '', wordmarkLight, ...rest }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Check initial state
     const checkDarkMode = () => {
       setIsDarkMode(document.documentElement.classList.contains('dark'));
     };
     
     checkDarkMode();
     
-    // Watch for changes to dark mode class
     const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -50,7 +48,6 @@ function InlineLogoSvg({ className = '', wordmarkLight, ...rest }) {
     return () => observer.disconnect();
   }, []);
   
-  // Use light color if wordmarkLight prop is true OR if dark mode is active
   const managerFill = wordmarkLight || isDarkMode 
     ? (wordmarkLight ? 'rgb(var(--color-primary-100))' : MANAGER_LIGHT)
     : MANAGER_DARK;
@@ -75,14 +72,12 @@ function StackedLogoSvg({ className = '', wordmarkLight, ...rest }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    // Check initial state
     const checkDarkMode = () => {
       setIsDarkMode(document.documentElement.classList.contains('dark'));
     };
     
     checkDarkMode();
     
-    // Watch for changes to dark mode class
     const observer = new MutationObserver(checkDarkMode);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -92,7 +87,6 @@ function StackedLogoSvg({ className = '', wordmarkLight, ...rest }) {
     return () => observer.disconnect();
   }, []);
   
-  // Use light color if wordmarkLight prop is true OR if dark mode is active
   const managerFill = wordmarkLight || isDarkMode 
     ? (wordmarkLight ? 'rgb(var(--color-primary-100))' : MANAGER_LIGHT)
     : MANAGER_DARK;
@@ -138,7 +132,6 @@ export default function Logo({ variant = 'inline', href, className = '', tagline
 
   const inlineWrapperClass = `flex flex-row items-center max-md:flex-col max-md:items-center ${className}`.trim();
 
-  // Responsive: stacked on md and below, inline on lg and up
   if (variant === 'responsive') {
     const stackedBlock = (
       <div className="text-center">

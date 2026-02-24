@@ -35,7 +35,6 @@ function rowToAccount(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-  // Merge profile, but base fields take precedence
   return { ...profile, ...base };
 }
 
@@ -72,16 +71,12 @@ function accountToRow(data) {
       else if (key === 'updatedAt') row.updated_at = value;
       else if (key === 'industry') row.industry = value;
       else if (key === 'trialEndsAt') {
-        // Store trialEndsAt in profile JSONB if column doesn't exist, otherwise as column
         if (value) {
           row.trial_ends_at = value;
           profile.trialEndsAt = value; // Also store in profile as backup
         }
       }
       else if (key === 'reportingEmail') {
-        // ALWAYS store reportingEmail in profile JSONB, NOT as reporting_email column
-        // This avoids the "column not found" error since the column doesn't exist
-        // Normalize reportingEmail: always use signup email if empty
         profile.reportingEmail = (value || data.email || '').trim();
       }
       else row[key] = value;
@@ -90,17 +85,12 @@ function accountToRow(data) {
     }
   });
   
-  // CRITICAL: Ensure reportingEmail is ALWAYS in profile (even if not provided)
-  // This prevents the "column not found" error - reportingEmail is NEVER stored as a column
   if (!profile.reportingEmail && data.email) {
-    // If reportingEmail wasn't provided, default to email (normalized behavior)
     profile.reportingEmail = data.email.trim();
   }
   
-  // Always set profile on row (even if empty) to ensure reportingEmail is stored
   row.profile = profile;
   
-  // CRITICAL: Remove reporting_email from row if it somehow exists (shouldn't happen)
   if (row.reporting_email !== undefined) {
     console.warn('[userService] WARNING: reporting_email found in row after accountToRow, removing:', row.reporting_email);
     delete row.reporting_email;
@@ -130,7 +120,6 @@ export async function uploadFile(bucket, path, file) {
  */
 export async function uploadTeamPhoto(userId, memberId, photoFile) {
   try {
-    // Convert file to base64 for sending to API
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
@@ -144,7 +133,6 @@ export async function uploadTeamPhoto(userId, memberId, photoFile) {
       contentType: photoFile.type || 'image/png'
     };
 
-    // Call API route that uses service role key to bypass RLS
     const response = await fetch('/api/upload-team-photo', {
       method: 'POST',
       headers: {
@@ -228,16 +216,12 @@ export async function createUserAccount(userId, userData, logoFile = null, invit
     const accountData = { ...userData, updatedAt: now };
     if (!accountData.createdAt) accountData.createdAt = now;
 
-    // Check if account already exists to preserve createdAt
     const existing = await getUserAccount(userId);
     if (existing?.createdAt) accountData.createdAt = existing.createdAt;
 
-    // Prepare logo data if file is provided
-    // Logo will be uploaded server-side to organization-specific path
     let logoData = null;
     if (logoFile) {
       try {
-        // Convert file to base64 for sending to API
         const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result);
@@ -252,14 +236,9 @@ export async function createUserAccount(userId, userData, logoFile = null, invit
         };
       } catch (logoErr) {
         console.error('Error preparing logo data:', logoErr);
-        // Continue without logo
       }
     }
 
-    // Call API route that uses service role key to bypass RLS
-    // Use v2 API for multi-tenant organization support
-    // Logo will be uploaded server-side to organization-specific path
-    // Prefer passed-in token (e.g. from signUp) so invite flow has a valid JWT immediately
     const tokenToSend = accessToken || (await supabase.auth.getSession()).data?.session?.access_token;
     const response = await fetch('/api/create-user-account-v2', {
       method: 'POST',
@@ -280,7 +259,6 @@ export async function createUserAccount(userId, userData, logoFile = null, invit
       try {
         errorData = await response.json();
       } catch (e) {
-        // If response is not JSON, try to get text
         const text = await response.text().catch(() => 'Unknown error');
         errorData = { message: text || `HTTP ${response.status}: ${response.statusText}` };
       }
@@ -293,7 +271,6 @@ export async function createUserAccount(userId, userData, logoFile = null, invit
         fullError: errorData,
       });
       
-      // Preserve error data for cleanup status checking
       const error = new Error(errorMessage);
       error.responseData = errorData;
       error.status = response.status;
@@ -327,20 +304,16 @@ export async function getUserAccount(userId) {
     
     const account = rowToAccount(data);
     
-    // If account doesn't exist but user is authenticated, try to create it
     if (!account && userId) {
       console.warn('[getUserAccount] Account not found for authenticated user, attempting to auto-create...');
       try {
-        // Get current session to extract email and user metadata
         const { data: { session } } = await supabase.auth.getSession();
         const email = session?.user?.email;
         const userMetadata = session?.user?.user_metadata || {};
         
-        // Try to extract firstName/lastName from metadata or email
         let firstName = userMetadata.firstName || userMetadata.first_name || '';
         let lastName = userMetadata.lastName || userMetadata.last_name || '';
         
-        // If not in metadata, try to parse from email (fallback)
         if (!firstName && email) {
           const emailParts = email.split('@')[0].split(/[._-]/);
           if (emailParts.length >= 2) {
@@ -356,7 +329,6 @@ export async function getUserAccount(userId) {
             firstName: firstName || '(empty)',
             lastName: lastName || '(empty)',
           });
-          // Create account via API route with available data
           const response = await fetch('/api/fix-missing-account', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -371,7 +343,6 @@ export async function getUserAccount(userId) {
           if (response.ok) {
             const result = await response.json();
             console.log('[getUserAccount] Successfully auto-created missing account:', result);
-            // Retry fetching the account
             const { data: newData, error: retryError } = await supabase
               .from('user_profiles')
               .select('*')
@@ -462,7 +433,6 @@ export async function updateTeamMembers(userId, teamMembers) {
   
   console.log('[updateTeamMembers] Starting update for userId:', userId, 'teamMembers count:', list.length);
   
-  // First verify the profile exists and user has access
   const { data: existingProfile, error: checkError } = await supabase
     .from('user_profiles')
     .select('id')
@@ -487,8 +457,6 @@ export async function updateTeamMembers(userId, teamMembers) {
   
   console.log('[updateTeamMembers] Profile exists, proceeding with update');
   
-  // Update only team_members and updated_at (don't update user_id as it shouldn't change)
-  // Explicitly use .update() not .upsert() to prevent accidental inserts
   const { data, error } = await supabase
     .from('user_profiles')
     .update({ 
@@ -509,7 +477,6 @@ export async function updateTeamMembers(userId, teamMembers) {
       table: 'user_profiles'
     });
     
-    // Check if error suggests INSERT instead of UPDATE
     if (error.message.includes('new row') || error.code === '42501') {
       console.error('[updateTeamMembers] ERROR: This looks like an INSERT operation was attempted, but we used .update()');
       console.error('[updateTeamMembers] This suggests an RLS policy issue or Supabase client bug');

@@ -42,29 +42,24 @@ export default function MultiStepSignup() {
     referralSource: '',
   });
 
-  // Check for invite token in URL
   useEffect(() => {
     const { invite } = router.query;
     if (invite && typeof invite === 'string') {
       setInviteToken(invite);
-      // TODO: Optionally fetch invite details to pre-fill email or show org name
     }
   }, [router.query]);
 
   const updateData = (updates) => {
     setFormData((prev) => ({ ...prev, ...updates }));
-    // Clear errors for updated fields
     const newErrors = { ...errors };
     Object.keys(updates).forEach((key) => {
       delete newErrors[key];
     });
     setErrors(newErrors);
     
-    // Real-time validation for current step
     validateStepRealTime(currentStep, { ...formData, ...updates });
   };
 
-  // Real-time validation (doesn't block, just shows errors)
   const validateStepRealTime = (step, updatedData) => {
     const data = updatedData || formData;
     const newErrors = { ...errors };
@@ -73,16 +68,11 @@ export default function MultiStepSignup() {
       if (data.email && !/\S+@\S+\.\S+/.test(data.email)) {
         newErrors.email = 'Email is invalid';
       } else if (data.email && emailExists) {
-        // Don't set error here - let Step1EmailPassword handle the display with link
-        // Error will be set by handleEmailCheck
       } else if (data.email && emailCheckFailed && emailExists) {
-        // Only show error if email exists AND check failed
-        // If quota exceeded, allow progression (signup will catch duplicate)
         newErrors.email = 'Email verification failed. Please try again.';
       } else if (data.email && !emailExists && emailVerified && /\S+@\S+\.\S+/.test(data.email)) {
         delete newErrors.email;
       } else if (data.email && emailCheckFailed && !emailExists) {
-        // Quota exceeded but email doesn't exist - allow progression
         delete newErrors.email;
       }
       if (data.password && data.password.length < 6) {
@@ -131,10 +121,8 @@ export default function MultiStepSignup() {
     setEmailCheckFailed(checkFailed);
     
     if (exists) {
-      // Don't set error message here - Step1EmailPassword will display it with login link
       setErrors((prev) => {
         const newErrors = { ...prev };
-        // Remove any old error messages
         delete newErrors.email;
         return newErrors;
       });
@@ -156,19 +144,13 @@ export default function MultiStepSignup() {
     setEmailVerified(verified);
   };
 
-  // Check if current step is valid (without setting errors)
   const isStepValid = (step) => {
     if (step === 1) {
-      // CRITICAL: If email exists, ALWAYS block regardless of other validation
       if (emailExists) {
         return false;
       }
       
-      // Basic email format validation
       const emailFormatValid = formData.email && /\S+@\S+\.\S+/.test(formData.email);
-      // Email checking is optional - don't block signup if check fails or isn't done
-      // Only block if we're CERTAIN the email exists (emailExists = true)
-      // Supabase will handle duplicate emails during signup
       const emailAvailable = emailFormatValid && !emailExists;
       const passwordValid = formData.password && formData.password.length >= 6;
       const confirmPasswordValid = formData.confirmPassword && 
@@ -176,8 +158,6 @@ export default function MultiStepSignup() {
       
       const isValid = emailAvailable && passwordValid && confirmPasswordValid;
       
-      // Only log when validation state changes significantly (not on every render)
-      // Removed excessive logging to improve performance
       
       return isValid;
     }
@@ -199,7 +179,6 @@ export default function MultiStepSignup() {
     }
 
     if (step === 5) {
-      // Check if sectionsToTrack is not null/undefined and has items
       return formData.sectionsToTrack !== null && 
              formData.sectionsToTrack !== undefined &&
              Array.isArray(formData.sectionsToTrack) && 
@@ -220,12 +199,8 @@ export default function MultiStepSignup() {
       if (!formData.email) newErrors.email = 'Email is required';
       else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
       else if (emailCheckFailed && emailExists) {
-        // Only block if email exists AND check failed
-        // If quota exceeded, allow progression (signup will catch duplicate)
         newErrors.email = 'Email verification failed. Please try again.';
       }
-      // Don't set error for emailExists here - Step1EmailPassword will display it with login link
-      // Don't set error for !emailVerified - only show when actually checking
       if (!formData.password) newErrors.password = 'Password is required';
       else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
       if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password';
@@ -265,7 +240,6 @@ export default function MultiStepSignup() {
   };
 
   const handleNext = () => {
-    // CRITICAL: Always block if email exists (already registered)
     if (currentStep === 1 && emailExists) {
       setErrors((prev) => ({
         ...prev,
@@ -274,13 +248,10 @@ export default function MultiStepSignup() {
       return;
     }
 
-    // Always validate before proceeding
     if (!validateStep(currentStep)) {
       return;
     }
 
-    // Only proceed if step is valid
-    // Note: isStepValid already checks emailExists, but double-check here for safety
     if (isStepValid(currentStep) && !(currentStep === 1 && emailExists)) {
       if (currentStep < TOTAL_STEPS) {
         setCurrentStep(currentStep + 1);
@@ -296,14 +267,10 @@ export default function MultiStepSignup() {
     }
   };
 
-  // Focus first input field when step changes
   useEffect(() => {
-    // Small delay to ensure DOM is updated after step change
     const timer = setTimeout(() => {
-      // Find the first focusable element in the current step
       const stepContainer = document.querySelector('[data-step-container]');
       if (stepContainer) {
-        // Priority 1: Try to find first text input field (excluding hidden inputs and password toggle buttons)
         const firstInput = stepContainer.querySelector(
           'input[type="text"]:not([tabindex="-1"]):not([type="hidden"]), ' +
           'input[type="email"]:not([tabindex="-1"]):not([type="hidden"]), ' +
@@ -316,7 +283,6 @@ export default function MultiStepSignup() {
           return;
         }
         
-        // Priority 2: Try to find first RadioGroup item (for ChipsSingle components)
         const firstRadio = stepContainer.querySelector(
           '[role="radio"]:not([tabindex="-1"]), ' +
           'button[data-state]:not([tabindex="-1"])'
@@ -326,7 +292,6 @@ export default function MultiStepSignup() {
           return;
         }
         
-        // Priority 3: Try to find first checkbox (for Select All in Step 5)
         const firstCheckbox = stepContainer.querySelector(
           '[role="checkbox"]:not([tabindex="-1"]), ' +
           'input[type="checkbox"]:not([tabindex="-1"])'
@@ -336,7 +301,6 @@ export default function MultiStepSignup() {
           return;
         }
         
-        // Priority 4: Try to find first focusable button (excluding password toggle)
         const firstButton = stepContainer.querySelector(
           'button:not([tabindex="-1"]):not([aria-label*="password" i])'
         );
@@ -352,7 +316,6 @@ export default function MultiStepSignup() {
   const handleSubmit = async () => {
     if (!validateStep(TOTAL_STEPS)) return;
 
-    // Prevent rapid-fire submissions (minimum 2 seconds between attempts)
     const now = Date.now();
     if (lastSubmitAttempt.current && (now - lastSubmitAttempt.current) < 2000) {
       setErrors({ 
@@ -365,18 +328,13 @@ export default function MultiStepSignup() {
     setLoading(true);
     setErrors({}); // Clear previous errors
     try {
-      // Create Firebase auth user
       const userCredential = await signup(formData.email, formData.password);
       const userId = userCredential.user.uid;
 
-      // Ensure firstName and lastName are trimmed
       const firstName = (formData.firstName || '').trim();
       const lastName = (formData.lastName || '').trim();
       const companyName = (formData.companyName || '').trim();
       
-      // Create account owner as the first and only team member
-      // This ensures the current user is always available as a team member
-      // The account owner is automatically the admin of the organization
       const accountOwnerTeamMember = {
         id: `owner-${userId}`,
         name: `${firstName} ${lastName}`.trim() || formData.email.split('@')[0] || 'Account Owner',
@@ -399,11 +357,8 @@ export default function MultiStepSignup() {
         isAdmin: accountOwnerTeamMember.isAdmin,
       });
 
-      // Prepare user account data
-      // reportingEmail always uses the signup email - this is normalized behavior
       const reportingEmail = formData.email.trim();
       
-      // Calculate trial end date (14 days from now)
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 14);
       
@@ -431,7 +386,6 @@ export default function MultiStepSignup() {
       };
 
 
-      // Save to Supabase user_profiles table and create organization
       try {
         const result = await createUserAccount(userId, userAccountData, formData.logoFile, inviteToken);
         console.log('[Signup] Account created successfully:', {
@@ -449,11 +403,9 @@ export default function MultiStepSignup() {
           email: userAccountData.email,
         });
         
-        // Check if API already attempted cleanup
         let cleanupNeeded = true;
         let cleanupStatus = 'unknown';
         
-        // Try to extract cleanup info from error response data if available
         if (accountError.responseData) {
           const errorData = accountError.responseData;
           if (errorData.cleanupAttempted && errorData.cleanupSuccess) {
@@ -466,13 +418,9 @@ export default function MultiStepSignup() {
           }
         }
         
-        // CRITICAL: Delete auth user if profile creation failed
-        // This prevents orphaned auth users
-        // Only attempt if API didn't already try
         if (cleanupNeeded) {
           try {
             console.log('[Signup] Attempting to delete auth user due to profile creation failure:', userId);
-            // Use API route to delete (client can't use admin functions)
             const deleteResponse = await fetch('/api/delete-auth-user', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -490,11 +438,9 @@ export default function MultiStepSignup() {
           } catch (deleteErr) {
             cleanupStatus = 'exception-during-cleanup';
             console.error('[Signup] Error during auth user cleanup:', deleteErr);
-            // Continue - we'll show error to user
           }
         }
         
-        // Don't redirect if account creation failed - user needs to retry
         const errorMessage = cleanupStatus.includes('completed') 
           ? `Account creation failed: ${accountError.message || 'Unknown error'}. The account has been cleaned up. Please try again.`
           : `Account creation failed: ${accountError.message || 'Unknown error'}. Please try again or contact support if the issue persists.`;
@@ -502,17 +448,14 @@ export default function MultiStepSignup() {
         throw new Error(errorMessage);
       }
 
-      // Redirect to dashboard only after successful account creation
       router.push('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
       const errorMessage = error.message || 'Failed to create account. Please try again.';
       
-      // Handle rate limit errors - show helpful message
       if (errorMessage.toLowerCase().includes('rate limit') || 
           errorMessage.toLowerCase().includes('too many') ||
           errorMessage.toLowerCase().includes('exceeded')) {
-        // Check if we're in development mode
         const isDevelopment = process.env.NODE_ENV === 'development' || 
                               (typeof window !== 'undefined' && window.location.hostname === 'localhost');
         
@@ -528,7 +471,6 @@ export default function MultiStepSignup() {
       } else if (errorMessage.toLowerCase().includes('already registered') ||
                  errorMessage.toLowerCase().includes('user already exists') ||
                  errorMessage.toLowerCase().includes('email already')) {
-        // Handle duplicate email errors
         setErrors({ 
           submit: 'This email is already registered. Please sign in instead or use a different email address.' 
         });
@@ -618,7 +560,6 @@ export default function MultiStepSignup() {
               onClick={handleNext}
               disabled={
                 loading || 
-                // CRITICAL: Always disable if email exists (already registered)
                 (currentStep === 1 && emailExists) ||
                 !isStepValid(currentStep)
               }

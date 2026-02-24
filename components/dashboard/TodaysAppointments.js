@@ -5,11 +5,7 @@ import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
 import { HiCalendar } from 'react-icons/hi';
 
-// Staff rows come from dashboard (userAccount.teamMembers); use empty array until real team is added
-// Appointments use "HH:00" or "HH:30" for half-hour slot math
-
 /**
- * Filter appointments for today
  * @param {Array} appointments - Array of appointment objects
  * @param {string} todayKey - Date key in format YYYY-MM-DD
  * @param {number} startHour - Business hours start hour
@@ -17,16 +13,13 @@ import { HiCalendar } from 'react-icons/hi';
  */
 function getAppointmentsForToday(appointments, todayKey, startHour) {
   if (!appointments || !Array.isArray(appointments)) return [];
-  
+
   return appointments
     .filter((apt) => {
-      // Handle date string (YYYY-MM-DD) or Date object
       let appointmentKey;
       if (typeof apt.date === 'string' && apt.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // If it's already a date string in YYYY-MM-DD format, use it directly
         appointmentKey = apt.date;
       } else {
-        // If it's a Date object or ISO string, convert to YYYY-MM-DD
         const appointmentDate = new Date(apt.date);
         appointmentKey = 
           appointmentDate.getFullYear() +
@@ -58,16 +51,10 @@ export default function TodaysAppointments({
   const staff = staffProp || [];
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
-  
-  // Get today's date in user's timezone
   const todayInTimezone = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
-  const todayKey = todayInTimezone; // Already in YYYY-MM-DD format
-  
+  const todayKey = todayInTimezone;
   const appointmentsForToday = getAppointmentsForToday(appointments, todayKey, startHour);
-  // Format today's date according to user's preference
   const todayLabel = formatDate(todayInTimezone, dateFormat, timezone);
-
-  // Filter staff to only show those with appointments today
   const staffWithAppointments = staff.filter((staffRow) => {
     const staffAppointments = appointmentsForToday.filter((a) => a.staffId === staffRow.id);
     return staffAppointments.length > 0;
@@ -129,18 +116,12 @@ export default function TodaysAppointments({
                             (appointment.endSlot < timeSlots.length
                               ? ` – ${timeSlots[appointment.endSlot]}`
                               : '');
-                          
-                          // Get client name
-                          const client = appointment.clientId 
+                          const client = appointment.clientId
                             ? clients.find(c => c.id === appointment.clientId)
                             : null;
                           const clientName = client ? client.name : '';
-                          
-                          // Get service names (first service or empty)
                           const serviceNames = appointment.services || [];
                           const firstService = serviceNames.length > 0 ? serviceNames[0] : '';
-                          
-                          // Build display text: "Client Name - Service" or just "Client Name" or just "Service"
                           let displayText = '';
                           if (clientName && firstService) {
                             displayText = `${clientName} - ${firstService}`;

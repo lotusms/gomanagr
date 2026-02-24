@@ -15,7 +15,6 @@ try {
     console.error('Supabase Admin not configured for user account creation');
     supabaseAdmin = null;
   } else {
-    // Use service role key for admin operations (bypasses RLS)
     supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -28,7 +27,6 @@ try {
   supabaseAdmin = null;
 }
 
-// Helper function to convert camelCase account data to snake_case row
 function accountToRow(data) {
   const KNOWN_KEYS = new Set([
     'userId', 'email', 'trial', 'trialEndsAt', 'firstName', 'lastName', 'purpose', 'role',
@@ -63,16 +61,12 @@ function accountToRow(data) {
       else if (key === 'updatedAt') row.updated_at = value;
       else if (key === 'industry') row.industry = value;
       else if (key === 'trialEndsAt') {
-        // Store trialEndsAt in profile JSONB if column doesn't exist, otherwise as column
         if (value) {
           row.trial_ends_at = value;
           profile.trialEndsAt = value; // Also store in profile as backup
         }
       }
       else if (key === 'reportingEmail') {
-        // ALWAYS store reportingEmail in profile JSONB, NEVER as reporting_email column
-        // This prevents the "column not found" error since the column doesn't exist
-        // Normalize reportingEmail: always use signup email if empty
         profile.reportingEmail = (value || data.email || '').trim();
       }
       else row[key] = value;
@@ -81,17 +75,12 @@ function accountToRow(data) {
     }
   });
   
-  // CRITICAL: Ensure reportingEmail is ALWAYS in profile (even if not provided)
-  // This prevents the "column not found" error - reportingEmail is NEVER stored as a column
   if (!profile.reportingEmail && data.email) {
-    // If reportingEmail wasn't provided, default to email (normalized behavior)
     profile.reportingEmail = data.email.trim();
   }
   
-  // Always set profile on row (even if empty) to ensure reportingEmail is stored
   row.profile = profile;
   
-  // CRITICAL: Remove reporting_email from row if it somehow exists (shouldn't happen)
   if (row.reporting_email !== undefined) {
     console.warn('[API] WARNING: reporting_email found in row after accountToRow, removing:', row.reporting_email);
     delete row.reporting_email;
@@ -131,32 +120,24 @@ export default async function handler(req, res) {
       accountData.createdAt = now;
     }
     
-    // Normalize reportingEmail: always use signup email if not provided or empty
-    // This ensures reportingEmail always matches the account email
     if (!accountData.reportingEmail || accountData.reportingEmail.trim() === '') {
       accountData.reportingEmail = accountData.email || '';
     }
     
-    // Ensure reportingEmail is trimmed and matches email (normalized behavior)
     accountData.reportingEmail = (accountData.reportingEmail || accountData.email || '').trim();
     
-    // Validate required fields are present
     if (!accountData.email) {
       console.error('[API] Missing required field: email');
       return res.status(400).json({ error: 'Email is required' });
     }
     
-    // Ensure firstName and lastName are strings (even if empty)
     accountData.firstName = accountData.firstName || '';
     accountData.lastName = accountData.lastName || '';
     
-    // Ensure teamMembers is an array
     if (!Array.isArray(accountData.teamMembers)) {
       accountData.teamMembers = accountData.teamMembers ? [accountData.teamMembers] : [];
     }
 
-    // Ensure account owner is always created as the first team member
-    // This is a safeguard in case teamMembers wasn't set during signup
     if (!accountData.teamMembers || !Array.isArray(accountData.teamMembers) || accountData.teamMembers.length === 0) {
       const firstName = (accountData.firstName || '').trim();
       const lastName = (accountData.lastName || '').trim();
@@ -188,48 +169,39 @@ export default async function handler(req, res) {
     row.id = userId;
     row.user_id = userId; // Always set user_id = id for RLS compatibility
     
-    // Validate row has required fields before saving
     if (!row.email) {
       console.error('[API] Row missing required field: email', { rowKeys: Object.keys(row) });
       return res.status(400).json({ error: 'Email is required' });
     }
     
-    // Ensure first_name and last_name are set (even if empty strings)
     if (row.first_name === undefined) row.first_name = '';
     if (row.last_name === undefined) row.last_name = '';
 
-    // Try to upsert with all fields first
     let { data, error } = await supabaseAdmin
       .from('user_account')
       .upsert(row, { onConflict: 'id' })
       .select()
       .single();
 
-    // If error is about missing column (like 'industry'), try again without it
-    // Note: reportingEmail is now ALWAYS stored in profile JSONB, so it won't trigger this error
     if (error && error.message?.includes('column') && error.message?.includes('not found')) {
       console.warn('[API] Column not found in schema, retrying without problematic fields:', error.message);
       
-      // Remove industry from row if it exists (store in profile instead)
       if (row.industry !== undefined) {
         if (!row.profile) row.profile = {};
         row.profile.industry = row.industry;
         delete row.industry;
       }
       
-      // Ensure reportingEmail is in profile (should already be there, but double-check)
       if (!row.profile) row.profile = {};
       if (!row.profile.reportingEmail) {
         row.profile.reportingEmail = (row.email || '').trim();
       }
       
-      // Remove any reporting_email if it somehow got in there
       if (row.reporting_email !== undefined) {
         row.profile.reportingEmail = (row.reporting_email || row.email || '').trim();
         delete row.reporting_email;
       }
             
-      // Retry without the problematic column
       const retryResult = await supabaseAdmin
         .from('user_account')
         .upsert(row, { onConflict: 'id' })
@@ -273,7 +245,6 @@ export default async function handler(req, res) {
       throw error;
     }
 
-    // Convert row back to camelCase for response
     const profile = data.profile && typeof data.profile === 'object' ? data.profile : {};
     const response = {
       userId: data.id,

@@ -13,7 +13,6 @@
 export function formatDate(dateString, dateFormat = 'MM/DD/YYYY', timezone = 'UTC') {
   if (!dateString) return '';
   
-  // Parse the date string as local date (YYYY-MM-DD)
   const parts = dateString.split('-');
   if (parts.length !== 3) return dateString;
   
@@ -21,10 +20,8 @@ export function formatDate(dateString, dateFormat = 'MM/DD/YYYY', timezone = 'UT
   const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
   const day = parseInt(parts[2], 10);
   
-  // Create date in user's timezone
   const date = new Date(year, month, day);
   
-  // Format according to preference
   switch (dateFormat) {
     case 'MM/DD/YYYY':
       return date.toLocaleDateString('en-US', {
@@ -73,17 +70,14 @@ export function formatDate(dateString, dateFormat = 'MM/DD/YYYY', timezone = 'UT
 export function formatTime(timeString, timeFormat = '24h') {
   if (!timeString) return '';
   
-  // Parse time string (HH:MM)
   const [hours, minutes] = timeString.split(':').map(Number);
   
   if (timeFormat === '12h') {
-    // Convert to 12-hour format
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
     return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
   }
   
-  // Return 24-hour format
   return timeString;
 }
 
@@ -102,24 +96,20 @@ export function parseFormattedDate(formattedDate, dateFormat = 'MM/DD/YYYY', tim
     
     switch (dateFormat) {
       case 'MM/DD/YYYY':
-        // Parse MM/DD/YYYY format
         const mmddyyyy = formattedDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
         if (mmddyyyy) {
           date = new Date(parseInt(mmddyyyy[3], 10), parseInt(mmddyyyy[1], 10) - 1, parseInt(mmddyyyy[2], 10));
         }
         break;
       case 'DD/MM/YYYY':
-        // Parse DD/MM/YYYY format
         const ddmmyyyy = formattedDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
         if (ddmmyyyy) {
           date = new Date(parseInt(ddmmyyyy[3], 10), parseInt(ddmmyyyy[2], 10) - 1, parseInt(ddmmyyyy[1], 10));
         }
         break;
       case 'YYYY-MM-DD':
-        // Already in correct format
         return formattedDate;
       case 'DD MMM YYYY':
-        // Parse DD MMM YYYY format (e.g., "16 Feb 2026")
         date = new Date(formattedDate);
         break;
       default:
@@ -149,7 +139,6 @@ export function parseFormattedTime(formattedTime, timeFormat = '24h') {
   if (!formattedTime) return '';
   
   if (timeFormat === '12h') {
-    // Parse 12-hour format (e.g., "10:30 AM" or "6:00 PM")
     const match = formattedTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
     if (match) {
       let hours = parseInt(match[1], 10);
@@ -166,7 +155,6 @@ export function parseFormattedTime(formattedTime, timeFormat = '24h') {
     }
   }
   
-  // Already in 24-hour format or parse as-is
   const match = formattedTime.match(/(\d{1,2}):(\d{2})/);
   if (match) {
     const hours = parseInt(match[1], 10);

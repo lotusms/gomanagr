@@ -17,7 +17,6 @@ const SECTIONS_OPTIONS = [
 ];
 
 export default function Step5Sections({ data, updateData, errors }) {
-  // Use null check - don't default to [] to avoid validation issues
   const selectedSections = data.sectionsToTrack !== null && data.sectionsToTrack !== undefined 
     ? data.sectionsToTrack 
     : [];

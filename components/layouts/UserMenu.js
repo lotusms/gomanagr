@@ -34,13 +34,8 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
   };
 
   const account = previewAccount ? { ...userAccount, ...previewAccount } : userAccount;
-  
-  // Prioritize organization logo over user account logo
-  // Organization logo is the source of truth for multi-tenant architecture
   const rawOrgLogo = organization?.logo_url;
   const rawUserLogo = account?.companyLogo;
-  
-  // Handle all possible cases: string, null, undefined, number, etc.
   let logoUrl = '';
   if (rawOrgLogo !== null && rawOrgLogo !== undefined) {
     logoUrl = String(rawOrgLogo).trim();
@@ -48,8 +43,6 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
     logoUrl = String(rawUserLogo).trim();
   }
   const displayName = getDisplayName(account, currentUser?.email ?? '');
-  
-  // For avatar initials, use firstName and lastName directly (not displayName which may be formatted)
   const firstName = (account?.firstName ?? '').trim();
   const lastName = (account?.lastName ?? '').trim();
   const initialsName = firstName || lastName ? `${firstName} ${lastName}`.trim() : displayName;
@@ -80,7 +73,6 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
             className={!hasLogo ? 'bg-primary-600 text-white' : 'bg-white'}
           />
         ) : (
-          // Show a placeholder while loading to prevent flash
           <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
         )}
       </button>

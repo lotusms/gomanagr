@@ -62,7 +62,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // No SMTP: still accept the request (e.g. log or store later) and return success
   console.log('[website-consultation] No SMTP configured. Request:', { name, email, company, message: message || '' });
   return res.status(200).json({ ok: true, message: 'Request received' });
 }

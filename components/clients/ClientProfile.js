@@ -53,7 +53,6 @@ export default function ClientProfile({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   
-  // Basic Info
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [clientId, setClientId] = useState('');
@@ -62,7 +61,6 @@ export default function ClientProfile({
   const [email, setEmail] = useState('');
   const [preferredCommunication, setPreferredCommunication] = useState('email');
   
-  // Company
   const [isCompany, setIsCompany] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
@@ -93,14 +91,12 @@ export default function ClientProfile({
   const [secondaryContactPhone, setSecondaryContactPhone] = useState('');
   const [secondaryContactEmail, setSecondaryContactEmail] = useState('');
   
-  // Financial
   const [paymentTerms, setPaymentTerms] = useState('');
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [pricingTier, setPricingTier] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [activeRetainersBalance, setActiveRetainersBalance] = useState('');
   
-  // Projects
   const [activeProjects, setActiveProjects] = useState([]);
   const [completedProjects, setCompletedProjects] = useState([]);
   const [expandedProjectKey, setExpandedProjectKey] = useState(null); // 'active-0' | 'completed-1' | null
@@ -109,23 +105,19 @@ export default function ClientProfile({
   const [deliverables, setDeliverables] = useState([]);
   const [approvals, setApprovals] = useState([]);
   
-  // Communication Log
   const [emails, setEmails] = useState([]);
   const [messages, setMessages] = useState([]);
   const [calls, setCalls] = useState([]);
   const [meetingNotes, setMeetingNotes] = useState([]);
   const [internalNotes, setInternalNotes] = useState('');
   
-  // Documents & Files
   const [contracts, setContracts] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [attachments, setAttachments] = useState([]);
   const [sharedAssets, setSharedAssets] = useState([]);
   
-  // Note: Section open/closed state is now handled by ResponsiveSectionWrapper
   
-  // Appointment drawer
   const [showAppointmentDrawer, setShowAppointmentDrawer] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
   
@@ -145,33 +137,26 @@ export default function ClientProfile({
     return states.map((s) => ({ value: s.isoCode, label: s.name }));
   }, [billingCountry]);
   
-  // Get client appointments
   const clientAppointments = useMemo(() => {
     if (!userAccount?.appointments || !initialClient?.id) return [];
     return userAccount.appointments.filter((apt) => apt.clientId === initialClient.id);
   }, [userAccount?.appointments, initialClient?.id]);
   
-  // Get existing client IDs for uniqueness check
   const existingClientIds = useMemo(() => {
     if (!userAccount?.clients) return [];
     return userAccount.clients.map((c) => c.id).filter(Boolean);
   }, [userAccount?.clients]);
   
-  // Track initialization - only initialize once, never reset
   const hasInitializedRef = useRef(false);
   const initialClientRef = useRef(initialClient);
   
-  // Update ref on every render to capture latest initialClient (doesn't trigger effects)
   initialClientRef.current = initialClient;
   
-  // Initialize form ONLY ONCE on mount - never re-initialize to prevent focus loss
   useEffect(() => {
-    // Only initialize once if we haven't already and initialClient is available
     if (!hasInitializedRef.current && initialClientRef.current) {
       hasInitializedRef.current = true;
       const clientData = initialClientRef.current;
       if (clientData) {
-        // Parse name into first/last
         const nameParts = (clientData.name || '').split(' ');
         setFirstName(nameParts[0] || '');
         setLastName(nameParts.slice(1).join(' ') || '');
@@ -182,7 +167,6 @@ export default function ClientProfile({
         setEmail(clientData.email ?? '');
         setPreferredCommunication(clientData.preferredCommunication || 'email');
         
-        // Company - always show company section
         setIsCompany(true);
         setCompanyName(clientData.company || clientData.companyName || '');
         const companyPhoneVal = clientData.companyPhone ?? '';
@@ -218,14 +202,11 @@ export default function ClientProfile({
         setSecondaryContactPhone(secondaryPhoneVal ? formatPhone(unformatPhone(secondaryPhoneVal)) : '');
         setSecondaryContactEmail(clientData.secondaryContactEmail || '');
         
-        // Financial
         setPaymentTerms(clientData.paymentTerms || '');
-        // Handle both old string format and new array format
         const paymentHistoryData = clientData.paymentHistory;
         if (Array.isArray(paymentHistoryData)) {
           setPaymentHistory(paymentHistoryData);
         } else if (typeof paymentHistoryData === 'string' && paymentHistoryData.trim()) {
-          // Legacy: if it's a string, convert to empty array (old format)
           setPaymentHistory([]);
         } else {
           setPaymentHistory([]);
@@ -234,21 +215,18 @@ export default function ClientProfile({
         setDefaultCurrency(clientData.defaultCurrency || 'USD');
         setActiveRetainersBalance(clientData.activeRetainersBalance || '');
         
-        // Projects
         setActiveProjects(clientData.activeProjects || []);
         setCompletedProjects(clientData.completedProjects || []);
         setLinkedFiles(clientData.linkedFiles || []);
         setDeliverables(clientData.deliverables || []);
         setApprovals(clientData.approvals || []);
         
-        // Communication
         setEmails(clientData.emails || []);
         setMessages(clientData.messages || []);
         setCalls(clientData.calls || []);
         setMeetingNotes(clientData.meetingNotes || []);
         setInternalNotes(clientData.internalNotes || '');
         
-        // Documents
         setContracts(clientData.contracts || []);
         setProposals(clientData.proposals || []);
         setInvoices(clientData.invoices || []);
@@ -256,17 +234,12 @@ export default function ClientProfile({
         setSharedAssets(clientData.sharedAssets || []);
         setIsCompany(true);
       } else {
-        // New client - ID will be generated in separate useEffect when existingClientIds is available
         setIsCompany(true);
       }
       setErrors({});
     }
-    // Empty dependency array - ONLY runs once on mount
-    // Never re-runs, preventing any form resets that would cause focus loss
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // NEVER re-run - this is the key to preventing focus loss
   
-  // Generate ID for new client when existingClientIds becomes available (only once)
   const idGeneratedRef = useRef(false);
   const previousInitialClientIdForGenerationRef = useRef(undefined);
   
@@ -274,14 +247,12 @@ export default function ClientProfile({
     const currentInitialClientId = initialClient?.id;
     const switchedToNew = previousInitialClientIdForGenerationRef.current !== undefined && previousInitialClientIdForGenerationRef.current !== null && (currentInitialClientId === undefined || currentInitialClientId === null);
     
-    // Reset ID generation flag when switching to new client mode
     if (switchedToNew) {
       idGeneratedRef.current = false;
     }
     
     previousInitialClientIdForGenerationRef.current = currentInitialClientId;
     
-    // Generate ID only for new clients, only once, when existingClientIds is available
     if ((initialClient === null || initialClient === undefined) && !clientId && Array.isArray(existingClientIds) && existingClientIds.length >= 0 && !idGeneratedRef.current) {
       const newId = generateClientId(existingClientIds);
       setClientId(newId);
@@ -289,7 +260,6 @@ export default function ClientProfile({
     }
   }, [initialClient?.id]); // Depend on initialClient ID for ID generation
   
-  // Also check for ID generation when existingClientIds first becomes available (separate effect to avoid dependency issues)
   const existingIdsLengthRef = useRef(-1);
   useEffect(() => {
     const currentLength = Array.isArray(existingClientIds) ? existingClientIds.length : -1;
@@ -298,7 +268,6 @@ export default function ClientProfile({
     if (lengthChanged) {
       existingIdsLengthRef.current = currentLength;
       
-      // Generate ID only for new clients, only once, when existingClientIds becomes available
       if ((initialClient === null || initialClient === undefined) && !clientId && currentLength >= 0 && !idGeneratedRef.current) {
         const newId = generateClientId(existingClientIds);
         setClientId(newId);
@@ -307,7 +276,6 @@ export default function ClientProfile({
     }
   }, [existingClientIds]); // Depend on existingClientIds but use ref to track length changes
   
-  // Memoize onChange handlers to prevent InputField from being recreated
   const handleCompanyNameChange = useCallback((e) => {
     setCompanyName(e.target.value);
   }, []);
@@ -408,16 +376,13 @@ export default function ClientProfile({
         return;
       }
 
-      // Get existing clients
       const account = await getUserAccount(currentUser.uid);
       const existingClients = account?.clients || [];
       
       let updatedClients;
       if (initialClient) {
-        // Update existing
         updatedClients = existingClients.map((c) => (c.id === clientId ? clientData : c));
       } else {
-        // Add new
         updatedClients = [...existingClients, clientData];
       }
       
@@ -428,7 +393,6 @@ export default function ClientProfile({
       if (onSave) {
         onSave(clientData.id);
       } else {
-        // Fallback: navigate if no onSave callback provided
         setTimeout(() => {
           router.push(`/dashboard/clients/${clientData.id}`);
         }, 500);
@@ -437,7 +401,6 @@ export default function ClientProfile({
       console.error('Failed to save client:', error);
       const errorMessage = error.message || 'Failed to save client. Please try again.';
       
-      // Show detailed error message
       if (errorMessage.includes('RLS') || errorMessage.includes('permission') || errorMessage.includes('policy')) {
         showError('Permission denied. Please ensure you are logged in and try again.');
       } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
@@ -452,20 +415,14 @@ export default function ClientProfile({
     }
   };
   
-  // Prepare all sections for ResponsiveSectionWrapper
   const sections = useMemo(() => {
     const projectTermPlural = getProjectTermForIndustry(userAccount?.industry);
     const clientSettings = userAccount?.clientSettings || {};
     
-    // Determine tab visibility
-    // Use visibleTabs array from clientSettings if available
-    // Otherwise, use defaults based on industry (for company/financial) or default to showing all
     let visibleTabs;
     if (clientSettings.visibleTabs && Array.isArray(clientSettings.visibleTabs)) {
-      // Use saved array
       visibleTabs = clientSettings.visibleTabs;
     } else if (clientSettings) {
-      // Convert old individual boolean settings to array (backward compatibility)
       visibleTabs = [];
       if (clientSettings.showCompanyDetails !== false) visibleTabs.push('company');
       if (clientSettings.showFinancialInformation !== false) visibleTabs.push('financial');
@@ -474,7 +431,6 @@ export default function ClientProfile({
       if (clientSettings.showDocumentsFiles !== false) visibleTabs.push('documents');
       if (clientSettings.showAppointmentsSchedule !== false) visibleTabs.push('scheduling');
     } else {
-      // Use defaults based on industry
       visibleTabs = ['projects', 'communication', 'documents', 'scheduling'];
       const shouldShowCompanyFinancial = shouldShowCompanyFinancialSections(userAccount?.industry);
       if (shouldShowCompanyFinancial) {
@@ -482,7 +438,6 @@ export default function ClientProfile({
       }
     }
     
-    // Create helper functions to check if tabs should be shown
     const showCompanyDetails = visibleTabs.includes('company');
     const showFinancialInformation = visibleTabs.includes('financial');
     const showProjectsDetails = visibleTabs.includes('projects');
@@ -567,7 +522,6 @@ export default function ClientProfile({
               onCompanySizeChange={(e) => setCompanySize(e.target.value)}
               onBillingAddressDifferentChange={setBillingAddressDifferent}
               onCompanyAddress1Change={(e) => {
-                // Handle both event objects and direct string values (from AddressAutocomplete)
                 const value = typeof e === 'string' ? e : e.target.value;
                 setCompanyAddress1(value);
               }}
@@ -577,7 +531,6 @@ export default function ClientProfile({
               onCompanyPostalCodeChange={(e) => setCompanyPostalCode(e.target.value)}
               onCompanyCountryChange={(e) => setCompanyCountry(e.target.value)}
               onBillingAddress1Change={(e) => {
-                // Handle both event objects and direct string values (from AddressAutocomplete)
                 const value = typeof e === 'string' ? e : e.target.value;
                 setBillingAddress1(value);
               }}
@@ -641,7 +594,6 @@ export default function ClientProfile({
               clientId={initialClient?.id || clientId}
               companyIndustry={companyIndustry}
               onRefresh={async () => {
-                // Refresh client data after project is added
                 if (currentUser?.uid && (initialClient?.id || clientId)) {
                   try {
                     const account = await getUserAccount(currentUser.uid);
@@ -800,12 +752,9 @@ export default function ClientProfile({
               try {
                 await saveAppointment(currentUser.uid, appointmentData);
                 success(editingAppointment ? 'Appointment updated successfully' : 'Appointment created successfully');
-                // Refresh user account to get updated appointments
                 const updatedAccount = await getUserAccountFromServer(currentUser.uid);
-                // Update userAccount prop would need to be handled by parent
                 setShowAppointmentDrawer(false);
                 setEditingAppointment(null);
-                // Reload page to refresh appointments
                 setTimeout(() => {
                   window.location.reload();
                 }, 500);

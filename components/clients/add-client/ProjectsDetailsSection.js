@@ -207,7 +207,6 @@ export default function ProjectsDetailsSection({
   const [deletingProject, setDeletingProject] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null); // { variant: 'active'|'completed', index: number }
 
-  // Get dynamic project term based on industry
   const projectTermPlural = useMemo(() => getProjectTermForIndustry(companyIndustry), [companyIndustry]);
   const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
   const projectTermLower = projectTerm.toLowerCase();
@@ -225,11 +224,9 @@ export default function ProjectsDetailsSection({
 
     setSavingProject(true);
     try {
-      // Get current user account data
       const account = await getUserAccount(currentUser.uid);
       const clients = account?.clients || [];
       
-      // Find the client to update
       const clientIndex = clients.findIndex((c) => c.id === clientId);
       if (clientIndex === -1) {
         throw new Error('Client not found');
@@ -240,23 +237,18 @@ export default function ProjectsDetailsSection({
         ? (client.activeProjects || [])
         : (client.completedProjects || []);
 
-      // Add the new project
       const updatedProjects = [...projectArray, projectData];
       
-      // Update the client
       const updatedClient = {
         ...client,
         [addingProjectVariant === 'active' ? 'activeProjects' : 'completedProjects']: updatedProjects,
       };
 
-      // Update clients array
       const updatedClients = [...clients];
       updatedClients[clientIndex] = updatedClient;
 
-      // Save to Supabase
       await updateClients(currentUser.uid, updatedClients);
 
-      // Update local state
       if (addingProjectVariant === 'active') {
         onActiveProjectsChange(updatedProjects);
       } else {
@@ -267,7 +259,6 @@ export default function ProjectsDetailsSection({
       setShowAddProjectDrawer(false);
       setAddingProjectVariant(null);
 
-      // Refresh parent data if callback provided
       if (onRefresh) {
         onRefresh();
       }
@@ -299,11 +290,9 @@ export default function ProjectsDetailsSection({
 
     setDeletingProject(true);
     try {
-      // Get current user account data
       const account = await getUserAccount(currentUser.uid);
       const clients = account?.clients || [];
       
-      // Find the client to update
       const clientIndex = clients.findIndex((c) => c.id === clientId);
       if (clientIndex === -1) {
         throw new Error('Client not found');
@@ -314,37 +303,30 @@ export default function ProjectsDetailsSection({
         ? (client.activeProjects || [])
         : (client.completedProjects || []);
 
-      // Remove the project
       const updatedProjects = projectArray.filter((_, idx) => idx !== projectToDelete.index);
       
-      // Update the client
       const updatedClient = {
         ...client,
         [projectToDelete.variant === 'active' ? 'activeProjects' : 'completedProjects']: updatedProjects,
       };
 
-      // Update clients array
       const updatedClients = [...clients];
       updatedClients[clientIndex] = updatedClient;
 
-      // Save to Supabase
       await updateClients(currentUser.uid, updatedClients);
 
-      // Update local state
       if (projectToDelete.variant === 'active') {
         onActiveProjectsChange(updatedProjects);
       } else {
         onCompletedProjectsChange(updatedProjects);
       }
 
-      // Close any expanded project
       onExpandedProjectKeyChange(null);
 
       success(`${projectTerm} deleted successfully`);
       setShowDeleteDialog(false);
       setProjectToDelete(null);
 
-      // Refresh parent data if callback provided
       if (onRefresh) {
         onRefresh();
       }

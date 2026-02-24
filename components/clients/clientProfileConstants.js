@@ -1,4 +1,3 @@
-// Common timezones
 export const TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern Time (ET)' },
   { value: 'America/Chicago', label: 'Central Time (CT)' },
@@ -15,7 +14,6 @@ export const TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Sydney (AEDT)' },
 ];
 
-// Common languages
 export const LANGUAGES = [
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Spanish' },
@@ -29,7 +27,6 @@ export const LANGUAGES = [
   { value: 'ar', label: 'Arabic' },
 ];
 
-// Common industries
 export const INDUSTRIES = [
   'Technology',
   'Healthcare',
@@ -49,7 +46,6 @@ export const INDUSTRIES = [
   'Other',
 ];
 
-// Company sizes
 export const COMPANY_SIZES = [
   '1-10',
   '11-50',
@@ -60,7 +56,6 @@ export const COMPANY_SIZES = [
   '5000+',
 ];
 
-// Payment terms
 export const PAYMENT_TERMS = [
   'Net 15',
   'Net 30',
@@ -70,7 +65,6 @@ export const PAYMENT_TERMS = [
   'Custom',
 ];
 
-// Pricing tiers
 export const PRICING_TIERS = [
   'Standard',
   'Premium',
@@ -78,7 +72,6 @@ export const PRICING_TIERS = [
   'Custom',
 ];
 
-// Currencies
 export const CURRENCIES = [
   { value: 'USD', label: 'USD ($)' },
   { value: 'EUR', label: 'EUR (€)' },
@@ -126,7 +119,6 @@ export function getProjectTermForIndustry(industry) {
 export function getProjectTermSingular(pluralTerm) {
   if (!pluralTerm) return 'Project';
   
-  // Handle common plural-to-singular conversions
   const singularMap = {
     'Projects': 'Project',
     'Patients': 'Patient',
@@ -158,8 +150,6 @@ export function getProjectTermSingular(pluralTerm) {
 export function shouldShowCompanyFinancialSections(industry) {
   if (!industry) return true; // Default to showing sections
   
-  // Industries where company/financial details are typically not needed
-  // (work more with individuals than companies)
   const hideSectionsFor = [
     'Healthcare', // Patients are individuals
     'Education',  // Students are individuals
@@ -176,20 +166,16 @@ export function shouldShowCompanyFinancialSections(industry) {
  */
 export function shouldShowCompanyDetails(clientSettings, industry) {
   if (!clientSettings) {
-    // No settings, use industry-based default
     return shouldShowCompanyFinancialSections(industry);
   }
   
-  // Check if visibleTabs array exists and includes 'company'
   if (clientSettings.visibleTabs && Array.isArray(clientSettings.visibleTabs)) {
     return clientSettings.visibleTabs.includes('company');
   }
   
-  // Backward compatibility: check old boolean settings
   if (clientSettings.showCompanyDetails !== undefined) {
     return clientSettings.showCompanyDetails;
   }
   
-  // Default to industry-based logic
   return shouldShowCompanyFinancialSections(industry);
 }

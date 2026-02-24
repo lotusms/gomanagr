@@ -46,13 +46,10 @@ function processAppointmentsForWeek(appointments, weekDays, startHour) {
 
   return appointments
     .map((apt) => {
-      // Handle date string (YYYY-MM-DD) or Date object
       let appointmentDateKey;
       if (typeof apt.date === 'string') {
-        // If it's already a date string in YYYY-MM-DD format, use it directly
         appointmentDateKey = apt.date;
       } else {
-        // If it's a Date object or ISO string, convert to YYYY-MM-DD
         const date = new Date(apt.date);
         appointmentDateKey = toDateKey(date);
       }
@@ -195,17 +192,14 @@ export default function Schedule({
                     );
                     if (covered) return null;
                     if (appointment) {
-                      // Get client name
                       const client = appointment.clientId 
                         ? clients.find(c => c.id === appointment.clientId)
                         : null;
                       const clientName = client ? client.name : '';
                       
-                      // Get service names (first service or empty)
                       const serviceNames = appointment.services || [];
                       const firstService = serviceNames.length > 0 ? serviceNames[0] : '';
                       
-                      // Build display text: "Client Name - Service" or just "Client Name" or just "Service"
                       let displayText = '';
                       if (clientName && firstService) {
                         displayText = `${clientName} - ${firstService}`;

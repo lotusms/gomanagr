@@ -35,7 +35,6 @@ export default async function handler(req, res) {
     <p>This link will expire in 7 days. If you didn't expect this invite, you can ignore this email.</p>
   `;
 
-  // 1. SMTP (GoManagr sends from your address, e.g. info@lotusmarketingsolutions.com; Reply-To = admin)
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASSWORD;
@@ -70,7 +69,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2. Resend (optional)
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) {
     try {
@@ -94,7 +92,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // 3. No provider — return link for manual sharing
   return res.status(200).json({
     sent: false,
     inviteLink,

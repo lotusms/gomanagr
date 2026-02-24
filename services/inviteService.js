@@ -9,11 +9,9 @@ import { supabase } from '@/lib/supabase';
  * Generate a unique invite token
  */
 function generateInviteToken() {
-  // Use crypto.randomUUID() if available, otherwise fallback
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID().replace(/-/g, '');
   }
-  // Fallback for older environments
   return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -36,7 +34,6 @@ export async function createInvite(organizationId, email, role = 'member', invit
       throw new Error(`Invalid role: ${role}. Must be 'admin', 'developer', or 'member'`);
     }
 
-    // Set expiration to 7 days from now if not provided
     const expirationDate = expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const token = generateInviteToken();
@@ -89,7 +86,6 @@ export async function getInviteByToken(token) {
       throw error;
     }
 
-    // Check if invite is expired
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
       return null; // Expired
     }

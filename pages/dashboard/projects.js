@@ -56,7 +56,6 @@ function ProjectsContent() {
     return flattenProjectsFromClients(clients);
   }, [userAccount?.clients]);
 
-  // Get dynamic project terms based on account industry
   const projectTermPlural = useMemo(() => getProjectTermForIndustry(userAccount?.industry), [userAccount?.industry]);
   const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
   const projectTermLower = projectTerm.toLowerCase();

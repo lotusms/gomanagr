@@ -15,9 +15,7 @@ const MD_BREAKPOINT = 768;
 function getInitialSidebarOpen() {
   if (typeof window === 'undefined') return false;
   const width = window.innerWidth;
-  // sm and below: always default collapsed (don't use stored value)
   if (width < MD_BREAKPOINT) return false;
-  // md and above: restore from storage, or default open
   try {
     const stored = sessionStorage.getItem(SIDEBAR_STORAGE_KEY);
     if (stored !== null) return stored === 'true';
@@ -58,14 +56,12 @@ export default function DashboardLayout({ children }) {
   const [orgFetchFailed, setOrgFetchFailed] = useState(false);
   const [memberAccess, setMemberAccess] = useState(null);
 
-  // Persist sidebar state so it survives layout remounts on navigation (md+ stays open/closed as-is)
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') sessionStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarOpen));
     } catch (_) {}
   }, [sidebarOpen]);
 
-  // On resize: collapse when going to sm and below, open when going back to md and above
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleResize = () => {
@@ -91,12 +87,10 @@ export default function DashboardLayout({ children }) {
       })
       .catch(() => {
         setOrgFetchFailed(true);
-        // Do not set organization to null on error - avoid logging out admin on transient failures
       })
       .finally(() => setOrgLoaded(true));
   }, [currentUser?.uid]);
 
-  // Force logout when org fetch succeeded and user has no org (e.g. revoked). Full-page redirect so session/state is fully cleared.
   useEffect(() => {
     if (!orgLoaded || orgFetchFailed || !currentUser?.uid || organization !== null) return;
     (async () => {
@@ -109,7 +103,6 @@ export default function DashboardLayout({ children }) {
     })();
   }, [orgLoaded, orgFetchFailed, currentUser?.uid, organization, logout, router]);
 
-  // Periodic re-check: if user was revoked while app was open, detect and kick out (every 60s on dashboard).
   useEffect(() => {
     if (!currentUser?.uid || organization === null) return;
     const interval = setInterval(async () => {
@@ -119,9 +112,7 @@ export default function DashboardLayout({ children }) {
           await logout();
           if (typeof window !== 'undefined') window.location.href = '/login?revoked=1';
         }
-      } catch (_) {
-        // Ignore errors (e.g. network) so we don't log out on transient failures
-      }
+      } catch (_) {}
     }, 60 * 1000);
     return () => clearInterval(interval);
   }, [currentUser?.uid, organization, logout]);
@@ -134,7 +125,6 @@ export default function DashboardLayout({ children }) {
     [memberRole, userAccount?.teamMembers, currentUser?.uid]
   );
 
-  // Load team member access config when user is a member (controls which sections they can see)
   useEffect(() => {
     if (!currentUser?.uid || memberRole !== 'member') return;
     fetch('/api/get-org-member-access', {
@@ -147,14 +137,12 @@ export default function DashboardLayout({ children }) {
       .catch(() => setMemberAccess(null));
   }, [currentUser?.uid, memberRole]);
 
-  // Only superadmin should see /dashboard; redirect admin and member to team-member home
   useEffect(() => {
     if (!orgLoaded || router.pathname !== '/dashboard') return;
     if (isOwner) return;
     router.replace('/dashboard/team-member');
   }, [orgLoaded, router.pathname, isOwner, router]);
 
-  // Members can only access allowed paths (team-member/*, settings, and sections enabled by admin)
   useEffect(() => {
     if (memberRole !== 'member') return;
     const path = router.pathname;
@@ -168,7 +156,7 @@ export default function DashboardLayout({ children }) {
       path === '/dashboard/projects' ||
       path.startsWith('/dashboard/projects/');
     if (baseAllowed) return;
-    if (memberAccess === null) return; // still loading
+    if (memberAccess === null) return;
     if (path === '/dashboard/services' || path.startsWith('/dashboard/services/')) return;
     let allowed = false;
     for (const [sectionPath, sectionKey] of Object.entries(PATH_TO_SECTION)) {
@@ -196,7 +184,6 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = async () => {
     try {
-      // Remove dark mode before logging out
       if (typeof document !== 'undefined') {
         document.documentElement.classList.remove('dark');
       }
@@ -204,11 +191,9 @@ export default function DashboardLayout({ children }) {
       router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
-      // Ensure dark mode is removed even if logout fails
       if (typeof document !== 'undefined') {
         document.documentElement.classList.remove('dark');
       }
-      // Still redirect even if logout fails
       router.push('/');
     }
   };
@@ -232,10 +217,8 @@ export default function DashboardLayout({ children }) {
               <span>Hello, </span>
               {(() => {
                 const account = previewAccount || userAccount;
-                // Prioritize firstName for greeting
                 const firstName = (account?.firstName ?? '').trim();
                 if (firstName) return firstName;
-                // Fall back to formatted display name or email
                 return getDisplayName(account, currentUser?.email ?? '') || currentUser?.email;
               })()}
             </div>

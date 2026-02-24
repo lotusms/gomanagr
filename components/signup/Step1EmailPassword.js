@@ -15,14 +15,12 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
   const lastCheckedEmail = useRef('');
   const emailCheckDebounceTimer = useRef(null);
 
-  // Store the last check result to maintain state even when skipping re-check
   const lastCheckResult = useRef(null);
   const hasCheckedOnMount = useRef(false);
   const hasUserInteracted = useRef(false);
   const performEmailCheckRef = useRef(null);
   const emailInputRef = useRef(null);
 
-  // Helper function to perform email check (memoized with useCallback)
   const performEmailCheck = useCallback(async (emailToCheck) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
@@ -30,11 +28,9 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
       return;
     }
 
-    // Skip if already checked this email
     if (emailToCheck === lastCheckedEmail.current && lastCheckResult.current) {
       const cachedResult = lastCheckResult.current;
       setEmailExists(cachedResult.exists);
-      // emailVerified should be true only if email doesn't exist (is available)
       setEmailVerified(!cachedResult.exists && cachedResult.verified);
       setEmailCheckError(cachedResult.error);
       
@@ -42,7 +38,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         onEmailCheck(cachedResult.exists, !!cachedResult.error);
       }
       if (onEmailVerified) {
-        // Only verified if email doesn't exist
         onEmailVerified(!cachedResult.exists && cachedResult.verified);
       }
       return;
@@ -57,8 +52,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
 
       lastCheckedEmail.current = emailToCheck;
 
-      // Store the result for future reference
-      // verified means: check completed successfully AND email doesn't exist (is available)
       const verified = result.error !== 'quota-exceeded' && !result.error && !result.exists;
       lastCheckResult.current = {
         exists: result.exists,
@@ -68,32 +61,23 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
 
       setEmailExists(result.exists);
 
-      // If quota exceeded, don't block - allow signup to proceed (it will catch duplicate email)
       if (result.error === 'quota-exceeded') {
-        // Don't set error - allow signup to proceed and handle duplicate email error
         setEmailCheckError(null);
         setEmailVerified(true); // Allow progression - signup will catch duplicate
       } else if (result.error) {
-        // Other errors - show warning but don't block
         setEmailCheckError(result.message || 'Email verification unavailable. You can still proceed.');
         setEmailVerified(true); // Allow progression
       } else {
-        // Verification completed successfully
-        // Only set verified to true if email doesn't exist (is available)
-        // If email exists, it's NOT verified/valid for signup
         const isVerified = !result.exists;
         setEmailVerified(isVerified);
         setEmailCheckError(null);
       }
 
-      // Call callbacks AFTER state updates
       if (onEmailCheck) {
-        // Don't treat quota-exceeded as a failure - allow signup to proceed
         const checkFailed = result.error && result.error !== 'quota-exceeded';
         onEmailCheck(result.exists, checkFailed);
       }
       if (onEmailVerified) {
-        // Verified if email doesn't exist OR if quota exceeded (allow signup to handle it)
         const verified = (!result.exists || result.error === 'quota-exceeded') && result.error !== 'server-error';
         onEmailVerified(verified);
       }
@@ -118,30 +102,23 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     }
   }, [onEmailCheck, onEmailVerified]);
 
-  // Store performEmailCheck in a ref so useEffect can access it
   useEffect(() => {
     performEmailCheckRef.current = performEmailCheck;
   }, [performEmailCheck]);
 
-  // Check email on mount if it exists - runs ONLY once on mount
   useEffect(() => {
-    // Reset mount flag when component mounts (in case of remount)
     hasCheckedOnMount.current = false;
     
     const emailToCheck = data.email || email;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
-    // Check if we have a valid email on mount
     if (emailToCheck && emailRegex.test(emailToCheck)) {
       hasCheckedOnMount.current = true;
       
-      // Ensure state is synced
       if (data.email && data.email !== email) {
         setEmail(data.email);
       }
       
-      // Use a small delay to ensure performEmailCheck is ready
-      // This handles the case where the component mounts before performEmailCheck is fully initialized
       const timeoutId = setTimeout(() => {
         const emailToVerify = data.email || email;
         const checkFn = performEmailCheckRef.current || performEmailCheck;
@@ -149,7 +126,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         if (checkFn && typeof checkFn === 'function') {
           checkFn(emailToVerify);
         } else {
-          // Retry once more after a longer delay
           setTimeout(() => {
             const retryFn = performEmailCheckRef.current || performEmailCheck;
             if (retryFn && typeof retryFn === 'function') {
@@ -163,10 +139,8 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     } else {
       hasCheckedOnMount.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
-  // Check email when data.email changes externally (after mount)
   useEffect(() => {
     if (!hasCheckedOnMount.current) {
       return; // Don't run until mount check is done
@@ -181,13 +155,10 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         checkFn(data.email);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.email]); // Only check when data.email changes
 
-  // Focus email field on mount
   useEffect(() => {
     if (emailInputRef.current) {
-      // Small delay to ensure the component is fully rendered
       const timeoutId = setTimeout(() => {
         emailInputRef.current?.focus();
       }, 100);
@@ -195,7 +166,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     }
   }, []);
 
-  // Cleanup debounce timer on unmount
   useEffect(() => {
     return () => {
       if (emailCheckDebounceTimer.current) {
@@ -204,23 +174,19 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     };
   }, []);
 
-  // Check email on blur if it's valid and different from last checked
   const handleEmailBlur = async () => {
     hasUserInteracted.current = true;
     
     const trimmedEmail = email.trim();
     
-    // Only check if email is valid and different from last checked
     if (!trimmedEmail || !trimmedEmail.includes('@')) {
       return;
     }
     
-    // Skip if we already checked this email
     if (trimmedEmail === lastCheckedEmail.current && lastCheckResult.current !== null) {
       return;
     }
     
-    // Perform email check
     if (performEmailCheckRef.current) {
       setCheckingEmail(true);
       setEmailCheckError(null);
@@ -228,7 +194,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
         await performEmailCheckRef.current(trimmedEmail);
       } catch (error) {
         console.error('Email check error:', error);
-        // Don't block signup if check fails - Supabase will catch duplicates
       } finally {
         setCheckingEmail(false);
       }
@@ -242,7 +207,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
     updateData({ email: value });
     hasUserInteracted.current = true;
     
-    // Reset email verification state when user types (but keep last checked email)
     if (value !== lastCheckedEmail.current) {
       setEmailExists(false);
       setEmailCheckError(null);
@@ -256,10 +220,6 @@ export default function Step1EmailPassword({ data, updateData, errors, onEmailCh
       }
     }
 
-    // Email checking is now optional and non-blocking
-    // We only check on blur to reduce API calls and prevent rate limiting
-    // Supabase will handle duplicate emails during signup
-    // Debounce removed to eliminate unnecessary API calls during typing
   };
 
   const handlePasswordChange = (e) => {

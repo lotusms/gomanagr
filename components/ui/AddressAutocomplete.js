@@ -42,7 +42,6 @@ export default function AddressAutocomplete({
   const blurTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
 
-  // Initialize Google Maps Places API (New)
   useEffect(() => {
     const initPlacesAPI = async () => {
       if (typeof window === 'undefined' || !window.google || !window.google.maps) {
@@ -51,7 +50,6 @@ export default function AddressAutocomplete({
       }
 
       try {
-        // Import the places library using the new API
         const { AutocompleteSuggestion, AutocompleteSessionToken, Place } = 
           await window.google.maps.importLibrary('places');
         
@@ -67,11 +65,9 @@ export default function AddressAutocomplete({
       }
     };
 
-    // Check if Google Maps is already loaded
     if (window.google && window.google.maps) {
       initPlacesAPI();
     } else {
-      // Wait for Google Maps to load
       const checkInterval = setInterval(() => {
         if (window.google && window.google.maps) {
           clearInterval(checkInterval);
@@ -79,7 +75,6 @@ export default function AddressAutocomplete({
         }
       }, 100);
 
-      // Cleanup after 10 seconds
       const timeout = setTimeout(() => {
         clearInterval(checkInterval);
         if (!placesLibrary) {
@@ -94,14 +89,12 @@ export default function AddressAutocomplete({
     }
   }, []);
 
-  // Create a new session token for each autocomplete session
   const createSessionToken = () => {
     if (placesLibrary && placesLibrary.AutocompleteSessionToken) {
       sessionTokenRef.current = new placesLibrary.AutocompleteSessionToken();
     }
   };
 
-  // Fetch suggestions using the new AutocompleteSuggestion API
   const fetchSuggestions = async (inputValue) => {
     if (!inputValue || inputValue.length < 2) {
       setSuggestions([]);
@@ -118,12 +111,10 @@ export default function AddressAutocomplete({
     setApiError('');
 
     try {
-      // Create session token if needed
       if (!sessionTokenRef.current) {
         createSessionToken();
       }
 
-      // Use the new AutocompleteSuggestion API
       const request = {
         input: inputValue,
         sessionToken: sessionTokenRef.current,
@@ -152,32 +143,24 @@ export default function AddressAutocomplete({
     }
   };
 
-  // Handle input change with debouncing
   const handleInputChange = (e) => {
     const inputValue = e.target.value;
     isTypingRef.current = true;
     
-    // Call onChange immediately for controlled input
     if (onChange) {
       onChange(inputValue);
     }
 
-    // Clear previous debounce
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
-      // Debounce API call
     debounceRef.current = setTimeout(async () => {
       await fetchSuggestions(inputValue);
-      // After suggestions are fetched, check if we should maintain focus
-      // Only reset typing flag after a short delay to allow for continued typing
       setTimeout(() => {
         isTypingRef.current = false;
       }, 100);
-      // Ensure input maintains focus after suggestions appear
       if (inputRef.current && document.activeElement !== inputRef.current) {
-        // Use requestAnimationFrame to ensure DOM has updated
         requestAnimationFrame(() => {
           if (inputRef.current) {
             inputRef.current.focus();
@@ -187,7 +170,6 @@ export default function AddressAutocomplete({
     }, 300);
   };
 
-  // Handle place selection
   const handleSelectSuggestion = async (suggestion) => {
     setIsLoading(true);
     setIsOpen(false);
@@ -198,16 +180,13 @@ export default function AddressAutocomplete({
         throw new Error('Places API library not loaded');
       }
 
-      // Get place ID from the suggestion
       const placeId = suggestion.placePrediction?.placeId;
       if (!placeId) {
         throw new Error('Place ID not found in suggestion');
       }
 
-      // Create a Place object and fetch details
       const place = new placesLibrary.Place({ id: placeId });
       
-      // Fetch place fields
       await place.fetchFields({
         fields: [
           'formattedAddress',
@@ -217,23 +196,19 @@ export default function AddressAutocomplete({
         sessionToken: sessionTokenRef.current,
       });
 
-      // Extract address components
       const addressComponents = place.addressComponents || [];
       
-      // Helper function to get component by type
       const getComponent = (types, preferShort = false) => {
         const component = addressComponents.find(comp => 
           types.some(type => comp.types.includes(type))
         );
         if (!component) return '';
-        // For country, prefer shortName (ISO code) if available
         if (preferShort && component.shortText) {
           return component.shortText;
         }
         return component.longText || component.shortText || '';
       };
       
-      // Extract address parts
       const streetNumber = getComponent(['street_number']);
       const route = getComponent(['route']);
       const address1 = [streetNumber, route].filter(Boolean).join(' ');
@@ -241,17 +216,13 @@ export default function AddressAutocomplete({
       const city = getComponent(['locality', 'sublocality', 'sublocality_level_1']);
       const stateName = getComponent(['administrative_area_level_1']);
       const postalCode = getComponent(['postal_code']);
-      // Try to get country code directly (shortName), fallback to name
       const countryCodeOrName = getComponent(['country'], true) || getComponent(['country']);
       
-      // Convert country to ISO code if needed
       let countryCode = '';
       if (countryCodeOrName) {
-        // Check if it's already a 2-letter code
         if (countryCodeOrName.length === 2 && /^[A-Z]{2}$/i.test(countryCodeOrName)) {
           countryCode = countryCodeOrName.toUpperCase();
         } else {
-          // Try to find by name
           const found = COUNTRIES.find(c => 
             c.label.toLowerCase() === countryCodeOrName.toLowerCase() ||
             c.value.toLowerCase() === countryCodeOrName.toLowerCase()
@@ -260,7 +231,6 @@ export default function AddressAutocomplete({
         }
       }
       
-      // Try to match state/province name to code if country is known
       let stateCode = stateName;
       if (countryCode && stateName) {
         const states = getStatesByCountry(countryCode);
@@ -277,12 +247,10 @@ export default function AddressAutocomplete({
       const location = place.location;
       const latLng = location ? { lat: location.lat(), lng: location.lng() } : null;
 
-      // Call onChange with the formatted address string
       if (onChange) {
         onChange(formattedAddress);
       }
       
-      // Call onSelect with all the parsed address fields
       if (onSelect) {
         onSelect({
           address1: address1 || formattedAddress,
@@ -296,13 +264,11 @@ export default function AddressAutocomplete({
         });
       }
 
-      // Consume the session token after successful selection
       sessionTokenRef.current = null;
     } catch (error) {
       console.error('Error fetching place details:', error);
       setApiError('Failed to fetch address details. Please try again.');
       
-      // Still call onChange with the suggestion text if available
       const suggestionText = suggestion.placePrediction?.text?.text || '';
       if (onChange && suggestionText) {
         onChange(suggestionText);
@@ -312,28 +278,21 @@ export default function AddressAutocomplete({
     }
   };
 
-  // Handle keyboard navigation
   const handleKeyDown = (e) => {
-    // Handle space key specially - ensure it doesn't cause focus loss or form submission
     if (e.key === ' ' || e.keyCode === 32) {
-      // Clear blur timeout to prevent focus loss
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current);
         blurTimeoutRef.current = null;
       }
       isTypingRef.current = true;
       
-      // If a suggestion is highlighted, reset it but still allow space to be typed
       if (activeIndex >= 0 && isOpen) {
         setActiveIndex(-1);
       }
-      // Ensure input maintains focus - don't prevent default, just ensure focus stays
-      // The space will be handled by the onChange handler naturally
       e.stopPropagation(); // Prevent any parent handlers from interfering
       return; // Allow default behavior (typing the space)
     }
 
-    // Only handle navigation keys when dropdown is open
     if (!isOpen || suggestions.length === 0) {
       return;
     }
@@ -362,15 +321,12 @@ export default function AddressAutocomplete({
         inputRef.current?.focus(); // Keep focus on input
         break;
       default:
-        // For all other keys, allow normal behavior
         break;
     }
   };
 
-  // Close suggestions when clicking outside (but not on keyboard events)
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Only handle mouse/touch events, not keyboard events
       if (event.type === 'keydown' || event.type === 'keyup' || event.type === 'keypress') {
         return;
       }
@@ -396,7 +352,6 @@ export default function AddressAutocomplete({
     }
   }, [isOpen]);
 
-  // If API is not loaded, show a regular input field with helpful message
   if (apiError && !placesLibrary) {
     return (
       <div className={className}>
@@ -443,7 +398,6 @@ export default function AddressAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={(e) => {
-            // Clear any pending blur timeout
             if (blurTimeoutRef.current) {
               clearTimeout(blurTimeoutRef.current);
               blurTimeoutRef.current = null;
@@ -455,15 +409,11 @@ export default function AddressAutocomplete({
             }
           }}
           onBlur={(e) => {
-            // Don't close dropdown immediately on blur - wait a bit to allow clicks on suggestions
-            // This prevents the dropdown from closing when space is pressed or when clicking suggestions
-            // Also check if user is actively typing (debounce in progress)
             if (blurTimeoutRef.current) {
               clearTimeout(blurTimeoutRef.current);
             }
             
             blurTimeoutRef.current = setTimeout(() => {
-              // Don't close if user is typing or if focus moved to a suggestion
               if (isTypingRef.current) {
                 return;
               }

@@ -15,7 +15,6 @@ const { createClient } = require('@supabase/supabase-js');
 const { readFileSync, existsSync } = require('fs');
 const { join } = require('path');
 
-// Load .env.local
 const envPath = join(__dirname, '..', '.env.local');
 if (existsSync(envPath)) {
   const envContent = readFileSync(envPath, 'utf8');
@@ -37,7 +36,6 @@ if (!userId) {
   process.exit(1);
 }
 
-// Initialize Firebase Admin
 let serviceAccount = null;
 try {
   const backupPath = join(__dirname, '..', 'firebase_bkp', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
@@ -66,7 +64,6 @@ if (!getApps().length) {
 const db = getFirestore();
 const adminAuth = getAuth();
 
-// Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -79,7 +76,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false }
 });
 
-// Transform function (same as migration script)
 function transformToSupabaseRow(firebaseData, supabaseUserId) {
   const row = {
     id: supabaseUserId,
@@ -132,7 +128,6 @@ async function remigrate() {
   try {
     console.log(`\n🔄 Re-migrating user: ${userId}\n`);
 
-    // 1. Get Firestore data
     console.log('1️⃣  Fetching Firestore document...');
     const docRef = db.collection('useraccount').doc(userId);
     const doc = await docRef.get();
@@ -149,7 +144,6 @@ async function remigrate() {
     console.log(`   📊 Team members: ${firebaseData.teamMembers?.length || 0}`);
     console.log(`   📊 Clients: ${firebaseData.clients?.length || 0}`);
 
-    // 2. Get Firebase Auth user
     console.log('\n2️⃣  Getting Firebase Auth user...');
     let firebaseAuthUser;
     try {
@@ -160,7 +154,6 @@ async function remigrate() {
       firebaseAuthUser = { email: firebaseData.email };
     }
 
-    // 3. Get or create Supabase Auth user
     console.log('\n3️⃣  Checking Supabase Auth...');
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
     const existing = existingUsers?.users?.find(u => u.email === firebaseAuthUser.email);
@@ -180,7 +173,6 @@ async function remigrate() {
       console.log(`   ✅ Created: ${supabaseUserId}`);
     }
 
-    // 4. Transform data
     console.log('\n4️⃣  Transforming data...');
     const supabaseRow = transformToSupabaseRow(firebaseData, supabaseUserId);
     supabaseRow.user_id = supabaseUserId; // Ensure user_id = id for RLS
@@ -189,7 +181,6 @@ async function remigrate() {
     console.log(`   📊 Team members: ${supabaseRow.team_members?.length || 0}`);
     console.log(`   📊 Clients: ${supabaseRow.clients?.length || 0}`);
 
-    // 5. Check existing Supabase row
     console.log('\n5️⃣  Checking existing Supabase row...');
     const { data: existingRow } = await supabase
       .from('user_account')
@@ -204,7 +195,6 @@ async function remigrate() {
       console.log(`   ➕ No existing row, will create new`);
     }
 
-    // 6. Upsert
     console.log('\n6️⃣  Upserting to Supabase...');
     const { data, error } = await supabase
       .from('user_account')

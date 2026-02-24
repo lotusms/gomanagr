@@ -107,7 +107,6 @@ function ClientsContent() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Failed to deactivate');
-        // Refetch so member sees only their assigned list again
         const refetch = await fetch('/api/get-org-clients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -206,7 +205,6 @@ function ClientsContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {clients.map((client) => {
-                  // Check if company details section is enabled
                   const showCompanyDetails = shouldShowCompanyDetails(
                     userAccount?.clientSettings,
                     userAccount?.industry

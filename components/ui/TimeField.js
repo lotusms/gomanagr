@@ -51,10 +51,8 @@ export default function TimeField({
   const inputClass = getInputClasses(variant, !!error);
   const errorTextClass = isLight ? 'mt-1 text-sm text-red-600 dark:text-red-400' : 'mt-1 text-sm text-red-300';
 
-  // Use provided options or generate time slots
   const timeSlotOptions = useMemo(() => {
     if (options && Array.isArray(options) && options.length > 0) {
-      // Options already provided, use them as-is
       return options.map((opt) => {
         if (typeof opt === 'string') {
           return { value: opt, label: opt, disabled: false };
@@ -62,7 +60,6 @@ export default function TimeField({
         return opt;
       });
     }
-    // Generate time slots if options not provided
     const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
     return timeSlots.map((slot) => ({
       value: slot,
@@ -71,7 +68,6 @@ export default function TimeField({
     }));
   }, [options, businessHoursStart, businessHoursEnd, timeFormat]);
 
-  // Close popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -90,7 +86,6 @@ export default function TimeField({
     }
   }, [isOpen]);
 
-  // Scroll to selected time when popup opens
   useEffect(() => {
     if (isOpen && scrollRef.current && value) {
       const selectedIndex = timeSlotOptions.findIndex((opt) => opt.value === value);

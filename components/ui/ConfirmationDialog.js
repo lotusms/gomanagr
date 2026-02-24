@@ -41,7 +41,6 @@ export default function ConfirmationDialog({
   const [confirmationInput, setConfirmationInput] = useState('');
   const [error, setError] = useState('');
 
-  // Reset confirmation input when dialog opens/closes
   useEffect(() => {
     if (isOpen) {
       setConfirmationInput('');

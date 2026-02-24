@@ -38,7 +38,6 @@ export default function CurrencyInput({
   const [displayValue, setDisplayValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
-  // Get currency symbol
   const getCurrencySymbol = (code) => {
     const symbols = {
       USD: '$',
@@ -53,11 +52,9 @@ export default function CurrencyInput({
 
   const currencySymbol = getCurrencySymbol(currency);
 
-  // Update display value when value or currency changes (when not focused)
   useEffect(() => {
     if (!isFocused) {
       if (value && value !== '') {
-        // Format without symbol (we'll add it as prefix)
         const numValue = parseFloat(value);
         if (!isNaN(numValue)) {
           const formatted = new Intl.NumberFormat('en-US', {
@@ -77,13 +74,10 @@ export default function CurrencyInput({
   const handleChange = (e) => {
     const inputValue = e.target.value;
     
-    // Remove all non-numeric characters except decimal point
     const unformatted = unformatCurrency(inputValue);
     
-    // While focused, show raw unformatted value for easier editing
     setDisplayValue(unformatted);
     
-    // Call onChange with unformatted numeric value
     if (onChange) {
       onChange({ ...e, target: { ...e.target, value: unformatted } });
     }
@@ -91,7 +85,6 @@ export default function CurrencyInput({
 
   const handleFocus = (e) => {
     setIsFocused(true);
-    // Show raw value when focused for easier editing
     setDisplayValue(value || '');
     if (inputProps.onFocus) {
       inputProps.onFocus(e);
@@ -100,7 +93,6 @@ export default function CurrencyInput({
 
   const handleBlur = (e) => {
     setIsFocused(false);
-    // Format on blur
     if (value && value !== '') {
       const numValue = parseFloat(value);
       if (!isNaN(numValue)) {

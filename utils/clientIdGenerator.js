@@ -12,8 +12,6 @@ export function generateClientId(existingIds = []) {
   const day = String(now.getDate()).padStart(2, '0');
   const datePrefix = `${year}${month}${day}`;
   
-  // Generate a 6-character alphanumeric suffix (uppercase letters and numbers)
-  // Excluding ambiguous characters: 0, O, I, 1
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let suffix = '';
   for (let i = 0; i < 6; i++) {
@@ -22,15 +20,12 @@ export function generateClientId(existingIds = []) {
   
   let newId = `CL-${datePrefix}-${suffix}`;
   
-  // Ensure uniqueness by checking against existing IDs
-  // If collision, keep appending random characters until unique
   let attempts = 0;
   while (existingIds.includes(newId) && attempts < 10) {
     newId += chars.charAt(Math.floor(Math.random() * chars.length));
     attempts++;
   }
   
-  // If still not unique after 10 attempts, add timestamp milliseconds
   if (existingIds.includes(newId)) {
     const ms = String(Date.now()).slice(-4);
     newId = `CL-${datePrefix}-${suffix}${ms}`;

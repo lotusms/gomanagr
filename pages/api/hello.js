@@ -1,5 +1,3 @@
-// Example Next.js API route (server-side)
-// This runs on the server only
 
 export default function handler(req, res) {
   if (req.method === 'GET') {

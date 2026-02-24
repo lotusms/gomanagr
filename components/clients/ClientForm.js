@@ -78,7 +78,7 @@ export default function ClientForm({
       setCompany(initialClient.company ?? '');
       const hadCompany = !!(initialClient.company || initialClient.companyName || initialClient.companyPhone || initialClient.companyEmail || (initialClient.companyAddress && (initialClient.companyAddress.address || initialClient.companyAddress.address1)));
       setIsCompany(hadCompany);
-      setCompanySectionOpen(false); // Always collapsed by default when editing
+      setCompanySectionOpen(false);
       const companyPhoneVal = initialClient.companyPhone ?? '';
       setCompanyPhone(companyPhoneVal ? formatPhone(unformatPhone(companyPhoneVal)) : '');
       const addr = initialClient.companyAddress || {};

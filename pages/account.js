@@ -28,20 +28,17 @@ function AccountContent() {
   const [userAccount, setUserAccount] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Form state (name, reporting email, name view)
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [reportingEmail, setReportingEmail] = useState('');
   const [nameView, setNameView] = useState('full');
   const [accountSaveStatus, setAccountSaveStatus] = useState({ type: null, message: null });
 
-  // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStatus, setPasswordStatus] = useState({ type: null, message: null });
 
-  // Delete account state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -52,7 +49,6 @@ function AccountContent() {
           setUserAccount(data || {});
           setFirstName(data?.firstName ?? '');
           setLastName(data?.lastName ?? '');
-          // Normalize reportingEmail: if empty, use signup email
           setReportingEmail(data?.reportingEmail || currentUser?.email || '');
           setNameView(data?.nameView ?? 'full');
         })
@@ -70,7 +66,6 @@ function AccountContent() {
     clearAccountStatus();
   };
 
-  // Live preview: push current form state to header so it updates as user changes name or name view
   useEffect(() => {
     window.dispatchEvent(
       new CustomEvent('useraccount-preview', {
@@ -84,7 +79,6 @@ function AccountContent() {
     if (!currentUser?.uid) return;
     setAccountSaveStatus({ type: null, message: null });
     try {
-      // Normalize reportingEmail: if empty or not provided, use signup email
       const normalizedReportingEmail = (reportingEmail.trim() || currentUser.email || '').trim();
       
       const payload = {
@@ -139,7 +133,6 @@ function AccountContent() {
       setDeleting(true);
       await deleteUserAccount(currentUser.uid);
       
-      // Log out and redirect to login
       await logout();
       router.push('/login?deleted=true');
     } catch (err) {

@@ -39,10 +39,8 @@ export default function DateField({
   timezone = 'UTC',
   dateFormat = 'MM/DD/YYYY',
 }) {
-  // Parse date string (YYYY-MM-DD) as local date to avoid timezone issues
   const parseLocalDate = (dateString) => {
     if (!dateString) return null;
-    // Normalize: handle ISO strings with time, get just the date part
     const normalized = dateString.split('T')[0];
     const parts = normalized.split('-');
     if (parts.length !== 3) return null;
@@ -52,7 +50,6 @@ export default function DateField({
     return new Date(year, month, day);
   };
 
-  // Normalize date value for comparison (always returns YYYY-MM-DD)
   const normalizeDateValue = (dateValue) => {
     if (!dateValue) return '';
     return dateValue.split('T')[0];
@@ -78,7 +75,6 @@ export default function DateField({
   const inputClass = getInputClasses(variant, !!error);
   const errorTextClass = isLight ? 'mt-1 text-sm text-red-600 dark:text-red-400' : 'mt-1 text-sm text-red-300';
 
-  // Close popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -97,7 +93,6 @@ export default function DateField({
     }
   }, [isOpen]);
 
-  // Update current month when value changes
   useEffect(() => {
     if (value) {
       const normalizedValue = normalizeDateValue(value);
@@ -133,16 +128,12 @@ export default function DateField({
     });
   };
 
-  // Get today's date in user's timezone (calculated once per render)
   const todayInTimezone = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
 
   const isDateDisabled = (date) => {
     const dateStr = formatDateForInput(date);
     const normalizedValue = normalizeDateValue(value);
-    // Allow past dates if they're already selected (for viewing existing appointments)
     if (normalizedValue && normalizedValue === dateStr) return false;
-    // Otherwise, disable past dates
-    // If min is not provided, use today's date in user's timezone
     const minDate = min || todayInTimezone;
     if (dateStr < minDate) return true;
     if (max && dateStr > max) return true;
@@ -192,18 +183,15 @@ export default function DateField({
   const firstDay = getFirstDayOfMonth(currentMonth);
   const days = [];
   
-  // Add empty cells for days before the first day of the month
   for (let i = 0; i < firstDay; i++) {
     days.push(null);
   }
   
-  // Add days of the month
   for (let day = 1; day <= daysInMonth; day++) {
     days.push(day);
   }
 
   const selectedDate = value ? parseLocalDate(value) : null;
-  // Get today's date object for comparison (using already calculated todayInTimezone)
   const today = todayInTimezone ? parseLocalDate(todayInTimezone) : null;
 
   return (
@@ -290,15 +278,12 @@ export default function DateField({
                   return <div key={`empty-${index}`} className="aspect-square" />;
                 }
 
-                // Create date using local timezone (no timezone conversion)
                 const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
                 const dateStr = formatDateForInput(date);
-                // Normalize value for comparison (ensure it's YYYY-MM-DD format)
                 const normalizedValue = normalizeDateValue(value);
                 const isSelected = normalizedValue && normalizedValue === dateStr;
                 const isToday = formatDateForInput(today) === dateStr;
                 const isDisabled = isDateDisabled(date);
-                // If today is selected, use selected style instead of today style
                 const isTodayAndSelected = isSelected && isToday;
 
                 return (

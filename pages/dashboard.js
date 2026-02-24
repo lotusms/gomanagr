@@ -20,17 +20,14 @@ import WebsiteConsultationDialog from '@/components/dashboard/WebsiteConsultatio
 import { isAdminRole, isOwnerRole } from '@/config/rolePermissions';
 
 function getWelcomeName(account, email = '') {
-  // Always prioritize firstName - this is what user entered during signup
   const first = (account?.firstName ?? '').trim();
   if (first) return first;
-  // Only fall back to email handler if firstName is truly missing
   if (email) return email.split('@')[0];
   return '';
 }
 
 function getFormattedDate(dateFormat = 'MM/DD/YYYY', timezone = 'UTC') {
   const todayInTimezone = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
-  // For welcome message, use a friendly format regardless of user preference
   return new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -53,7 +50,7 @@ const TODO_ITEMS = [
     description: 'Pull your organization logo and brand into GoManagr to use on quotes, invoices, and job forms.',
     duration: '2 minutes',
     Icon: HiOfficeBuilding,
-    href: '/dashboard/settings', // Organization settings (logo) is the default section
+    href: '/dashboard/settings',
   },
   {
     id: 'client-portal',
@@ -85,7 +82,7 @@ const TODO_ITEMS = [
     description: 'Request a consultation with LOTUS Marketing Solutions for a website integrated with GoManagr.',
     duration: '5 minutes',
     Icon: HiGlobe,
-    href: null, // Opens consultation dialog instead of navigating
+    href: null,
   },
 ];
 
@@ -108,7 +105,6 @@ function DashboardContent() {
   useEffect(() => {
     if (!currentUser?.uid) return;
     setAccountLoaded(false);
-    // Use getUserAccountFromServer to bypass cache and get fresh data
     import('@/services/userService').then(({ getUserAccountFromServer }) => {
       getUserAccountFromServer(currentUser.uid)
         .then((data) => {
@@ -134,7 +130,6 @@ function DashboardContent() {
       });
   }, [currentUser?.uid]);
 
-  // Superadmin and admin both see everyone's appointments; fetch org schedule for full view
   const canSeeFullSchedule = isAdminRole(organization?.membership?.role);
   useEffect(() => {
     if (!currentUser?.uid || !canSeeFullSchedule) return;
@@ -155,11 +150,9 @@ function DashboardContent() {
   const todayServices = scheduleSource?.services ?? userAccount?.services ?? [];
   const schedulePrefs = canSeeFullSchedule && orgSchedule ? orgSchedule : null;
 
-  // Listen for account updates (e.g., when logo is saved)
   useEffect(() => {
     const handleAccountUpdate = async (e) => {
       if (e.detail?.type === 'useraccount-updated' && currentUser?.uid) {
-        // Refresh account data from server to get latest logo
         try {
           const { getUserAccountFromServer } = await import('@/services/userService');
           const updatedData = await getUserAccountFromServer(currentUser.uid);
@@ -190,7 +183,6 @@ function DashboardContent() {
       ? []
       : TODO_ITEMS.filter((item) => {
           if (dismissedTodoIds.includes(item.id)) return false;
-          // Hide "Add your organization logo" if org or user account already has a logo
           if (item.id === 'company-logo') {
             if (!accountLoaded) return true;
             const userLogo = (userAccount?.companyLogo != null && userAccount?.companyLogo !== '')
@@ -201,19 +193,16 @@ function DashboardContent() {
               : '';
             if (userLogo.length > 0 || orgLogo.length > 0) return false;
           }
-          // Show client-portal todo only when no clients created
           if (item.id === 'client-portal') {
             if (!accountLoaded) return true;
             const hasClients = Array.isArray(userAccount?.clients) && userAccount.clients.length > 0;
             if (hasClients) return false;
           }
-          // Show invoicing todo only when no invoices created
           if (item.id === 'invoicing') {
             if (!accountLoaded) return true;
             const hasInvoices = Array.isArray(userAccount?.invoices) && userAccount.invoices.length > 0;
             if (hasInvoices) return false;
           }
-          // Show quote todo only when no quotes created
           if (item.id === 'quote') {
             if (!accountLoaded) return true;
             const hasQuotes = Array.isArray(userAccount?.quotes) && userAccount.quotes.length > 0;

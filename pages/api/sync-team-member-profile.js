@@ -52,7 +52,6 @@ export default async function handler(req, res) {
   const emailNorm = email.toLowerCase().trim();
 
   try {
-    // Verify caller is admin or developer of this org
     const { data: membership, error: memberError } = await supabaseAdmin
       .from('org_members')
       .select('role')
@@ -64,7 +63,6 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Unauthorized: Only admins and developers can sync team member profile' });
     }
 
-    // Find the user in this org with this email (org_members + user_profiles)
     const { data: members, error: listError } = await supabaseAdmin
       .from('org_members')
       .select('user_id')

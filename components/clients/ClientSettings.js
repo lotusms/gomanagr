@@ -15,7 +15,6 @@ export default function ClientSettings() {
   const [saving, setSaving] = useState(false);
   const [accountIndustry, setAccountIndustry] = useState('');
   
-  // Available tabs (excluding Basic Information which is always shown)
   const availableTabs = [
     { value: 'company', label: 'Company Details' },
     { value: 'financial', label: 'Financial Information' },
@@ -45,20 +44,16 @@ export default function ClientSettings() {
       if (account) {
         setAccountIndustry(account.industry || '');
         
-        // Get default visible tabs based on industry
         let defaultVisibleTabs = ['projects', 'communication', 'documents', 'scheduling'];
         const shouldShowCompanyFinancial = account.industry !== 'Healthcare' && account.industry !== 'Education';
         if (shouldShowCompanyFinancial) {
           defaultVisibleTabs.push('company', 'financial');
         }
         
-        // Use saved visibleTabs array, or convert old individual settings, or use defaults
         let visibleTabs;
         if (account.clientSettings?.visibleTabs && Array.isArray(account.clientSettings.visibleTabs)) {
-          // Use saved array
           visibleTabs = account.clientSettings.visibleTabs;
         } else if (account.clientSettings) {
-          // Convert old individual boolean settings to array
           visibleTabs = [];
           if (account.clientSettings.showCompanyDetails !== false) visibleTabs.push('company');
           if (account.clientSettings.showFinancialInformation !== false) visibleTabs.push('financial');
@@ -66,10 +61,8 @@ export default function ClientSettings() {
           if (account.clientSettings.showCommunicationLog !== false) visibleTabs.push('communication');
           if (account.clientSettings.showDocumentsFiles !== false) visibleTabs.push('documents');
           if (account.clientSettings.showAppointmentsSchedule !== false) visibleTabs.push('scheduling');
-          // If nothing was set, use defaults
           if (visibleTabs.length === 0) visibleTabs = defaultVisibleTabs;
         } else {
-          // Use defaults
           visibleTabs = defaultVisibleTabs;
         }
         
@@ -108,19 +101,14 @@ export default function ClientSettings() {
 
     try {
       setSaving(true);
-      // CRITICAL: Fetch fresh account data to ensure we have complete, unfiltered arrays
-      // This prevents overwriting teamMembers/clients/services/appointments with filtered data
       const account = await getUserAccount(currentUser.uid);
       
-      // Exclude arrays from spread, then explicitly include them from fresh account data
-      // This ensures we preserve the complete arrays from the database
       const { teamMembers, clients, services, appointments, ...accountWithoutArrays } = account || {};
       
       const updatedAccount = await createUserAccount(
         currentUser.uid,
         {
           ...accountWithoutArrays,
-          // Explicitly preserve arrays from fresh database fetch to prevent data loss
           teamMembers: account?.teamMembers || [],
           clients: account?.clients || [],
           services: account?.services || [],
@@ -137,7 +125,6 @@ export default function ClientSettings() {
         null
       );
 
-      // Dispatch event to update account
       if (typeof window !== 'undefined' && updatedAccount) {
         window.dispatchEvent(
           new CustomEvent('useraccount', {

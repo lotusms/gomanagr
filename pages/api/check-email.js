@@ -15,7 +15,6 @@ try {
     console.warn('Supabase Admin not configured. Email checking will be limited.');
     supabaseAdmin = null;
   } else {
-    // Use service role key for admin operations (bypasses RLS)
     supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -39,7 +38,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid email format' });
   }
 
-  // If Supabase Admin is not available, return a graceful error
   if (!supabaseAdmin) {
     return res.status(503).json({ 
       error: 'service-unavailable',
@@ -48,8 +46,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check user_account table first (more efficient than listing auth users)
-    // This will catch users who have completed registration
     try {
       const { data: accountData, error: accountError } = await supabaseAdmin
         .from('user_account')
@@ -58,7 +54,6 @@ export default async function handler(req, res) {
         .limit(1)
         .maybeSingle(); // Use maybeSingle to avoid error if not found
       
-      // If found in user_account, email exists
       if (accountData && !accountError) {
         return res.status(200).json({ 
           exists: true,
@@ -66,13 +61,9 @@ export default async function handler(req, res) {
         });
       }
     } catch (dbError) {
-      // If database check fails, continue to auth check
       console.warn('Database check failed, continuing with auth check:', dbError);
     }
     
-    // If not found in user_account, check auth.users
-    // Note: Supabase Admin API doesn't have getUserByEmail, so we use listUsers
-    // We check multiple pages to find the email (up to 3 pages = 30 users max)
     const emailLower = email.toLowerCase();
     let foundUser = null;
     let page = 1;
@@ -87,10 +78,8 @@ export default async function handler(req, res) {
         });
         
         if (authError) {
-          // Handle rate limiting
           if (authError.status === 429 || authError.message?.toLowerCase().includes('rate limit')) {
             console.warn('[API] Rate limit hit during email check');
-            // If we already checked user_account and didn't find it, assume email doesn't exist
             return res.status(200).json({ 
               exists: false,
               methods: [],
@@ -99,7 +88,6 @@ export default async function handler(req, res) {
             });
           }
           
-          // For other errors on first page, assume email doesn't exist (allow signup)
           console.error('[API] Error checking email in auth:', authError);
           return res.status(200).json({ 
             exists: false,
@@ -109,17 +97,14 @@ export default async function handler(req, res) {
           });
         }
         
-        // Search through users to find matching email
         foundUser = usersData?.users?.find(user => 
           user.email?.toLowerCase() === emailLower
         );
         
-        // If found, break early
         if (foundUser) {
           break;
         }
         
-        // If no more users, stop searching
         if (!usersData?.users || usersData.users.length < perPage) {
           break;
         }
@@ -127,12 +112,10 @@ export default async function handler(req, res) {
         page++;
       } catch (pageError) {
         console.error('[API] Exception during auth email check (page ' + page + '):', pageError);
-        // On exception, stop searching and assume email doesn't exist (allow signup)
         break;
       }
     }
     
-    // Return result
     if (foundUser) {
       const methods = foundUser.app_metadata?.providers || [];
       return res.status(200).json({ 
@@ -141,7 +124,6 @@ export default async function handler(req, res) {
       });
     }
     
-    // Email not found in auth.users
     return res.status(200).json({ 
       exists: false,
       methods: []

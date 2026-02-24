@@ -91,7 +91,6 @@ function getMemberNavItems(memberAccess, accountIndustry) {
 export default function DashboardSidebar({ open, onToggle, userAccount, memberRole, memberAccess, isOwner, orgLoaded }) {
   const router = useRouter();
 
-  // Minimal nav shown until org has loaded (prevents any flash of owner/admin full nav)
   const placeholderNav = useMemo(() => [{ name: 'Home', href: '/dashboard/team-member', icon: HiHome }], []);
 
   const navigationItems = useMemo(() => {

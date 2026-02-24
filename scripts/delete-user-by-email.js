@@ -18,7 +18,6 @@ const { createClient } = require('@supabase/supabase-js');
 const { readFileSync, existsSync } = require('fs');
 const { join } = require('path');
 
-// Load .env.local
 const envPath = join(__dirname, '..', '.env.local');
 if (existsSync(envPath)) {
   const envContent = readFileSync(envPath, 'utf8');
@@ -76,7 +75,6 @@ async function main() {
   console.log('\nLooking for records for email:', targetEmail);
   console.log('---\n');
 
-  // 1) org_invites (any invite for this email)
   const { data: invites, error: invErr } = await supabase
     .from('org_invites')
     .select('id, email, used, created_at')
@@ -100,7 +98,6 @@ async function main() {
   }
   console.log('');
 
-  // 2) Auth user by email
   const authUser = await findAuthUserByEmail(targetEmail);
   if (!authUser) {
     console.log('No auth user found with email', targetEmail);
@@ -112,7 +109,6 @@ async function main() {
   console.log('Found auth user:', userId, authUser.email);
   console.log('');
 
-  // 3) org_members
   const { data: members, error: memErr } = await supabase
     .from('org_members')
     .select('id, organization_id, role')
@@ -134,7 +130,6 @@ async function main() {
   }
   console.log('');
 
-  // 4) user_profiles
   const { data: profile, error: profErr } = await supabase
     .from('user_profiles')
     .select('id, email, first_name, last_name')
@@ -157,7 +152,6 @@ async function main() {
   }
   console.log('');
 
-  // 5) auth user (must be last; some FKs may reference it)
   if (!dryRun) {
     const { error: delAuthErr } = await supabase.auth.admin.deleteUser(userId);
     if (delAuthErr) {

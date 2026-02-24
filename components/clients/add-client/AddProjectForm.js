@@ -31,7 +31,6 @@ export default function AddProjectForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     const newErrors = {};
     if (!name.trim()) {
       newErrors.name = 'Project name is required';

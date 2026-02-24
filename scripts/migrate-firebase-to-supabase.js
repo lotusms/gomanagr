@@ -27,7 +27,6 @@ const { createClient } = require('@supabase/supabase-js');
 const { readFileSync, existsSync } = require('fs');
 const { join } = require('path');
 
-// Load .env.local manually (dotenv may not be installed)
 const envPath = join(__dirname, '..', '.env.local');
 if (existsSync(envPath)) {
   const envContent = readFileSync(envPath, 'utf8');
@@ -48,10 +47,8 @@ const USER_ID_FILTER = process.argv.includes('--user-id')
   ? process.argv[process.argv.indexOf('--user-id') + 1]
   : null;
 
-// Initialize Firebase Admin
 let serviceAccount = null;
 try {
-  // Try firebase_bkp folder first (after migration), then root
   const backupPath = join(__dirname, '..', 'firebase_bkp', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
   const rootPath = join(__dirname, '..', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
   
@@ -81,7 +78,6 @@ if (!getApps().length) {
 const db = getFirestore();
 const adminAuth = getAuth();
 
-// Initialize Supabase Admin client (requires service_role key)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -96,7 +92,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false }
 });
 
-// Transform Firebase document to Supabase row format
 function transformToSupabaseRow(firebaseData, supabaseUserId) {
   const row = {
     id: supabaseUserId,
@@ -124,7 +119,6 @@ function transformToSupabaseRow(firebaseData, supabaseUserId) {
     updated_at: firebaseData.updatedAt || new Date().toISOString(),
   };
 
-  // Store extra fields (organizationAddress, locations, etc.) in profile JSONB
   const knownKeys = new Set([
     'userId', 'email', 'trial', 'firstName', 'lastName', 'purpose', 'role',
     'companyName', 'companyLogo', 'teamSize', 'companySize', 'companyLocations',
@@ -146,10 +140,8 @@ function transformToSupabaseRow(firebaseData, supabaseUserId) {
   return row;
 }
 
-// Create user in Supabase Auth (if doesn't exist)
 async function ensureSupabaseUser(firebaseUser) {
   try {
-    // Check if user already exists by email
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
     const existing = existingUsers?.users?.find(u => u.email === firebaseUser.email);
 
@@ -163,12 +155,9 @@ async function ensureSupabaseUser(firebaseUser) {
       return 'dry-run-uuid-placeholder';
     }
 
-    // Create user in Supabase Auth
-    // Note: We can't migrate passwords, so user will need to reset password
     const { data: newUser, error } = await supabase.auth.admin.createUser({
       email: firebaseUser.email,
       email_confirm: true, // Auto-confirm email
-      // Password will need to be reset by user
     });
 
     if (error) throw error;
@@ -181,19 +170,16 @@ async function ensureSupabaseUser(firebaseUser) {
   }
 }
 
-// Migrate a single user account
 async function migrateUserAccount(firebaseUserId, firebaseData) {
   try {
     console.log(`\n📦 Migrating user: ${firebaseUserId}`);
     console.log(`   Email: ${firebaseData.email || 'N/A'}`);
     
-    // Debug: Show what data we have
     console.log(`   📊 Firestore data keys: ${Object.keys(firebaseData).join(', ')}`);
     console.log(`   📊 Team members: ${firebaseData.teamMembers?.length || 0}`);
     console.log(`   📊 Clients: ${firebaseData.clients?.length || 0}`);
     console.log(`   📊 Services: ${firebaseData.services?.length || 0}`);
 
-    // Get Firebase Auth user to get email
     let firebaseAuthUser;
     try {
       firebaseAuthUser = await adminAuth.getUser(firebaseUserId);
@@ -202,10 +188,8 @@ async function migrateUserAccount(firebaseUserId, firebaseData) {
       firebaseAuthUser = { email: firebaseData.email };
     }
 
-    // Ensure user exists in Supabase Auth
     const supabaseUserId = await ensureSupabaseUser(firebaseAuthUser);
 
-    // Transform data
     const supabaseRow = transformToSupabaseRow(firebaseData, supabaseUserId);
     
     console.log(`   🔄 Transformed row keys: ${Object.keys(supabaseRow).join(', ')}`);
@@ -217,7 +201,6 @@ async function migrateUserAccount(firebaseUserId, firebaseData) {
       return { success: true, supabaseUserId };
     }
 
-    // Upsert into Supabase
     console.log(`   💾 Upserting to Supabase...`);
     const { data, error } = await supabase
       .from('user_account')
@@ -240,7 +223,6 @@ async function migrateUserAccount(firebaseUserId, firebaseData) {
   }
 }
 
-// Main migration function
 async function migrateAll() {
   try {
     console.log('\n🚀 Starting Firebase → Supabase migration');
@@ -248,10 +230,8 @@ async function migrateAll() {
       console.log('⚠️  DRY RUN MODE - No changes will be made\n');
     }
 
-    // Get all useraccount documents
     let snapshot;
     if (USER_ID_FILTER) {
-      // Get specific document by ID
       const docRef = db.collection('useraccount').doc(USER_ID_FILTER);
       const doc = await docRef.get();
       snapshot = { 
@@ -289,7 +269,6 @@ async function migrateAll() {
       }
     }
 
-    // Summary
     console.log('\n' + '='.repeat(50));
     console.log('📊 Migration Summary');
     console.log('='.repeat(50));
@@ -312,7 +291,6 @@ async function migrateAll() {
   }
 }
 
-// Run migration
 migrateAll().then(() => {
   process.exit(0);
 }).catch((error) => {

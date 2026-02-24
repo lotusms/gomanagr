@@ -106,7 +106,6 @@ export default async function handler(req, res) {
     }
 
     let revokeEmail = emailNorm;
-    // Resolve target user id: from request or by looking up auth user by email (so we always remove from Supabase Auth)
     let targetUserId = userId;
     if (!targetUserId && revokeEmail) {
       const authUser = await findAuthUserByEmail(revokeEmail);
@@ -154,7 +153,6 @@ export default async function handler(req, res) {
     const orgName = orgRow?.name || null;
 
     if (revokeEmail) {
-      // Remove invite rows so get-org-invites won't return them and the admin card shows Invite again
       const { error: inviteErr } = await supabaseAdmin
         .from('org_invites')
         .delete()
@@ -162,7 +160,6 @@ export default async function handler(req, res) {
         .ilike('email', revokeEmail);
       if (inviteErr) {
         console.error('[revoke-org-member] delete org_invites', inviteErr);
-        // Non-fatal: continue and send email
       }
 
       const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';

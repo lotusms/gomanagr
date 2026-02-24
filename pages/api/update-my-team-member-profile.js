@@ -68,8 +68,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Use Auth (auth.users) email so we match the team member to the actual login identity.
-    // user_profiles.email can be wrong if an invite flow overwrote it (e.g. during testing).
     const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (authErr || !authUser?.user?.email) {
       return res.status(404).json({ error: 'User not found' });
@@ -130,7 +128,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // User not in any team_members (e.g. admin editing own profile): update only their user_profiles
     if (memberIndex === -1) {
       const mergedProfile = buildProfileFromTeamMember(teamMemberData);
       const existingProfile = (profileRow?.profile && typeof profileRow.profile === 'object') ? profileRow.profile : {};

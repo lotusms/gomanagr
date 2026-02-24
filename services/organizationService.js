@@ -1,12 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
 /**
- * Organization Service
- * Handles organization and org_member operations
- */
-
-/**
- * Get user's current organization (first org they're a member of)
  * @param {string} userId - User's Firebase Auth UID
  * @returns {Promise<Object|null>} Organization object with membership info
  */
@@ -147,8 +141,7 @@ export async function addUserToOrganization(organizationId, userId, role = 'memb
       .single();
 
     if (error) {
-      // If user is already a member, return existing membership
-      if (error.code === '23505') { // Unique violation
+      if (error.code === '23505') {
         const { data: existing } = await supabase
           .from('org_members')
           .select()

@@ -10,7 +10,6 @@ import CollapsibleSection from './CollapsibleSection';
  * @param {string} props.defaultTab - Default selected tab value
  */
 export default function ResponsiveSectionWrapper({ sections = [], defaultTab }) {
-  // Initialize with Basic Information (or first section) open by default for accordion view
   const defaultOpenSection = defaultTab || sections[0]?.value || 'basic';
   const [openSections, setOpenSections] = useState({
     [defaultOpenSection]: true,
@@ -18,11 +17,9 @@ export default function ResponsiveSectionWrapper({ sections = [], defaultTab }) 
   
   const toggleSection = (value) => {
     setOpenSections(prev => {
-      // If clicking the already open section, close it
       if (prev[value]) {
         return { [defaultOpenSection]: false };
       }
-      // Otherwise, open only this section (close all others)
       return { [value]: true };
     });
   };

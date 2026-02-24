@@ -9,7 +9,6 @@
  */
 
 export const UserAccountSchema = {
-  // Authentication & Basic Info
   userId: {
     type: 'string',
     required: true,
@@ -30,7 +29,6 @@ export const UserAccountSchema = {
     example: true,
   },
 
-  // Personal Information (Step 2)
   firstName: {
     type: 'string',
     required: true,
@@ -69,7 +67,6 @@ export const UserAccountSchema = {
     example: 'Owner',
   },
 
-  // Company Information (Step 3)
   companyName: {
     type: 'string',
     required: true,
@@ -104,7 +101,6 @@ export const UserAccountSchema = {
     example: '1',
   },
 
-  // Sections to Track (Step 4)
   sectionsToTrack: {
     type: 'array',
     required: true,
@@ -130,7 +126,6 @@ export const UserAccountSchema = {
     minItems: 1,
   },
 
-  // Referral Information (Step 5)
   referralSource: {
     type: 'string',
     required: true,
@@ -139,7 +134,6 @@ export const UserAccountSchema = {
     example: 'Google',
   },
 
-  // Timestamps
   createdAt: {
     type: 'string',
     required: true,
@@ -267,7 +261,6 @@ export function validateUserAccount(data) {
   const errors = [];
   const requiredFields = getRequiredFields();
 
-  // Check required fields
   requiredFields.forEach((field) => {
     if (field === 'sectionsToTrack') {
       if (!data[field] || !Array.isArray(data[field]) || data[field].length === 0) {
@@ -278,12 +271,10 @@ export function validateUserAccount(data) {
     }
   });
 
-  // Validate email format
   if (data.email && !ValidationRules.email.pattern.test(data.email)) {
     errors.push(ValidationRules.email.message);
   }
 
-  // Validate enum values
   if (data.purpose && !UserAccountSchema.purpose.enum.includes(data.purpose)) {
     errors.push(`purpose must be one of: ${UserAccountSchema.purpose.enum.join(', ')}`);
   }
@@ -308,7 +299,6 @@ export function validateUserAccount(data) {
     errors.push(`referralSource must be one of: ${UserAccountSchema.referralSource.enum.join(', ')}`);
   }
 
-  // Validate sectionsToTrack items
   if (data.sectionsToTrack && Array.isArray(data.sectionsToTrack)) {
     data.sectionsToTrack.forEach((section) => {
       if (!UserAccountSchema.sectionsToTrack.items.enum.includes(section)) {

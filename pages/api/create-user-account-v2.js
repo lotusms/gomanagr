@@ -25,7 +25,6 @@ try {
     });
     supabaseAdmin = null;
   } else {
-    // Verify service key format (should start with 'eyJ' for JWT)
     if (!supabaseServiceKey.startsWith('eyJ')) {
       console.warn('WARNING: SUPABASE_SERVICE_ROLE_KEY does not look like a valid JWT token');
     }
@@ -71,13 +70,11 @@ async function getAuthenticatedUserId(req) {
   }
 }
 
-// Row keys that go into user_profiles columns (not into profile JSONB)
 const ROW_KEYS = new Set([
   'userId', 'id', 'email', 'firstName', 'lastName', 'purpose', 'role',
   'createdAt', 'updatedAt',
 ]);
 
-// Helper to convert camelCase user data to snake_case row + profile JSONB
 function userDataToRow(data) {
   const profile = {};
   const row = {
@@ -92,7 +89,6 @@ function userDataToRow(data) {
     updated_at: data.updatedAt || new Date().toISOString(),
   };
 
-  // Put everything else into profile JSONB (name, title, bio, pictureUrl, address, etc.)
   Object.entries(data || {}).forEach(([key, value]) => {
     if (ROW_KEYS.has(key) || value === undefined) return;
     if (key === 'reportingEmail') {
@@ -123,7 +119,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // Verify service role key is properly configured
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey || !serviceKey.startsWith('eyJ')) {
     console.error('[API] CRITICAL: Invalid service role key format');
@@ -134,7 +129,6 @@ export default async function handler(req, res) {
   }
 
   const { userId, userData, inviteToken, logoData } = req.body;
-  // logoData: { base64: string, filename: string } or null
 
   if (!userId || !userData) {
     return res.status(400).json({ error: 'Missing userId or userData' });
@@ -175,13 +169,11 @@ export default async function handler(req, res) {
     });
   }
 
-  // Store userId for cleanup if needed
   let authUserId = userId;
 
   try {
     const now = new Date().toISOString();
     
-    // Step 1: Create user profile
     const userRow = userDataToRow({
       ...userData,
       userId,
@@ -189,15 +181,11 @@ export default async function handler(req, res) {
       updatedAt: now,
     });
 
-    // Use service role to bypass RLS - this should work
-    // Verify service role is configured
     if (!supabaseAdmin) {
       const error = new Error('Supabase Admin client not initialized');
       console.error('[API] CRITICAL: Service role not available');
       
-      // Delete auth user before returning error
       try {
-        // Try to create a temporary admin client for cleanup
         const tempAdmin = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL,
           process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -215,8 +203,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Verify service role can bypass RLS by testing a simple query
-    // This helps diagnose RLS issues early
     try {
       const { error: testError } = await supabaseAdmin
         .from('user_profiles')
@@ -228,7 +214,6 @@ export default async function handler(req, res) {
         console.error('[API] This indicates SUPABASE_SERVICE_ROLE_KEY is incorrect or not being used');
         console.error('[API] Test error:', testError);
         
-        // Delete auth user before returning
         try {
           await supabaseAdmin.auth.admin.deleteUser(userId);
           console.log('[API] Deleted auth user (service role verification failed)');
@@ -242,11 +227,9 @@ export default async function handler(req, res) {
         });
       }
     } catch (testErr) {
-      // Test query failed, but continue - might be empty table
       console.log('[API] Service role test query result (may be empty table):', testErr.message);
     }
 
-    // Check if profile already exists (from previous failed signup)
     const { data: existingProfile } = await supabaseAdmin
       .from('user_profiles')
       .select('id')
@@ -257,7 +240,6 @@ export default async function handler(req, res) {
     let userError;
 
     if (existingProfile) {
-      // Profile exists, use update instead of insert
       console.log('[API] Profile already exists, updating:', userId);
       const { data, error } = await supabaseAdmin
         .from('user_profiles')
@@ -268,7 +250,6 @@ export default async function handler(req, res) {
       userProfile = data;
       userError = error;
     } else {
-      // New profile, use insert (service role bypasses RLS)
       console.log('[API] Creating new profile:', userId);
       const { data, error } = await supabaseAdmin
         .from('user_profiles')
@@ -290,7 +271,6 @@ export default async function handler(req, res) {
         serviceKeyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20) || 'NOT SET',
       });
       
-      // If RLS error, try to provide helpful message
       if (userError.message?.includes('row-level security') || userError.code === '42501') {
         console.error('[API] RLS policy violation - service role should bypass RLS');
         console.error('[API] Check that SUPABASE_SERVICE_ROLE_KEY is set correctly');
@@ -298,8 +278,6 @@ export default async function handler(req, res) {
         console.error('[API] Service key starts with eyJ:', process.env.SUPABASE_SERVICE_ROLE_KEY?.startsWith('eyJ'));
       }
       
-      // CRITICAL: Delete auth user BEFORE returning error
-      // This must complete before we send the response
       let cleanupSuccess = false;
       try {
         const deleteResult = await supabaseAdmin.auth.admin.deleteUser(userId);
@@ -313,7 +291,6 @@ export default async function handler(req, res) {
         console.error('[API] Exception during auth user cleanup:', deleteErr);
       }
       
-      // Return error with cleanup status
       return res.status(500).json({ 
         error: 'profile-creation-failed',
         message: userError.message || 'Failed to create user profile',
@@ -327,9 +304,7 @@ export default async function handler(req, res) {
     let membershipRole = 'admin';
     let userAlreadyInOrg = false;
 
-    // Step 2: Handle organization creation/assignment
     if (inviteToken) {
-      // Case B: Invited signup - add to existing org
       const { data: invite, error: inviteError } = await supabaseAdmin
         .from('org_invites')
         .select('organization_id, role, email, expires_at')
@@ -341,12 +316,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid or expired invite token' });
       }
 
-      // Check if invite is expired
       if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
         return res.status(400).json({ error: 'Invite token has expired' });
       }
 
-      // Verify email matches (optional but recommended)
       if (invite.email && invite.email.toLowerCase() !== userData.email?.toLowerCase()) {
         return res.status(400).json({ error: 'Invite email does not match signup email' });
       }
@@ -354,7 +327,6 @@ export default async function handler(req, res) {
       organizationId = invite.organization_id;
       membershipRole = invite.role || 'member';
 
-      // Mark invite as used
       await supabaseAdmin
         .from('org_invites')
         .update({ 
@@ -365,7 +337,6 @@ export default async function handler(req, res) {
         })
         .eq('token', inviteToken);
     } else {
-      // Case A: Normal signup - use existing org if user already in one, else create one
       const { data: existingMembership } = await supabaseAdmin
         .from('org_members')
         .select('organization_id')
@@ -408,18 +379,14 @@ export default async function handler(req, res) {
         membershipRole = 'superadmin';
       }
 
-      // Upload logo to organization-specific path if provided
       if (logoData && logoData.base64 && organizationId) {
         try {
-          // Convert base64 to buffer
           const base64Data = logoData.base64.replace(/^data:image\/\w+;base64,/, '');
           const buffer = Buffer.from(base64Data, 'base64');
           
-          // Use organization ID in the path: {organizationId}/logo/{filename}
           const filename = logoData.filename || `logo-${Date.now()}.png`;
           const logoPath = `${organizationId}/logo/${filename}`;
           
-          // Upload to storage bucket using service role
           const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
             .from('company-logos')
             .upload(logoPath, buffer, {
@@ -429,14 +396,11 @@ export default async function handler(req, res) {
 
           if (uploadError) {
             console.error('[API] Error uploading logo:', uploadError);
-            // Don't fail - continue without logo
           } else {
-            // Get public URL
             const { data: urlData } = supabaseAdmin.storage
               .from('company-logos')
               .getPublicUrl(uploadData.path);
             
-            // Update organization with logo URL
             await supabaseAdmin
               .from('organizations')
               .update({ 
@@ -449,13 +413,11 @@ export default async function handler(req, res) {
           }
         } catch (logoErr) {
           console.error('[API] Exception during logo upload:', logoErr);
-          // Don't fail - continue without logo
         }
       }
     }
 
     let membershipCreatedAt = now;
-    // Step 3: Add user to organization (skip if already in an org, e.g. from previous signup)
     if (!userAlreadyInOrg) {
       const { data: membership, error: memberError } = await supabaseAdmin
         .from('org_members')
@@ -489,8 +451,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Step 4: Add user as team member in user_profiles.team_members array
-    // This ensures the user appears on the Teams page automatically
     const teamMember = {
       id: `owner-${userId}`,
       name: `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || userProfile.email.split('@')[0] || 'Account Owner',
@@ -505,16 +465,13 @@ export default async function handler(req, res) {
       isAdmin: true, // Account creator is always admin
     };
 
-    // Get current team_members array (may be empty or null)
     const currentTeamMembers = userProfile.team_members || [];
     
-    // Check if team member already exists (from previous failed signup)
     const existingMemberIndex = currentTeamMembers.findIndex(m => m.id === teamMember.id);
     const updatedTeamMembers = existingMemberIndex >= 0
       ? currentTeamMembers.map((m, idx) => idx === existingMemberIndex ? teamMember : m)
       : [...currentTeamMembers, teamMember];
 
-    // Update user profile with team member
     const { error: teamUpdateError } = await supabaseAdmin
       .from('user_profiles')
       .update({ 
@@ -525,12 +482,10 @@ export default async function handler(req, res) {
 
     if (teamUpdateError) {
       console.error('[API] Error updating team members:', teamUpdateError);
-      // Don't fail - team member can be added later
     } else {
       console.log('[API] Added user as team member:', teamMember.id);
     }
 
-    // Step 5: Get full organization with membership (refresh to get updated logo_url)
     const { data: fullOrg, error: orgFetchError } = await supabaseAdmin
       .from('organizations')
       .select(`
@@ -545,15 +500,12 @@ export default async function handler(req, res) {
 
     if (orgFetchError) {
       console.error('[API] Error fetching organization:', orgFetchError);
-      // Don't fail - we already created everything
     }
 
-    // Remove invite record after successful signup (do not keep permanent record)
     if (inviteToken) {
       await supabaseAdmin.from('org_invites').delete().eq('token', inviteToken);
     }
 
-    // Return response in format compatible with existing code
     const profile = userProfile.profile && typeof userProfile.profile === 'object' 
       ? userProfile.profile 
       : {};
@@ -590,19 +542,15 @@ export default async function handler(req, res) {
       userId: authUserId,
     });
     
-    // CRITICAL: Final cleanup attempt BEFORE returning error
     let cleanupSuccess = false;
     if (authUserId && supabaseAdmin) {
       try {
-        // Try to delete profile if it exists
         try {
           await supabaseAdmin.from('user_profiles').delete().eq('id', authUserId);
         } catch (profileErr) {
-          // Profile might not exist, that's okay
           console.log('[API] Profile cleanup skipped (may not exist):', profileErr.message);
         }
         
-        // Delete auth user
         const deleteResult = await supabaseAdmin.auth.admin.deleteUser(authUserId);
         if (!deleteResult.error) {
           cleanupSuccess = true;

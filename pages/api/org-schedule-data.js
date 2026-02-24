@@ -54,7 +54,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Ensure caller is a member of an org
     const { data: myMembership, error: myErr } = await supabaseAdmin
       .from('org_members')
       .select('organization_id')
@@ -88,7 +87,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ schedule: null });
     }
 
-    // Fetch admin's profile (service role bypasses RLS)
     const { data: profileRow, error: profileErr } = await supabaseAdmin
       .from('user_profiles')
       .select('team_members, appointments, clients, services, profile')

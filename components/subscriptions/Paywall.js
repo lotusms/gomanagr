@@ -27,15 +27,12 @@ export default function Paywall({ userAccount, onSubscribe }) {
         setDaysRemaining(diffDays);
       }
     } else if (userAccount?.trial === true) {
-      // If trial is true but no trialEndsAt, assume expired if trial boolean is still true
-      // This handles legacy accounts
       setTrialExpired(true);
       setDaysRemaining(0);
     }
   }, [userAccount]);
 
   const handleSubscribe = (planId, period) => {
-    // Accept parameters for consistency, but we can ignore them if needed
     if (onSubscribe) {
       onSubscribe();
     } else {
@@ -50,7 +47,6 @@ export default function Paywall({ userAccount, onSubscribe }) {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(price);
-    // Remove .00 for whole numbers
     return formatted.replace(/\.00$/, '');
   };
 

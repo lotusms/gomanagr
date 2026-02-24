@@ -112,7 +112,6 @@ function ScheduleContent() {
     return () => clearInterval(interval);
   }, [currentUser?.uid, isTeamMember, isOrgAdmin, fetchOrgSchedule]);
 
-  // Supabase Realtime: subscribe to org channel so we get instant updates when admin (or another tab) saves/deletes
   useEffect(() => {
     const orgId = organization?.id;
     if (!orgId || !currentUser?.uid) return;
@@ -141,7 +140,6 @@ function ScheduleContent() {
   };
 
   const handleAppointmentClick = (appointment) => {
-    // Extract only the appointment data needed for the form (remove processed properties)
     const appointmentData = {
       id: appointment.id,
       staffId: appointment.staffId,
@@ -270,7 +268,6 @@ function ScheduleContent() {
     }
   };
 
-  /** Team member: add client via org API (assigned to self), then refetch schedule. */
   const handleClientAddForOrg = async (clientData) => {
     if (!currentUser?.uid) return null;
     try {

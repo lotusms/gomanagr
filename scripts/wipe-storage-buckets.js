@@ -26,7 +26,6 @@ async function wipeBucket(bucketName) {
   try {
     console.log(`\n📦 Wiping bucket: ${bucketName}`);
     
-    // List all files (recursively)
     const { data: files, error: listError } = await supabase.storage
       .from(bucketName)
       .list('', {
@@ -47,9 +46,6 @@ async function wipeBucket(bucketName) {
 
     console.log(`   Found ${files.length} file(s)`);
 
-    // Delete all files
-    // Note: We need to delete files recursively by path
-    // For nested paths, we need to list recursively
     const pathsToDelete = [];
     
     async function listRecursive(path = '') {
@@ -71,10 +67,8 @@ async function wipeBucket(bucketName) {
         const fullPath = path ? `${path}/${item.name}` : item.name;
         
         if (item.id === null) {
-          // It's a folder, recurse
           await listRecursive(fullPath);
         } else {
-          // It's a file
           pathsToDelete.push(fullPath);
         }
       }
@@ -89,7 +83,6 @@ async function wipeBucket(bucketName) {
 
     console.log(`   Deleting ${pathsToDelete.length} file(s)...`);
 
-    // Delete in batches of 100 (Supabase limit)
     const batchSize = 100;
     for (let i = 0; i < pathsToDelete.length; i += batchSize) {
       const batch = pathsToDelete.slice(i, i + batchSize);

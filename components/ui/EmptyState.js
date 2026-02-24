@@ -19,7 +19,6 @@ export default function EmptyState({
   icon: CustomIcon,
   className = '',
 }) {
-  // Default configurations based on type
   const configs = {
     services: {
       icon: HiClipboardList,
@@ -76,7 +75,6 @@ export default function EmptyState({
   const config = configs[type] || configs.custom;
   const IconComponent = CustomIcon || config.icon;
 
-  // Use custom title/description if provided, otherwise use config defaults
   const displayTitle = title || config.title;
   const displayDescription = description || config.description;
 

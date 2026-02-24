@@ -52,18 +52,13 @@ function TeamContent() {
     getUserAccount(currentUser.uid)
       .then((data) => {
         setUserAccount(data || null);
-        // Only use teamMembers from account, no default fallback
-        // Empty array means no team members yet (only account owner should exist)
         const list = data?.teamMembers ?? [];
-        // Filter team members based on showInactive setting
-        // Default to 'active' if status is not set
         const filteredList = showInactive 
-          ? list // Show all members including inactive
-          : list.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+          ? list
+          : list.filter((m) => (m.status || 'active') !== 'inactive');
         setTeam(filteredList);
       })
       .catch(() => {
-        // On error, show empty team (no defaults)
         setTeam([]);
       })
       .finally(() => setLoaded(true));
@@ -102,12 +97,10 @@ function TeamContent() {
       .finally(() => setPendingInvitesLoaded(true));
   }, [organization?.id, currentUser?.uid]);
 
-  // Helper function to clean team member objects by removing undefined values
   const cleanTeamMember = (member) => {
     const cleaned = {};
     Object.keys(member).forEach(key => {
       if (member[key] !== undefined) {
-        // If it's an object, recursively clean it
         if (typeof member[key] === 'object' && member[key] !== null && !Array.isArray(member[key])) {
           const cleanedObj = {};
           Object.keys(member[key]).forEach(objKey => {
@@ -129,15 +122,13 @@ function TeamContent() {
   const saveTeam = (nextTeam) => {
     if (!currentUser?.uid) return;
     setSaving(true);
-    // Clean all team members to remove undefined values before saving
     const cleanedTeam = nextTeam.map(cleanTeamMember);
     updateTeamMembers(currentUser.uid, cleanedTeam)
       .then(() => {
         setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
-        // Filter team members based on showInactive setting
-        const filteredList = showInactive 
-          ? cleanedTeam // Show all members including inactive
-          : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+        const filteredList = showInactive
+          ? cleanedTeam
+          : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
         setTeam(filteredList);
       })
       .catch((err) => console.error('Failed to save team:', err))
@@ -150,31 +141,21 @@ function TeamContent() {
     setDeleteDialogOpen(true);
   };
 
-  // Soft delete: Deactivate team member (sets status to 'inactive')
   const handleDeactivateConfirm = async () => {
     if (!memberToDelete || !currentUser?.uid) return;
-    
+
     setSaving(true);
     try {
-      // Get all team members (including inactive ones)
       const account = await getUserAccount(currentUser.uid);
       const allTeamMembers = account?.teamMembers || [];
-      
-      // Update the team member's status to 'inactive' instead of removing
       const updatedTeamMembers = allTeamMembers.map((m) =>
         m.id === memberToDelete.id ? { ...m, status: 'inactive' } : m
       );
-      
-      // Clean all team members to remove undefined values before saving
       const cleanedTeam = updatedTeamMembers.map(cleanTeamMember);
-      
-      // Save updated team members
       await updateTeamMembers(currentUser.uid, cleanedTeam);
-      
-      // Update local state - filter based on showInactive setting
-      const filteredList = showInactive 
-        ? cleanedTeam // Show all members including inactive
-        : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+      const filteredList = showInactive
+        ? cleanedTeam
+        : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
       setTeam(filteredList);
       setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
       
@@ -188,29 +169,19 @@ function TeamContent() {
     }
   };
 
-  // Hard delete: Permanently remove team member from array
   const handleDeleteConfirm = async () => {
     if (!memberToDelete || !currentUser?.uid) return;
-    
+
     setSaving(true);
     try {
-      // Get all team members (including inactive ones)
       const account = await getUserAccount(currentUser.uid);
       const allTeamMembers = account?.teamMembers || [];
-      
-      // Permanently remove the team member from the array
       const updatedTeamMembers = allTeamMembers.filter((m) => m.id !== memberToDelete.id);
-      
-      // Clean all team members to remove undefined values before saving
       const cleanedTeam = updatedTeamMembers.map(cleanTeamMember);
-      
-      // Save updated team members
       await updateTeamMembers(currentUser.uid, cleanedTeam);
-      
-      // Update local state - filter based on showInactive setting
-      const filteredList = showInactive 
-        ? cleanedTeam // Show all members including inactive
-        : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive'); // Show only active
+      const filteredList = showInactive
+        ? cleanedTeam
+        : cleanedTeam.filter((m) => (m.status || 'active') !== 'inactive');
       setTeam(filteredList);
       setUserAccount((prev) => (prev ? { ...prev, teamMembers: cleanedTeam } : null));
       
@@ -233,7 +204,6 @@ function TeamContent() {
     const isEdit = !!editingId;
     const memberId = isEdit ? editingId : generateId();
 
-    // Get full team list (including inactive) so we never overwrite with a filtered list
     let allTeamMembers = team;
     if (currentUser?.uid) {
       try {
@@ -252,7 +222,6 @@ function TeamContent() {
         console.error('Failed to upload team photo:', err);
       }
     }
-    // Helper function to remove undefined values from an object
     const removeUndefined = (obj) => {
       const cleaned = {};
       Object.keys(obj).forEach(key => {
@@ -358,21 +327,17 @@ function TeamContent() {
       }
     }
 
-    // Update all team members (including inactive) when editing, or add new member
     const nextAllMembers = isEdit
       ? allTeamMembers.map((m) => (m.id === editingId ? finalMember : m))
       : [...allTeamMembers, finalMember];
 
-    // Update local team display based on showInactive setting
     const filteredList = showInactive
       ? nextAllMembers
       : nextAllMembers.filter((m) => (m.status || 'active') !== 'inactive');
     setTeam(filteredList);
 
-    // Save all team members (including inactive)
     saveTeam(nextAllMembers);
 
-    // If this member has an account in the org (signed in with invite), sync their user profile so they see admin updates
     const memberEmail = (finalMember.email || '').trim();
     if (memberEmail && organization?.id && currentUser?.uid) {
       fetch('/api/sync-team-member-profile', {
@@ -428,12 +393,10 @@ function TeamContent() {
         });
     }
 
-    // Update services to reflect team member assignments
     if (data.selectedServiceIds !== undefined && userAccount?.services) {
       const currentServices = [...(userAccount.services || [])];
       const selectedServiceIds = Array.isArray(data.selectedServiceIds) ? data.selectedServiceIds : [];
-      
-      // Get previously assigned service IDs (for editing)
+
       const previousServiceIds = isEdit && editingId
         ? currentServices
             .filter(service => 
@@ -445,18 +408,12 @@ function TeamContent() {
             .filter(Boolean)
         : [];
 
-      // Update each service's assignedTeamMemberIds
       const updatedServices = currentServices.map(service => {
-        const wasAssigned = previousServiceIds.includes(service.id);
         const shouldBeAssigned = selectedServiceIds.includes(service.id);
-        
         let assignedIds = [...(service.assignedTeamMemberIds || [])];
-        
         if (shouldBeAssigned && !assignedIds.includes(memberId)) {
-          // Add member to this service
           assignedIds.push(memberId);
         } else if (!shouldBeAssigned && assignedIds.includes(memberId)) {
-          // Remove member from this service
           assignedIds = assignedIds.filter(id => id !== memberId);
         }
         
@@ -466,7 +423,6 @@ function TeamContent() {
         };
       });
 
-      // Save updated services
       if (currentUser?.uid) {
         updateServices(currentUser.uid, updatedServices)
           .then(() => {
@@ -556,7 +512,6 @@ function TeamContent() {
       setMemberToRevoke(null);
       const emailNorm = email.toLowerCase().trim();
 
-      // Optimistically update UI so the card switches to Invite immediately
       setPendingInvites((prev) => (prev || []).filter((inv) => (inv.email || '').toLowerCase().trim() !== emailNorm));
       setOrgMembers((prev) => (prev || []).filter((om) => om.user_id !== revokedUserId));
       fetch('/api/get-org-members', {
@@ -576,7 +531,6 @@ function TeamContent() {
         .then((d) => setPendingInvites(d?.invites ?? []))
         .catch(() => {});
 
-      // Clear invitedAt and userId on the revoked member so the card shows Invite (re-invite) again
       const account = await getUserAccount(currentUser.uid);
       const allTeamMembers = account?.teamMembers ?? [];
       const nextAllMembers = allTeamMembers.map((m) => {
@@ -682,7 +636,6 @@ function TeamContent() {
     }
   };
 
-  // Map team member email -> org member user_id (for Revoke; exclude current user and admins)
   const memberEmailToUserId = useMemo(() => {
     const map = {};
     (orgMembers || []).forEach((om) => {
@@ -694,7 +647,6 @@ function TeamContent() {
     return map;
   }, [orgMembers, currentUser?.uid]);
 
-  // Set of user_ids in the org (non-admin, not self) — so we can show Revoke by userId when email doesn't match profile
   const orgMemberUserIds = useMemo(() => {
     const set = new Set();
     (orgMembers || []).forEach((om) => {
@@ -705,7 +657,6 @@ function TeamContent() {
     return set;
   }, [orgMembers, currentUser?.uid]);
 
-  // Emails that have a pending invite (not yet accepted) — show Revoke instead of Invite
   const pendingInviteEmails = useMemo(() => {
     const set = new Set();
     (pendingInvites || []).forEach((inv) => {
@@ -757,15 +708,12 @@ function TeamContent() {
       .catch((err) => console.error('[team] sync revoked members', err));
   }, [currentUser?.uid, userAccount?.teamMembers, orgMembers, pendingInvites, saving, showInactive, orgAndInvitesLoaded]);
 
-  // Filter team members based on selected filters
   const filteredTeam = useMemo(() => {
     return team.filter((member) => {
-      // Role filter
       if (filters.roles.length > 0 && !filters.roles.includes(member.role)) {
         return false;
       }
 
-      // Service filter - check services assigned to this team member from userAccount.services
       if (filters.services.length > 0) {
         const userServices = userAccount?.services || [];
         const memberServiceNames = userServices
@@ -776,8 +724,6 @@ function TeamContent() {
           )
           .map(service => service.name)
           .filter(Boolean);
-        
-        // Also check legacy member.services for backward compatibility
         const legacyMemberServices = member.services || [];
         const allMemberServices = [...new Set([...memberServiceNames, ...legacyMemberServices])];
         
@@ -789,12 +735,10 @@ function TeamContent() {
         }
       }
 
-      // Gender filter
       if (filters.genders.length > 0 && !filters.genders.includes(member.gender)) {
         return false;
       }
 
-      // Personality trait filter
       if (filters.personalityTraits.length > 0) {
         const memberTraits = member.personalityTraits || [];
         const hasMatchingTrait = filters.personalityTraits.some((trait) =>
@@ -853,14 +797,13 @@ function TeamContent() {
                 onInviteToLogin={handleInviteToLogin}
                 canPromoteToAdmin={currentUserIsOwner}
                 onServiceCreated={async (updatedServices) => {
-                  // Save the new service to Supabase
                   if (currentUser?.uid) {
                     try {
                       await updateServices(currentUser.uid, updatedServices);
                       setUserAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
                     } catch (error) {
                       console.error('Error saving services:', error);
-                      throw error; // Re-throw to be caught by handleCreateService
+                      throw error;
                     }
                   } else {
                     throw new Error('User not authenticated');
@@ -883,7 +826,6 @@ function TeamContent() {
               variant="danger"
             />
 
-            {/* Invite to join dialog */}
             <Dialog.Root open={inviteDialogOpen} onOpenChange={(open) => !open && closeInviteDialog()}>
               <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200]" />
@@ -961,13 +903,10 @@ function TeamContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {[...filteredTeam].sort((a, b) => {
-                  // Pin admins at the beginning
                   const aIsAdmin = a.isAdmin === true;
                   const bIsAdmin = b.isAdmin === true;
                   if (aIsAdmin && !bIsAdmin) return -1;
                   if (!aIsAdmin && bIsAdmin) return 1;
-                  
-                  // Sort alphabetically for both admins and non-admins
                   const nameA = (a.name || '').toLowerCase();
                   const nameB = (b.name || '').toLowerCase();
                   return nameA.localeCompare(nameB);
@@ -977,7 +916,6 @@ function TeamContent() {
                   const hasAccessByUserId = !!(member.userId && orgMemberUserIds.has(member.userId));
                   const hasAccess = hasAccessByEmail || hasAccessByUserId;
                   const revokeUserId = memberEmailToUserId[memberEmail] || (hasAccessByUserId ? member.userId : null);
-                  // Show Revoke when: in org, or has pending invite from API, or was ever invited (invitedAt)
                   const hasPendingInvite = memberEmail && (pendingInviteEmails.has(memberEmail) || !!member.invitedAt);
                   const isCurrentUser = currentUser?.email && (currentUser.email.toLowerCase().trim() === memberEmail);
                   const showRevokeOnly = (hasAccess || hasPendingInvite) && !isCurrentUser && member.isAdmin !== true;

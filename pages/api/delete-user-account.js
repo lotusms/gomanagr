@@ -15,7 +15,6 @@ try {
     console.error('Supabase Admin not configured for user account deletion');
     supabaseAdmin = null;
   } else {
-    // Use service role key for admin operations (bypasses RLS)
     supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -48,7 +47,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Step 1: Delete user account record from database
     console.log('[API] Deleting user account record:', userId);
     const { error: deleteAccountError } = await supabaseAdmin
       .from('user_account')
@@ -57,12 +55,10 @@ export default async function handler(req, res) {
 
     if (deleteAccountError) {
       console.error('[API] Error deleting user account:', deleteAccountError);
-      // Continue even if account deletion fails - auth user deletion is more critical
     } else {
       console.log('[API] User account record deleted successfully');
     }
 
-    // Step 2: Delete auth user (this also handles related data cleanup)
     console.log('[API] Deleting auth user:', userId);
     const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 

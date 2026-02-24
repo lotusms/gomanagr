@@ -15,13 +15,10 @@
 export function formatPhone(value) {
   if (!value) return '';
 
-  // Remove all non-digit characters
   const digits = value.replace(/\D/g, '');
 
-  // Limit to 10 digits (US phone number format)
   const limitedDigits = digits.slice(0, 10);
 
-  // Format based on length
   if (limitedDigits.length === 0) {
     return '';
   } else if (limitedDigits.length <= 3) {

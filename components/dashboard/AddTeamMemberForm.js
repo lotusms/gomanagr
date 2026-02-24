@@ -17,14 +17,11 @@ import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
 
-// Helper to normalize country value (convert name to code if needed)
 function normalizeCountryValue(value) {
   if (!value) return '';
-  // If it's already a 2-letter code, return uppercase
   if (value.length === 2 && /^[A-Z]{2}$/i.test(value)) {
     return value.toUpperCase();
   }
-  // Try to find by name
   const found = COUNTRIES.find(c => 
     c.label.toLowerCase() === value.toLowerCase() ||
     c.value.toLowerCase() === value.toLowerCase()
@@ -71,8 +68,6 @@ export default function AddTeamMemberForm({
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('');
   const [title, setTitle] = useState('');
-  // Initialize location as empty string to keep dropdown controlled from the start
-  // Will be set to undefined or a valid location value by useEffect
   const [location, setLocation] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -98,7 +93,6 @@ export default function AddTeamMemberForm({
 
   const isEdit = !!initialMember?.id;
 
-  // Sort countries with organization country at the top
   const sortedCountries = useMemo(() => {
     if (!organizationCountry) return COUNTRIES;
     const normalizedOrgCountry = normalizeCountryValue(organizationCountry);
@@ -108,21 +102,16 @@ export default function AddTeamMemberForm({
     return [orgCountry, ...otherCountries];
   }, [organizationCountry]);
 
-  // Get available states/provinces based on selected country
   const availableStates = useMemo(() => {
     if (!country) return [];
-    // Ensure country is normalized (uppercase ISO code)
     const normalizedCountry = normalizeCountryValue(country);
-    // Use country-state-city package to get states
     const states = State.getStatesOfCountry(normalizedCountry);
-    // Convert to dropdown format: { value, label }
     return states.map(state => ({
       value: state.isoCode,
       label: state.name
     }));
   }, [country]);
 
-  // Email uniqueness: must not be used by another team member (when saving/inviting)
   const emailDuplicateError = useMemo(() => {
     const norm = (email || '').trim().toLowerCase();
     if (!norm) return '';
@@ -131,7 +120,6 @@ export default function AddTeamMemberForm({
     return taken ? 'This email has already been assigned to someone else' : '';
   }, [email, teamMembers, initialMember?.id]);
 
-  // Reset state when country changes if current state is not valid for new country
   useEffect(() => {
     if (country && state) {
       const normalizedCountry = normalizeCountryValue(country);
@@ -155,9 +143,6 @@ export default function AddTeamMemberForm({
     setLastName(initialMember.lastName ?? (initialMember.name?.split(' ').slice(1).join(' ') ?? ''));
     setRole(initialMember.role ?? '');
     setTitle(initialMember.title ?? '');
-    // Location will be set by the separate useEffect when locations are loaded
-    // Don't set it here to avoid controlled/uncontrolled switch
-    // Format phone if it exists, otherwise set empty
     const phoneValue = initialMember.phone ?? '';
     setPhone(phoneValue ? formatPhone(unformatPhone(phoneValue)) : '');
     setEmail(initialMember.email ?? '');
@@ -178,18 +163,14 @@ export default function AddTeamMemberForm({
     setIsAdminCheckbox(initialMember?.isAdmin === true);
   }, [initialMember?.id]);
 
-  // Separate effect to update location when locations array is loaded/updated
   useEffect(() => {
-    // Wait for locations to be loaded and initial member to be set
     if (!Array.isArray(locations) || locations.length <= 1) {
-      // If no locations or only one location, clear the location state
       if (!initialMember?.location) {
         setLocation('');
       }
       return;
     }
 
-    // Only process if we have an initial member with a location
     if (!initialMember?.location) {
       setLocation('');
       return;
@@ -197,19 +178,15 @@ export default function AddTeamMemberForm({
 
     const savedLocation = initialMember.location;
     let locationValue = undefined;
-    
-    // Helper to normalize address for comparison
+
     const normalizeAddress = (addr) => {
       if (!addr) return '';
       return String(addr).trim().toLowerCase().replace(/\s+/g, ' ');
     };
     
     if (typeof savedLocation === 'object' && savedLocation !== null && savedLocation.address) {
-      // If saved location is an object, find matching location by address
       const savedAddr = String(savedLocation.address || '').trim();
       const savedAddrNormalized = normalizeAddress(savedAddr);
-      
-      // Try to find exact match first
       let matchingLoc = locations.find(loc => {
         const locAddress = typeof loc === 'string' ? loc.trim() : String(loc.address || '').trim();
         const normalizedLocAddr = normalizeAddress(locAddress);
@@ -225,24 +202,18 @@ export default function AddTeamMemberForm({
     } else if (typeof savedLocation === 'string' && savedLocation.trim()) {
       const trimmedSaved = savedLocation.trim();
       const savedAddrNormalized = normalizeAddress(trimmedSaved);
-      
       let matchingLoc = locations.find(loc => {
         const locAddress = typeof loc === 'string' ? loc : (loc.address || '');
         return normalizeAddress(locAddress) === savedAddrNormalized;
       });
-      
       if (matchingLoc) {
         locationValue = typeof matchingLoc === 'string' ? matchingLoc.trim() : (matchingLoc.address || '').trim();
       } else {
-        // If no match found, use the saved string as fallback
         locationValue = trimmedSaved || undefined;
       }
     }
-    
-    // Set the location value directly - ensure it's exactly what's in the dropdown options
-    // Convert undefined to empty string to keep dropdown controlled
+
     if (locationValue) {
-      // Double-check that the value exists in the options
       const valueExists = locations.some(loc => {
         const addr = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
         return addr === locationValue;
@@ -290,17 +261,15 @@ export default function AddTeamMemberForm({
     const trimmedLast = lastName.trim();
     if (!trimmedFirst && !trimmedLast) return;
     const name = [trimmedFirst, trimmedLast].filter(Boolean).join(' ') || trimmedFirst || trimmedLast;
-    
-    // Find the full location object if a location is selected
+
     let locationToSave = undefined;
     if (location && typeof location === 'string' && location.trim() && locations.length > 1) {
       const selectedLoc = locations.find(loc => {
         const locAddress = typeof loc === 'string' ? loc : loc.address || '';
         return locAddress === location.trim();
       });
-      
+
       if (selectedLoc) {
-        // Save the full location object with all address components
         if (typeof selectedLoc === 'object') {
           locationToSave = {
             address: selectedLoc.address || '',
@@ -311,7 +280,6 @@ export default function AddTeamMemberForm({
             country: selectedLoc.country || '',
           };
         } else {
-          // If it's a string, save it as is (for backward compatibility)
           locationToSave = selectedLoc;
         }
       }
@@ -365,7 +333,6 @@ export default function AddTeamMemberForm({
 
   const isValid = firstName.trim() || lastName.trim();
 
-  // Initialize selectedServiceIds when editing a team member
   useEffect(() => {
     if (initialMember?.id && services && services.length > 0) {
       const assignedIds = services
@@ -382,18 +349,16 @@ export default function AddTeamMemberForm({
     }
   }, [initialMember?.id, services]);
 
-  // Get service options for dropdown (show all services, highlight assigned ones)
   const serviceOptions = useMemo(() => {
     if (!services || services.length === 0) return [];
     return services.map(service => ({
       value: service.id,
       label: service.name || 'Unnamed Service',
-      disabled: selectedServiceIds.includes(service.id), // Disable already assigned services
-      isAssigned: selectedServiceIds.includes(service.id) // Flag for visual highlighting
+      disabled: selectedServiceIds.includes(service.id),
+      isAssigned: selectedServiceIds.includes(service.id)
     }));
   }, [services, selectedServiceIds]);
 
-  // Get assigned service names for display
   const assignedServiceNames = useMemo(() => {
     if (!services || services.length === 0 || selectedServiceIds.length === 0) return [];
     return selectedServiceIds
@@ -404,20 +369,17 @@ export default function AddTeamMemberForm({
       .filter(Boolean);
   }, [services, selectedServiceIds]);
 
-  // Handle adding a service from dropdown
   const handleAddService = (serviceId) => {
     if (serviceId && !selectedServiceIds.includes(serviceId)) {
       setSelectedServiceIds([...selectedServiceIds, serviceId]);
-      setServiceToAdd(''); // Reset dropdown
+      setServiceToAdd('');
     }
   };
 
-  // Handle removing a service from chips
   const handleRemoveService = (serviceId) => {
     setSelectedServiceIds(selectedServiceIds.filter(id => id !== serviceId));
   };
 
-  // Handle creating a new service
   const handleCreateService = async (serviceData) => {
     if (!onServiceCreated) {
       console.error('onServiceCreated callback not provided');
@@ -426,31 +388,22 @@ export default function AddTeamMemberForm({
     }
     
     setSavingService(true);
-    try {      
-      // Ensure the current team member is assigned to the new service
+    try {
       const currentMemberId = initialMember?.id;
       let assignedIds = [...(serviceData.assignedTeamMemberIds || [])];
-      
-      // If we're editing a team member, add them to the service assignment
       if (currentMemberId && !assignedIds.includes(currentMemberId)) {
         assignedIds.push(currentMemberId);
       }
-      
-      // Update service data with assigned team members
       const serviceWithAssignment = {
         ...serviceData,
         assignedTeamMemberIds: assignedIds,
       };
-      
-      // Add the new service to the services array
       const updatedServices = [...(services || []), serviceWithAssignment];
       await onServiceCreated(updatedServices);
 
       if (!selectedServiceIds.includes(serviceData.id)) {
         setSelectedServiceIds([...selectedServiceIds, serviceData.id]);
       }
-      
-      // Close the service drawer (team member drawer stays open)
       setShowServiceDrawer(false);
     } catch (error) {
       console.error('Failed to create service:', error);
@@ -535,14 +488,11 @@ export default function AddTeamMemberForm({
                 setLocation(newValue && newValue.trim() ? newValue.trim() : '');
               }}
               options={locations.map((loc, index) => {
-                // Handle both string and object formats
                 const locAddress = typeof loc === 'string' ? loc.trim() : (loc.address || '').trim();
                 const locCity = typeof loc === 'object' ? loc.city : '';
                 const locState = typeof loc === 'object' ? loc.state : '';
                 const locPostalCode = typeof loc === 'object' ? loc.postalCode : '';
                 const locationLabel = [locAddress, locCity, locState, locPostalCode].filter(Boolean).join(', ');
-                // Use the trimmed address as the value to ensure exact matching
-                // This must match exactly what we set in the location state
                 const locationKey = locAddress;
                 return { value: locationKey, label: locationLabel };
               })}
@@ -797,7 +747,6 @@ export default function AddTeamMemberForm({
               await handleCreateService(serviceData);
             } catch (error) {
               console.error('Error in onSubmit handler:', error);
-              // Don't close drawer on error
             }
           }}
           onCancel={() => {

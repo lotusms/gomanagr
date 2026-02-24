@@ -11,8 +11,6 @@
  * @returns {string} Processed output
  */
 export function processClientSide(input) {
-  // This code runs in the browser
-  // You can use browser APIs here
   if (typeof window !== 'undefined') {
     return `Client processed: ${input}`;
   }

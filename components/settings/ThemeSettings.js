@@ -19,14 +19,12 @@ export default function ThemeSettings() {
     });
   }, []);
 
-  // Load theme mode preference
   useEffect(() => {
     if (currentUser?.uid) {
       getUserAccount(currentUser.uid)
         .then((data) => {
           const mode = data?.themeMode || 'light';
           setThemeMode(mode);
-          // Apply dark mode class to document only if user has dark mode preference
           if (typeof document !== 'undefined') {
             if (mode === 'dark') {
               document.documentElement.classList.add('dark');
@@ -36,14 +34,12 @@ export default function ThemeSettings() {
           }
         })
         .catch(() => {
-          // Default to light mode on error
           setThemeMode('light');
           if (typeof document !== 'undefined') {
             document.documentElement.classList.remove('dark');
           }
         });
     } else {
-      // No user logged in - ensure light mode
       setThemeMode('light');
       if (typeof document !== 'undefined') {
         document.documentElement.classList.remove('dark');
@@ -54,26 +50,21 @@ export default function ThemeSettings() {
   const handleThemeModeChange = async (newMode) => {
     setThemeMode(newMode);
     
-    // Apply dark mode class to document immediately and forcefully
     if (typeof document !== 'undefined') {
       const htmlElement = document.documentElement;
       if (newMode === 'dark') {
         htmlElement.classList.add('dark');
       } else {
-        // Forcefully remove dark class - ensure it's completely removed
         htmlElement.classList.remove('dark');
-        // Double-check: if somehow still present, remove again
         if (htmlElement.classList.contains('dark')) {
           htmlElement.classList.remove('dark');
         }
       }
     }
 
-    // Save to Firebase (merge: true in createUserAccount preserves existing fields)
     if (currentUser?.uid) {
       try {
         setSaving(true);
-        // Load existing account data first to preserve it
         const existingAccount = await getUserAccount(currentUser.uid);
         await createUserAccount(
           currentUser.uid,
@@ -85,7 +76,6 @@ export default function ThemeSettings() {
           },
           null
         );
-        // Dispatch event to update other components
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent('useraccount', {

@@ -45,10 +45,8 @@ export default function Dropdown({
   const popupRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  // Determine if search should be shown
   const showSearch = searchable !== undefined ? searchable : options.length > searchThreshold;
 
-  // Filter options based on search query
   const filteredOptions = useMemo(() => {
     if (!searchQuery.trim()) return options;
     
@@ -59,10 +57,8 @@ export default function Dropdown({
     });
   }, [options, searchQuery]);
 
-  // Normalize value for comparison
   const selectValue = value === undefined || value === null || value === '' ? undefined : String(value);
 
-  // Find selected option label
   const selectedOption = useMemo(() => {
     if (!selectValue) return null;
     return options.find((opt) => {
@@ -75,7 +71,6 @@ export default function Dropdown({
     ? (typeof selectedOption === 'object' ? selectedOption.label : selectedOption)
     : '';
 
-  // Close popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -91,7 +86,6 @@ export default function Dropdown({
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      // Focus search input when popup opens
       if (showSearch && searchInputRef.current) {
         setTimeout(() => searchInputRef.current?.focus(), 0);
       }
@@ -99,7 +93,6 @@ export default function Dropdown({
     }
   }, [isOpen, showSearch]);
 
-  // Close on escape key
   useEffect(() => {
     const handleEscape = (event) => {
       if (event.key === 'Escape' && isOpen) {

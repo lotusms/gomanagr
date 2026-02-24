@@ -26,7 +26,6 @@ export default function AuthForm({ mode = 'login', darkMode = false }) {
     e.preventDefault();
     clearErrors();
 
-    // Validation
     if (mode === 'signup' && password !== confirmPassword) {
       setConfirmPasswordError('Passwords do not match');
       return;
@@ -47,7 +46,6 @@ export default function AuthForm({ mode = 'login', darkMode = false }) {
     } catch (err) {
       const errorMessage = err.message || 'Failed to authenticate';
       
-      // Check if error is email-related
       if (errorMessage.toLowerCase().includes('email') || errorMessage.toLowerCase().includes('user')) {
         setEmailError(errorMessage);
       } else if (errorMessage.toLowerCase().includes('password')) {
@@ -60,7 +58,6 @@ export default function AuthForm({ mode = 'login', darkMode = false }) {
     }
   };
 
-  // Validate password match for signup
   const validatePasswordMatch = (value) => {
     if (mode === 'signup' && value && value !== password) {
       return 'Passwords do not match';

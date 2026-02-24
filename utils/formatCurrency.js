@@ -42,11 +42,9 @@ export function formatCurrency(value, currencyCode = 'USD', options = {}) {
     if (showSymbol) {
       return formatter.format(numValue);
     } else {
-      // Format as decimal but with currency-aware formatting
       return formatter.format(numValue).replace(/[^\d.,-]/g, '');
     }
   } catch (error) {
-    // Fallback for unsupported currencies
     const symbol = getCurrencySymbol(currencyCode);
     return `${symbol}${numValue.toFixed(2)}`;
   }
@@ -65,10 +63,8 @@ export function formatCurrency(value, currencyCode = 'USD', options = {}) {
 export function unformatCurrency(formattedValue) {
   if (!formattedValue) return '';
   
-  // Remove all non-numeric characters except decimal point and minus sign
   const cleaned = formattedValue.replace(/[^\d.-]/g, '');
   
-  // Handle multiple decimal points (take the first one)
   const parts = cleaned.split('.');
   if (parts.length > 2) {
     return parts[0] + '.' + parts.slice(1).join('');
@@ -107,25 +103,20 @@ function getCurrencySymbol(currencyCode) {
 export function formatCurrencyInput(value, currencyCode = 'USD') {
   if (!value) return '';
   
-  // Remove all formatting first
   const numericValue = unformatCurrency(value);
   
   if (!numericValue) return '';
   
-  // Parse to number
   const num = parseFloat(numericValue);
   
   if (isNaN(num)) return '';
   
-  // Format with currency, but allow partial decimals
   const parts = numericValue.split('.');
   const hasDecimal = parts.length > 1;
   const decimalPart = hasDecimal ? parts[1] : '';
   
-  // Format the integer part
   const formattedInt = new Intl.NumberFormat('en-US').format(parts[0]);
   
-  // Combine with decimal if present
   const formatted = hasDecimal ? `${formattedInt}.${decimalPart}` : formattedInt;
   
   return formatted;

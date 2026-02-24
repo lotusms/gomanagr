@@ -3,7 +3,6 @@
  * Maps country ISO codes to arrays of state/province options
  */
 
-// United States States
 const US_STATES = [
   { value: 'AL', label: 'Alabama' },
   { value: 'AK', label: 'Alaska' },
@@ -63,7 +62,6 @@ const US_STATES = [
   { value: 'VI', label: 'U.S. Virgin Islands' },
 ];
 
-// Canadian Provinces and Territories
 const CA_PROVINCES = [
   { value: 'AB', label: 'Alberta' },
   { value: 'BC', label: 'British Columbia' },
@@ -80,7 +78,6 @@ const CA_PROVINCES = [
   { value: 'YT', label: 'Yukon' },
 ];
 
-// Mexican States
 const MX_STATES = [
   { value: 'AGU', label: 'Aguascalientes' },
   { value: 'BCN', label: 'Baja California' },
@@ -116,7 +113,6 @@ const MX_STATES = [
   { value: 'ZAC', label: 'Zacatecas' },
 ];
 
-// Australian States and Territories
 const AU_STATES = [
   { value: 'ACT', label: 'Australian Capital Territory' },
   { value: 'NSW', label: 'New South Wales' },
@@ -128,7 +124,6 @@ const AU_STATES = [
   { value: 'WA', label: 'Western Australia' },
 ];
 
-// UK Countries and Regions
 const GB_REGIONS = [
   { value: 'ENG', label: 'England' },
   { value: 'SCT', label: 'Scotland' },
@@ -136,7 +131,6 @@ const GB_REGIONS = [
   { value: 'NIR', label: 'Northern Ireland' },
 ];
 
-// Brazilian States
 const BR_STATES = [
   { value: 'AC', label: 'Acre' },
   { value: 'AL', label: 'Alagoas' },
@@ -167,7 +161,6 @@ const BR_STATES = [
   { value: 'TO', label: 'Tocantins' },
 ];
 
-// Indian States and Union Territories
 const IN_STATES = [
   { value: 'AN', label: 'Andaman and Nicobar Islands' },
   { value: 'AP', label: 'Andhra Pradesh' },

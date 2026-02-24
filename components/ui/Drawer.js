@@ -28,7 +28,6 @@ export default function Drawer({ isOpen, onClose, children, title, className = '
 
   if (!isOpen) return null;
 
-  // Generate unique ID for this drawer instance to scope styles
   const drawerId = `drawer-${Math.random().toString(36).substr(2, 9)}`;
 
   const drawer = (

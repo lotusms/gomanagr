@@ -47,7 +47,6 @@ const InputField = forwardRef(({
   validate,
   variant = 'dark',
 }, ref) => {
-  // Run validation if provided
   const validationError = validate ? validate(value) : null;
   const displayError = error || validationError;
   const hasError = !!displayError || hasErrorState;
@@ -62,7 +61,6 @@ const InputField = forwardRef(({
         ? 'border-amber-400 bg-amber-50 text-gray-900 placeholder-gray-400'
         : 'border-yellow-500 bg-yellow-900/20 text-white placeholder-white/50')
     : '';
-  // Use less padding for date inputs to bring calendar icon closer to edge
   const iconPadding = type === 'number' ? 'pr-3' : type === 'date' ? 'pr-3' : 'pr-10';
 
   const errorTextClass = isLight ? 'mt-1 text-sm text-red-600' : 'mt-1 text-sm text-red-300';

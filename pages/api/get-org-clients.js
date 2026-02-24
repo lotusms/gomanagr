@@ -79,7 +79,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ clients: allClients, isOrgAdmin: true });
     }
 
-    // Member: only clients assigned to this user (assignedTo includes userId)
     const assignedToMe = (c) => {
       const to = c?.assignedTo;
       if (!Array.isArray(to)) return false;

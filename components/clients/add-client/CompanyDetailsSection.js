@@ -7,7 +7,6 @@ import { INDUSTRIES, COMPANY_SIZES, TIMEZONES, LANGUAGES } from '../clientProfil
 function normalizeCountryValue(value) {
   if (!value) return '';
   if (value.length === 2 && /^[A-Z]{2}$/i.test(value)) return value.toUpperCase();
-  // This will be passed from parent, but keeping for completeness
   return value;
 }
 
@@ -116,7 +115,6 @@ export default function CompanyDetailsSection({
           onChange={onCompanyWebsiteChange}
           onBlur={(e) => {
             let value = e.target.value.trim();
-            // Auto-prepend https:// when field loses focus if there's a value and no protocol
             if (value && !value.match(/^https?:\/\//i)) {
               onCompanyWebsiteChange({ target: { value: 'https://' + value } });
             } else if (!value) {
@@ -154,7 +152,6 @@ export default function CompanyDetailsSection({
           label="Address"
           value={companyAddress1}
           onChange={(addr) => {
-            // AddressAutocomplete passes string directly, pass it through
             if (typeof onCompanyAddress1Change === 'function') {
               onCompanyAddress1Change(addr);
             }
@@ -247,7 +244,6 @@ export default function CompanyDetailsSection({
             label="Address"
             value={billingAddress1}
             onChange={(addr) => {
-              // AddressAutocomplete passes string directly, pass it through
               if (typeof onBillingAddress1Change === 'function') {
                 onBillingAddress1Change(addr);
               }

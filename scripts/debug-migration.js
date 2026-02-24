@@ -11,7 +11,6 @@ const { readFileSync } = require('fs');
 const { join } = require('path');
 require('dotenv').config({ path: join(__dirname, '..', '.env.local') });
 
-// Initialize Firebase Admin
 let serviceAccount = null;
 try {
   const { existsSync } = require('fs');
@@ -45,7 +44,6 @@ async function debugUserAccount(userId) {
   try {
     console.log(`\n🔍 Debugging user: ${userId}\n`);
 
-    // Check Firestore document
     const userAccountRef = db.collection('useraccount').doc(userId);
     const doc = await userAccountRef.get();
     
@@ -67,7 +65,6 @@ async function debugUserAccount(userId) {
     console.log(`   - Services: ${firestoreData.services?.length || 0}`);
     console.log(`   - Appointments: ${firestoreData.appointments?.length || 0}`);
 
-    // Check Firebase Auth user
     try {
       const authUser = await adminAuth.getUser(userId);
       console.log(`\n👤 Firebase Auth User:`);
@@ -77,7 +74,6 @@ async function debugUserAccount(userId) {
       console.log(`\n⚠️  Firebase Auth user not found: ${err.message}`);
     }
 
-    // Transform to show what would be inserted
     console.log(`\n🔄 Transformed Data (what would go to Supabase):`);
     const transformed = {
       id: 'SUPABASE_UUID_HERE',
@@ -104,7 +100,6 @@ async function debugUserAccount(userId) {
       updated_at: firestoreData.updatedAt || new Date().toISOString(),
     };
 
-    // Check for extra fields
     const knownKeys = new Set([
       'userId', 'email', 'trial', 'firstName', 'lastName', 'purpose', 'role',
       'companyName', 'companyLogo', 'teamSize', 'companySize', 'companyLocations',
@@ -132,7 +127,6 @@ async function debugUserAccount(userId) {
   }
 }
 
-// Get user ID from command line
 const userId = process.argv[2];
 
 if (!userId) {

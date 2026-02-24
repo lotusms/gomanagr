@@ -42,15 +42,12 @@ export default function Toggle({
   const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
 
   const handleValueChange = (newValue) => {
-    // ToggleGroup can return empty string when clicking the same option
-    // We prevent that and ensure a value is always selected (default to option1)
     const finalValue = newValue || option1;
     if (onValueChange) {
       onValueChange(finalValue);
     }
   };
 
-  // Ensure we always have a valid value, defaulting to option1 (cards)
   const currentValue = value && (value === option1 || value === option2) ? value : option1;
 
   return (

@@ -40,7 +40,6 @@ export function ChipsSingle({
   const requiredClass = isLight ? 'text-red-500 dark:text-red-400 ml-1' : 'text-red-400 ml-1';
   const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
   
-  // Mini variant sizing
   const paddingClass = mini 
     ? (isVertical ? 'px-3 py-2' : 'px-2 py-1')
     : (isVertical ? 'px-6 py-4' : 'px-4 py-2');
@@ -54,8 +53,6 @@ export function ChipsSingle({
     return `flex flex-wrap ${gapClass}`;
   };
   
-  // Ensure value is valid (matches one of the options), but don't default to first option
-  // Only use a value if it's explicitly provided and matches an option
   const validValue = value && options.includes(value) ? value : undefined;
   
   const getChipClassName = (option, index) => {
@@ -63,10 +60,8 @@ export function ChipsSingle({
     const isFirst = index === 0;
     const isLast = index === options.length - 1;
     
-    // Base classes
     let baseClasses = `${paddingClass} ${textSizeClass} font-medium transition cursor-pointer text-left focus:outline-none`;
     
-    // Border radius for grouped layout
     if (isGrouped) {
       if (isFirst && isLast) {
         baseClasses += mini ? ' rounded-md' : ' rounded-lg';
@@ -81,7 +76,6 @@ export function ChipsSingle({
       baseClasses += mini ? ' rounded-md' : ' rounded-lg';
     }
     
-    // Border classes for grouped layout
     if (isGrouped) {
       if (isSelected) {
         baseClasses += ' bg-primary-600 text-white border-2 border-primary-400';
@@ -99,7 +93,6 @@ export function ChipsSingle({
         }
       }
     } else {
-      // Non-grouped border classes
       if (isSelected) {
         baseClasses += ' bg-primary-600 text-white border-2 border-primary-400';
       } else {
@@ -204,7 +197,6 @@ export function ChipsMulti({
     : 'bg-primary-600 text-white border-2 border-primary-400';
   const errorClass = isLight ? 'mt-2 text-sm text-red-600 dark:text-red-400' : 'mt-2 text-sm text-red-300';
   
-  // Mini variant sizing
   const chipPadding = mini
     ? (isLight ? 'px-2 py-0.5 text-xs rounded-full' : 'px-2 py-1 text-sm rounded-md')
     : (isLight ? 'px-3 py-0.5 text-sm rounded-full' : 'px-4 py-3 rounded-lg');
@@ -216,12 +208,9 @@ export function ChipsMulti({
     const isFirst = index === 0;
     const isLast = index === options.length - 1;
     
-    // Base padding and text size
     let baseClasses = chipPadding;
     
-    // Border radius for grouped layout
     if (isGrouped) {
-      // Remove rounded classes and apply grouped-specific rounding
       baseClasses = baseClasses.replace(/rounded-\w+/g, '');
       if (isFirst && isLast) {
         baseClasses += mini ? ' rounded-md' : ' rounded-lg';
@@ -234,7 +223,6 @@ export function ChipsMulti({
       }
     }
     
-    // Border classes for grouped layout
     if (isGrouped) {
       if (isSelected) {
         baseClasses += ` ${selectedClass}`;
@@ -248,7 +236,6 @@ export function ChipsMulti({
         }
       }
     } else {
-      // Non-grouped: use existing classes
       baseClasses += isSelected ? ` ${selectedClass}` : ` ${unselectedClass}`;
     }
     

@@ -103,7 +103,6 @@ export default async function handler(req, res) {
         }
       }
     } else {
-      // Member: only add (with assignedTo self) or update/deactivate clients they're assigned to
       const canEdit = (c) => Array.isArray(c?.assignedTo) && c.assignedTo.includes(userId);
 
       if (singleClient && action === 'add') {

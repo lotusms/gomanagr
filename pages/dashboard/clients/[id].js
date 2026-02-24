@@ -70,7 +70,6 @@ export default function ClientProfilePage() {
     fetchClientData();
   }, [fetchClientData]);
   
-  // Memoize client - update when clientData changes or refresh is triggered
   const client = useMemo(() => {
     if (id === 'new' || !clientData) {
       return null;

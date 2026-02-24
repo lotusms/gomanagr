@@ -13,8 +13,6 @@ import { NextResponse } from 'next/server';
  * - Prevents rendering content before redirect
  */
 export function middleware(request) {
-  // All route protection is handled client-side via ProtectedRoute component
-  // This middleware file exists for future server-side auth checks if needed
   return NextResponse.next();
 }
 

@@ -30,7 +30,6 @@ const TEAM_MEMBER_TODO_ITEMS = [
   },
 ];
 
-/** Display name for greeting: only use first/last/full name from profile, never email. */
 function getWelcomeName(account) {
   const first = (account?.firstName ?? account?.first_name ?? '').toString().trim();
   const last = (account?.lastName ?? account?.last_name ?? '').toString().trim();
@@ -59,7 +58,6 @@ export default function TeamMemberPage() {
     getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
   }, [currentUser?.uid]);
 
-  // Load org schedule data via API (service role) so we can read admin's profile despite RLS
   useEffect(() => {
     if (!currentUser?.uid) return;
     fetch('/api/org-schedule-data', {
@@ -77,7 +75,6 @@ export default function TeamMemberPage() {
   const pictureUrl = (userAccount?.pictureUrl ?? userAccount?.profile?.pictureUrl ?? '').toString().trim();
   const dismissedTodoIds = accountLoaded ? (userAccount?.dismissedTodoIds ?? []) : [];
 
-  // Admin/superadmin: show everyone's appointments. Member: show only their own.
   const memberRole = organization?.membership?.role;
   const showAllAppointments = isAdminRole(memberRole);
 
@@ -124,7 +121,6 @@ export default function TeamMemberPage() {
         </Head>
         <div className="space-y-4">
           
-          {/* Welcome Card */}
           <div className="w-full">
             <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 sm:p-8 shadow-sm">
               <div className="flex items-center gap-3">
@@ -150,9 +146,6 @@ export default function TeamMemberPage() {
                   </p>
                 </div>
               </div>
-              {/* <p className="text-gray-600 dark:text-gray-300 mb-4">
-                
-              </p> */}
             </div>
           </div>
 

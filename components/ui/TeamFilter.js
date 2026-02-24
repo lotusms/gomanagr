@@ -25,7 +25,6 @@ export default function TeamFilter({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Extract unique values for each filter type
   const filterOptions = useMemo(() => {
     const roles = [...new Set(teamMembers.map(m => m.role).filter(Boolean))].sort();
     const services = [...new Set(teamMembers.flatMap(m => m.services || []).filter(Boolean))].sort();
@@ -35,7 +34,6 @@ export default function TeamFilter({
     return { roles, services, genders, personalityTraits };
   }, [teamMembers]);
 
-  // Count active filters
   const activeFilterCount = useMemo(() => {
     return (
       (filters.roles?.length || 0) +

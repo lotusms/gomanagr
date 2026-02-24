@@ -43,15 +43,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Convert base64 to buffer
     const base64Data = photoData.base64.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     
-    // Use user ID and member ID in the path: {userId}/{memberId}/{filename}
     const filename = photoData.filename || `photo-${Date.now()}.png`;
     const photoPath = `${userId}/${memberId}/${filename}`;
     
-    // Upload to storage bucket using service role
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('team-photos')
       .upload(photoPath, buffer, {
@@ -64,7 +61,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to upload team photo', details: uploadError.message });
     }
 
-    // Get public URL
     const { data: urlData } = supabaseAdmin.storage
       .from('team-photos')
       .getPublicUrl(uploadData.path);

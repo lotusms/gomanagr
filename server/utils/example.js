@@ -11,8 +11,6 @@
  * @returns {string} Processed output
  */
 export function processServerSide(input) {
-  // This code runs only on the server
-  // You can use Node.js APIs here
   return `Server processed: ${input}`;
 }
 
@@ -23,7 +21,6 @@ export function processServerSide(input) {
 export function getServerConfig() {
   return {
     nodeEnv: process.env.NODE_ENV,
-    // Only server-side env vars (without NEXT_PUBLIC_ prefix)
     serverSecret: process.env.SERVER_SECRET || 'not-set',
   };
 }

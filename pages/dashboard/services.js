@@ -22,14 +22,12 @@ function ServicesContent() {
 
   const teamMembers = userAccount?.teamMembers || [];
 
-  // Calculate paginated services
   const paginatedServices = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return services.slice(startIndex, endIndex);
   }, [services, currentPage, itemsPerPage]);
 
-  // Reset to page 1 when services change (e.g., after deletion)
   useEffect(() => {
     const totalPages = Math.ceil(services.length / itemsPerPage);
     if (currentPage > totalPages && totalPages > 0) {
@@ -37,7 +35,6 @@ function ServicesContent() {
     }
   }, [services.length, itemsPerPage, currentPage]);
 
-  // Handle items per page change - reset to page 1
   const handleItemsPerPageChange = (newItemsPerPage) => {
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1); // Reset to first page when changing items per page
@@ -78,19 +75,14 @@ function ServicesContent() {
     try {
       setSaving(true);
       
-      // Remove the service from services array
       const updatedServices = services.filter((s) => s.id !== serviceToDelete.id);
       
-      // Update team members to remove this service from their legacy services array (if it exists)
-      // Note: This handles backward compatibility for team members that might still have a services field
       const currentTeamMembers = userAccount?.teamMembers || [];
       const updatedTeamMembers = currentTeamMembers.map((member) => {
         if (member.services && Array.isArray(member.services)) {
-          // Remove the service name from member's services array
           const updatedMemberServices = member.services.filter(
             (serviceName) => serviceName !== serviceToDelete.name
           );
-          // Only update if there was a change
           if (updatedMemberServices.length !== member.services.length) {
             return {
               ...member,
@@ -101,18 +93,14 @@ function ServicesContent() {
         return member;
       });
 
-      // Check if team members actually changed
       const teamMembersChanged = JSON.stringify(currentTeamMembers) !== JSON.stringify(updatedTeamMembers);
 
-      // Save services first
       await updateServices(currentUser.uid, updatedServices);
       
-      // Only update team members if they actually changed
       if (teamMembersChanged && updatedTeamMembers.length > 0) {
         await updateTeamMembers(currentUser.uid, updatedTeamMembers);
       }
 
-      // Update local state
       setUserAccount((prev) => 
         prev 
           ? { 
@@ -153,10 +141,8 @@ function ServicesContent() {
   const handleServiceSubmit = (serviceData) => {
     let next;
     if (editingService) {
-      // Update existing service
       next = services.map((s) => (s.id === editingService.id ? serviceData : s));
     } else {
-      // Add new service
       next = [...services, serviceData];
     }
     setServices(next);

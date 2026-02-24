@@ -36,8 +36,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Use Auth (auth.users) email so we match the team member to the actual login identity.
-    // user_profiles.email can be wrong if an invite flow overwrote it (e.g. during testing).
     const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (authErr || !authUser?.user?.email) {
       return res.status(404).json({ error: 'User not found' });
@@ -58,7 +56,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ member: null });
     }
 
-    // Fetch logged-in user's profile once (used for fallback and for merging into sparse team member)
     const { data: ownProfile, error: profileErr } = await supabaseAdmin
       .from('user_profiles')
       .select('id, first_name, last_name, email, profile')
@@ -66,7 +63,6 @@ export default async function handler(req, res) {
       .single();
 
     const orgId = membership.organization_id;
-    // Include superadmin (org owner) and admin – team_members live on one of these profiles
     const { data: adminRows } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
@@ -98,7 +94,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // If no team member record (e.g. admin viewing own profile), build member from user_profiles (already fetched)
     if (!member && !profileErr && ownProfile) {
       const profile = (ownProfile.profile && typeof ownProfile.profile === 'object') ? ownProfile.profile : {};
       const addr = profile.address && typeof profile.address === 'object' ? profile.address : {};
@@ -127,7 +122,6 @@ export default async function handler(req, res) {
       };
     }
 
-    // Merge in logged-in user's user_profiles so sparse team_member records (e.g. invite-only) get name, phone, etc.
     if (member && ownProfile) {
       const profile = (ownProfile.profile && typeof ownProfile.profile === 'object') ? ownProfile.profile : {};
       const addr = profile.address && typeof profile.address === 'object' ? profile.address : {};

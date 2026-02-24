@@ -14,19 +14,16 @@ export default function ProtectedRoute({ children }) {
 
   useEffect(() => {
     if (!loading && !currentUser) {
-      // Use replace instead of push to prevent back button navigation
       router.replace('/login');
     }
   }, [currentUser, loading, router]);
 
-  // Check trial status when user is loaded
   useEffect(() => {
     if (currentUser?.uid && !loading) {
       getUserAccount(currentUser.uid)
         .then((data) => {
           setUserAccount(data || null);
           
-          // Check trial status using utility function
           const trialStatus = getTrialStatus(data);
           setTrialExpired(trialStatus.expired && data?.trial === true);
         })
@@ -55,7 +52,6 @@ export default function ProtectedRoute({ children }) {
     return null;
   }
 
-  // Show paywall if trial has expired
   if (trialExpired && userAccount?.trial === true) {
     return <Paywall userAccount={userAccount} />;
   }

@@ -28,12 +28,10 @@ function checkDuplicateService(newName, existingServices, excludeId = null) {
   const normalizedNewName = normalizeServiceName(newName);
   
   for (const service of existingServices) {
-    // Skip the service being edited
     if (excludeId && service.id === excludeId) continue;
     
     const normalizedExistingName = normalizeServiceName(service.name || '');
     
-    // Check for exact match after normalization
     if (normalizedNewName === normalizedExistingName) {
       return {
         isDuplicate: true,
@@ -73,13 +71,10 @@ export default function AddServiceForm({
   const [assignedTeamMemberIds, setAssignedTeamMemberIds] = useState([]);
   const [errors, setErrors] = useState({});
 
-  // Initialize form when editing or when preselected team members are provided
   useEffect(() => {
     if (initialService) {
       setName(initialService.name || '');
       setDescription(initialService.description || '');
-      // When editing, use the service's assigned team members
-      // Ensure it's always an array and filter out any invalid values
       const assignedIds = Array.isArray(initialService.assignedTeamMemberIds) 
         ? initialService.assignedTeamMemberIds.filter(id => id != null && id !== '')
         : [];
@@ -87,8 +82,6 @@ export default function AddServiceForm({
     } else {
       setName('');
       setDescription('');
-      // Preselect team members if provided (for creating service from team member form)
-      // Only use preselectedTeamMemberIds when NOT editing (initialService is null)
       const preselectedIds = Array.isArray(preselectedTeamMemberIds) && preselectedTeamMemberIds.length > 0
         ? preselectedTeamMemberIds.filter(id => id != null && id !== '')
         : [];
@@ -97,24 +90,19 @@ export default function AddServiceForm({
     setErrors({});
   }, [initialService?.id, JSON.stringify(preselectedTeamMemberIds)]); // Use JSON.stringify for array comparison
 
-  // Sort team members: admins first, then alphabetically by name
   const sortedTeamMembers = [...teamMembers].sort((a, b) => {
-    // Pin admins at the beginning
     const aIsAdmin = a.isAdmin === true;
     const bIsAdmin = b.isAdmin === true;
     if (aIsAdmin && !bIsAdmin) return -1;
     if (!aIsAdmin && bIsAdmin) return 1;
     
-    // Sort alphabetically for both admins and non-admins
     const nameA = (a.name || 'Unnamed').toLowerCase();
     const nameB = (b.name || 'Unnamed').toLowerCase();
     return nameA.localeCompare(nameB);
   });
 
-  // Use IDs as option values to handle duplicate names
   const teamMemberOptions = sortedTeamMembers.map((member) => member.id).filter(Boolean);
   
-  // Create optionData map for avatars using IDs as keys
   const optionData = sortedTeamMembers.reduce((acc, member) => {
     if (member.id) {
       acc[member.id] = {
@@ -132,7 +120,6 @@ export default function AddServiceForm({
     if (!name || name.trim() === '') {
       newErrors.name = 'Please enter a service name';
     } else {
-      // Check for duplicate services
       const trimmedName = name.trim();
       const duplicateCheck = checkDuplicateService(
         trimmedName,
@@ -172,13 +159,11 @@ export default function AddServiceForm({
           value={name}
           onChange={(e) => {
             setName(e.target.value);
-            // Clear error when user starts typing
             if (errors.name) {
               setErrors((prev) => ({ ...prev, name: '' }));
             }
           }}
           onBlur={() => {
-            // Check for duplicates on blur
             if (name && name.trim()) {
               const duplicateCheck = checkDuplicateService(
                 name.trim(),
@@ -225,7 +210,6 @@ export default function AddServiceForm({
             options={teamMemberOptions}
             value={Array.isArray(assignedTeamMemberIds) ? assignedTeamMemberIds : []}
             onValueChange={(selectedIds) => {
-              // Ensure we always set an array
               setAssignedTeamMemberIds(Array.isArray(selectedIds) ? selectedIds : []);
             }}
             variant="light"

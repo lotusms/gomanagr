@@ -26,7 +26,6 @@ function SubscriptionsContent() {
         .then((data) => {
           setUserAccount(data || null);
           
-          // Calculate trial status using utility function
           const status = getTrialStatus(data);
           setTrialStatus({
             isActive: data?.trial === true && !status.expired,
@@ -43,12 +42,7 @@ function SubscriptionsContent() {
   }, [currentUser?.uid]);
 
   const handleSubscribe = (planId, period) => {
-    // TODO: Integrate with payment provider (Stripe, etc.)
     alert(`Subscription to ${planId} plan (${period}) - Payment integration coming soon!`);
-    // After successful payment:
-    // 1. Update userAccount.trial = false
-    // 2. Set subscription status
-    // 3. Redirect to dashboard
   };
 
   const formatPrice = (price) => {
@@ -58,7 +52,6 @@ function SubscriptionsContent() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(price);
-    // Remove .00 for whole numbers
     return formatted.replace(/\.00$/, '');
   };
 

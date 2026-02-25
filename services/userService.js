@@ -1,6 +1,32 @@
 import { supabase } from '@/lib/supabase';
 
 const BUCKET_LOGO = 'company-logos';
+const REALTIME_TEAM_EVENT = 'team-updated';
+
+/**
+ * Notify all subscribers to the org channel that team/org data changed (e.g. new member joined).
+ * Used after invite acceptance so the owner's team page updates the card without refresh.
+ */
+function broadcastTeamUpdatedForOrg(orgId) {
+  if (!orgId || typeof orgId !== 'string') return Promise.resolve();
+  const channel = supabase.channel(`org:${orgId}`);
+  return new Promise((resolve) => {
+    const done = () => {
+      try {
+        channel.unsubscribe();
+      } catch (_) {}
+      resolve();
+    };
+    const timeout = setTimeout(done, 5000);
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        clearTimeout(timeout);
+        channel.send({ type: 'broadcast', event: REALTIME_TEAM_EVENT, payload: {} });
+        done();
+      }
+    });
+  });
+}
 const BUCKET_TEAM = 'team-photos';
 
 function rowToAccount(row) {
@@ -279,6 +305,13 @@ export async function createUserAccount(userId, userData, logoFile = null, invit
 
     const result = await response.json();
     console.log(`✅ User account ${existing ? 'updated' : 'created'} successfully for user: ${userId}`);
+    if (inviteToken && result?.organization?.id) {
+      try {
+        await broadcastTeamUpdatedForOrg(result.organization.id);
+      } catch (e) {
+        console.warn('[createUserAccount] Could not broadcast team-updated:', e);
+      }
+    }
     return result;
   } catch (error) {
     console.error('Error creating/updating user account:', error);

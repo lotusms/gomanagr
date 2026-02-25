@@ -135,7 +135,7 @@ describe('UserMenu role-based menu items', () => {
     expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings']);
   });
 
-  it('member: exactly My Account, Logout (no badge, no Subscriptions, no Settings, no Developer)', () => {
+  it('member: exactly My Account, Settings, Logout (no badge, no Subscriptions, no Developer)', () => {
     renderUserMenu({
       organization: { membership: { role: 'member' } },
       isOwner: false,
@@ -143,15 +143,15 @@ describe('UserMenu role-based menu items', () => {
     openMenu();
 
     expect(screen.getByRole('link', { name: /my account/i })).toHaveAttribute('href', '/account');
+    expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('href', '/dashboard/settings');
     expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
 
     expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
     expect(screen.queryByText('Admin')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /subscriptions/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /settings/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /developer/i })).not.toBeInTheDocument();
 
-    expectExactlyTheseLinksAndLogout(['/account']);
+    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings']);
   });
 
   it('no membership: exactly My Account, Logout (no badge, no other links)', () => {

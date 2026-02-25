@@ -119,7 +119,7 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
               Subscriptions
             </Link>
           )}
-          {isAdmin && (
+          {(isAdmin || isTeamMember) && (
             <Link
               href="/dashboard/settings"
               onClick={() => setOpen(false)}

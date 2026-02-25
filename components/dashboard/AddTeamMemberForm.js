@@ -685,6 +685,7 @@ export default function AddTeamMemberForm({
                 onClick={() => setShowServiceDrawer(true)}
                 disabled={saving}
                 className="flex-shrink-0 gap-1.5 h-9 px-4"
+                data-testid="add-service-from-drawer"
               >
                 <HiPlus className="w-4 h-4" />
                 Add

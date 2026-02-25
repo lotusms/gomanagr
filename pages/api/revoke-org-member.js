@@ -181,7 +181,7 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, userId: targetUserId || null });
   } catch (err) {
     console.error('[revoke-org-member]', err);
     return res.status(500).json({ error: err.message || 'Failed to revoke access' });

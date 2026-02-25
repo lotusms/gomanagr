@@ -16,7 +16,7 @@ export default function IconButton({
 
   const variants = {
     primary:
-      'text-primary-200 hover:text-primary-800 hover:bg-white/20 dark:hover:bg-gray-700/20',
+      'text-primary-500 hover:text-primary-800 hover:bg-white/20 dark:hover:bg-gray-700/20',
     secondary:
       'text-amber-500 hover:text-amber-700 hover:bg-white/20 dark:hover:bg-gray-700/20',
     danger:

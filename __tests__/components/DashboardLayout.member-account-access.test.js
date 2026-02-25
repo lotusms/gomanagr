@@ -33,6 +33,15 @@ jest.mock('@/services/organizationService', () => ({
     }),
 }));
 
+jest.mock('@/lib/supabase', () => ({
+  supabase: {
+    channel: () => ({
+      on: () => ({ subscribe: () => {} }),
+      unsubscribe: () => {},
+    }),
+  },
+}));
+
 // Suppress fetch for get-org-member-access (memberAccess can stay null; /account is baseAllowed)
 global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({}) }));
 

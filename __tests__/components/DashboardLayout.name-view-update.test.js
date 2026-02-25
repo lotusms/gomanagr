@@ -29,6 +29,15 @@ jest.mock('@/services/organizationService', () => ({
     Promise.resolve({ membership: { role: 'admin' }, logo_url: null }),
 }));
 
+jest.mock('@/lib/supabase', () => ({
+  supabase: {
+    channel: () => ({
+      on: () => ({ subscribe: () => {} }),
+      unsubscribe: () => {},
+    }),
+  },
+}));
+
 global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({}) }));
 
 describe('DashboardLayout header updates after Save Profile (name view)', () => {

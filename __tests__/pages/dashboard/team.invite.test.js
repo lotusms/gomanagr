@@ -37,6 +37,17 @@ jest.mock('@/services/organizationService', () => ({
   getUserOrganization: (...args) => mockGetUserOrganization(...args),
 }));
 
+jest.mock('@/lib/supabase', () => ({
+  supabase: {
+    channel: () => ({
+      on: () => ({ subscribe: () => {} }),
+      subscribe: () => {},
+      send: jest.fn(),
+      unsubscribe: () => {},
+    }),
+  },
+}));
+
 describe('Team page – Invite to join', () => {
   let fetchCalls;
 

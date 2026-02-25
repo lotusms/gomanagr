@@ -5,7 +5,11 @@ import { IconButton } from '@/components/ui/buttons';
 const cardIconButtonClass =
   'absolute top-3 z-20 opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100';
 
-const removeIconButtonClass = 'text-white hover:text-white/90 hover:bg-white/20 dark:hover:bg-gray-700/20 right-3';
+const removeIconButtonClass = '!text-white hover:bg-white/30 dark:hover:bg-gray-700/30 right-3';
+
+const primaryIconButtonClass = 'text-primary-800 hover:text-primary-800 hover:bg-white/30 dark:hover:bg-gray-700/30 left-3';
+
+const secondaryIconButtonClass = 'text-amber-500 hover:text-amber-700 hover:bg-white/30 dark:hover:bg-gray-700/30 left-3';
 
 /**
  * Modern, vibrant card with gradient background, prominent avatar, and clean typography.
@@ -118,7 +122,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
       {onInvite && (
         <IconButton
           variant="primary"
-          className={`${cardIconButtonClass} left-3`}
+          className={`${cardIconButtonClass} ${primaryIconButtonClass}`}
           onClick={(e) => { e.stopPropagation(); onInvite(); }}
           aria-label="Invite to join"
           title="Invite to join"
@@ -129,7 +133,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
       {onRevoke && (
         <IconButton
           variant="secondary"
-          className={`${cardIconButtonClass} left-3 ${onInvite ? 'left-12' : ''}`}
+          className={`${cardIconButtonClass} ${secondaryIconButtonClass} ${onInvite ? 'left-12' : ''}`}
           onClick={(e) => { e.stopPropagation(); onRevoke(); }}
           aria-label="Revoke access"
           title="Revoke access"

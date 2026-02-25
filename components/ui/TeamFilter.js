@@ -63,11 +63,11 @@ export default function TeamFilter({
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
       {/* Filter Header */}
-      <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+      <div className="w-full flex items-center justify-between px-4 py-3 transition-colors">
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center justify-between gap-2 flex-1 min-w-0 text-left"
+          className="flex items-center justify-between gap-2 flex-1 min-w-0 text-left "
         >
           <div className="flex items-center gap-2">
             <HiFilter className="w-5 h-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />

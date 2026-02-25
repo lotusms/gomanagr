@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { useUserAccount } from '@/lib/UserAccountContext';
 import { getUserOrganization } from '@/services/organizationService';
 import { isOwnerRole } from '@/config/rolePermissions';
+import { supabase } from '@/lib/supabase';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/layouts/UserMenu';
 import DashboardSidebar from '@/components/layouts/DashboardSidebar';
@@ -11,6 +12,7 @@ import { PATH_TO_SECTION } from '@/config/teamMemberAccess';
 
 const SIDEBAR_STORAGE_KEY = 'gomanagr-sidebar-open';
 const MD_BREAKPOINT = 768;
+const USER_KICKED_EVENT = 'user-kicked';
 
 function getInitialSidebarOpen() {
   if (typeof window === 'undefined') return false;
@@ -55,6 +57,8 @@ export default function DashboardLayout({ children }) {
   const [orgLoaded, setOrgLoaded] = useState(false);
   const [orgFetchFailed, setOrgFetchFailed] = useState(false);
   const [memberAccess, setMemberAccess] = useState(null);
+  const logoutRef = useRef(logout);
+  logoutRef.current = logout;
 
   useEffect(() => {
     try {
@@ -103,6 +107,25 @@ export default function DashboardLayout({ children }) {
   }, [orgLoaded, orgFetchFailed, currentUser?.uid, organization, logout, router]);
 
   useEffect(() => {
+    const orgId = organization?.id;
+    const uid = currentUser?.uid;
+    if (!orgId || !uid) return;
+    const channel = supabase.channel(`org:${orgId}`);
+    channel
+      .on('broadcast', { event: USER_KICKED_EVENT }, ({ payload }) => {
+        if (payload?.userId === uid) {
+          logoutRef.current().then(() => {
+            if (typeof window !== 'undefined') window.location.href = '/login?revoked=1';
+          });
+        }
+      })
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [organization?.id, currentUser?.uid]);
+
+  useEffect(() => {
     if (!currentUser?.uid || organization === null) return;
     const interval = setInterval(async () => {
       try {
@@ -112,7 +135,7 @@ export default function DashboardLayout({ children }) {
           if (typeof window !== 'undefined') window.location.href = '/login?revoked=1';
         }
       } catch (_) {}
-    }, 60 * 1000);
+    }, 8 * 1000);
     return () => clearInterval(interval);
   }, [currentUser?.uid, organization, logout]);
 

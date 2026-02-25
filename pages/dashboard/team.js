@@ -1,19 +1,23 @@
 import Head from 'next/head';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateTeamMembers, updateServices, uploadTeamPhoto } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
+import { supabase } from '@/lib/supabase';
 import PersonCard from '@/components/dashboard/PersonCard';
 import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
 import { PageHeader, TeamFilter, ConfirmationDialog, ConfirmDialog, EmptyState, InputField, Table } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
-import { DangerButton, PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { IconButton, PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { HiPlus, HiX } from 'react-icons/hi';
+import { HiPlus, HiRefresh, HiTrash, HiX } from 'react-icons/hi';
 import { isOwnerRole, isAdminRole, ORG_ROLE } from '@/config/rolePermissions';
 import { sortTeamMembersPinned } from '@/lib/teamMemberSort';
 import { getInviteAvailability } from '@/lib/teamInviteUtils';
+
+const REALTIME_TEAM_EVENT = 'team-updated';
+const REALTIME_USER_KICKED_EVENT = 'user-kicked';
 
 function generateId() {
   return `tm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -52,6 +56,8 @@ function TeamContent() {
   const [memberToPermanentlyDelete, setMemberToPermanentlyDelete] = useState(null);
   const [ownerTeamMembers, setOwnerTeamMembers] = useState([]);
   const [ownerUserId, setOwnerUserId] = useState(null);
+  const channelRef = useRef(null);
+  const refetchTeamDataRef = useRef(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -150,6 +156,90 @@ function TeamContent() {
       .finally(() => setPendingInvitesLoaded(true));
   }, [organization?.id, currentUser?.uid]);
 
+  const refetchTeamData = useCallback(() => {
+    if (!currentUser?.uid) return;
+    if (isAdminNonOwner && organization?.id) {
+      fetch('/api/get-org-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: organization.id, callerUserId: currentUser.uid }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          const list = data?.teamMembers ?? [];
+          const ownerId = data?.ownerUserId ?? null;
+          setOwnerTeamMembers(list);
+          setOwnerUserId(ownerId);
+          const filteredList = showInactive
+            ? list
+            : list.filter((m) => (m.status || 'active') !== 'inactive');
+          setTeam(filteredList);
+        })
+        .catch(() => {});
+    } else {
+      getUserAccount(currentUser.uid)
+        .then((data) => {
+          setUserAccount(data || null);
+          const list = data?.teamMembers ?? [];
+          const filteredList = showInactive
+            ? list
+            : list.filter((m) => (m.status || 'active') !== 'inactive');
+          setTeam(filteredList);
+        })
+        .catch(() => {});
+    }
+    if (organization?.id && currentUser?.uid) {
+      fetch('/api/get-org-members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: organization.id, callerUserId: currentUser.uid }),
+      })
+        .then((r) => r.json())
+        .then((data) => setOrgMembers(data?.members ?? []))
+        .catch(() => {});
+      fetch('/api/get-org-invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: organization.id, callerUserId: currentUser.uid }),
+      })
+        .then((r) => r.json())
+        .then((data) => setPendingInvites(data?.invites ?? []))
+        .catch(() => {});
+    }
+  }, [currentUser?.uid, isAdminNonOwner, organization?.id, showInactive]);
+
+  refetchTeamDataRef.current = refetchTeamData;
+
+  useEffect(() => {
+    const orgId = organization?.id;
+    const uid = currentUser?.uid;
+    if (!uid) return;
+    const channelName = orgId ? `org:${orgId}` : `user:${uid}`;
+    const channel = supabase.channel(channelName);
+    channel
+      .on('broadcast', { event: REALTIME_TEAM_EVENT }, () => {
+        refetchTeamDataRef.current?.();
+      })
+      .subscribe();
+    channelRef.current = channel;
+    return () => {
+      channel.unsubscribe();
+      channelRef.current = null;
+    };
+  }, [organization?.id, currentUser?.uid]);
+
+  const broadcastTeamUpdated = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: REALTIME_TEAM_EVENT, payload: {} });
+    }
+  }, []);
+
+  const broadcastUserKicked = useCallback((userId) => {
+    if (userId && channelRef.current) {
+      channelRef.current.send({ type: 'broadcast', event: REALTIME_USER_KICKED_EVENT, payload: { userId } });
+    }
+  }, []);
+
   const cleanTeamMember = (member) => {
     const cleaned = {};
     Object.keys(member).forEach(key => {
@@ -191,11 +281,13 @@ function TeamContent() {
       setOwnerTeamMembers(list);
       const filteredList = showInactive ? list : list.filter((m) => (m.status || 'active') !== 'inactive');
       setTeam(filteredList);
+      broadcastTeamUpdated();
     } else {
       await updateTeamMembers(currentUser.uid, list);
       setUserAccount((prev) => (prev ? { ...prev, teamMembers: list } : null));
       const filteredList = showInactive ? list : list.filter((m) => (m.status || 'active') !== 'inactive');
       setTeam(filteredList);
+      broadcastTeamUpdated();
     }
   };
 
@@ -248,6 +340,8 @@ function TeamContent() {
           toast.error(data.error || 'Failed to revoke access. Deactivation cancelled.');
           return;
         }
+        const kickedUserId = data.userId ?? revokeUserId;
+        if (kickedUserId) broadcastUserKicked(kickedUserId);
         toast.success('Access revoked. They have been signed out and can no longer access the org.');
         const emailNorm = email.toLowerCase().trim();
         setPendingInvites((prev) => (prev || []).filter((inv) => (inv.email || '').toLowerCase().trim() !== emailNorm));
@@ -500,11 +594,12 @@ function TeamContent() {
       }).catch((err) => console.error('Failed to sync team member profile:', err));
     }
 
-    if (data.isAdmin !== undefined && organization?.id && currentUser?.uid && (finalMember.userId || (finalMember.email || '').trim())) {
+    // Only update org role when the member already has an account (userId). New invites don't have a user yet.
+    if (data.isAdmin !== undefined && organization?.id && currentUser?.uid && finalMember.userId) {
       const rolePayload = {
         organizationId: organization.id,
         callerUserId: currentUser.uid,
-        ...(finalMember.userId ? { targetUserId: finalMember.userId } : { targetEmail: (finalMember.email || '').trim() }),
+        targetUserId: finalMember.userId,
         role: finalMember.isAdmin ? 'admin' : 'member',
       };
       fetch('/api/update-org-member-role', {
@@ -638,8 +733,9 @@ function TeamContent() {
         toast.error(data.error || 'Failed to revoke access.');
         return;
       }
+      const revokedUserId = data.userId ?? memberToRevoke.userId;
+      if (revokedUserId) broadcastUserKicked(revokedUserId);
       toast.success('Access revoked. They have been signed out and cannot use invite links or sign in again.');
-      const revokedUserId = memberToRevoke.userId;
       setRevokeDialogOpen(false);
       setMemberToRevoke(null);
       const emailNorm = email.toLowerCase().trim();
@@ -974,24 +1070,27 @@ function TeamContent() {
                           key: 'actions',
                           label: 'Actions',
                           align: 'center',
+                          compact: true,
                           render: (member) => (
-                            <div className="flex items-center justify-center gap-2">
-                              <PrimaryButton
-                                type="button"
+                            <div className="flex items-center justify-center gap-1">
+                              <IconButton
+                                variant="primary"
                                 onClick={() => setMemberToReactivate(member)}
                                 disabled={saving}
-                                className="text-xs"
+                                aria-label="Reactivate"
+                                title="Reactivate"
                               >
-                                Reactivate
-                              </PrimaryButton>
-                              <DangerButton
-                                type="button"
+                                <HiRefresh className="w-5 h-5" />
+                              </IconButton>
+                              <IconButton
+                                variant="danger"
                                 onClick={() => setMemberToPermanentlyDelete(member)}
                                 disabled={saving}
-                                className="text-xs"
+                                aria-label="Delete forever"
+                                title="Delete forever"
                               >
-                                Delete forever
-                              </DangerButton>
+                                <HiTrash className="w-5 h-5" />
+                              </IconButton>
                             </div>
                           ),
                         },

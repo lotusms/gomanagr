@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { UserAccountProvider } from '@/lib/UserAccountContext';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 
 const mockReplace = jest.fn();
@@ -42,9 +43,11 @@ describe('DashboardLayout member access to My Account', () => {
 
   it('allows member on /account without redirecting to team-member', async () => {
     render(
-      <DashboardLayout>
-        <div data-testid="account-content">My Account page content</div>
-      </DashboardLayout>
+      <UserAccountProvider>
+        <DashboardLayout>
+          <div data-testid="account-content">My Account page content</div>
+        </DashboardLayout>
+      </UserAccountProvider>
     );
 
     await waitFor(() => {

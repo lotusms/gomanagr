@@ -1,6 +1,7 @@
 import '../styles/globals.scss';
 import { useRouter } from 'next/router';
 import { AuthProvider } from '@/lib/AuthContext';
+import { UserAccountProvider } from '@/lib/UserAccountContext';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -27,8 +28,9 @@ function AppContent({ Component, pageProps }) {
 export default function App({ Component, pageProps }) {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <ToastProvider>
+      <UserAccountProvider>
+        <ThemeProvider>
+          <ToastProvider>
           {process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY && (
             <Script
               src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY}&libraries=places&loading=async`}
@@ -40,7 +42,8 @@ export default function App({ Component, pageProps }) {
           )}
           <AppContent Component={Component} pageProps={pageProps} />
         </ToastProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </UserAccountProvider>
     </AuthProvider>
   );
 }

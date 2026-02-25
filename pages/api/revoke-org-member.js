@@ -1,7 +1,9 @@
 /**
- * Revoke a member's access: remove from org_members (if joined), delete auth user (so they cannot
- * log in or reset password), mark all their invite links as used (so they cannot create a login),
+ * Revoke a member's access: remove from org_members, delete Supabase Auth user (so they cannot
+ * log in or reset password), remove from user_profiles, delete org_invites for their email,
  * and send them an email that access has been revoked. Only org admins can revoke.
+ * The revoked user's session is invalidated; the client (e.g. DashboardLayout) redirects them
+ * to /login?revoked=1 when org is null or on auth state change.
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -127,6 +129,15 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to remove member from organization' });
       }
 
+      if (!revokeEmail) {
+        const { data: profile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('email')
+          .eq('id', targetUserId)
+          .single();
+        revokeEmail = (profile?.email || '').toLowerCase().trim();
+      }
+
       const { error: deleteAuthErr } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
       if (deleteAuthErr) {
         console.error('[revoke-org-member] deleteUser', deleteAuthErr);
@@ -135,13 +146,12 @@ export default async function handler(req, res) {
         });
       }
 
-      if (!revokeEmail) {
-        const { data: profile } = await supabaseAdmin
-          .from('user_profiles')
-          .select('email')
-          .eq('id', targetUserId)
-          .single();
-        revokeEmail = (profile?.email || '').toLowerCase().trim();
+      const { error: deleteProfileErr } = await supabaseAdmin
+        .from('user_profiles')
+        .delete()
+        .eq('id', targetUserId);
+      if (deleteProfileErr) {
+        console.error('[revoke-org-member] delete user_profiles', deleteProfileErr);
       }
     }
 

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { useAuth } from '@/lib/AuthContext';
+import { useUserAccount } from '@/lib/UserAccountContext';
 import { getUserAccount, createUserAccount, deleteUserAccount } from '@/services/userService';
 import InputField from '@/components/ui/InputField';
 import PasswordField from '@/components/ui/PasswordField';
@@ -24,6 +25,7 @@ const NAME_VIEW_OPTIONS = [
 
 function AccountContent() {
   const { currentUser, updatePassword, logout } = useAuth();
+  const { setAccount: setGlobalAccount } = useUserAccount();
   const router = useRouter();
   const [userAccount, setUserAccount] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,6 +94,7 @@ function AccountContent() {
       };
       await createUserAccount(currentUser.uid, payload, null);
       setUserAccount(payload);
+      setGlobalAccount(payload);
       setAccountSaveStatus({ type: 'success', message: 'Account details saved.' });
       window.dispatchEvent(
         new CustomEvent('useraccount-updated', { detail: payload })

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { PrimaryButton, SecondaryButton, DangerButton } from '@/components/ui/buttons';
 import {
   InputField,
   TextareaField,
@@ -50,6 +50,9 @@ const GENDER_OPTIONS = [
  * @param {Array} [teamMembers] - Array of team members for service assignment
  * @param {Function} [onServiceCreated] - Callback when a new service is created (receives updated services array)
  * @param {Function} [onInviteToLogin] - Callback when user clicks "Invite to log in" in edit mode (receives member object)
+ * @param {boolean} [showInviteInDrawer] - Whether to show "Invite to Join" in the drawer (edit mode)
+ * @param {boolean} [showRevokeInDrawer] - Whether to show "Revoke access" in the drawer (edit mode)
+ * @param {Function} [onRevokeAccess] - Callback when user clicks "Revoke access" in the drawer
  */
 export default function AddTeamMemberForm({ 
   onSubmit, 
@@ -63,6 +66,9 @@ export default function AddTeamMemberForm({
   onServiceCreated,
   onInviteToLogin,
   canPromoteToAdmin = false,
+  showInviteInDrawer = false,
+  showRevokeInDrawer = false,
+  onRevokeAccess,
 }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -602,19 +608,37 @@ export default function AddTeamMemberForm({
               disabled={saving || !email.trim()}
             />
           )}
-          {isEdit && (email?.trim() || initialMember?.email) && !initialMember?.userId && typeof onInviteToLogin === 'function' && (
+          {isEdit && (email?.trim() || initialMember?.email) && (showInviteInDrawer || showRevokeInDrawer) && (
             <div className="flex flex-col items-center gap-2">
-              <SecondaryButton
-                type="button"
-                onClick={() => onInviteToLogin({ ...initialMember, email: email?.trim() || initialMember?.email })}
-                disabled={saving}
-                className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
-              >
-                Invite to Join
-              </SecondaryButton>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Send this member an email to set their password and access GoManagr as a member.
-              </span>
+              {showInviteInDrawer && !initialMember?.userId && typeof onInviteToLogin === 'function' && (
+                <>
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => onInviteToLogin({ ...initialMember, email: email?.trim() || initialMember?.email })}
+                    disabled={saving}
+                    className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  >
+                    Invite to Join
+                  </SecondaryButton>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Send this member an email to set their password and access GoManagr as a member.
+                  </span>
+                </>
+              )}
+              {showRevokeInDrawer && typeof onRevokeAccess === 'function' && (
+                <>
+                  <DangerButton
+                    type="button"
+                    onClick={onRevokeAccess}
+                    disabled={saving}
+                  >
+                    Revoke access
+                  </DangerButton>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Revoke this member&apos;s access. They will be removed from the organization and cannot sign in or use invite links.
+                  </span>
+                </>
+              )}
             </div>
           )}
           <TextareaField

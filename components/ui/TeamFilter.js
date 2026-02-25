@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ChipsMulti } from './Chips';
-import { SecondaryButton } from './buttons';
-import { HiFilter, HiChevronDown } from 'react-icons/hi';
+import { HiFilter, HiChevronDown, HiX } from 'react-icons/hi';
 
 /**
  * Reusable Team Filter Component
@@ -64,37 +63,36 @@ export default function TeamFilter({
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
       {/* Filter Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <HiFilter className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <span className="font-semibold text-gray-900 dark:text-white">Filters</span>
-          {hasActiveFilters && (
-            <span className="px-2 py-0.5 bg-primary-600 text-white text-xs font-medium rounded-full">
-              {activeFilterCount}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {hasActiveFilters && (
-            <SecondaryButton
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClearAll();
-              }}
-              className="text-xs px-2 py-1 h-auto"
-            >
-              Clear all
-            </SecondaryButton>
-          )}
+      <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center justify-between gap-2 flex-1 min-w-0 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <HiFilter className="w-5 h-5 text-gray-600 dark:text-gray-400 flex-shrink-0" />
+            <span className="font-semibold text-gray-900 dark:text-white">Filters</span>
+            {hasActiveFilters && (
+              <span className="px-2 py-0.5 bg-primary-600 text-white text-xs font-medium rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
           <HiChevronDown
-            className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform flex-shrink-0 ml-auto ${isExpanded ? 'rotate-180' : ''}`}
           />
-        </div>
-      </button>
+        </button>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={handleClearAll}
+            aria-label="Clear all"
+            className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0 transition-colors"
+          >
+            <HiX className="size-4" />
+          </button>
+        )}
+      </div>
 
       {/* Filter Content */}
       {isExpanded && (

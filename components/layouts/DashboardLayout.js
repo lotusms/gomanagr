@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount } from '@/services/userService';
+import { useUserAccount } from '@/lib/UserAccountContext';
 import { getUserOrganization } from '@/services/organizationService';
 import { isOwnerRole } from '@/config/rolePermissions';
 import Logo from '@/components/Logo';
@@ -48,10 +48,9 @@ function getDisplayName(account, email = '') {
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const { currentUser, logout } = useAuth();
+  const { account: userAccount, preview: previewAccount, setAccount, setPreview, loading: accountLoading } = useUserAccount();
+  const accountLoaded = !accountLoading;
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
-  const [userAccount, setUserAccount] = useState(null);
-  const [accountLoaded, setAccountLoaded] = useState(false);
-  const [previewAccount, setPreviewAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
   const [orgLoaded, setOrgLoaded] = useState(false);
   const [orgFetchFailed, setOrgFetchFailed] = useState(false);
@@ -78,13 +77,8 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     if (!currentUser?.uid) return;
-    setAccountLoaded(false);
     setOrgLoaded(false);
     setOrgFetchFailed(false);
-    getUserAccount(currentUser.uid)
-      .then((data) => setUserAccount(data || null))
-      .catch(() => setUserAccount(null))
-      .finally(() => setAccountLoaded(true));
     getUserOrganization(currentUser.uid)
       .then((org) => {
         setOrgFetchFailed(false);
@@ -177,16 +171,19 @@ export default function DashboardLayout({ children }) {
   }, [memberRole, router.pathname, memberAccess]);
 
   useEffect(() => {
-    const handle = (e) => {
-      if (e.detail?.type === 'useraccount-preview') setPreviewAccount(e.detail.payload || null);
-      if (e.detail?.type === 'useraccount-updated') {
-        setPreviewAccount(null);
-        if (e.detail?.payload) setUserAccount((prev) => ({ ...prev, ...e.detail.payload }));
-      }
+    const handlePreview = (e) => {
+      setPreview(e.detail || null);
     };
-    window.addEventListener('useraccount', handle);
-    return () => window.removeEventListener('useraccount', handle);
-  }, []);
+    const handleUpdated = (e) => {
+      if (e.detail) setAccount((prev) => ({ ...prev, ...e.detail }));
+    };
+    window.addEventListener('useraccount-preview', handlePreview);
+    window.addEventListener('useraccount-updated', handleUpdated);
+    return () => {
+      window.removeEventListener('useraccount-preview', handlePreview);
+      window.removeEventListener('useraccount-updated', handleUpdated);
+    };
+  }, [setAccount, setPreview]);
 
   const handleLogout = async () => {
     try {

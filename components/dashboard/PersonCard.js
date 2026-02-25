@@ -1,12 +1,11 @@
-import { HiTrash, HiUser, HiOfficeBuilding, HiShieldCheck, HiMail, HiLockClosed } from 'react-icons/hi';
+import { HiX, HiUser, HiOfficeBuilding, HiShieldCheck, HiMail, HiLockClosed } from 'react-icons/hi';
 import { useMemo } from 'react';
+import { IconButton } from '@/components/ui/buttons';
 
-const iconButtonClass = `
-  absolute top-3 z-20 p-2 rounded-full
-  bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
-  shadow-lg hover:shadow-xl transition-all duration-200
-  opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100
-`;
+const cardIconButtonClass =
+  'absolute top-3 z-20 opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100';
+
+const removeIconButtonClass = 'text-white hover:text-white/90 hover:bg-white/20 dark:hover:bg-gray-700/20 right-3';
 
 /**
  * Modern, vibrant card with gradient background, prominent avatar, and clean typography.
@@ -117,39 +116,40 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
       </div>
 
       {onInvite && (
-        <button
-          type="button"
+        <IconButton
+          variant="primary"
+          className={`${cardIconButtonClass} left-3`}
           onClick={(e) => { e.stopPropagation(); onInvite(); }}
-          className={`left-3 text-primary-600 hover:text-primary-700 hover:bg-white dark:hover:bg-gray-700 ${iconButtonClass}`}
           aria-label="Invite to join"
           title="Invite to join"
         >
           <HiMail className="w-5 h-5" />
-        </button>
+        </IconButton>
       )}
       {onRevoke && (
-        <button
-          type="button"
+        <IconButton
+          variant="secondary"
+          className={`${cardIconButtonClass} left-3 ${onInvite ? 'left-12' : ''}`}
           onClick={(e) => { e.stopPropagation(); onRevoke(); }}
-          className={`left-3 text-amber-600 hover:text-amber-700 hover:bg-white dark:hover:bg-gray-700 ${iconButtonClass} ${onInvite ? 'left-12' : ''}`}
           aria-label="Revoke access"
           title="Revoke access"
         >
           <HiLockClosed className="w-5 h-5" />
-        </button>
+        </IconButton>
       )}
       {onRemove && (
-        <button
-          type="button"
+        <IconButton
+          white
+          className={`${cardIconButtonClass} ${removeIconButtonClass}`}
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          className={`right-3 text-red-500 hover:text-red-600 hover:bg-white dark:hover:bg-gray-700 ${iconButtonClass}`}
-          aria-label="Remove"
+          aria-label="Deactivate"
+          title="Deactivate"
         >
-          <HiTrash className="w-5 h-5" />
-        </button>
+          <HiX className="w-5 h-5" />
+        </IconButton>
       )}
 
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 dark:bg-gray-700/30" />

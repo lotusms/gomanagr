@@ -1,6 +1,7 @@
 import * as Label from '@radix-ui/react-label';
 import { forwardRef } from 'react';
 import { getInputClasses, getLabelClasses } from './formControlStyles';
+import { capitalizeName } from '@/utils/capitalizeName';
 
 /**
  * Reusable Input Field Component using Radix UI
@@ -47,6 +48,14 @@ const InputField = forwardRef(({
   validate,
   variant = 'dark',
 }, ref) => {
+  const skipAutoCapitalize = type === 'email' || type === 'password' || type === 'url';
+  const handleChange = (e) => {
+    if (!onChange) return;
+    const raw = e.target.value;
+    const next = skipAutoCapitalize ? raw : capitalizeName(raw);
+    onChange({ ...e, target: { ...e.target, value: next } });
+  };
+
   const validationError = validate ? validate(value) : null;
   const displayError = error || validationError;
   const hasError = !!displayError || hasErrorState;
@@ -80,7 +89,7 @@ const InputField = forwardRef(({
           id={id}
           type={type}
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           onBlur={onBlur}
           required={required}
           disabled={disabled}

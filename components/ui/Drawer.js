@@ -11,20 +11,26 @@ import { HiX } from 'react-icons/hi';
  * @param {string} [title] - Optional title in the drawer header
  * @param {string} [className] - Extra classes for the panel body
  * @param {string} [width] - Width of the panel (default: 75vw)
+ * @param {number} [zIndex] - z-index for the overlay/panel (default 100). Use higher (e.g. 110) for nested drawers.
+ * @param {boolean} [closeOnOverlayClick] - If false, clicking the overlay does not call onClose (default true). Use for parent drawers that contain nested drawers so button clicks cannot close the parent.
  */
-export default function Drawer({ isOpen, onClose, children, title, className = '', width = '75vw' }) {
+export default function Drawer({ isOpen, onClose, children, title, className = '', width = '75vw', zIndex = 100, closeOnOverlayClick = true }) {
+  const isNested = zIndex > 100;
   useEffect(() => {
     if (!isOpen) return;
     const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      onClose();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
     };
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('keydown', handleEscape, isNested);
     document.body.style.overflow = 'hidden';
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleEscape, isNested);
       document.body.style.overflow = '';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isNested]);
 
   if (!isOpen) return null;
 
@@ -44,13 +50,16 @@ export default function Drawer({ isOpen, onClose, children, title, className = '
           }
         `
       }} />
-      <div className="fixed inset-0 z-[100] flex" aria-modal="true" role="dialog">
+      <div className="fixed inset-0 flex" style={{ zIndex }} aria-modal="true" role="dialog">
         {/* Overlay */}
-        <button
-          type="button"
-          onClick={onClose}
+        <div
+          role="presentation"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (closeOnOverlayClick) onClose();
+          }}
           className="absolute inset-0 bg-black/40 transition-opacity"
-          aria-label="Close"
+          aria-label={closeOnOverlayClick ? 'Close' : undefined}
         />
         {/* Panel */}
         <div
@@ -65,7 +74,10 @@ export default function Drawer({ isOpen, onClose, children, title, className = '
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
               className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors -mr-2"
               aria-label="Close"
             >

@@ -2,10 +2,12 @@ import React from 'react';
 import { render, screen, waitFor, within, act, fireEvent } from '@testing-library/react';
 import TeamPage from '@/pages/dashboard/team';
 
+const mockRouterPush = jest.fn();
+const mockRouterReplace = jest.fn();
 jest.mock('next/router', () => ({
   useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
+    push: mockRouterPush,
+    replace: mockRouterReplace,
     pathname: '/dashboard/team',
     query: {},
     asPath: '/dashboard/team',
@@ -174,34 +176,15 @@ describe('Team page – Add member', () => {
     });
   });
 
-  it('opens drawer with empty form when Add member is clicked', async () => {
+  it('links to add member page', async () => {
     render(<TeamPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /add member/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /add member/i })).toBeInTheDocument();
     });
 
-    const addMemberBtn = screen.getByRole('button', { name: /add member/i });
-    await act(async () => {
-      addMemberBtn.click();
-    });
-
-    await waitFor(() => {
-      const dialog = screen.getByRole('dialog');
-      expect(dialog).toBeInTheDocument();
-      expect(within(dialog).getByRole('heading', { name: /add team member/i })).toBeInTheDocument();
-    });
-
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByRole('heading', { name: /add team member/i })).toBeInTheDocument();
-
-    const firstNameInput = within(dialog).getByLabelText(/first name/i);
-    const lastNameInput = within(dialog).getByLabelText(/last name/i);
-    const emailInput = within(dialog).getByLabelText(/^email$/i);
-
-    expect(firstNameInput).toHaveValue('');
-    expect(lastNameInput).toHaveValue('');
-    expect(emailInput).toHaveValue('');
+    const addMemberLink = screen.getByRole('link', { name: /add member/i });
+    expect(addMemberLink).toHaveAttribute('href', '/dashboard/team/new');
   });
 });
 
@@ -243,7 +226,7 @@ describe('Team page – Edit member', () => {
     });
   });
 
-  it('clicking team card opens drawer prefilled with member info for editing', async () => {
+  it('clicking team card navigates to edit page for that member', async () => {
     render(<TeamPage />);
 
     await waitFor(() => {
@@ -255,22 +238,7 @@ describe('Team page – Edit member', () => {
       card.click();
     });
 
-    await waitFor(() => {
-      const dialog = screen.getByRole('dialog');
-      expect(dialog).toBeInTheDocument();
-      expect(within(dialog).getByRole('heading', { name: /edit jane doe/i })).toBeInTheDocument();
-    });
-
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByRole('heading', { name: /edit jane doe/i })).toBeInTheDocument();
-
-    const firstNameInput = within(dialog).getByLabelText(/first name/i);
-    const lastNameInput = within(dialog).getByLabelText(/last name/i);
-    const emailInput = within(dialog).getByLabelText(/^email$/i);
-
-    expect(firstNameInput).toHaveValue('Jane');
-    expect(lastNameInput).toHaveValue('Doe');
-    expect(emailInput).toHaveValue('jane@example.com');
+    expect(mockRouterPush).toHaveBeenCalledWith('/dashboard/team/m1/edit');
   });
 });
 
@@ -323,7 +291,13 @@ describe('Team page – Deactivate from card', () => {
         return Promise.resolve({ json: () => Promise.resolve({ invites: [] }) });
       }
       if (path.includes('revoke-org-member')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ userId: 'allison-uid' }) });
+      }
+      if (path.includes('update-org-team')) {
+        return Promise.resolve({ ok: true });
+      }
+      if (path.includes('get-org-team')) {
+        return Promise.resolve({ json: () => Promise.resolve({ teamMembers: [], ownerUserId: null }) });
       }
       return Promise.resolve({ json: () => Promise.resolve({}) });
     });
@@ -346,6 +320,10 @@ describe('Team page – Deactivate from card', () => {
     });
 
     const dialog = screen.getByRole('dialog');
+    const confirmInput = within(dialog).getByLabelText(/type confirm to enable/i);
+    await act(async () => {
+      fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+    });
     const confirmBtn = within(dialog).getByRole('button', { name: /^deactivate$/i });
     await act(async () => {
       confirmBtn.click();
@@ -360,11 +338,24 @@ describe('Team page – Deactivate from card', () => {
       expect(revokeBody.userId).toBe('allison-uid');
     });
 
-    expect(mockUpdateTeamMembers).toHaveBeenCalled();
-    const savedTeam = mockUpdateTeamMembers.mock.calls[0][1];
-    const allison = savedTeam.find((m) => m.id === 'm-allison');
-    expect(allison).toBeDefined();
-    expect(allison.status).toBe('inactive');
+    await waitFor(() => {
+      const updateCalls = fetchCalls.filter((c) => c.url && String(c.url).includes('update-org-team'));
+      const memberCalls = mockUpdateTeamMembers.mock.calls;
+      expect(updateCalls.length >= 1 || memberCalls.length >= 1).toBe(true);
+    });
+    const memberCalls = mockUpdateTeamMembers.mock.calls;
+    const fetchUpdateCalls = fetchCalls.filter((c) => c.url && String(c.url).includes('update-org-team'));
+    if (memberCalls.length >= 1) {
+      const savedTeam = memberCalls[0][1];
+      const allison = savedTeam.find((m) => m.id === 'm-allison');
+      expect(allison).toBeDefined();
+      expect(allison.status).toBe('inactive');
+    } else if (fetchUpdateCalls.length >= 1) {
+      const body = JSON.parse(fetchUpdateCalls[0].body || '{}');
+      const allison = (body.teamMembers || []).find((m) => m.id === 'm-allison');
+      expect(allison).toBeDefined();
+      expect(allison.status).toBe('inactive');
+    }
   });
 
   it('when member has no access, deactivates without calling revoke', async () => {
@@ -381,12 +372,18 @@ describe('Team page – Deactivate from card', () => {
     let fetchCalls = [];
     global.fetch = jest.fn((url, opts = {}) => {
       const path = typeof url === 'string' ? url : url?.url ?? '';
-      fetchCalls.push({ url: path, method: opts.method });
+      fetchCalls.push({ url: path, method: opts.method, body: opts.body });
       if (path.includes('get-org-members')) {
         return Promise.resolve({ json: () => Promise.resolve({ members: [] }) });
       }
       if (path.includes('get-org-invites')) {
         return Promise.resolve({ json: () => Promise.resolve({ invites: [] }) });
+      }
+      if (path.includes('update-org-team')) {
+        return Promise.resolve({ ok: true });
+      }
+      if (path.includes('get-org-team')) {
+        return Promise.resolve({ json: () => Promise.resolve({ teamMembers: [], ownerUserId: null }) });
       }
       return Promise.resolve({ json: () => Promise.resolve({}) });
     });
@@ -408,6 +405,10 @@ describe('Team page – Deactivate from card', () => {
     });
 
     const dialog = screen.getByRole('dialog');
+    const confirmInput = within(dialog).getByLabelText(/type confirm to enable/i);
+    await act(async () => {
+      fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+    });
     const confirmBtn = within(dialog).getByRole('button', { name: /^deactivate$/i });
     await act(async () => {
       confirmBtn.click();
@@ -418,11 +419,24 @@ describe('Team page – Deactivate from card', () => {
       expect(revokeCalls.length).toBe(0);
     });
 
-    expect(mockUpdateTeamMembers).toHaveBeenCalled();
-    const savedTeam = mockUpdateTeamMembers.mock.calls[0][1];
-    const bob = savedTeam.find((m) => m.id === 'm-bob');
-    expect(bob).toBeDefined();
-    expect(bob.status).toBe('inactive');
+    await waitFor(() => {
+      const updateCalls = fetchCalls.filter((c) => c.url && String(c.url).includes('update-org-team'));
+      const memberCalls = mockUpdateTeamMembers.mock.calls;
+      expect(updateCalls.length >= 1 || memberCalls.length >= 1).toBe(true);
+    });
+    const memberCalls = mockUpdateTeamMembers.mock.calls;
+    const fetchUpdateCalls = fetchCalls.filter((c) => c.url && String(c.url).includes('update-org-team'));
+    if (memberCalls.length >= 1) {
+      const savedTeam = memberCalls[0][1];
+      const bob = savedTeam.find((m) => m.id === 'm-bob');
+      expect(bob).toBeDefined();
+      expect(bob.status).toBe('inactive');
+    } else if (fetchUpdateCalls.length >= 1) {
+      const body = JSON.parse(fetchUpdateCalls[0].body || '{}');
+      const bob = (body.teamMembers || []).find((m) => m.id === 'm-bob');
+      expect(bob).toBeDefined();
+      expect(bob.status).toBe('inactive');
+    }
   });
 });
 

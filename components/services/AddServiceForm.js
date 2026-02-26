@@ -115,6 +115,7 @@ export default function AddServiceForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent submit from bubbling to parent form (e.g. add/edit team member form when this form is in a portaled drawer)
     const newErrors = {};
 
     if (!name || name.trim() === '') {
@@ -150,7 +151,14 @@ export default function AddServiceForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-6">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSubmit(e);
+      }}
+      className="space-y-6 p-6"
+    >
       <div>
         <InputField
           id="name"
@@ -243,7 +251,15 @@ export default function AddServiceForm({
           <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
             Cancel
           </SecondaryButton>
-          <PrimaryButton type="submit" disabled={saving}>
+          <PrimaryButton
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmit(e);
+            }}
+            disabled={saving}
+          >
             {saving ? 'Saving...' : initialService ? 'Update Service' : 'Add Service'}
           </PrimaryButton>
         </div>

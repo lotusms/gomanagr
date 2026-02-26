@@ -1,14 +1,15 @@
 import Head from 'next/head';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, updateTeamMembers, updateServices, uploadTeamPhoto } from '@/services/userService';
+import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { supabase } from '@/lib/supabase';
+import { persistTeam } from '@/lib/teamMemberSave';
 import PersonCard from '@/components/dashboard/PersonCard';
-import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
 import { PageHeader, TeamFilter, ConfirmationDialog, ConfirmDialog, EmptyState, InputField, Table } from '@/components/ui';
-import Drawer from '@/components/ui/Drawer';
-import { IconButton, PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { IconButton, PrimaryButton, SecondaryButton, DangerButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { HiPlus, HiRefresh, HiTrash, HiX } from 'react-icons/hi';
@@ -19,21 +20,17 @@ import { getInviteAvailability } from '@/lib/teamInviteUtils';
 const REALTIME_TEAM_EVENT = 'team-updated';
 const REALTIME_USER_KICKED_EVENT = 'user-kicked';
 
-function generateId() {
-  return `tm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
 function TeamContent() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const toast = useToast();
   const [userAccount, setUserAccount] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [team, setTeam] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState(null);
+  const [deactivateDialogConfirmWord, setDeactivateDialogConfirmWord] = useState('');
   const [filters, setFilters] = useState({
     roles: [],
     services: [],
@@ -240,60 +237,23 @@ function TeamContent() {
     }
   }, []);
 
-  const cleanTeamMember = (member) => {
-    const cleaned = {};
-    Object.keys(member).forEach(key => {
-      if (member[key] !== undefined) {
-        if (typeof member[key] === 'object' && member[key] !== null && !Array.isArray(member[key])) {
-          const cleanedObj = {};
-          Object.keys(member[key]).forEach(objKey => {
-            if (member[key][objKey] !== undefined) {
-              cleanedObj[objKey] = member[key][objKey];
-            }
-          });
-          if (Object.keys(cleanedObj).length > 0) {
-            cleaned[key] = cleanedObj;
-          }
-        } else {
-          cleaned[key] = member[key];
-        }
-      }
-    });
-    return cleaned;
-  };
-
   const saveTeam = async (cleanedTeam) => {
-    const list = Array.isArray(cleanedTeam) ? cleanedTeam.map(cleanTeamMember) : [];
-    if (ownerUserId && organization?.id) {
-      const res = await fetch('/api/update-org-team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organizationId: organization.id,
-          callerUserId: currentUser.uid,
-          teamMembers: list,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || 'Failed to update team');
-      }
-      setOwnerTeamMembers(list);
-      const filteredList = showInactive ? list : list.filter((m) => (m.status || 'active') !== 'inactive');
-      setTeam(filteredList);
-      broadcastTeamUpdated();
-    } else {
-      await updateTeamMembers(currentUser.uid, list);
-      setUserAccount((prev) => (prev ? { ...prev, teamMembers: list } : null));
-      const filteredList = showInactive ? list : list.filter((m) => (m.status || 'active') !== 'inactive');
-      setTeam(filteredList);
-      broadcastTeamUpdated();
-    }
+    await persistTeam(cleanedTeam, {
+      currentUserId: currentUser.uid,
+      organization,
+      ownerUserId,
+      showInactive,
+      setUserAccount,
+      setOwnerTeamMembers,
+      setTeam,
+      broadcastTeamUpdated,
+    });
   };
 
   const handleRemoveClick = (id) => {
     const member = team.find((m) => m.id === id);
     setMemberToDelete(member);
+    setDeactivateDialogConfirmWord('');
     setDeleteDialogOpen(true);
   };
 
@@ -374,7 +334,8 @@ function TeamContent() {
 
       setDeleteDialogOpen(false);
       setMemberToDelete(null);
-      toast.success(shouldRevokeFirst ? 'Member deactivated. They no longer have access to your org.' : 'Member deactivated.');
+      setDeactivateDialogConfirmWord('');
+      toast.success(shouldRevokeFirst ? 'Member deactivated. They no longer have access to your org.' : 'Member deactivated.', 5000);
     } catch (err) {
       console.error('Failed to deactivate team member:', err);
       toast.error('Failed to deactivate team member. Please try again.');
@@ -386,6 +347,28 @@ function TeamContent() {
   const handleRemoveCancel = () => {
     setDeleteDialogOpen(false);
     setMemberToDelete(null);
+    setDeactivateDialogConfirmWord('');
+  };
+
+  const deactivateDialogConfirmed = deactivateDialogConfirmWord.trim().toUpperCase() === 'CONFIRM';
+
+  const handleDeleteFromDeactivateDialog = async () => {
+    if (!memberToDelete || !currentUser?.uid) return;
+    setSaving(true);
+    try {
+      const allTeamMembers = ownerUserId ? ownerTeamMembers : (await getUserAccount(currentUser.uid))?.teamMembers || [];
+      const updatedTeamMembers = allTeamMembers.filter((m) => m.id !== memberToDelete.id);
+      await saveTeam(updatedTeamMembers);
+      setDeleteDialogOpen(false);
+      setMemberToDelete(null);
+      setDeactivateDialogConfirmWord('');
+      toast.success('Member permanently deleted.', 5000);
+    } catch (err) {
+      console.error('Failed to permanently delete team member:', err);
+      toast.error('Failed to delete. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const effectiveTeamMembers = ownerUserId ? ownerTeamMembers : (userAccount?.teamMembers ?? []);
@@ -429,255 +412,6 @@ function TeamContent() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleSaveMember = async (data, pictureFile, editingId) => {
-    const isEdit = !!editingId;
-    const memberId = isEdit ? editingId : generateId();
-
-    let allTeamMembers = ownerUserId ? ownerTeamMembers : team;
-    if (currentUser?.uid && !ownerUserId) {
-      try {
-        const account = await getUserAccount(currentUser.uid);
-        allTeamMembers = account?.teamMembers ?? team;
-      } catch (err) {
-        console.error('Failed to fetch all team members:', err);
-      }
-    }
-    
-    let pictureUrl = isEdit ? allTeamMembers.find((m) => m.id === editingId)?.pictureUrl ?? '' : '';
-    if (pictureFile && currentUser?.uid) {
-      try {
-        pictureUrl = await uploadTeamPhoto(currentUser.uid, memberId, pictureFile);
-      } catch (err) {
-        console.error('Failed to upload team photo:', err);
-      }
-    }
-    const removeUndefined = (obj) => {
-      const cleaned = {};
-      Object.keys(obj).forEach(key => {
-        if (obj[key] !== undefined) {
-          cleaned[key] = obj[key];
-        }
-      });
-      return cleaned;
-    };
-
-    const existingMember = isEdit ? allTeamMembers.find((m) => m.id === editingId) : null;
-    const isAdmin = isEdit
-      ? (data.isAdmin !== undefined ? data.isAdmin : (existingMember?.isAdmin ?? false))
-      : false;
-    const isOwner = isEdit ? (existingMember?.isOwner ?? false) : false;
-    const memberEmailNorm = (data.email || existingMember?.email || '').trim().toLowerCase();
-    const resolvedUserId = existingMember?.userId || (memberEmailNorm ? memberEmailToUserId[memberEmailNorm] : null);
-    const updatedMember = removeUndefined({
-      id: memberId,
-      name: data.name,
-      role: data.role || '',
-      firstName: data.firstName,
-      lastName: data.lastName,
-      title: data.title,
-      location: data.location && data.location !== null ? (typeof data.location === 'object' ? data.location : data.location) : undefined,
-      services: data.services?.length ? data.services : undefined,
-      phone: data.phone,
-      email: data.email,
-      address: data.address && typeof data.address === 'object' ? data.address : undefined,
-      bio: data.bio,
-      gender: data.gender,
-      personalityTraits: data.personalityTraits?.length ? data.personalityTraits : undefined,
-      yearsExperience: data.yearsExperience,
-      pictureUrl: pictureUrl || undefined,
-      status: isEdit ? (existingMember?.status || 'active') : 'active',
-      isAdmin,
-      isOwner,
-      ...(isEdit && existingMember?.invitedAt && { invitedAt: existingMember.invitedAt }),
-      ...(isEdit && (existingMember?.userId || resolvedUserId) && { userId: existingMember?.userId || resolvedUserId }),
-    });
-
-    let finalMember = updatedMember;
-    if (data.sendInviteToLogin && (data.email || '').trim() && organization?.id && currentUser?.uid) {
-      try {
-        const invRes = await fetch('/api/create-invite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            organizationId: organization.id,
-            email: (data.email || '').trim(),
-            role: 'member',
-            invitedByUserId: currentUser.uid,
-            inviteeData: {
-              id: updatedMember.id,
-              name: updatedMember.name,
-              firstName: updatedMember.firstName,
-              lastName: updatedMember.lastName,
-              role: updatedMember.role,
-              title: updatedMember.title,
-              email: (data.email || '').trim(),
-              phone: updatedMember.phone,
-              company: updatedMember.company,
-              industry: updatedMember.industry,
-              address: updatedMember.address,
-              location: updatedMember.location,
-              bio: updatedMember.bio,
-              gender: updatedMember.gender,
-              personalityTraits: updatedMember.personalityTraits,
-              yearsExperience: updatedMember.yearsExperience,
-              pictureUrl: updatedMember.pictureUrl,
-            },
-          }),
-        });
-        const invData = await invRes.json();
-        if (invRes.ok && invData.inviteLink) {
-          const emailRes = await fetch('/api/send-invite-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: (data.email || '').trim(),
-              inviteLink: invData.inviteLink,
-              memberName: data.name,
-              inviterName: userAccount?.firstName || userAccount?.name,
-              inviterEmail: currentUser?.email,
-            }),
-          });
-          const emailData = await emailRes.json();
-          finalMember = { ...updatedMember, invitedAt: new Date().toISOString() };
-          if (emailData.sent) {
-            toast.success(`Invite email sent to ${(data.email || '').trim()}`);
-          } else if (emailData.inviteLink) {
-            try {
-              await navigator.clipboard.writeText(emailData.inviteLink);
-              toast.info('Invite link copied to clipboard. Paste it into an email or message and send it to the team member.');
-            } catch {
-              toast.info(`No email was sent. Copy this link and send it to ${(data.email || '').trim()}: ${emailData.inviteLink}`);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Failed to create/send invite:', err);
-        toast.warning('Member saved, but the invite could not be sent. You can invite them later from the edit drawer.');
-      }
-    }
-
-    const nextAllMembers = isEdit
-      ? allTeamMembers.map((m) => (m.id === editingId ? finalMember : m))
-      : [...allTeamMembers, finalMember];
-
-    await saveTeam(nextAllMembers);
-
-    const memberEmail = (finalMember.email || '').trim();
-    if (memberEmail && organization?.id && currentUser?.uid) {
-      fetch('/api/sync-team-member-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organizationId: organization.id,
-          callerUserId: currentUser.uid,
-          email: memberEmail,
-          teamMemberData: {
-            name: finalMember.name,
-            firstName: finalMember.firstName,
-            lastName: finalMember.lastName,
-            role: finalMember.role,
-            title: finalMember.title,
-            phone: finalMember.phone,
-            company: finalMember.company,
-            industry: finalMember.industry,
-            address: finalMember.address,
-            location: finalMember.location,
-            bio: finalMember.bio,
-            gender: finalMember.gender,
-            personalityTraits: finalMember.personalityTraits,
-            yearsExperience: finalMember.yearsExperience,
-            pictureUrl: finalMember.pictureUrl,
-          },
-        }),
-      }).catch((err) => console.error('Failed to sync team member profile:', err));
-    }
-
-    // Only update org role when the member already has an account (userId). New invites don't have a user yet.
-    if (data.isAdmin !== undefined && organization?.id && currentUser?.uid && finalMember.userId) {
-      const rolePayload = {
-        organizationId: organization.id,
-        callerUserId: currentUser.uid,
-        targetUserId: finalMember.userId,
-        role: finalMember.isAdmin ? 'admin' : 'member',
-      };
-      fetch('/api/update-org-member-role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rolePayload),
-      })
-        .then((res) => res.json().then((body) => ({ ok: res.ok, status: res.status, body })))
-        .then(({ ok, body }) => {
-          if (!ok) {
-            const msg = body?.error || body?.message || 'Failed to update org role';
-            toast.error(msg);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to sync org role:', err);
-          toast.error('Failed to update org role. Please try again.');
-        });
-    }
-
-    if (data.selectedServiceIds !== undefined && userAccount?.services) {
-      const currentServices = [...(userAccount.services || [])];
-      const selectedServiceIds = Array.isArray(data.selectedServiceIds) ? data.selectedServiceIds : [];
-
-      const previousServiceIds = isEdit && editingId
-        ? currentServices
-            .filter(service => 
-              service.assignedTeamMemberIds && 
-              Array.isArray(service.assignedTeamMemberIds) &&
-              service.assignedTeamMemberIds.includes(editingId)
-            )
-            .map(service => service.id)
-            .filter(Boolean)
-        : [];
-
-      const updatedServices = currentServices.map(service => {
-        const shouldBeAssigned = selectedServiceIds.includes(service.id);
-        let assignedIds = [...(service.assignedTeamMemberIds || [])];
-        if (shouldBeAssigned && !assignedIds.includes(memberId)) {
-          assignedIds.push(memberId);
-        } else if (!shouldBeAssigned && assignedIds.includes(memberId)) {
-          assignedIds = assignedIds.filter(id => id !== memberId);
-        }
-        
-        return {
-          ...service,
-          assignedTeamMemberIds: assignedIds,
-        };
-      });
-
-      if (currentUser?.uid) {
-        updateServices(currentUser.uid, updatedServices)
-          .then(() => {
-            setUserAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
-          })
-          .catch((err) => {
-            console.error('Failed to update services:', err);
-          });
-      }
-    }
-
-    setDrawerOpen(false);
-    setEditingMember(null);
-  };
-
-  const openDrawerForAdd = () => {
-    setEditingMember(null);
-    setDrawerOpen(true);
-  };
-
-  const openDrawerForEdit = (member) => {
-    setEditingMember(member);
-    setDrawerOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setDrawerOpen(false);
-    setEditingMember(null);
   };
 
   const openInviteDialog = (member) => {
@@ -913,24 +647,6 @@ function TeamContent() {
     return isOwnerRole(role) || team.some((m) => m.id === `owner-${currentUser?.uid}`);
   }, [organization?.membership?.role, userAccount?.teamMembers, currentUser?.uid]);
 
-  const drawerInviteRevoke = useMemo(() => {
-    if (!editingMember) return { showInvite: false, showRevoke: false, revokeUserId: null };
-    const memberEmail = (editingMember.email || '').toLowerCase().trim();
-    const hasAccessByEmail = !!memberEmailToUserId[memberEmail];
-    const hasAccessByUserId = !!(editingMember.userId && orgMemberUserIds.has(editingMember.userId));
-    const hasAccess = hasAccessByEmail || hasAccessByUserId;
-    const hasPendingInvite = memberEmail && (pendingInviteEmails.has(memberEmail) || !!editingMember.invitedAt);
-    const isCurrentUser = currentUser?.email && (currentUser.email.toLowerCase().trim() === memberEmail);
-    const { showInvite, showRevoke } = getInviteAvailability(editingMember, {
-      hasAccess,
-      hasPendingInvite,
-      isCurrentUser,
-      currentUserIsOrgAdmin,
-    });
-    const revokeUserId = memberEmailToUserId[memberEmail] || (hasAccessByUserId ? editingMember.userId : null);
-    return { showInvite, showRevoke, revokeUserId };
-  }, [editingMember, memberEmailToUserId, orgMemberUserIds, pendingInviteEmails, currentUser?.email, currentUserIsOrgAdmin]);
-
   const orgAndInvitesLoaded = orgMembersLoaded && pendingInvitesLoaded;
   useEffect(() => {
     if (!currentUser?.uid || saving || !orgAndInvitesLoaded) return;
@@ -1029,10 +745,12 @@ function TeamContent() {
                   )}
                 </SecondaryButton>
               )}
-              <PrimaryButton type="button" onClick={openDrawerForAdd} className="gap-2">
-                <HiPlus className="w-5 h-5" />
-                Add member
-              </PrimaryButton>
+              <Link href="/dashboard/team/new">
+                <PrimaryButton type="button" className="gap-2">
+                  <HiPlus className="w-5 h-5" />
+                  Add member
+                </PrimaryButton>
+              </Link>
               {saving && <span className="text-sm text-gray-500">Saving…</span>}
             </>
           }
@@ -1136,64 +854,64 @@ function TeamContent() {
               variant="danger"
             />
 
-            <Drawer
-              isOpen={drawerOpen}
-              onClose={closeDrawer}
-              title={editingMember ? `Edit ${editingMember.name}` : 'Add team member'}
-              width="75vw"
-            >
-              <AddTeamMemberForm
-                initialMember={editingMember}
-                onSubmit={handleSaveMember}
-                onCancel={closeDrawer}
-                saving={saving}
-                locations={userAccount?.locations || []}
-                organizationCountry={userAccount?.organizationCountry || ''}
-                services={userAccount?.services || []}
-                teamMembers={team}
-                onInviteToLogin={handleInviteToLogin}
-                canPromoteToAdmin={currentUserIsOwner}
-                showInviteInDrawer={drawerInviteRevoke.showInvite}
-                showRevokeInDrawer={drawerInviteRevoke.showRevoke}
-                onRevokeAccess={
-                  drawerInviteRevoke.showRevoke
-                    ? () => {
-                        closeDrawer();
-                        openRevokeDialog(editingMember, drawerInviteRevoke.revokeUserId);
-                      }
-                    : undefined
-                }
-                onServiceCreated={async (updatedServices) => {
-                  if (currentUser?.uid) {
-                    try {
-                      await updateServices(currentUser.uid, updatedServices);
-                      setUserAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
-                    } catch (error) {
-                      console.error('Error saving services:', error);
-                      throw error;
-                    }
-                  } else {
-                    throw new Error('User not authenticated');
-                  }
-                }}
-              />
-            </Drawer>
-
-            <ConfirmDialog
-              isOpen={deleteDialogOpen}
-              onClose={handleRemoveCancel}
-              onConfirm={handleDeactivateConfirm}
-              title="Deactivate member"
-              message={
-                memberToDelete
-                  ? `${memberToDelete.name} will be deactivated. They will be hidden from the team page. You can reactivate or permanently delete them later from Deactivated Members.`
-                  : ''
-              }
-              confirmText="Deactivate"
-              cancelText="Cancel"
-              variant="warning"
-              loading={saving}
-            />
+            <Dialog.Root open={deleteDialogOpen} onOpenChange={(open) => !open && handleRemoveCancel()}>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200]" />
+                <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[201] w-full max-w-lg p-6 focus:outline-none border border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between items-start mb-4">
+                    <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Deactivate member
+                    </Dialog.Title>
+                    <Dialog.Close asChild>
+                      <button type="button" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close" disabled={saving}>
+                        <HiX className="w-5 h-5" />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+                  <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                    {memberToDelete
+                      ? `${memberToDelete.name} will be deactivated. They will be hidden from the team page. You can reactivate or permanently delete them later from Deactivated Members.`
+                      : ''}
+                  </Dialog.Description>
+                  <div className="mb-6">
+                    <InputField
+                      id="deactivate-dialog-confirm"
+                      label="Type CONFIRM to enable Deactivate or Delete forever"
+                      type="text"
+                      value={deactivateDialogConfirmWord}
+                      onChange={(e) => setDeactivateDialogConfirmWord(e.target.value)}
+                      placeholder="CONFIRM"
+                      disabled={saving}
+                      variant="light"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center gap-4">
+                    <DangerButton
+                      type="button"
+                      onClick={handleDeleteFromDeactivateDialog}
+                      disabled={saving || !deactivateDialogConfirmed}
+                      className="flex-shrink-0"
+                    >
+                      {saving ? 'Processing...' : 'Delete forever'}
+                    </DangerButton>
+                    <div className="flex gap-3 ml-auto">
+                      <SecondaryButton type="button" onClick={handleRemoveCancel} disabled={saving}>
+                        Cancel
+                      </SecondaryButton>
+                      <PrimaryButton
+                        type="button"
+                        onClick={handleDeactivateConfirm}
+                        disabled={saving || !deactivateDialogConfirmed}
+                        className="bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600"
+                      >
+                        {saving ? 'Processing...' : 'Deactivate'}
+                      </PrimaryButton>
+                    </div>
+                  </div>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
 
             <Dialog.Root open={inviteDialogOpen} onOpenChange={(open) => !open && closeInviteDialog()}>
               <Dialog.Portal>
@@ -1256,10 +974,12 @@ function TeamContent() {
               <EmptyState
                 type="team"
                 action={
-                  <PrimaryButton type="button" onClick={openDrawerForAdd} className="gap-2">
-                    <HiPlus className="w-5 h-5" />
-                    Add your first team member
-                  </PrimaryButton>
+                  <Link href="/dashboard/team/new">
+                    <PrimaryButton type="button" className="gap-2">
+                      <HiPlus className="w-5 h-5" />
+                      Add your first team member
+                    </PrimaryButton>
+                  </Link>
                 }
               />
             ) : filteredTeam.length === 0 ? (
@@ -1303,7 +1023,7 @@ function TeamContent() {
                       name={member.name}
                       subtitle={subtitle}
                       src={member.pictureUrl}
-                      onClick={() => openDrawerForEdit(member)}
+                      onClick={() => router.push(`/dashboard/team/${member.id}/edit`)}
                       onRemove={() => handleRemoveClick(member.id)}
                       onInvite={showInvite ? () => openInviteDialog(member) : undefined}
                       onRevoke={showRevoke ? () => openRevokeDialog(member, revokeUserId || null) : undefined}

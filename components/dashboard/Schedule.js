@@ -3,6 +3,7 @@ import { HiChevronLeft, HiChevronRight, HiCalendar } from 'react-icons/hi';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 import { formatTime, formatDate } from '@/utils/dateTimeFormatters';
 import Tooltip from '@/components/ui/Tooltip';
+import AppointmentPopover from './AppointmentPopover';
 
 function getWeekStart(d) {
   const date = new Date(d);
@@ -79,9 +80,11 @@ export default function Schedule({
   dateFormat = 'MM/DD/YYYY',
   timezone = 'UTC',
   appointments = [],
+  teamMembers = [],
   clients = [],
   services = [],
   onAppointmentClick,
+  onAppointmentDelete,
 }) {
   const today = new Date();
   const todayKey = toDateKey(today);
@@ -192,27 +195,9 @@ export default function Schedule({
                     );
                     if (covered) return null;
                     if (appointment) {
-                      const client = appointment.clientId 
-                        ? clients.find(c => c.id === appointment.clientId)
-                        : null;
-                      const clientName = client ? client.name : '';
-                      
-                      const serviceNames = appointment.services || [];
-                      const firstService = serviceNames.length > 0 ? serviceNames[0] : '';
-                      
-                      let displayText = '';
-                      if (clientName && firstService) {
-                        displayText = `${clientName} - ${firstService}`;
-                      } else if (clientName) {
-                        displayText = clientName;
-                      } else if (firstService) {
-                        displayText = firstService;
-                      } else {
-                        displayText = 'Appointment';
-                      }
-                      
-                      const timeRange = `${formatTime(appointment.start, timeFormat)} - ${formatTime(appointment.end, timeFormat)}`;
-                      
+                      const timeRange = `${formatTime(appointment.start, timeFormat)} – ${formatTime(appointment.end, timeFormat)}`;
+                      const displayTitle = (appointment.title || '').trim() || 'Appointment';
+
                       return (
                         <td
                           key={toDateKey(d)}
@@ -220,14 +205,19 @@ export default function Schedule({
                           className={`relative align-top p-1 min-w-0 overflow-hidden ${appointment.color} dark:bg-primary-900/40 dark:border-primary-600 dark:text-primary-200 border-2 border-primary-600/50 dark:border-primary-500/50 cursor-pointer hover:opacity-80 transition-opacity`}
                           onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                         >
-                          <Tooltip content={`${displayText}\n${timeRange}`}>
-                            <span className="text-xs font-medium truncate block">
-                              {displayText}
-                            </span>
+                          <AppointmentPopover
+                            appointment={appointment}
+                            teamMembers={teamMembers}
+                            clients={clients}
+                            timeFormat={timeFormat}
+                            onOpenEdit={onAppointmentClick}
+                            onDelete={onAppointmentDelete}
+                          >
+                            <span className="text-xs font-medium truncate block">{displayTitle}</span>
                             <span className="text-xs text-gray-600 dark:text-primary-300 truncate block mt-0.5">
                               {timeRange}
                             </span>
-                          </Tooltip>
+                          </AppointmentPopover>
                         </td>
                       );
                     }

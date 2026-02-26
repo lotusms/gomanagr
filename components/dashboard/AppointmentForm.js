@@ -8,6 +8,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import Drawer from '@/components/ui/Drawer';
 import ClientForm from '@/components/clients/ClientForm';
 import AppointmentRecurrence, { defaultRecurrence } from '@/components/dashboard/AppointmentRecurrence';
+import ServiceSelector from '@/components/dashboard/ServiceSelector';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 
 /**
@@ -28,6 +29,8 @@ import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeU
  * @param {Function} props.onSubmit - Callback when form is submitted
  * @param {Function} props.onCancel - Callback when form is cancelled
  * @param {Function} props.onDelete - Callback when delete is requested (only shown when editing)
+ * @param {Function} [props.onServiceCreated] - Callback when a new service is created from the drawer (receives updated services array)
+ * @param {Function} [props.onNestedDrawerChange] - (open: boolean) => void — called when Add Service drawer opens/closes so parent drawer can avoid closing on overlay click
  * @param {boolean} props.saving - Whether form is saving
  * @param {string} [props.staffRestrictedToId] - When set (e.g. team member view), staff is fixed to this id and dropdown is hidden
  */
@@ -47,6 +50,8 @@ export default function AppointmentForm({
   onSubmit,
   onCancel,
   onDelete,
+  onServiceCreated,
+  onNestedDrawerChange,
   saving = false,
   staffRestrictedToId = null,
 }) {
@@ -59,7 +64,7 @@ export default function AppointmentForm({
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [selectedServices, setSelectedServices] = useState([]);
+  const [selectedServiceIds, setSelectedServiceIds] = useState([]);
   const [label, setLabel] = useState('');
   const [clientId, setClientId] = useState('');
   const [showClientDrawer, setShowClientDrawer] = useState(false);
@@ -205,16 +210,15 @@ export default function AppointmentForm({
     });
   }, [services, staffId]);
 
-  const serviceOptions = useMemo(() => {
-    return availableServices.map((service) => ({ value: service.name, label: service.name }));
-  }, [availableServices]);
 
   useEffect(() => {
     if (initialAppointment) {
       setTitle(initialAppointment.title || '');
       setDate(initialAppointment.date || '');
       setLabel(initialAppointment.label || '');
-      setSelectedServices(initialAppointment.services || []);
+      const names = initialAppointment.services || [];
+      const ids = (services || []).filter((s) => names.includes(s.name)).map((s) => s.id);
+      setSelectedServiceIds(ids);
       setClientId(initialAppointment.clientId || '');
       if (initialAppointment.recurrence && typeof initialAppointment.recurrence === 'object') {
         setRecurrence((prev) => ({ ...defaultRecurrence(), ...prev, ...initialAppointment.recurrence }));
@@ -234,7 +238,7 @@ export default function AppointmentForm({
       setStaffId('');
       setStartTime('');
       setEndTime('');
-      setSelectedServices([]);
+      setSelectedServiceIds([]);
       setLabel('');
       setClientId('');
       setRecurrence(defaultRecurrence());
@@ -244,13 +248,13 @@ export default function AppointmentForm({
   }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone]);
 
   useEffect(() => {
-    if (!initialAppointment && staffId) {
-      const validServices = selectedServices.filter((serviceName) => {
-        const service = services.find((s) => s.name === serviceName);
+    if (!initialAppointment && staffId && Array.isArray(services)) {
+      const validIds = selectedServiceIds.filter((id) => {
+        const service = services.find((s) => s.id === id);
         return service?.assignedTeamMemberIds?.includes(staffId);
       });
-      if (validServices.length !== selectedServices.length) {
-        setSelectedServices(validServices);
+      if (validIds.length !== selectedServiceIds.length) {
+        setSelectedServiceIds(validIds);
       }
     }
   }, [staffId, services, initialAppointment]);
@@ -330,6 +334,11 @@ export default function AppointmentForm({
     const effectiveStaffId = staffRestrictedToId || staffId;
     if (!effectiveStaffId) {
       newErrors.staffId = 'Please select a team member';
+    }
+
+    const trimmedTitle = (title || '').trim();
+    if (!trimmedTitle) {
+      newErrors.title = 'Appointment title is required';
     }
 
     if (!date) {
@@ -428,7 +437,9 @@ export default function AppointmentForm({
       date,
       start: startTime,
       end: endTime,
-      services: selectedServices,
+      services: (services || [])
+        .filter((s) => selectedServiceIds.includes(s.id))
+        .map((s) => s.name),
       label: label.trim() || undefined,
       clientId: clientId || undefined,
       createdAt: initialAppointment?.createdAt || new Date().toISOString(),
@@ -567,18 +578,25 @@ export default function AppointmentForm({
       {/* Row 3: Services + Client in 2 columns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Dropdown
-            id="services"
-            label="Services"
-            value={selectedServices[0] ?? ''}
-            onChange={(e) => {
-              const v = e.target.value ?? '';
-              setSelectedServices(v ? [v] : []);
+          <ServiceSelector
+            services={services}
+            displayServices={availableServices}
+            value={selectedServiceIds}
+            onChange={(ids) => {
+              setSelectedServiceIds(ids);
               setErrors((prev) => ({ ...prev, services: '' }));
             }}
-            options={[{ value: '', label: 'Select service...' }, ...serviceOptions]}
-            placeholder="Select service..."
+            onServiceCreated={onServiceCreated}
+            onNestedDrawerChange={onNestedDrawerChange}
+            teamMembers={teamMembers}
+            multiple={false}
+            preselectedTeamMemberIds={staffRestrictedToId || staffId ? [staffRestrictedToId || staffId] : []}
+            label="Service"
             disabled={saving}
+            dropdownPlaceholder="Select service..."
+            addButtonLabel="Add"
+            drawerTitle="Add Service"
+            drawerWidth="75vw"
           />
           {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
         </div>
@@ -610,6 +628,7 @@ export default function AppointmentForm({
                 type="button"
                 onClick={() => setShowClientDrawer(true)}
                 className="whitespace-nowrap flex-shrink-0"
+                data-testid="add-client-from-drawer"
               >
                 Add
               </PrimaryButton>

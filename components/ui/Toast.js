@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as ToastPrimitive from '@radix-ui/react-toast';
 import { HiX, HiCheckCircle, HiExclamationCircle, HiInformationCircle, HiXCircle } from 'react-icons/hi';
 
@@ -48,7 +48,8 @@ export const ToastProvider = ({ children }) => {
 
   const addToast = useCallback((message, type = 'info', duration = 5000) => {
     const id = ++toastIdCounter;
-    setToasts((prev) => [...prev, { id, message, type, duration }]);
+    const safeDuration = typeof duration === 'number' && duration > 0 ? duration : 5000;
+    setToasts((prev) => [...prev, { id, message, type, duration: safeDuration }]);
     return id;
   }, []);
 
@@ -83,11 +84,20 @@ export const ToastProvider = ({ children }) => {
 function RadixToast({ id, message, type, duration, onClose }) {
   const config = typeConfig[type] || typeConfig.info;
   const Icon = config.icon;
+  const dismissMs = typeof duration === 'number' && duration > 0 ? duration : 5000;
+
+  // Guarantee auto-dismiss so toasts always go away even if Radix timer misbehaves
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, dismissMs);
+    return () => clearTimeout(timer);
+  }, [dismissMs, onClose]);
 
   return (
     <ToastPrimitive.Root
       open
-      duration={duration}
+      duration={dismissMs}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}

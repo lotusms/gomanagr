@@ -7,11 +7,9 @@ import {
   ChipsArrayBuilder,
   Dropdown,
   AddressAutocomplete,
-  Drawer,
   Checkbox,
 } from '@/components/ui';
-import AddServiceForm from '@/components/services/AddServiceForm';
-import { HiPlus } from 'react-icons/hi';
+import ServiceSelector from '@/components/dashboard/ServiceSelector';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
 import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import { COUNTRIES } from '@/utils/countries';
@@ -53,6 +51,7 @@ const GENDER_OPTIONS = [
  * @param {boolean} [showInviteInDrawer] - Whether to show "Invite to Join" in the drawer (edit mode)
  * @param {boolean} [showRevokeInDrawer] - Whether to show "Revoke access" in the drawer (edit mode)
  * @param {Function} [onRevokeAccess] - Callback when user clicks "Revoke access" in the drawer
+ * @param {Function} [onNestedDrawerChange] - (open: boolean) => void — called when Add Service drawer opens/closes so parent drawer can avoid closing on overlay click
  */
 export default function AddTeamMemberForm({ 
   onSubmit, 
@@ -64,6 +63,7 @@ export default function AddTeamMemberForm({
   services = [], 
   teamMembers = [], 
   onServiceCreated,
+  onNestedDrawerChange,
   onInviteToLogin,
   canPromoteToAdmin = false,
   showInviteInDrawer = false,
@@ -87,13 +87,11 @@ export default function AddTeamMemberForm({
   const [gender, setGender] = useState('');
   const [personalityTraits, setPersonalityTraits] = useState([]);
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
-  const [serviceToAdd, setServiceToAdd] = useState('');
+  const [pendingServices, setPendingServices] = useState([]);
   const [yearsExperience, setYearsExperience] = useState('');
   const [pictureFile, setPictureFile] = useState(null);
   const [picturePreviewUrl, setPicturePreviewUrl] = useState('');
   const [fileInputKey, setFileInputKey] = useState(0);
-  const [showServiceDrawer, setShowServiceDrawer] = useState(false);
-  const [savingService, setSavingService] = useState(false);
   const [sendInviteToLogin, setSendInviteToLogin] = useState(false);
   const [isAdminCheckbox, setIsAdminCheckbox] = useState(false);
 
@@ -252,7 +250,7 @@ export default function AddTeamMemberForm({
     setGender('');
     setPersonalityTraits([]);
     setSelectedServiceIds([]);
-    setServiceToAdd('');
+    setPendingServices([]);
     setYearsExperience('');
     setPictureFile(null);
     setPicturePreviewUrl('');
@@ -260,7 +258,7 @@ export default function AddTeamMemberForm({
     setIsAdminCheckbox(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (emailDuplicateError) return;
     const trimmedFirst = firstName.trim();
@@ -316,6 +314,7 @@ export default function AddTeamMemberForm({
         personalityTraits: personalityTraits.length ? personalityTraits : undefined,
         yearsExperience: yearsExperience.trim() ? Number(yearsExperience) : undefined,
         selectedServiceIds: selectedServiceIds,
+        pendingServices: pendingServices.length > 0 ? pendingServices : undefined,
         sendInviteToLogin: sendInviteToLogin && email.trim() ? true : undefined,
         ...(canPromoteToAdmin && { isAdmin: isAdminCheckbox }),
       },
@@ -355,16 +354,6 @@ export default function AddTeamMemberForm({
     }
   }, [initialMember?.id, services]);
 
-  const serviceOptions = useMemo(() => {
-    if (!services || services.length === 0) return [];
-    return services.map(service => ({
-      value: service.id,
-      label: service.name || 'Unnamed Service',
-      disabled: selectedServiceIds.includes(service.id),
-      isAssigned: selectedServiceIds.includes(service.id)
-    }));
-  }, [services, selectedServiceIds]);
-
   const assignedServiceNames = useMemo(() => {
     if (!services || services.length === 0 || selectedServiceIds.length === 0) return [];
     return selectedServiceIds
@@ -374,49 +363,6 @@ export default function AddTeamMemberForm({
       })
       .filter(Boolean);
   }, [services, selectedServiceIds]);
-
-  const handleAddService = (serviceId) => {
-    if (serviceId && !selectedServiceIds.includes(serviceId)) {
-      setSelectedServiceIds([...selectedServiceIds, serviceId]);
-      setServiceToAdd('');
-    }
-  };
-
-  const handleRemoveService = (serviceId) => {
-    setSelectedServiceIds(selectedServiceIds.filter(id => id !== serviceId));
-  };
-
-  const handleCreateService = async (serviceData) => {
-    if (!onServiceCreated) {
-      console.error('onServiceCreated callback not provided');
-      alert('Error: Service creation callback not available');
-      return;
-    }
-    
-    setSavingService(true);
-    try {
-      const currentMemberId = initialMember?.id;
-      let assignedIds = [...(serviceData.assignedTeamMemberIds || [])];
-      if (currentMemberId && !assignedIds.includes(currentMemberId)) {
-        assignedIds.push(currentMemberId);
-      }
-      const serviceWithAssignment = {
-        ...serviceData,
-        assignedTeamMemberIds: assignedIds,
-      };
-      const updatedServices = [...(services || []), serviceWithAssignment];
-      await onServiceCreated(updatedServices);
-
-      if (!selectedServiceIds.includes(serviceData.id)) {
-        setSelectedServiceIds([...selectedServiceIds, serviceData.id]);
-      }
-      setShowServiceDrawer(false);
-    } catch (error) {
-      console.error('Failed to create service:', error);
-      alert(`Failed to create service: ${error.message || 'Unknown error'}`);
-      setSavingService(false);
-    }
-  };
 
   return (
     <>
@@ -659,67 +605,26 @@ export default function AddTeamMemberForm({
             placeholder="Select..."
             disabled={saving}
           />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-              Services offered
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Dropdown
-                  id="service-select"
-                  label=""
-                  value={serviceToAdd}
-                  onChange={(e) => {
-                    const selectedId = e.target.value;
-                    if (selectedId) {
-                      handleAddService(selectedId);
-                    }
-                  }}
-                  options={[{ value: '', label: 'Select a service to assign...' }, ...serviceOptions]}
-                  placeholder="Select a service to assign..."
-                  disabled={saving}
-                />
-              </div>
-              <PrimaryButton
-                type="button"
-                onClick={() => setShowServiceDrawer(true)}
-                disabled={saving}
-                className="flex-shrink-0 gap-1.5 h-9 px-4"
-                data-testid="add-service-from-drawer"
-              >
-                <HiPlus className="w-4 h-4" />
-                Add
-              </PrimaryButton>
-            </div>
-            {selectedServiceIds.length > 0 && (
-              <div className="mt-3">
-                <div className="flex flex-wrap gap-2">
-                  {selectedServiceIds.map((serviceId) => {
-                    const serviceName = (services || []).find(s => s.id === serviceId)?.name || serviceId;
-                    return (
-                      <span
-                        key={serviceId}
-                        className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-primary-50 dark:bg-gray-700 text-primary-800 dark:text-gray-200 border border-primary-200 dark:border-gray-600 text-sm font-medium"
-                      >
-                        {serviceName}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveService(serviceId)}
-                          disabled={saving}
-                          className="p-0.5 rounded-full hover:bg-primary-200 dark:hover:bg-gray-600 text-primary-700 dark:text-gray-300 focus:outline-none"
-                          aria-label={`Remove ${serviceName}`}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <ServiceSelector
+            services={[...(services || []), ...pendingServices]}
+            value={selectedServiceIds}
+            onChange={setSelectedServiceIds}
+            onAddServiceLocally={(serviceData) => {
+              setPendingServices((prev) => [...prev, serviceData]);
+              setSelectedServiceIds((prev) => (prev.includes(serviceData.id) ? prev : [...prev, serviceData.id]));
+            }}
+            onNestedDrawerChange={onNestedDrawerChange}
+            teamMembers={teamMembers}
+            multiple
+            preselectedTeamMemberIds={initialMember?.id ? [initialMember.id] : []}
+            label="Services offered"
+            chipsSectionLabel="Assigned to this member"
+            disabled={saving}
+            dropdownPlaceholder="Select a service to assign..."
+            addButtonLabel="Add"
+            drawerTitle="Add Service"
+            drawerWidth="75vw"
+          />
           <ChipsArrayBuilder
             id="personality"
             label="Personality traits"
@@ -752,36 +657,6 @@ export default function AddTeamMemberForm({
         </PrimaryButton>
       </div>
       </form>
-      
-      {/* Add Service Drawer - Render outside the form to avoid form submission issues */}
-    {showServiceDrawer && (
-      <Drawer
-        isOpen={showServiceDrawer}
-        onClose={(e) => {
-          e?.stopPropagation?.();
-          setShowServiceDrawer(false);
-        }}
-        title="Add Service"
-        width="75vw"
-      >
-        <AddServiceForm
-          teamMembers={teamMembers}
-          existingServices={services || []}
-          onSubmit={async (serviceData) => {
-            try {
-              await handleCreateService(serviceData);
-            } catch (error) {
-              console.error('Error in onSubmit handler:', error);
-            }
-          }}
-          onCancel={() => {
-            setShowServiceDrawer(false);
-          }}
-          saving={savingService}
-          preselectedTeamMemberIds={initialMember?.id ? [initialMember.id] : []}
-        />
-      </Drawer>
-    )}
     </>
   );
 }

@@ -106,3 +106,58 @@ export function expandAppointmentWithRecurrence(baseAppointment, recurrence) {
     updatedAt: new Date().toISOString(),
   }));
 }
+
+/** Recurrence id suffix: -index-YYYY-MM-DD (e.g. -0-2026-05-12) */
+const RECURRENCE_ID_SUFFIX = /-\d+-\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Get the base id for a recurring series, or null if this id is not a recurrence occurrence id.
+ * @param {string} appointmentId - e.g. "apt-123-0-2026-05-12"
+ * @returns {string|null} Base id (e.g. "apt-123") or null
+ */
+export function getRecurrenceBaseId(appointmentId) {
+  if (!appointmentId || typeof appointmentId !== 'string') return null;
+  const base = appointmentId.replace(RECURRENCE_ID_SUFFIX, '');
+  return base !== appointmentId ? base : null;
+}
+
+/**
+ * Whether this appointment id belongs to a recurring series (expanded occurrence).
+ * @param {string} appointmentId
+ * @returns {boolean}
+ */
+export function isRecurrenceOccurrenceId(appointmentId) {
+  return getRecurrenceBaseId(appointmentId) !== null;
+}
+
+/**
+ * Get all appointments in the same recurring series with date on or after fromDate (never past).
+ * @param {Object[]} appointments - Full list of appointments
+ * @param {string} baseId - From getRecurrenceBaseId(clicked.id)
+ * @param {string} fromDate - YYYY-MM-DD (inclusive)
+ * @returns {Object[]} Appointments to delete (same series, date >= fromDate)
+ */
+export function getRecurrenceSeriesFromDate(appointments, baseId, fromDate) {
+  if (!baseId || !fromDate || !Array.isArray(appointments)) return [];
+  return appointments.filter((apt) => {
+    const aptBase = getRecurrenceBaseId(apt.id);
+    const sameSeries = aptBase === baseId || apt.id === baseId;
+    const aptDate = typeof apt.date === 'string' ? apt.date : (apt.date && apt.date.split?.('T')[0]);
+    return sameSeries && aptDate && aptDate >= fromDate;
+  });
+}
+
+/**
+ * Check if this appointment is part of a recurring series (has same-base siblings in the list).
+ * @param {Object} appointment - The clicked appointment
+ * @param {Object[]} allAppointments - Full list
+ * @returns {boolean}
+ */
+export function isPartOfRecurringSeries(appointment, allAppointments) {
+  const baseId = getRecurrenceBaseId(appointment?.id);
+  if (!baseId) return false;
+  const inSeries = allAppointments.filter(
+    (a) => getRecurrenceBaseId(a.id) === baseId || a.id === baseId
+  );
+  return inSeries.length > 1;
+}

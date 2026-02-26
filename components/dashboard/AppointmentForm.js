@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import InputField from '@/components/ui/InputField';
+import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import TimeField from '@/components/ui/TimeField';
 import Dropdown from '@/components/ui/Dropdown';
-import { ChipsMulti } from '@/components/ui/Chips';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import Drawer from '@/components/ui/Drawer';
 import ClientForm from '@/components/clients/ClientForm';
+import AppointmentRecurrence, { defaultRecurrence } from '@/components/dashboard/AppointmentRecurrence';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 
 /**
@@ -53,6 +54,7 @@ export default function AppointmentForm({
   const endHour = parseHour(businessHoursEnd);
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
 
+  const [title, setTitle] = useState('');
   const [staffId, setStaffId] = useState(staffRestrictedToId || '');
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
@@ -61,6 +63,7 @@ export default function AppointmentForm({
   const [label, setLabel] = useState('');
   const [clientId, setClientId] = useState('');
   const [showClientDrawer, setShowClientDrawer] = useState(false);
+  const [recurrence, setRecurrence] = useState(() => defaultRecurrence());
   const [errors, setErrors] = useState({});
 
   const getCurrentDateTimeInTimezone = useMemo(() => {
@@ -194,23 +197,28 @@ export default function AppointmentForm({
   }, [clients]);
 
   const availableServices = useMemo(() => {
-    if (!staffId) return [];
+    if (!Array.isArray(services)) return [];
+    if (!staffId) return services;
     return services.filter((service) => {
       const assignedIds = service.assignedTeamMemberIds || [];
       return assignedIds.includes(staffId);
     });
   }, [services, staffId]);
 
-  const serviceNames = useMemo(() => {
-    return availableServices.map((service) => service.name);
+  const serviceOptions = useMemo(() => {
+    return availableServices.map((service) => ({ value: service.name, label: service.name }));
   }, [availableServices]);
 
   useEffect(() => {
     if (initialAppointment) {
+      setTitle(initialAppointment.title || '');
       setDate(initialAppointment.date || '');
       setLabel(initialAppointment.label || '');
       setSelectedServices(initialAppointment.services || []);
       setClientId(initialAppointment.clientId || '');
+      if (initialAppointment.recurrence && typeof initialAppointment.recurrence === 'object') {
+        setRecurrence((prev) => ({ ...defaultRecurrence(), ...prev, ...initialAppointment.recurrence }));
+      }
     } else {
       let defaultDate = selectedDate
         ? selectedDate.toISOString().split('T')[0]
@@ -222,12 +230,14 @@ export default function AppointmentForm({
       }
       
       setDate(defaultDate);
+      setTitle('');
       setStaffId('');
       setStartTime('');
       setEndTime('');
       setSelectedServices([]);
       setLabel('');
       setClientId('');
+      setRecurrence(defaultRecurrence());
     }
     setShowClientDrawer(false);
     setErrors({});
@@ -375,6 +385,17 @@ export default function AppointmentForm({
       }
     }
 
+    if (recurrence?.isRecurring) {
+      if (!recurrence.recurrenceStart?.trim()) {
+        newErrors.recurrence = 'Recurrence start date is required';
+      } else if (!recurrence.noEndDate && (recurrence.recurrenceEnd == null || recurrence.recurrenceEnd === '')) {
+        newErrors.recurrence = 'Recurrence end date is required when "No end date" is unchecked';
+      } else if (!recurrence.noEndDate && recurrence.recurrenceStart && recurrence.recurrenceEnd && recurrence.recurrenceEnd < recurrence.recurrenceStart) {
+        newErrors.recurrence = 'Recurrence end must be on or after start date';
+      } else if (recurrence.frequency === 'specific_days' && (!Array.isArray(recurrence.specificDays) || recurrence.specificDays.length === 0)) {
+        newErrors.recurrence = 'Please select at least one day of the week';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -403,6 +424,7 @@ export default function AppointmentForm({
     const appointmentData = {
       id: initialAppointment?.id || `apt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       staffId: staffRestrictedToId || staffId,
+      title: title.trim() || undefined,
       date,
       start: startTime,
       end: endTime,
@@ -411,6 +433,7 @@ export default function AppointmentForm({
       clientId: clientId || undefined,
       createdAt: initialAppointment?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      recurrence: recurrence?.isRecurring ? { ...recurrence } : undefined,
     };
 
     onSubmit(appointmentData);
@@ -421,8 +444,24 @@ export default function AppointmentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6">
-      {/* Row 1: Team Member (admin only) or Date + Start + End in 3 columns */}
-      <div className={isTeamMemberView ? 'grid grid-cols-1 sm:grid-cols-3 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4'}>
+
+      {/* Row 1: Title + Team Member (super admins and admins only) + Date in 3 columns */}
+      <div className={isTeamMemberView ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4'}>
+        <div>
+          <InputField
+            id="appointment-title"
+            type="text"
+            label="Appointment title"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setErrors((prev) => ({ ...prev, title: '' }));
+            }}
+            placeholder="e.g., Client consultation, Team meeting..."
+            error={errors.title}
+            variant="light"
+          />
+        </div>
         {!staffRestrictedToId ? (
           <div>
             <Dropdown
@@ -459,7 +498,11 @@ export default function AppointmentForm({
             timezone={timezone}
             dateFormat={dateFormat}
           />
-        </div>
+        </div>    
+      </div>
+      
+      {/* Row 2: Start + End Time in 2 columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <TimeField
             key={`startTime-${startTime || 'empty'}-${initialAppointment?.id ?? 'new'}`}
@@ -480,7 +523,6 @@ export default function AppointmentForm({
             timeFormat={timeFormat}
           />
         </div>
-
         <div>
           <TimeField
             key={`endTime-${endTime || 'empty'}-${initialAppointment?.id ?? 'new'}`}
@@ -508,31 +550,44 @@ export default function AppointmentForm({
         </div>
       </div>
 
-      {/* Row 2: Services, Client, Notes — 3 columns for team members to avoid empty space */}
-      {isTeamMemberView ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {staffId && serviceNames.length > 0 && (
-            <div>
-              <ChipsMulti
-                id="services"
-                label="Services"
-                options={serviceNames}
-                value={selectedServices}
-                onValueChange={(newServices) => {
-                  setSelectedServices(newServices);
-                  setErrors((prev) => ({ ...prev, services: '' }));
-                }}
-                variant="light"
-                layout="flex"
-              />
-              {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Client
-            </label>
-            <div className="flex gap-2">
+      {/* Recurrence */}
+      <AppointmentRecurrence
+        value={recurrence}
+        onChange={(v) => {
+          setRecurrence(v);
+          setErrors((prev) => ({ ...prev, recurrence: '' }));
+        }}
+        minDate={date || todayDateString}
+        timezone={timezone}
+        dateFormat={dateFormat}
+        disabled={saving}
+      />
+      {errors.recurrence && <p className="text-sm text-red-600 dark:text-red-400">{errors.recurrence}</p>}
+
+      {/* Row 3: Services + Client in 2 columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <Dropdown
+            id="services"
+            label="Services"
+            value={selectedServices[0] ?? ''}
+            onChange={(e) => {
+              const v = e.target.value ?? '';
+              setSelectedServices(v ? [v] : []);
+              setErrors((prev) => ({ ...prev, services: '' }));
+            }}
+            options={[{ value: '', label: 'Select service...' }, ...serviceOptions]}
+            placeholder="Select service..."
+            disabled={saving}
+          />
+          {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Client
+          </label>
+          <div className="flex gap-2">
+            <div className="flex-1 min-w-0">
               <Dropdown
                 key={`clientId-${clientId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
                 id="clientId"
@@ -549,108 +604,36 @@ export default function AppointmentForm({
                 placeholder="Select client..."
                 error={errors.client}
               />
-              {onClientAdd && (
-                <PrimaryButton
-                  type="button"
-                  onClick={() => setShowClientDrawer(true)}
-                  className="whitespace-nowrap flex-shrink-0"
-                >
-                  Add
-                </PrimaryButton>
-              )}
             </div>
-            {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
+            {onClientAdd && (
+              <PrimaryButton
+                type="button"
+                onClick={() => setShowClientDrawer(true)}
+                className="whitespace-nowrap flex-shrink-0"
+              >
+                Add
+              </PrimaryButton>
+            )}
           </div>
-          <div>
-            <InputField
-              id="label"
-              type="text"
-              label="Notes"
-              value={label}
-              onChange={(e) => {
-                setLabel(e.target.value);
-                setErrors((prev) => ({ ...prev, label: '' }));
-              }}
-              placeholder="e.g., Client consultation, Team meeting..."
-              error={errors.label}
-              variant="light"
-            />
-          </div>
+          {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
         </div>
-      ) : (
-        <>
-          {staffId && serviceNames.length > 0 && (
-            <div>
-              <ChipsMulti
-                id="services"
-                label="Services"
-                options={serviceNames}
-                value={selectedServices}
-                onValueChange={(newServices) => {
-                  setSelectedServices(newServices);
-                  setErrors((prev) => ({ ...prev, services: '' }));
-                }}
-                variant="light"
-                layout="flex"
-              />
-              {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
-            </div>
-          )}
-
-          {/* Client Section */}
-          <div className="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Client
-              </label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Dropdown
-                    key={`clientId-${clientId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
-                    id="clientId"
-                    label=""
-                    value={clientId}
-                    onChange={(e) => {
-                      setClientId(e.target.value ?? '');
-                      setErrors((prev) => ({ ...prev, client: '' }));
-                    }}
-                    options={[
-                      { value: '', label: 'None' },
-                      ...clientOptions,
-                    ]}
-                    placeholder="Select client..."
-                    error={errors.client}
-                  />
-                </div>
-                <PrimaryButton
-                  type="button"
-                  onClick={() => setShowClientDrawer(true)}
-                  className="whitespace-nowrap"
-                >
-                  Add
-                </PrimaryButton>
-              </div>
-              {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
-            </div>
-          </div>
-
-          <div>
-            <InputField
-              id="label"
-              type="text"
-              label="Notes"
-              value={label}
-              onChange={(e) => {
-                setLabel(e.target.value);
-                setErrors((prev) => ({ ...prev, label: '' }));
-              }}
-              placeholder="e.g., Client consultation, Team meeting..."
-              error={errors.label}
-              variant="light"
-            />
-          </div>
-        </>
-      )}
+      </div>
+      
+      {/* Row 4: Notes in 1 column */}
+      <div className="w-full">
+        <TextareaField
+          id="label"
+          label="Notes"
+          value={label}
+          onChange={(e) => {
+            setLabel(e.target.value);
+            setErrors((prev) => ({ ...prev, label: '' }));
+          }}
+          placeholder="e.g., Client consultation, Team meeting..."
+          error={errors.label}
+          rows={3}
+        />
+      </div>
 
       {/* Client Drawer */}
       <Drawer

@@ -33,15 +33,15 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Service unavailable' });
   }
 
-  const { userId, action, appointment, appointmentId } = req.body || {};
+  const { userId, action, appointment, appointments: appointmentsBatch, appointmentId } = req.body || {};
   if (!userId || !action) {
     return res.status(400).json({ error: 'Missing userId or action' });
   }
   if (action !== 'save' && action !== 'delete') {
     return res.status(400).json({ error: 'Action must be save or delete' });
   }
-  if (action === 'save' && !appointment) {
-    return res.status(400).json({ error: 'Missing appointment for save' });
+  if (action === 'save' && !appointment && !Array.isArray(appointmentsBatch)) {
+    return res.status(400).json({ error: 'Missing appointment or appointments array for save' });
   }
   if (action === 'delete' && !appointmentId) {
     return res.status(400).json({ error: 'Missing appointmentId for delete' });
@@ -115,12 +115,18 @@ export default async function handler(req, res) {
     }
 
     if (action === 'save') {
-      let apt = { ...appointment };
-      if (!isAdmin) {
-        apt.staffId = memberId;
-      }
-      appointments = appointments.filter((a) => a.id !== apt.id);
-      appointments.push(apt);
+      const toSave = Array.isArray(appointmentsBatch) && appointmentsBatch.length > 0
+        ? appointmentsBatch
+        : [{ ...appointment }];
+      const idsToReplace = new Set(toSave.map((a) => a.id));
+      appointments = appointments.filter((a) => !idsToReplace.has(a.id));
+      toSave.forEach((apt) => {
+        const one = { ...apt };
+        if (!isAdmin) {
+          one.staffId = memberId;
+        }
+        appointments.push(one);
+      });
     } else {
       const existing = appointments.find((a) => a.id === appointmentId);
       if (!existing) {

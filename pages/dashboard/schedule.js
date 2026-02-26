@@ -13,6 +13,7 @@ import Drawer from '@/components/ui/Drawer';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import { generateClientId } from '@/utils/clientIdGenerator';
 import { isMemberRole, isAdminRole } from '@/config/rolePermissions';
+import { expandAppointmentWithRecurrence } from '@/utils/appointmentRecurrence';
 
 const REALTIME_SCHEDULE_EVENT = 'schedule-updated';
 
@@ -164,14 +165,25 @@ function ScheduleContent() {
 
   const handleSaveAppointment = async (appointmentData) => {
     if (!currentUser?.uid) return;
-    
+
     setSaving(true);
     try {
+      const recurrence = appointmentData.recurrence;
+      const isRecurring = recurrence?.isRecurring && recurrence?.recurrenceStart;
+      let appointmentsToSave = isRecurring
+        ? expandAppointmentWithRecurrence(appointmentData, recurrence)
+        : [appointmentData];
+      // Strip recurrence from each occurrence so we don't store it on every instance
+      appointmentsToSave = appointmentsToSave.map(({ recurrence: _r, ...apt }) => apt);
+
       if (isTeamMember || isOrgAdmin) {
+        const payload = appointmentsToSave.length === 1
+          ? { userId: currentUser.uid, action: 'save', appointment: appointmentsToSave[0] }
+          : { userId: currentUser.uid, action: 'save', appointments: appointmentsToSave };
         const res = await fetch('/api/org-schedule-mutation', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUser.uid, action: 'save', appointment: appointmentData }),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -184,7 +196,9 @@ function ScheduleContent() {
         }).then((r) => r.json());
         setOrgSchedule(data?.schedule ?? null);
       } else {
-        await saveAppointment(currentUser.uid, appointmentData);
+        for (const apt of appointmentsToSave) {
+          await saveAppointment(currentUser.uid, apt);
+        }
         const updatedAccount = await getUserAccountFromServer(currentUser.uid);
         setUserAccount(updatedAccount);
       }

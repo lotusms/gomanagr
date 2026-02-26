@@ -587,6 +587,49 @@ export async function updateServices(userId, services) {
   if (error) throw new Error('Failed to save services: ' + error.message);
 }
 
+/**
+ * Load org owner's services and team (for admin/member). Any org member can call.
+ * @param {string} organizationId - Organization ID
+ * @param {string} callerUserId - Current user ID
+ * @returns {Promise<{ ownerUserId: string|null, services: Array, teamMembers: Array }>}
+ */
+export async function getOrgServices(organizationId, callerUserId) {
+  const res = await fetch('/api/get-org-services', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ organizationId, callerUserId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Failed to load org services');
+  }
+  return res.json();
+}
+
+/**
+ * Update org owner's services (and optionally team_members). Only admins can call.
+ * @param {string} organizationId - Organization ID
+ * @param {string} callerUserId - Current user ID
+ * @param {Array} services - New services array
+ * @param {Array} [teamMembers] - Optional updated team_members (e.g. when removing service assignments)
+ */
+export async function updateOrgServices(organizationId, callerUserId, services, teamMembers) {
+  const res = await fetch('/api/update-org-services', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      organizationId,
+      callerUserId,
+      services,
+      ...(Array.isArray(teamMembers) ? { teamMembers } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Failed to update org services');
+  }
+}
+
 export async function saveAppointment(userId, appointment) {
   const { data: existing } = await supabase.from('user_profiles').select('appointments').eq('id', userId).single();
   const appointments = existing?.appointments ?? [];

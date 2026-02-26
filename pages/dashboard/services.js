@@ -1,7 +1,9 @@
 import Head from 'next/head';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, updateServices, updateTeamMembers } from '@/services/userService';
+import { getUserAccount, updateServices, updateTeamMembers, getOrgServices, updateOrgServices } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
+import { isOwnerRole } from '@/config/rolePermissions';
 import { PageHeader, Drawer, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
 import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus, HiX, HiPencil, HiTrash, HiClipboardList, HiUserGroup } from 'react-icons/hi';
@@ -10,6 +12,8 @@ import { PrimaryButton } from '@/components/ui/buttons';
 function ServicesContent() {
   const { currentUser } = useAuth();
   const [userAccount, setUserAccount] = useState(null);
+  const [organization, setOrganization] = useState(null);
+  const [ownerUserId, setOwnerUserId] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [services, setServices] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -43,25 +47,70 @@ function ServicesContent() {
   useEffect(() => {
     if (!currentUser?.uid) return;
     setLoaded(false);
-    getUserAccount(currentUser.uid)
-      .then((data) => {
-        setUserAccount(data || null);
-        setServices(data?.services || []);
+    Promise.all([
+      getUserOrganization(currentUser.uid),
+      getUserAccount(currentUser.uid),
+    ])
+      .then(([org, account]) => {
+        setOrganization(org || null);
+        const role = org?.membership?.role;
+        if (isOwnerRole(role)) {
+          setOwnerUserId(null);
+          setUserAccount(account || null);
+          setServices(account?.services || []);
+          setLoaded(true);
+        } else if (org?.id) {
+          getOrgServices(org.id, currentUser.uid)
+            .then((data) => {
+              setOwnerUserId(data.ownerUserId || null);
+              setUserAccount({
+                teamMembers: data.teamMembers || [],
+                services: data.services || [],
+              });
+              setServices(data.services || []);
+            })
+            .catch(() => {
+              setOwnerUserId(null);
+              setUserAccount(account || null);
+              setServices(account?.services || []);
+            })
+            .finally(() => setLoaded(true));
+        } else {
+          setOwnerUserId(null);
+          setUserAccount(account || null);
+          setServices(account?.services || []);
+          setLoaded(true);
+        }
       })
-      .catch(() => setServices([]))
-      .finally(() => setLoaded(true));
+      .catch(() => {
+        setServices([]);
+        setLoaded(true);
+      });
   }, [currentUser?.uid]);
 
   const saveServices = (nextServices) => {
     if (!currentUser?.uid) return;
     setSaving(true);
-    updateServices(currentUser.uid, nextServices)
-      .then(() => {
-        setUserAccount((prev) => (prev ? { ...prev, services: nextServices } : null));
-        setServices(nextServices);
-      })
-      .catch((err) => console.error('Failed to save services:', err))
-      .finally(() => setSaving(false));
+    const done = () => {
+      setUserAccount((prev) => (prev ? { ...prev, services: nextServices } : null));
+      setServices(nextServices);
+      setSaving(false);
+    };
+    if (ownerUserId && organization?.id) {
+      updateOrgServices(organization.id, currentUser.uid, nextServices)
+        .then(done)
+        .catch((err) => {
+          console.error('Failed to save services:', err);
+          setSaving(false);
+        });
+    } else {
+      updateServices(currentUser.uid, nextServices)
+        .then(done)
+        .catch((err) => {
+          console.error('Failed to save services:', err);
+          setSaving(false);
+        });
+    }
   };
 
   const handleRemoveClick = (service) => {
@@ -74,9 +123,9 @@ function ServicesContent() {
 
     try {
       setSaving(true);
-      
+
       const updatedServices = services.filter((s) => s.id !== serviceToDelete.id);
-      
+
       const currentTeamMembers = userAccount?.teamMembers || [];
       const updatedTeamMembers = currentTeamMembers.map((member) => {
         if (member.services && Array.isArray(member.services)) {
@@ -95,23 +144,31 @@ function ServicesContent() {
 
       const teamMembersChanged = JSON.stringify(currentTeamMembers) !== JSON.stringify(updatedTeamMembers);
 
-      await updateServices(currentUser.uid, updatedServices);
-      
-      if (teamMembersChanged && updatedTeamMembers.length > 0) {
-        await updateTeamMembers(currentUser.uid, updatedTeamMembers);
+      if (ownerUserId && organization?.id) {
+        await updateOrgServices(
+          organization.id,
+          currentUser.uid,
+          updatedServices,
+          teamMembersChanged ? updatedTeamMembers : undefined
+        );
+      } else {
+        await updateServices(currentUser.uid, updatedServices);
+        if (teamMembersChanged && updatedTeamMembers.length > 0) {
+          await updateTeamMembers(currentUser.uid, updatedTeamMembers);
+        }
       }
 
-      setUserAccount((prev) => 
-        prev 
-          ? { 
-              ...prev, 
+      setUserAccount((prev) =>
+        prev
+          ? {
+              ...prev,
               services: updatedServices,
-              teamMembers: teamMembersChanged ? updatedTeamMembers : prev.teamMembers
-            } 
+              teamMembers: teamMembersChanged ? updatedTeamMembers : prev.teamMembers,
+            }
           : null
       );
       setServices(updatedServices);
-      
+
       setDeleteDialogOpen(false);
       setServiceToDelete(null);
     } catch (err) {
@@ -120,7 +177,7 @@ function ServicesContent() {
         message: err.message,
         stack: err.stack,
         serviceToDelete: serviceToDelete?.id,
-        userId: currentUser?.uid
+        userId: currentUser?.uid,
       });
       alert(`Failed to delete service: ${err.message || 'Unknown error'}. Please try again.`);
     } finally {

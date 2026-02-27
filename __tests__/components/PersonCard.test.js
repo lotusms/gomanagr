@@ -73,6 +73,38 @@ describe('PersonCard', () => {
     );
     expect(screen.getByText('JD')).toBeInTheDocument();
   });
+
+  describe('client card (isClient)', () => {
+    it('shows Added by when isClient and addedByName are provided', () => {
+      render(
+        <PersonCard
+          name="Acme Corp"
+          subtitle="Acme Inc"
+          isClient={true}
+          hasCompany={true}
+          addedByName="Jane Doe"
+        />
+      );
+      expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+      expect(screen.getByText(/Added by: Jane Doe/)).toBeInTheDocument();
+    });
+
+    it('does not show Added by when isClient but addedByName is missing', () => {
+      render(
+        <PersonCard name="Acme Corp" isClient={true} />
+      );
+      expect(screen.getByText('Acme Corp')).toBeInTheDocument();
+      expect(screen.queryByText(/Added by:/)).not.toBeInTheDocument();
+    });
+
+    it('does not show Added by when not a client card', () => {
+      render(
+        <PersonCard name="Jane Doe" subtitle="Admin" addedByName="Someone" />
+      );
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+      expect(screen.queryByText(/Added by:/)).not.toBeInTheDocument();
+    });
+  });
 });
 
 describe('sortTeamMembersPinned (team member pin order)', () => {

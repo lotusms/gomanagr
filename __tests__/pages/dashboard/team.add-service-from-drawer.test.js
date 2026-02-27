@@ -121,9 +121,9 @@ describe('Add team member page – Add service from form', () => {
   it('clicking Add Service must NOT save the team member and must NOT navigate away', async () => {
     render(<NewTeamMemberPage />);
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /add team member/i })).toBeInTheDocument();
-    });
+    // Wait for page to finish loading (org + get-org-team) and show the form
+    const heading = await screen.findByRole('heading', { name: /add team member/i }, { timeout: 5000 });
+    expect(heading).toBeInTheDocument();
 
     mockRouterPush.mockClear();
     mockUpdateTeamMembers.mockClear();
@@ -136,7 +136,9 @@ describe('Add team member page – Add service from form', () => {
     // Add Service drawer must not cause parent form submit: no member save, no navigation.
     expect(mockRouterPush).not.toHaveBeenCalled();
     expect(mockUpdateTeamMembers).not.toHaveBeenCalled();
-    expect(screen.getByRole('heading', { name: /add team member/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /add team member/i })).toBeInTheDocument();
+    });
 
     const dialog = await screen.findByRole('dialog', {}, { timeout: 2000 }).catch(() => null);
     if (dialog) {

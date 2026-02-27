@@ -892,7 +892,7 @@ function TeamContent() {
                       disabled={saving}
                       variant="light"
                       autoComplete="off"
-                      inputProps={{ autoCapitalize: 'off' }}
+                      inputProps={{ autoCapitalize: 'off', 'data-testid': 'deactivate-dialog-confirm-input' }}
                     />
                   </div>
                     <div className="flex justify-between items-center gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">

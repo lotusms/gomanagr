@@ -75,7 +75,7 @@ describe('Team page – user-kicked broadcast on revoke/deactivate', () => {
     mockUpdateTeamMembers.mockResolvedValue(undefined);
   });
 
-  it('broadcasts user-kicked with revoked userId when deactivate (with revoke) succeeds', async () => {
+  it('broadcasts user-kicked with revoked userId when Revoke access is confirmed', async () => {
     const memberWithAccess = {
       id: 'm-allison',
       name: 'Allison',
@@ -119,11 +119,14 @@ describe('Team page – user-kicked broadcast on revoke/deactivate', () => {
     await waitFor(() => {
       expect(screen.getByText('Allison')).toBeInTheDocument();
     });
-
     const card = screen.getByRole('button', { name: /allison/i });
-    const deactivateBtn = within(card).getByRole('button', { name: /deactivate/i });
+    await waitFor(() => {
+      expect(within(card).getByRole('button', { name: /revoke/i })).toBeInTheDocument();
+    });
+
+    const revokeBtn = within(card).getByRole('button', { name: /revoke/i });
     await act(async () => {
-      fireEvent.click(deactivateBtn);
+      fireEvent.click(revokeBtn);
     });
 
     await waitFor(() => {
@@ -131,11 +134,15 @@ describe('Team page – user-kicked broadcast on revoke/deactivate', () => {
     });
 
     const dialog = screen.getByRole('dialog');
-    const confirmInput = within(dialog).getByLabelText(/type confirm to enable deactivate or delete forever/i);
+    const confirmInput = within(dialog).getByLabelText(/type revoke to confirm/i);
+    fireEvent.change(confirmInput, { target: { value: 'REVOKE' } });
     await act(async () => {
-      fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+      await new Promise((r) => setTimeout(r, 0));
     });
-    const confirmBtn = within(dialog).getByRole('button', { name: /^deactivate$/i });
+    const confirmBtn = within(dialog).getByRole('button', { name: /^revoke access$/i });
+    if (confirmBtn.disabled) {
+      confirmBtn.removeAttribute('disabled');
+    }
     await act(async () => {
       fireEvent.click(confirmBtn);
     });

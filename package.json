@@ -41,12 +41,13 @@
     "sass": "^1.97.3"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.6.1",
     "autoprefixer": "^10.4.24",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.19",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "@testing-library/react": "^16.0.1",
-    "@testing-library/jest-dom": "^6.6.3"
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19"
   }
 }

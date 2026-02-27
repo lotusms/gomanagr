@@ -350,7 +350,7 @@ function TeamContent() {
     setDeactivateDialogConfirmWord('');
   };
 
-  const deactivateDialogConfirmed = deactivateDialogConfirmWord.trim().toUpperCase() === 'CONFIRM';
+  const deactivateDialogConfirmed = deactivateDialogConfirmWord.trim().toUpperCase() === 'confirm';
 
   const handleDeleteFromDeactivateDialog = async () => {
     if (!memberToDelete || !currentUser?.uid) return;

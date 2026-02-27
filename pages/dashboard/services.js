@@ -5,6 +5,7 @@ import { getUserAccount, updateServices, updateTeamMembers, getOrgServices, upda
 import { getUserOrganization } from '@/services/organizationService';
 import { isOwnerRole } from '@/config/rolePermissions';
 import { PageHeader, Drawer, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
+import ServicesPageSkeleton from '@/components/dashboard/ServicesPageSkeleton';
 import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus, HiX, HiPencil, HiTrash, HiClipboardList, HiUserGroup } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
@@ -221,30 +222,29 @@ function ServicesContent() {
       </Head>
 
       <div className="space-y-6">
-        <PageHeader
-          title="Services"
-          description="Manage your services and assign them to team members. Services can be selected when creating appointments."
-          actions={
-            <>
-              <PrimaryButton 
-                type="button" 
-                onClick={() => {
-                  setEditingService(null);
-                  setShowDrawer(true);
-                }} 
-                className="gap-2">
-                <HiPlus className="w-5 h-5" />
-                Add service
-              </PrimaryButton>
-              {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
-            </>
-          }
-        />
-
         {!loaded ? (
-          <p className="text-gray-500 dark:text-gray-400">Loading…</p>
+          <ServicesPageSkeleton />
         ) : (
           <>
+            <PageHeader
+              title="Services"
+              description="Manage your services and assign them to team members. Services can be selected when creating appointments."
+              actions={
+                <>
+                  <PrimaryButton 
+                    type="button" 
+                    onClick={() => {
+                      setEditingService(null);
+                      setShowDrawer(true);
+                    }} 
+                    className="gap-2">
+                    <HiPlus className="w-5 h-5" />
+                    Add service
+                  </PrimaryButton>
+                  {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
+                </>
+              }
+            />
             <Drawer
               isOpen={showDrawer}
               onClose={handleCancel}

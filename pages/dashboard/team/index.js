@@ -8,6 +8,7 @@ import { getUserOrganization } from '@/services/organizationService';
 import { supabase } from '@/lib/supabase';
 import { persistTeam } from '@/lib/teamMemberSave';
 import PersonCard from '@/components/dashboard/PersonCard';
+import TeamPageSkeleton from '@/components/dashboard/TeamPageSkeleton';
 import { PageHeader, TeamFilter, ConfirmationDialog, ConfirmDialog, EmptyState, InputField, Table } from '@/components/ui';
 import { IconButton, PrimaryButton, SecondaryButton, DangerButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
@@ -20,12 +21,15 @@ import { getInviteAvailability } from '@/lib/teamInviteUtils';
 const REALTIME_TEAM_EVENT = 'team-updated';
 const REALTIME_USER_KICKED_EVENT = 'user-kicked';
 
+const SKELETON_MIN_LOAD_MS = 1000;
+
 function TeamContent() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const toast = useToast();
   const [userAccount, setUserAccount] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(false);
   const [team, setTeam] = useState([]);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -55,10 +59,14 @@ function TeamContent() {
   const [ownerUserId, setOwnerUserId] = useState(null);
   const channelRef = useRef(null);
   const refetchTeamDataRef = useRef(null);
+  const skeletonTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     setLoaded(false);
+    if (skeletonTimeoutRef.current) clearTimeout(skeletonTimeoutRef.current);
+    setShowSkeleton(false);
+    skeletonTimeoutRef.current = setTimeout(() => setShowSkeleton(true), SKELETON_MIN_LOAD_MS);
     getUserAccount(currentUser.uid)
       .then((data) => {
         setUserAccount(data || null);
@@ -73,7 +81,16 @@ function TeamContent() {
       .catch(() => {
         setTeam([]);
       })
-      .finally(() => setLoaded(true));
+      .finally(() => {
+        if (skeletonTimeoutRef.current) {
+          clearTimeout(skeletonTimeoutRef.current);
+          skeletonTimeoutRef.current = null;
+        }
+        setLoaded(true);
+      });
+    return () => {
+      if (skeletonTimeoutRef.current) clearTimeout(skeletonTimeoutRef.current);
+    };
   }, [currentUser?.uid, showInactive, ownerUserId]);
 
   const isAdminNonOwner = useMemo(
@@ -87,6 +104,9 @@ function TeamContent() {
   useEffect(() => {
     if (!organization?.id || !currentUser?.uid || !isAdminNonOwner) return;
     setLoaded(false);
+    if (skeletonTimeoutRef.current) clearTimeout(skeletonTimeoutRef.current);
+    setShowSkeleton(false);
+    skeletonTimeoutRef.current = setTimeout(() => setShowSkeleton(true), SKELETON_MIN_LOAD_MS);
     fetch('/api/get-org-team', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -109,7 +129,16 @@ function TeamContent() {
         setOwnerTeamMembers([]);
         setOwnerUserId(null);
       })
-      .finally(() => setLoaded(true));
+      .finally(() => {
+        if (skeletonTimeoutRef.current) {
+          clearTimeout(skeletonTimeoutRef.current);
+          skeletonTimeoutRef.current = null;
+        }
+        setLoaded(true);
+      });
+    return () => {
+      if (skeletonTimeoutRef.current) clearTimeout(skeletonTimeoutRef.current);
+    };
   }, [organization?.id, currentUser?.uid, isAdminNonOwner, showInactive]);
 
   useEffect(() => {
@@ -757,7 +786,7 @@ function TeamContent() {
         />
 
         {!loaded ? (
-          <p className="text-gray-500">Loading…</p>
+          showSkeleton ? <TeamPageSkeleton /> : <p className="text-gray-500 dark:text-gray-400">Loading…</p>
         ) : (
           <>
             {deactivatedPanelOpen && (

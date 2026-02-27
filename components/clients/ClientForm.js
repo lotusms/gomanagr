@@ -167,6 +167,7 @@ export default function ClientForm({
           required
           error={errors.name}
           variant="light"
+          inputProps={{ autoCapitalize: 'off' }}
           autoFocus
         />
         <PhoneNumberInput

@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateClients } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import PersonCard from '@/components/dashboard/PersonCard';
+import ClientsPageSkeleton from '@/components/dashboard/ClientsPageSkeleton';
 import { PageHeader, EmptyState, ConfirmationDialog, ConfirmDialog, InputField, Table } from '@/components/ui';
 import { PrimaryButton, SecondaryButton, DangerButton, IconButton } from '@/components/ui/buttons';
 import Drawer from '@/components/ui/Drawer';
@@ -52,9 +53,12 @@ function ClientsContent() {
   useEffect(() => {
     if (!currentUser?.uid) return;
     setLoaded(false);
+
     const isInOrg = organization != null;
     const memberRole = organization?.membership?.role;
     const admin = memberRole === 'admin';
+
+    const done = () => setLoaded(true);
 
     if (isInOrg) {
       setUseOrgClients(true);
@@ -69,7 +73,7 @@ function ClientsContent() {
           setAllClients(data?.clients ?? []);
         })
         .catch(() => setAllClients([]))
-        .finally(() => setLoaded(true));
+        .finally(done);
     } else {
       setUseOrgClients(false);
       setIsOrgAdmin(false);
@@ -78,7 +82,7 @@ function ClientsContent() {
           setAllClients(Array.isArray(data?.clients) ? data.clients : []);
         })
         .catch(() => setAllClients([]))
-        .finally(() => setLoaded(true));
+        .finally(done);
     }
   }, [currentUser?.uid, organizationId]);
 
@@ -278,50 +282,49 @@ function ClientsContent() {
       </Head>
 
       <div className="space-y-6">
-        <PageHeader
-          title="Clients"
-          description="Manage your client relationships. Stored in your account and synced across the app."
-          actions={
-            <div className="flex items-center gap-3">
-              <SecondaryButton
-                type="button"
-                onClick={() => setDeactivatedPanelOpen((prev) => !prev)}
-                className="gap-2"
-                aria-expanded={deactivatedPanelOpen}
-              >
-                Deactivated Clients
-                {deactivatedClients.length > 0 && (
-                  <span className="ml-1 px-2 py-0.5 bg-gray-200 dark:bg-gray-600 text-xs font-medium rounded-full">
-                    {deactivatedClients.length}
-                  </span>
-                )}
-              </SecondaryButton>
-              <PrimaryButton
-                type="button"
-                onClick={handleAdd}
-                className="gap-2"
-              >
-                <HiPlus className="w-5 h-5" />
-                Add client
-              </PrimaryButton>
-              <button
-                type="button"
-                onClick={() => setSettingsDrawerOpen(true)}
-                className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                title="Client Settings"
-                aria-label="Client Settings"
-              >
-                <HiCog className="w-5 h-5" />
-              </button>
-              {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
-            </div>
-          }
-        />
-
         {!loaded ? (
-          <p className="text-gray-500 dark:text-gray-400">Loading…</p>
+          <ClientsPageSkeleton />
         ) : (
           <>
+            <PageHeader
+              title="Clients"
+              description="Manage your client relationships. Stored in your account and synced across the app."
+              actions={
+                <div className="flex items-center gap-3">
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => setDeactivatedPanelOpen((prev) => !prev)}
+                    className="gap-2"
+                    aria-expanded={deactivatedPanelOpen}
+                  >
+                    Deactivated Clients
+                    {deactivatedClients.length > 0 && (
+                      <span className="ml-1 px-2 py-0.5 bg-gray-200 dark:bg-gray-600 text-xs font-medium rounded-full">
+                        {deactivatedClients.length}
+                      </span>
+                    )}
+                  </SecondaryButton>
+                  <PrimaryButton
+                    type="button"
+                    onClick={handleAdd}
+                    className="gap-2"
+                  >
+                    <HiPlus className="w-5 h-5" />
+                    Add client
+                  </PrimaryButton>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsDrawerOpen(true)}
+                    className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    title="Client Settings"
+                    aria-label="Client Settings"
+                  >
+                    <HiCog className="w-5 h-5" />
+                  </button>
+                  {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
+                </div>
+              }
+            />
             {deactivatedPanelOpen && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" data-testid="deactivated-clients-panel">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">

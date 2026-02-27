@@ -1,18 +1,23 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useScheduleData } from '@/lib/useScheduleData';
 import { getUserAccountFromServer, deleteAppointment } from '@/services/userService';
 import Schedule from '@/components/dashboard/Schedule';
+import SchedulePageSkeleton from '@/components/dashboard/SchedulePageSkeleton';
 import { PageHeader, ConfirmationDialog } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { HiPlus, HiX } from 'react-icons/hi';
 import * as Dialog from '@radix-ui/react-dialog';
 import { getRecurrenceBaseId, getRecurrenceSeriesFromDate, isPartOfRecurringSeries } from '@/utils/appointmentRecurrence';
 
+const SKELETON_MIN_LOAD_MS = 1000;
+
 export default function ScheduleIndexPage() {
   const router = useRouter();
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const skeletonTimeoutRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState(null);
@@ -39,6 +44,23 @@ export default function ScheduleIndexPage() {
     fetchOrgSchedule,
     broadcastScheduleUpdated,
   } = useScheduleData();
+
+  useEffect(() => {
+    if (!loading) {
+      if (skeletonTimeoutRef.current) {
+        clearTimeout(skeletonTimeoutRef.current);
+        skeletonTimeoutRef.current = null;
+      }
+      setShowSkeleton(false);
+      return;
+    }
+    setShowSkeleton(false);
+    if (skeletonTimeoutRef.current) clearTimeout(skeletonTimeoutRef.current);
+    skeletonTimeoutRef.current = setTimeout(() => setShowSkeleton(true), SKELETON_MIN_LOAD_MS);
+    return () => {
+      if (skeletonTimeoutRef.current) clearTimeout(skeletonTimeoutRef.current);
+    };
+  }, [loading]);
 
   const handleAppointmentClick = (appointment) => {
     router.push(`/dashboard/schedule/${appointment.id}/edit`);
@@ -135,35 +157,37 @@ export default function ScheduleIndexPage() {
       </Head>
 
       <div className="space-y-6">
-        <PageHeader
-          title="Schedule"
-          description={
-            isTeamMember
-              ? 'Your appointments only. You can add and edit appointments for yourself; changes sync with your admin.'
-              : "Refer to the settings page to manage your schedule settings (date format, time format, timezone, etc.)"
-          }
-          actions={
-            <>
-              <Link href="/dashboard/schedule/new">
-                <PrimaryButton
-                  type="button"
-                  className="gap-2"
-                  disabled={isTeamMember && !myStaffId}
-                >
-                  <HiPlus className="w-5 h-5" />
-                  Add appointment
-                </PrimaryButton>
-              </Link>
-              {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
-            </>
-          }
-        />
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
-          </div>
+          showSkeleton ? (
+            <SchedulePageSkeleton />
+          ) : (
+            <p className="text-center py-12 text-gray-500 dark:text-gray-400">Loading…</p>
+          )
         ) : (
           <>
+            <PageHeader
+              title="Schedule"
+              description={
+                isTeamMember
+                  ? 'Your appointments only. You can add and edit appointments for yourself; changes sync with your admin.'
+                  : "Refer to the settings page to manage your schedule settings (date format, time format, timezone, etc.)"
+              }
+              actions={
+                <>
+                  <Link href="/dashboard/schedule/new">
+                    <PrimaryButton
+                      type="button"
+                      className="gap-2"
+                      disabled={isTeamMember && !myStaffId}
+                    >
+                      <HiPlus className="w-5 h-5" />
+                      Add appointment
+                    </PrimaryButton>
+                  </Link>
+                  {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
+                </>
+              }
+            />
             <Schedule
               businessHoursStart={businessHoursStart}
               businessHoursEnd={businessHoursEnd}

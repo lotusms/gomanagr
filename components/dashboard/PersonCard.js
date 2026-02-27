@@ -37,16 +37,15 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
       onClick={onClick}
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       className={`
-        group relative rounded-2xl overflow-hidden
+        group relative rounded-2xl overflow-hidden min-h-[200px]
         bg-white dark:bg-gray-800
         border border-gray-200 dark:border-gray-700
         shadow-lg hover:shadow-2xl
-        transition-all duration-300 ease-out
-        will-change-transform
-        hover:scale-[1.03] hover:-translate-y-1
+        transition-shadow duration-300 ease-out
         ${onClick ? 'cursor-pointer' : ''}
       `}
     >
+      <div className="absolute inset-0 transition-transform duration-300 ease-out group-hover:scale-[1.03] group-hover:-translate-y-1 origin-center">
       <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-primary-600 to-secondary-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:20px_20px]" />
       </div>
@@ -165,6 +164,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
       )}
 
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 dark:bg-gray-700/30" />
+      </div>
     </div>
   );
 }

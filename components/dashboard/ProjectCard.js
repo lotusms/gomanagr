@@ -73,7 +73,7 @@ export default function ProjectCard({
           <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
             {readOnly && clientId ? (
               <Link
-                href={`/dashboard/clients/${clientId}`}
+                href={`/dashboard/clients/${clientId}/edit`}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition-colors text-sm font-medium"
                 title="View client"
               >

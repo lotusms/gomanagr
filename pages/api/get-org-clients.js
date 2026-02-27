@@ -1,7 +1,7 @@
 /**
  * Returns the organization's clients for the current user.
- * - Admin: all clients from admin's user_profiles.
- * - Member: only clients where assignedTo includes the member's userId (clients unique to that team member).
+ * All org users (admin and members) see all clients from the org.
+ * Clients are enriched with addedByName (team member who added the client) for display.
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -51,42 +51,51 @@ export default async function handler(req, res) {
     const orgId = membership.organization_id;
     const isOrgAdmin = ['superadmin', 'admin', 'developer'].includes(membership.role);
 
-    const { data: adminRows } = await supabaseAdmin
+    const { data: orgMemberRows, error: orgMemErr } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
-      .eq('organization_id', orgId)
-      .eq('role', 'admin')
-      .limit(1);
+      .eq('organization_id', orgId);
 
-    if (!adminRows?.length) {
-      return res.status(200).json({ clients: [], isOrgAdmin: false });
-    }
-
-    const adminUserId = adminRows[0].user_id;
-    const { data: profileRow, error: profileErr } = await supabaseAdmin
-      .from('user_profiles')
-      .select('clients')
-      .eq('id', adminUserId)
-      .single();
-
-    if (profileErr || !profileRow) {
+    if (orgMemErr || !orgMemberRows?.length) {
       return res.status(200).json({ clients: [], isOrgAdmin });
     }
 
-    const allClients = Array.isArray(profileRow.clients) ? profileRow.clients : [];
+    const orgUserIds = orgMemberRows.map((r) => r.user_id).filter(Boolean);
+    const { data: profileRows, error: profilesErr } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id, first_name, last_name, clients, team_members')
+      .in('id', orgUserIds);
 
-    if (isOrgAdmin) {
-      return res.status(200).json({ clients: allClients, isOrgAdmin: true });
+    if (profilesErr || !profileRows?.length) {
+      return res.status(200).json({ clients: [], isOrgAdmin });
     }
 
-    const assignedToMe = (c) => {
-      const to = c?.assignedTo;
-      if (!Array.isArray(to)) return false;
-      return to.includes(userId);
-    };
-    const filtered = allClients.filter(assignedToMe);
+    const userIdToName = {};
+    const allClients = [];
 
-    return res.status(200).json({ clients: filtered, isOrgAdmin: false });
+    for (const row of profileRows) {
+      const first = (row.first_name || '').trim();
+      const last = (row.last_name || '').trim();
+      userIdToName[row.id] = [first, last].filter(Boolean).join(' ') || 'Unknown';
+      const teamMembers = Array.isArray(row.team_members) ? row.team_members : [];
+      teamMembers.forEach((m) => {
+        if (m?.userId && m?.name) userIdToName[m.userId] = m.name;
+      });
+      const rowClients = Array.isArray(row.clients) ? row.clients : [];
+      rowClients.forEach((c) => {
+        const addedBy = c?.addedBy || row.id;
+        allClients.push({ ...c, addedBy });
+      });
+    }
+
+    const enrich = (c) => {
+      const addedByUserId = c?.addedBy || (Array.isArray(c?.assignedTo) && c.assignedTo[0]) || null;
+      const addedByName = addedByUserId ? (userIdToName[addedByUserId] || null) : null;
+      return { ...c, addedByName: addedByName || undefined };
+    };
+    const clients = allClients.map(enrich);
+
+    return res.status(200).json({ clients, isOrgAdmin });
   } catch (err) {
     console.error('[get-org-clients]', err);
     return res.status(500).json({ error: 'Failed to load clients' });

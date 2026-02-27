@@ -32,7 +32,9 @@ function normalizeCountryValue(value) {
 
 
 /**
- * Client Profile Component - Comprehensive client management form
+ * Client Profile Component - Comprehensive client management form.
+ * Only the main form Submit (Save) button persists the client; drawers (e.g. appointments)
+ * work independently and do not save the client record.
  * @param {Object} props
  * @param {Object} props.initialClient - Existing client to edit (null for new)
  * @param {Object} props.userAccount - User account data
@@ -394,7 +396,7 @@ export default function ClientProfile({
         onSave(clientData.id);
       } else {
         setTimeout(() => {
-          router.push(`/dashboard/clients/${clientData.id}`);
+          router.push(`/dashboard/clients/${clientData.id}/edit`);
         }, 500);
       }
     } catch (error) {

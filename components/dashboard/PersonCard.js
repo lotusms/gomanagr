@@ -16,8 +16,9 @@ const secondaryIconButtonClass = 'text-amber-500 hover:text-amber-700 hover:bg-w
  * Used for team members and clients grids.
  * @param {() => void} [onInvite] - If provided, shows an invite button (team member card)
  * @param {() => void} [onRevoke] - If provided, shows a revoke access button (team member card)
+ * @param {string} [addedByName] - For client cards only: team member name who added the client (shows "Added by: …" below name/subtitle).
  */
-export default function PersonCard({ name, subtitle, src, onClick, onRemove, onInvite, onRevoke, isClient = false, hasCompany = false, isAdmin = false, isSuperAdmin = false }) {
+export default function PersonCard({ name, subtitle, src, onClick, onRemove, onInvite, onRevoke, isClient = false, hasCompany = false, isAdmin = false, isSuperAdmin = false, addedByName }) {
   const hasImage = src && src.trim() !== '';
   const initials = useMemo(() => {
     if (isClient) return null;
@@ -116,6 +117,9 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
             <HiOfficeBuilding className="w-4 h-4 flex-shrink-0" />
             <span className="truncate max-w-[200px] drop-shadow-md">{subtitle}</span>
           </div>
+        )}
+        {isClient && addedByName && (
+          <p className="text-white/80 text-xs mt-1.5 drop-shadow-md">Added by: {addedByName}</p>
         )}
       </div>
 

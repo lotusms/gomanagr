@@ -117,6 +117,7 @@ export default function ClientForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!validate()) return;
 
     const companyAddress = isCompany && (companyAddress1 || companyAddress2 || companyCity || companyState || companyPostalCode || companyCountry)
@@ -142,8 +143,13 @@ export default function ClientForm({
     });
   };
 
+  const onFormSubmit = (e) => {
+    e.stopPropagation();
+    handleSubmit(e);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-6">
+    <form onSubmit={onFormSubmit} className="space-y-6 p-6">
       <div>
       </div>
 

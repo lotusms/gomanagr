@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { render, screen, waitFor, within, act, fireEvent } from '@testing-library/react';
-import TeamPage from '@/pages/dashboard/team';
+import TeamPage from '@/pages/dashboard/team/index';
 
 jest.mock('next/router', () => ({
   useRouter: () => ({
@@ -131,6 +131,10 @@ describe('Team page – user-kicked broadcast on revoke/deactivate', () => {
     });
 
     const dialog = screen.getByRole('dialog');
+    const confirmInput = within(dialog).getByLabelText(/type confirm to enable deactivate or delete forever/i);
+    await act(async () => {
+      fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+    });
     const confirmBtn = within(dialog).getByRole('button', { name: /^deactivate$/i });
     await act(async () => {
       fireEvent.click(confirmBtn);

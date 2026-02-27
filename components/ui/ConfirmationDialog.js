@@ -104,7 +104,9 @@ export default function ConfirmationDialog({
                 <HiExclamationCircle className={`size-10 ${styles.icon}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <Dialog.Title className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                <Dialog.Title
+                  className={`text-2xl font-bold leading-tight ${variant === 'danger' ? 'text-red-800 dark:text-red-200' : 'text-amber-800 dark:text-amber-200'}`}
+                >
                   {title}
                 </Dialog.Title>
               </div>
@@ -140,6 +142,7 @@ export default function ConfirmationDialog({
                 variant="light"
                 inputProps={{
                   autoFocus: true,
+                  autoCapitalize: 'off',
                   onKeyDown: (e) => {
                     if (e.key === 'Enter' && isConfirmEnabled) {
                       e.preventDefault();

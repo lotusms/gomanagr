@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useScheduleData } from '@/lib/useScheduleData';
 import { getUserAccountFromServer, saveAppointment, updateClients, updateServices, updateOrgServices } from '@/services/userService';
-import { generateClientId } from '@/utils/clientIdGenerator';
 import { expandAppointmentWithRecurrence } from '@/utils/appointmentRecurrence';
 import AppointmentForm from '@/components/dashboard/AppointmentForm';
 import { PageHeader } from '@/components/ui';
@@ -42,12 +41,39 @@ export default function NewAppointmentPage() {
 
     setSaving(true);
     try {
-      const recurrence = appointmentData.recurrence;
+      const { pendingClients: pending = [], ...rest } = appointmentData;
+      const appointmentPayload = rest;
+
+      if (Array.isArray(pending) && pending.length > 0) {
+        if (isTeamMember || isOrgAdmin) {
+          for (const client of pending) {
+            const res = await fetch('/api/update-org-clients', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: currentUser.uid,
+                client: { id: client.id, name: client.name, company: client.company },
+                action: 'add',
+              }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to add client');
+          }
+          await fetchOrgSchedule();
+        } else {
+          const existingIds = (userAccount?.clients || clients).map((c) => c.id).filter(Boolean);
+          const updatedClients = [...(userAccount?.clients || clients), ...pending];
+          await updateClients(currentUser.uid, updatedClients);
+          setUserAccount((prev) => (prev ? { ...prev, clients: updatedClients } : null));
+        }
+      }
+
+      const recurrence = appointmentPayload.recurrence;
       const isRecurring = recurrence?.isRecurring && recurrence?.recurrenceStart;
       let appointmentsToSave = isRecurring
-        ? expandAppointmentWithRecurrence(appointmentData, recurrence)
-        : [appointmentData];
-      appointmentsToSave = appointmentsToSave.map(({ recurrence: _r, ...apt }) => apt);
+        ? expandAppointmentWithRecurrence(appointmentPayload, recurrence)
+        : [appointmentPayload];
+      appointmentsToSave = appointmentsToSave.map(({ recurrence: _r, pendingClients: _p, ...apt }) => apt);
 
       if (isTeamMember || isOrgAdmin) {
         const payload = appointmentsToSave.length === 1
@@ -82,46 +108,6 @@ export default function NewAppointmentPage() {
       alert(error.message || 'Failed to save appointment. Please try again.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleClientAdd = async (clientData) => {
-    if (!currentUser?.uid) return null;
-    try {
-      const existingIds = (userAccount?.clients || clients).map((c) => c.id).filter(Boolean);
-      const newClientId = generateClientId(existingIds);
-      const newClient = { id: newClientId, name: clientData.name, company: clientData.company };
-      const updatedClients = [...clients, newClient];
-      await updateClients(currentUser.uid, updatedClients);
-      setUserAccount((prev) => (prev ? { ...prev, clients: updatedClients } : null));
-      return newClientId;
-    } catch (error) {
-      console.error('Failed to add client:', error);
-      throw error;
-    }
-  };
-
-  const handleClientAddForOrg = async (clientData) => {
-    if (!currentUser?.uid) return null;
-    try {
-      const existingIds = (clients || []).map((c) => c.id).filter(Boolean);
-      const newClientId = generateClientId(existingIds);
-      const res = await fetch('/api/update-org-clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.uid,
-          client: { id: newClientId, name: clientData.name, company: clientData.company },
-          action: 'add',
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to add client');
-      await fetchOrgSchedule();
-      return newClientId;
-    } catch (error) {
-      console.error('Failed to add client:', error);
-      throw error;
     }
   };
 
@@ -171,7 +157,6 @@ export default function NewAppointmentPage() {
             appointments={appointments}
             services={services}
             clients={clients}
-            onClientAdd={isTeamMember ? handleClientAddForOrg : handleClientAdd}
             staffRestrictedToId={myStaffId}
             onSubmit={handleSaveAppointment}
             onCancel={handleCancel}

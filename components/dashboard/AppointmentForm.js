@@ -5,10 +5,9 @@ import DateField from '@/components/ui/DateField';
 import TimeField from '@/components/ui/TimeField';
 import Dropdown from '@/components/ui/Dropdown';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
-import Drawer from '@/components/ui/Drawer';
-import ClientForm from '@/components/clients/ClientForm';
 import AppointmentRecurrence, { defaultRecurrence } from '@/components/dashboard/AppointmentRecurrence';
 import ServiceSelector from '@/components/dashboard/ServiceSelector';
+import ClientSelector from '@/components/dashboard/ClientSelector';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 
 /**
@@ -25,8 +24,8 @@ import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeU
  * @param {Array} props.appointments - Array of existing appointments (optional)
  * @param {Array} props.services - Array of services (optional)
  * @param {Array} props.clients - Array of clients (optional)
- * @param {Function} props.onClientAdd - Callback when a new client is added
- * @param {Function} props.onSubmit - Callback when form is submitted
+ * @param {Function} [props.onClientAdd] - Callback when a new client is added (persist immediately). If not provided, clients added in drawer are local until appointment save.
+ * @param {Function} props.onSubmit - Callback when form is submitted (receives appointmentData with optional pendingClients)
  * @param {Function} props.onCancel - Callback when form is cancelled
  * @param {Function} props.onDelete - Callback when delete is requested (only shown when editing)
  * @param {Function} [props.onServiceCreated] - Callback when a new service is created from the drawer (receives updated services array)
@@ -67,7 +66,7 @@ export default function AppointmentForm({
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
   const [label, setLabel] = useState('');
   const [clientId, setClientId] = useState('');
-  const [showClientDrawer, setShowClientDrawer] = useState(false);
+  const [pendingClients, setPendingClients] = useState([]);
   const [recurrence, setRecurrence] = useState(() => defaultRecurrence());
   const [errors, setErrors] = useState({});
 
@@ -194,13 +193,6 @@ export default function AppointmentForm({
     }));
   }, [teamMembers]);
 
-  const clientOptions = useMemo(() => {
-    return clients.map((client) => ({
-      value: client.id,
-      label: client.company ? `${client.name} (${client.company})` : client.name,
-    }));
-  }, [clients]);
-
   const availableServices = useMemo(() => {
     if (!Array.isArray(services)) return [];
     if (!staffId) return services;
@@ -243,7 +235,6 @@ export default function AppointmentForm({
       setClientId('');
       setRecurrence(defaultRecurrence());
     }
-    setShowClientDrawer(false);
     setErrors({});
   }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone]);
 
@@ -410,22 +401,6 @@ export default function AppointmentForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddClient = async (clientData) => {
-    if (!onClientAdd) return;
-
-    try {
-      const newClientId = await onClientAdd(clientData);
-      if (newClientId) {
-        setClientId(newClientId);
-        setShowClientDrawer(false);
-        setErrors((prev) => ({ ...prev, client: '' }));
-      }
-    } catch (error) {
-      console.error('Failed to add client:', error);
-      setErrors((prev) => ({ ...prev, client: 'Failed to add client. Please try again.' }));
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -445,6 +420,7 @@ export default function AppointmentForm({
       createdAt: initialAppointment?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       recurrence: recurrence?.isRecurring ? { ...recurrence } : undefined,
+      pendingClients: pendingClients.length > 0 ? pendingClients : undefined,
     };
 
     onSubmit(appointmentData);
@@ -601,39 +577,30 @@ export default function AppointmentForm({
           {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Client
-          </label>
-          <div className="flex gap-2">
-            <div className="flex-1 min-w-0">
-              <Dropdown
-                key={`clientId-${clientId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
-                id="clientId"
-                label=""
-                value={clientId}
-                onChange={(e) => {
-                  setClientId(e.target.value ?? '');
-                  setErrors((prev) => ({ ...prev, client: '' }));
-                }}
-                options={[
-                  { value: '', label: 'None' },
-                  ...clientOptions,
-                ]}
-                placeholder="Select client..."
-                error={errors.client}
-              />
-            </div>
-            {onClientAdd && (
-              <PrimaryButton
-                type="button"
-                onClick={() => setShowClientDrawer(true)}
-                className="whitespace-nowrap flex-shrink-0"
-                data-testid="add-client-from-drawer"
-              >
-                Add
-              </PrimaryButton>
-            )}
-          </div>
+          <ClientSelector
+            clients={[...(clients || []), ...pendingClients]}
+            value={clientId}
+            onChange={(id) => {
+              setClientId(id ?? '');
+              setErrors((prev) => ({ ...prev, client: '' }));
+            }}
+            onClientAdd={onClientAdd}
+            onAddClientLocally={
+              !onClientAdd
+                ? (clientWithId) => {
+                    setPendingClients((prev) => [...prev, clientWithId]);
+                    setClientId(clientWithId.id ?? '');
+                    setErrors((prev) => ({ ...prev, client: '' }));
+                  }
+                : undefined
+            }
+            label="Client"
+            disabled={saving}
+            dropdownPlaceholder="Select client..."
+            addButtonLabel="Add"
+            drawerTitle="Add Client"
+            onNestedDrawerChange={onNestedDrawerChange}
+          />
           {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}
         </div>
       </div>
@@ -653,19 +620,6 @@ export default function AppointmentForm({
           rows={3}
         />
       </div>
-
-      {/* Client Drawer */}
-      <Drawer
-        isOpen={showClientDrawer}
-        onClose={() => setShowClientDrawer(false)}
-        title="Add Client"
-      >
-        <ClientForm
-          onSubmit={handleAddClient}
-          onCancel={() => setShowClientDrawer(false)}
-          saving={saving}
-        />
-      </Drawer>
 
       <div className="flex justify-between items-center pt-4 border-t border-gray-200">
         {initialAppointment && onDelete && (

@@ -12,7 +12,7 @@ import { PageHeader, TeamFilter, ConfirmationDialog, ConfirmDialog, EmptyState, 
 import { IconButton, PrimaryButton, SecondaryButton, DangerButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
 import * as Dialog from '@radix-ui/react-dialog';
-import { HiPlus, HiRefresh, HiTrash, HiX } from 'react-icons/hi';
+import { HiExclamationCircle, HiPlus, HiRefresh, HiTrash, HiX } from 'react-icons/hi';
 import { isOwnerRole, isAdminRole, ORG_ROLE } from '@/config/rolePermissions';
 import { sortTeamMembersPinned } from '@/lib/teamMemberSort';
 import { getInviteAvailability } from '@/lib/teamInviteUtils';
@@ -857,18 +857,26 @@ function TeamContent() {
             <Dialog.Root open={deleteDialogOpen} onOpenChange={(open) => !open && handleRemoveCancel()}>
               <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200]" />
-                <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[201] w-full max-w-lg p-6 focus:outline-none border border-gray-200 dark:border-gray-700">
-                  <div className="flex justify-between items-start mb-4">
-                    <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
-                      Deactivate member
-                    </Dialog.Title>
-                    <Dialog.Close asChild>
-                      <button type="button" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close" disabled={saving}>
-                        <HiX className="w-5 h-5" />
-                      </button>
-                    </Dialog.Close>
+                <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[201] w-full max-w-lg p-0 focus:outline-none overflow-hidden border border-gray-100 dark:border-gray-700">
+                  <div className="px-6 pt-6 pb-5 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-800/10">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center">
+                        <HiExclamationCircle className="size-10 text-amber-600 dark:text-amber-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Dialog.Title className="text-2xl font-bold leading-tight text-amber-800 dark:text-amber-200">
+                          Deactivate member
+                        </Dialog.Title>
+                      </div>
+                      <Dialog.Close asChild>
+                        <button type="button" className="flex-shrink-0 p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/60 dark:hover:bg-gray-700/60 transition-all" aria-label="Close" disabled={saving}>
+                          <HiX className="w-5 h-5" />
+                        </button>
+                      </Dialog.Close>
+                    </div>
                   </div>
-                  <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  <div className="px-6 py-6 bg-white dark:bg-gray-800">
+                    <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                     {memberToDelete
                       ? `${memberToDelete.name} will be deactivated. They will be hidden from the team page. You can reactivate or permanently delete them later from Deactivated Members.`
                       : ''}
@@ -884,29 +892,31 @@ function TeamContent() {
                       disabled={saving}
                       variant="light"
                       autoComplete="off"
+                      inputProps={{ autoCapitalize: 'off' }}
                     />
                   </div>
-                  <div className="flex justify-between items-center gap-4">
-                    <DangerButton
-                      type="button"
-                      onClick={handleDeleteFromDeactivateDialog}
-                      disabled={saving || !deactivateDialogConfirmed}
-                      className="flex-shrink-0"
-                    >
-                      {saving ? 'Processing...' : 'Delete forever'}
-                    </DangerButton>
-                    <div className="flex gap-3 ml-auto">
-                      <SecondaryButton type="button" onClick={handleRemoveCancel} disabled={saving}>
-                        Cancel
-                      </SecondaryButton>
-                      <PrimaryButton
+                    <div className="flex justify-between items-center gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+                      <DangerButton
                         type="button"
-                        onClick={handleDeactivateConfirm}
+                        onClick={handleDeleteFromDeactivateDialog}
                         disabled={saving || !deactivateDialogConfirmed}
-                        className="bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600"
+                        className="flex-shrink-0"
                       >
-                        {saving ? 'Processing...' : 'Deactivate'}
-                      </PrimaryButton>
+                        {saving ? 'Processing...' : 'Delete forever'}
+                      </DangerButton>
+                      <div className="flex gap-3 ml-auto">
+                        <SecondaryButton type="button" onClick={handleRemoveCancel} disabled={saving}>
+                          Cancel
+                        </SecondaryButton>
+                        <PrimaryButton
+                          type="button"
+                          onClick={handleDeactivateConfirm}
+                          disabled={saving || !deactivateDialogConfirmed}
+                          className="bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600"
+                        >
+                          {saving ? 'Processing...' : 'Deactivate'}
+                        </PrimaryButton>
+                      </div>
                     </div>
                   </div>
                 </Dialog.Content>

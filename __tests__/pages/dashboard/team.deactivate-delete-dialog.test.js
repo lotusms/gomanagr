@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { render, screen, waitFor, within, act, fireEvent } from '@testing-library/react';
-import TeamPage from '@/pages/dashboard/team';
+import TeamPage from '@/pages/dashboard/team/index';
 
 jest.mock('next/router', () => ({
   useRouter: () => ({

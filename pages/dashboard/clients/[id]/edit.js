@@ -6,6 +6,7 @@ import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import ClientProfile from '@/components/clients/ClientProfile';
+import ClientFormPageSkeleton from '@/components/clients/ClientFormPageSkeleton';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
@@ -74,12 +75,13 @@ export default function EditClientPage() {
 
   if (!loaded) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading client...</p>
-        </div>
-      </div>
+      <>
+        <Head>
+          <title>Edit Client - GoManagr</title>
+          <meta name="description" content="Loading client..." />
+        </Head>
+        <ClientFormPageSkeleton />
+      </>
     );
   }
 
@@ -123,19 +125,17 @@ export default function EditClientPage() {
             </Link>
           }
         />
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <ClientProfile
-            key={`${client.id}-${refreshKey}`}
-            initialClient={client}
-            userAccount={userAccount}
-            onSaveClient={onSaveClient}
-            onSave={() => {
-              setRefreshKey((prev) => prev + 1);
-              fetchClientData();
-            }}
-            onCancel={() => router.push('/dashboard/clients')}
-          />
-        </div>
+        <ClientProfile
+          key={`${client.id}-${refreshKey}`}
+          initialClient={client}
+          userAccount={userAccount}
+          onSaveClient={onSaveClient}
+          onSave={() => {
+            setRefreshKey((prev) => prev + 1);
+            fetchClientData();
+          }}
+          onCancel={() => router.push('/dashboard/clients')}
+        />
       </div>
     </>
   );

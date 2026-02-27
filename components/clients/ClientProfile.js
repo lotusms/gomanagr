@@ -12,6 +12,7 @@ import Drawer from '@/components/ui/Drawer';
 import AppointmentForm from '@/components/dashboard/AppointmentForm';
 import { generateClientId } from '@/utils/clientIdGenerator';
 import ResponsiveSectionWrapper from '../dashboard/ResponsiveSectionWrapper';
+import Switch from '@/components/ui/Switch';
 import BasicInfoSection from './add-client/BasicInfoSection';
 import CompanyDetailsSection from './add-client/CompanyDetailsSection';
 import FinancialInformationSection from './add-client/FinancialInformationSection';
@@ -169,7 +170,8 @@ export default function ClientProfile({
         setEmail(clientData.email ?? '');
         setPreferredCommunication(clientData.preferredCommunication || 'email');
         
-        setIsCompany(true);
+        const hasCompanyData = !!(clientData.company || clientData.companyName || clientData.companyPhone || clientData.companyEmail || clientData.companyWebsite || (clientData.companyAddress && (clientData.companyAddress.address1 || clientData.companyAddress.address)));
+        setIsCompany(hasCompanyData);
         setCompanyName(clientData.company || clientData.companyName || '');
         const companyPhoneVal = clientData.companyPhone ?? '';
         setCompanyPhone(companyPhoneVal ? formatPhone(unformatPhone(companyPhoneVal)) : '');
@@ -234,9 +236,8 @@ export default function ClientProfile({
         setInvoices(clientData.invoices || []);
         setAttachments(clientData.attachments || []);
         setSharedAssets(clientData.sharedAssets || []);
-        setIsCompany(true);
       } else {
-        setIsCompany(true);
+        setIsCompany(false);
       }
       setErrors({});
     }
@@ -331,24 +332,28 @@ export default function ClientProfile({
         phone: phone.trim() ? unformatPhone(phone.trim()) : undefined,
         email: email.trim() || undefined,
         preferredCommunication,
-        company: companyName.trim() || undefined,
-        companyPhone: companyPhone.trim() ? unformatPhone(companyPhone.trim()) : undefined,
-        companyEmail: companyEmail.trim() ? companyEmail.trim() : undefined,
-        companyWebsite: companyWebsite.trim() ? companyWebsite.trim() : undefined,
-        companyIndustry: companyIndustry ? companyIndustry : undefined,
-        companySize: companySize ? companySize : undefined,
-        companyAddress,
-        billingAddressDifferent: billingAddressDifferent || undefined,
-        billingAddress,
-        taxId: taxId.trim() ? taxId.trim() : undefined,
-        timezone: timezone ? timezone : undefined,
-        language: language ? language : undefined,
-        primaryContactName: primaryContactName.trim() ? primaryContactName.trim() : undefined,
-        primaryContactPhone: primaryContactPhone.trim() ? unformatPhone(primaryContactPhone.trim()) : undefined,
-        primaryContactEmail: primaryContactEmail.trim() ? primaryContactEmail.trim() : undefined,
-        secondaryContactName: secondaryContactName.trim() ? secondaryContactName.trim() : undefined,
-        secondaryContactPhone: secondaryContactPhone.trim() ? unformatPhone(secondaryContactPhone.trim()) : undefined,
-        secondaryContactEmail: secondaryContactEmail.trim() ? secondaryContactEmail.trim() : undefined,
+        ...(isCompany
+          ? {
+              company: companyName.trim() || undefined,
+              companyPhone: companyPhone.trim() ? unformatPhone(companyPhone.trim()) : undefined,
+              companyEmail: companyEmail.trim() ? companyEmail.trim() : undefined,
+              companyWebsite: companyWebsite.trim() ? companyWebsite.trim() : undefined,
+              companyIndustry: companyIndustry ? companyIndustry : undefined,
+              companySize: companySize ? companySize : undefined,
+              companyAddress,
+              billingAddressDifferent: billingAddressDifferent || undefined,
+              billingAddress,
+              taxId: taxId.trim() ? taxId.trim() : undefined,
+              timezone: timezone ? timezone : undefined,
+              language: language ? language : undefined,
+              primaryContactName: primaryContactName.trim() ? primaryContactName.trim() : undefined,
+              primaryContactPhone: primaryContactPhone.trim() ? unformatPhone(primaryContactPhone.trim()) : undefined,
+              primaryContactEmail: primaryContactEmail.trim() ? primaryContactEmail.trim() : undefined,
+              secondaryContactName: secondaryContactName.trim() ? secondaryContactName.trim() : undefined,
+              secondaryContactPhone: secondaryContactPhone.trim() ? unformatPhone(secondaryContactPhone.trim()) : undefined,
+              secondaryContactEmail: secondaryContactEmail.trim() ? secondaryContactEmail.trim() : undefined,
+            }
+          : {}),
         paymentTerms: paymentTerms || undefined,
         paymentHistory: paymentHistory.length > 0 ? paymentHistory : undefined,
         pricingTier: pricingTier || undefined,
@@ -440,7 +445,7 @@ export default function ClientProfile({
       }
     }
     
-    const showCompanyDetails = visibleTabs.includes('company');
+    const showCompanyDetails = visibleTabs.includes('company') && isCompany;
     const showFinancialInformation = visibleTabs.includes('financial');
     const showProjectsDetails = visibleTabs.includes('projects');
     const showCommunicationLog = visibleTabs.includes('communication');
@@ -673,7 +678,7 @@ export default function ClientProfile({
     
     return allSections;
   }, [
-    firstName, lastName, clientId, status, phone, email, preferredCommunication, errors,
+    firstName, lastName, clientId, status, phone, email, preferredCommunication, isCompany, errors,
     companyName, companyPhone, companyEmail, companyWebsite, companyIndustry, companySize,
     companyAddress1, companyAddress2, companyCity, companyState, companyPostalCode, companyCountry,
     billingAddressDifferent, billingAddress1, billingAddress2, billingCity, billingState, billingPostalCode, billingCountry,
@@ -690,13 +695,28 @@ export default function ClientProfile({
   
   return (
     <form onSubmit={handleSave} className="space-y-6">
-      <ResponsiveSectionWrapper 
-        sections={sections}
-        defaultTab="basic"
-      />
-      
-      {/* Form Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+      {/* Toggle right below page header (Update this client's details / Add a new client) */}
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">This client is a company</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">No</span>
+        <Switch
+          id="client-is-company"
+          checked={!!isCompany}
+          onCheckedChange={(checked) => setIsCompany(!!checked)}
+          disabled={saving}
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">Yes</span>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <ResponsiveSectionWrapper
+          sections={sections}
+          defaultTab="basic"
+        />
+      </div>
+
+      {/* Form Actions – below and outside the tabbed card */}
+      <div className="flex justify-end gap-3">
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
@@ -704,7 +724,7 @@ export default function ClientProfile({
           {saving ? 'Saving...' : initialClient ? 'Update Client' : 'Add Client'}
         </PrimaryButton>
       </div>
-      
+
       {errors.submit && (
         <p className="text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
       )}

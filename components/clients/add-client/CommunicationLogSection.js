@@ -1,6 +1,21 @@
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { HiPlus, HiTrash, HiMail, HiChat, HiPhone, HiClipboardList, HiLockClosed } from 'react-icons/hi';
 import { TextareaField } from '@/components/ui';
 import { IconButton, PrimaryButton } from '@/components/ui/buttons';
+
+function clipBody(text, maxLines = 3) {
+  if (!text || typeof text !== 'string') return '';
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  const clipped = lines.slice(0, maxLines).join('\n');
+  return lines.length > maxLines ? `${clipped}\n…` : clipped;
+}
+
+function formatEmailDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { dateStyle: 'medium' }) + ' ' + d.toLocaleTimeString(undefined, { timeStyle: 'short' });
+}
 
 const LOG_TYPES = [
   {
@@ -40,6 +55,87 @@ const LOG_TYPES = [
     badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
   },
 ];
+
+function EmailsBlock({ clientId, userId, organizationId }) {
+  const router = useRouter();
+  const [emails, setEmails] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setEmails(data.emails || []))
+      .catch(() => setEmails([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  const type = LOG_TYPES[0];
+  const Icon = type.icon;
+  const newUrl = `/dashboard/clients/${clientId}/emails/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/emails/${id}/edit`;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl shadow-sm ${type.badgeClass}`}>
+              <Icon className="w-5 h-5" />
+            </span>
+            <div>
+              <h3 className="text-base font-medium text-gray-900 dark:text-white tracking-tight">{type.label}</h3>
+              {type.description && (
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{type.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+        <PrimaryButton
+          type="button"
+          onClick={() => router.push(newUrl)}
+          className="flex-shrink-0 gap-2"
+        >
+          <HiPlus className="w-5 h-5" />
+          Add
+        </PrimaryButton>
+      </div>
+      <div className="space-y-2.5">
+        {loading ? (
+          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-600 py-6 text-center">
+            <p className="text-sm text-gray-400 dark:text-gray-500">Loading emails…</p>
+          </div>
+        ) : emails.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-600 py-6 text-center">
+            <p className="text-sm text-gray-400 dark:text-gray-500">No emails yet</p>
+          </div>
+        ) : (
+          emails.map((email) => (
+            <button
+              key={email.id}
+              type="button"
+              onClick={() => router.push(editUrl(email.id))}
+              className={`w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60 ${type.borderClass} pl-4 pr-4 py-3 min-h-[56px]`}
+            >
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <span className="font-medium capitalize">{email.direction}</span>
+                <span>·</span>
+                <time dateTime={email.sent_at}>{formatEmailDate(email.sent_at)}</time>
+              </div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{email.subject || 'No subject'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap">{clipBody(email.body, 3)}</p>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 function LogBlock({ type, items, onAdd, onEdit, onRemove }) {
   const Icon = type.icon;
@@ -106,7 +202,10 @@ function LogBlock({ type, items, onAdd, onEdit, onRemove }) {
 }
 
 export default function CommunicationLogSection({
-  emails,
+  clientId,
+  userId,
+  organizationId,
+  emails: legacyEmails,
   messages,
   calls,
   meetingNotes,
@@ -117,8 +216,8 @@ export default function CommunicationLogSection({
   onMeetingNotesChange,
   onInternalNotesChange,
 }) {
+  const useEmailsFromApi = Boolean(clientId && userId);
   const blocks = [
-    { type: LOG_TYPES[0], items: emails, onAdd: () => onEmailsChange([...emails, '']), onEdit: (idx, v) => { const u = [...emails]; u[idx] = v; onEmailsChange(u); }, onRemove: (idx) => onEmailsChange(emails.filter((_, i) => i !== idx)) },
     { type: LOG_TYPES[1], items: messages, onAdd: () => onMessagesChange([...messages, '']), onEdit: (idx, v) => { const u = [...messages]; u[idx] = v; onMessagesChange(u); }, onRemove: (idx) => onMessagesChange(messages.filter((_, i) => i !== idx)) },
     { type: LOG_TYPES[2], items: calls, onAdd: () => onCallsChange([...calls, '']), onEdit: (idx, v) => { const u = [...calls]; u[idx] = v; onCallsChange(u); }, onRemove: (idx) => onCallsChange(calls.filter((_, i) => i !== idx)) },
     { type: LOG_TYPES[3], items: meetingNotes, onAdd: () => onMeetingNotesChange([...meetingNotes, '']), onEdit: (idx, v) => { const u = [...meetingNotes]; u[idx] = v; onMeetingNotesChange(u); }, onRemove: (idx) => onMeetingNotesChange(meetingNotes.filter((_, i) => i !== idx)) },
@@ -131,6 +230,20 @@ export default function CommunicationLogSection({
       </p>
 
       <div className="space-y-6">
+        {/* Emails: from API (cards) when clientId/userId provided, else legacy textareas */}
+        <div className="rounded-2xl border border-gray-100 dark:border-gray-700/80 bg-white dark:bg-gray-800/40 p-6 shadow-sm ring-1 ring-gray-100/50 dark:ring-gray-700/30">
+          {useEmailsFromApi ? (
+            <EmailsBlock clientId={clientId} userId={userId} organizationId={organizationId} />
+          ) : (
+            <LogBlock
+              type={LOG_TYPES[0]}
+              items={legacyEmails ?? []}
+              onAdd={() => onEmailsChange([...(legacyEmails ?? []), ''])}
+              onEdit={(idx, v) => { const u = [...(legacyEmails ?? [])]; u[idx] = v; onEmailsChange(u); }}
+              onRemove={(idx) => onEmailsChange((legacyEmails ?? []).filter((_, i) => i !== idx))}
+            />
+          )}
+        </div>
         {blocks.map((block) => (
           <div
             key={block.type.key}

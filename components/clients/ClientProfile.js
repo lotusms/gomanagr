@@ -49,10 +49,13 @@ export default function ClientProfile({
   onSave,
   onCancel,
   onSaveClient,
+  organization = null,
 }) {
   const { currentUser } = useAuth();
   const { success, error: showError } = useToast();
   const router = useRouter();
+  const tabFromQuery = router.query.tab;
+  const defaultTab = tabFromQuery && typeof tabFromQuery === 'string' ? tabFromQuery : 'basic';
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   
@@ -624,6 +627,9 @@ export default function ClientProfile({
           label: 'Communication Log',
           content: (
             <CommunicationLogSection
+              clientId={initialClient?.id || clientId}
+              userId={currentUser?.uid}
+              organizationId={organization?.id}
               emails={emails}
               messages={messages}
               calls={calls}
@@ -711,7 +717,7 @@ export default function ClientProfile({
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <ResponsiveSectionWrapper
           sections={sections}
-          defaultTab="basic"
+          defaultTab={defaultTab}
         />
       </div>
 

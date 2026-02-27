@@ -129,6 +129,7 @@ export default function EditClientPage() {
           key={`${client.id}-${refreshKey}`}
           initialClient={client}
           userAccount={userAccount}
+          organization={organization}
           onSaveClient={onSaveClient}
           onSave={() => {
             setRefreshKey((prev) => prev + 1);

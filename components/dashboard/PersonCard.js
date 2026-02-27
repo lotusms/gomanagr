@@ -1,6 +1,7 @@
 import { HiX, HiUser, HiOfficeBuilding, HiShieldCheck, HiMail, HiLockClosed } from 'react-icons/hi';
 import { useMemo } from 'react';
 import { IconButton } from '@/components/ui/buttons';
+import Tooltip from '@/components/ui/Tooltip';
 
 const cardIconButtonClass =
   'absolute top-3 z-20 opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100';
@@ -41,6 +42,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
         border border-gray-200 dark:border-gray-700
         shadow-lg hover:shadow-2xl
         transition-all duration-300 ease-out
+        will-change-transform
         hover:scale-[1.03] hover:-translate-y-1
         ${onClick ? 'cursor-pointer' : ''}
       `}
@@ -124,26 +126,28 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
       </div>
 
       {onInvite && (
-        <IconButton
-          variant="primary"
-          className={`${cardIconButtonClass} ${primaryIconButtonClass}`}
-          onClick={(e) => { e.stopPropagation(); onInvite(); }}
-          aria-label="Invite to join"
-          title="Invite to join"
-        >
-          <HiMail className="w-5 h-5" />
-        </IconButton>
+        <Tooltip content="Invite to join" placement="bottom">
+          <IconButton
+            variant="primary"
+            className={`${cardIconButtonClass} ${primaryIconButtonClass}`}
+            onClick={(e) => { e.stopPropagation(); onInvite(); }}
+            aria-label="Invite to join"
+          >
+            <HiMail className="w-5 h-5" />
+          </IconButton>
+        </Tooltip>
       )}
       {onRevoke && (
-        <IconButton
-          variant="secondary"
-          className={`${cardIconButtonClass} ${secondaryIconButtonClass} ${onInvite ? 'left-12' : ''}`}
-          onClick={(e) => { e.stopPropagation(); onRevoke(); }}
-          aria-label="Revoke access"
-          title="Revoke access"
-        >
-          <HiLockClosed className="w-5 h-5" />
-        </IconButton>
+        <Tooltip content="Revoke access" placement="bottom">
+          <IconButton
+            variant="secondary"
+            className={`${cardIconButtonClass} ${secondaryIconButtonClass} ${onInvite ? 'left-12' : ''}`}
+            onClick={(e) => { e.stopPropagation(); onRevoke(); }}
+            aria-label="Revoke access"
+          >
+            <HiLockClosed className="w-5 h-5" />
+          </IconButton>
+        </Tooltip>
       )}
       {onRemove && (
         <IconButton

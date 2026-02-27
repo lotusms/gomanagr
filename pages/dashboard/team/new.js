@@ -25,7 +25,7 @@ function removeUndefined(obj) {
 export default function NewTeamMemberPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { account: userAccount, setAccount } = useUserAccount();
+  const { account: userAccount, setAccount, refetch: refetchAccount } = useUserAccount();
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [organization, setOrganization] = useState(null);
@@ -45,6 +45,12 @@ export default function NewTeamMemberPage() {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (router.isReady && currentUser?.uid) {
+      refetchAccount();
+    }
+  }, [router.isReady, currentUser?.uid, refetchAccount]);
 
   useEffect(() => {
     if (!organization?.id || !currentUser?.uid || !isAdminNonOwner) {

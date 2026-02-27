@@ -518,11 +518,11 @@ function ClientsContent() {
               <div className="mb-6">
                 <InputField
                   id="deactivate-dialog-confirm"
-                  label="Type CONFIRM to enable Deactivate or Delete forever"
+                  label="Type confirm to enable Deactivate or Delete forever"
                   type="text"
                   value={deactivateDialogConfirmWord}
                   onChange={(e) => setDeactivateDialogConfirmWord(e.target.value)}
-                  placeholder="CONFIRM"
+                  placeholder="confirm"
                   disabled={saving}
                   variant="light"
                   autoComplete="off"

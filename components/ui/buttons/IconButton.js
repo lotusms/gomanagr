@@ -12,7 +12,7 @@ export default function IconButton({
   ...props
 }) {
   const base =
-    'p-2 rounded-full transition-all bg-white/20 dark:bg-gray-700/20 border border-white/30 dark:border-gray-700/30 duration-200 inline-flex items-center justify-center';
+    'p-2 rounded-full overflow-hidden transition-all bg-white/20 dark:bg-gray-700/20 border border-white/30 dark:border-gray-700/30 duration-200 inline-flex items-center justify-center';
 
   const variants = {
     primary:

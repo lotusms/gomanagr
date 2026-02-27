@@ -87,6 +87,21 @@ export default function ServiceSelector({
   valueRef.current = value;
   const optionsSource = displayServices !== undefined ? displayServices : services;
 
+  const validServiceIds = useMemo(() => {
+    const list = optionsSource || [];
+    const validSet = new Set(list.map((s) => s.id));
+    return selectedIds.filter((id) => validSet.has(id) || recentlyCreatedRef.current[id]);
+  }, [optionsSource, selectedIds]);
+
+  useEffect(() => {
+    const list = optionsSource || [];
+    const validSet = new Set(list.map((s) => s.id));
+    const pruned = selectedIds.filter((id) => validSet.has(id) || recentlyCreatedRef.current[id]);
+    if (pruned.length !== selectedIds.length && onChange) {
+      onChange(pruned);
+    }
+  }, [optionsSource, selectedIds, onChange]);
+
   const serviceOptions = useMemo(() => {
     if (!optionsSource || optionsSource.length === 0) return [];
     return optionsSource.map((service) => ({
@@ -192,13 +207,13 @@ export default function ServiceSelector({
           {addButtonLabel}
         </PrimaryButton>
       </div>
-      {multiple && selectedIds.length > 0 ? (
+      {multiple && validServiceIds.length > 0 ? (
         <div className="mt-3">
           {chipsSectionLabel ? (
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">{chipsSectionLabel}</p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            {selectedIds.map((serviceId) => {
+            {validServiceIds.map((serviceId) => {
               const fromRecent = recentlyCreatedRef.current[serviceId];
               const service = fromRecent || (services || []).find((s) => s.id === serviceId);
               const serviceName = service?.name || serviceId;

@@ -289,6 +289,12 @@ export default function AddTeamMemberForm({
       }
     }
     
+    const validServiceIdsSet = new Set([
+      ...(services || []).map((s) => s.id),
+      ...(pendingServices || []).map((s) => s.id),
+    ].filter(Boolean));
+    const selectedServiceIdsToSave = selectedServiceIds.filter((id) => validServiceIdsSet.has(id));
+
     onSubmit(
       {
         name,
@@ -313,7 +319,7 @@ export default function AddTeamMemberForm({
         gender: gender || undefined,
         personalityTraits: personalityTraits.length ? personalityTraits : undefined,
         yearsExperience: yearsExperience.trim() ? Number(yearsExperience) : undefined,
-        selectedServiceIds: selectedServiceIds,
+        selectedServiceIds: selectedServiceIdsToSave,
         pendingServices: pendingServices.length > 0 ? pendingServices : undefined,
         sendInviteToLogin: sendInviteToLogin && email.trim() ? true : undefined,
         ...(canPromoteToAdmin && { isAdmin: isAdminCheckbox }),

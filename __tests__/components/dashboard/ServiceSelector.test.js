@@ -113,6 +113,27 @@ describe('ServiceSelector', () => {
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
   });
 
+  it('multiple mode: does not show chips for deleted services and prunes value via onChange', () => {
+    const onChange = jest.fn();
+    const currentServices = [services[0]];
+    render(
+      <ServiceSelector
+        services={currentServices}
+        value={['svc-1', 'svc-2', 'deleted-svc-id']}
+        onChange={onChange}
+        onServiceCreated={jest.fn()}
+        teamMembers={teamMembers}
+        multiple
+        label="Services offered"
+      />
+    );
+
+    expect(screen.getByText('Haircut')).toBeInTheDocument();
+    expect(screen.queryByText('Consultation')).not.toBeInTheDocument();
+    expect(screen.queryByText('deleted-svc-id')).not.toBeInTheDocument();
+    expect(onChange).toHaveBeenCalledWith(['svc-1']);
+  });
+
   it('uses displayServices when provided (optionsSource is displayServices)', () => {
     const displayServices = [services[0]];
     render(

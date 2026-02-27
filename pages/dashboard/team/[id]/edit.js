@@ -27,7 +27,7 @@ export default function EditTeamMemberPage() {
   const router = useRouter();
   const { id } = router.query;
   const { currentUser } = useAuth();
-  const { account: userAccount, setAccount } = useUserAccount();
+  const { account: userAccount, setAccount, refetch: refetchAccount } = useUserAccount();
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [organization, setOrganization] = useState(null);
@@ -53,6 +53,13 @@ export default function EditTeamMemberPage() {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
   }, [currentUser?.uid]);
+
+  // Refetch account when opening this page so services/team are up to date (e.g. after deleting a service elsewhere).
+  useEffect(() => {
+    if (router.isReady && id && currentUser?.uid) {
+      refetchAccount();
+    }
+  }, [router.isReady, id, currentUser?.uid, refetchAccount]);
 
   useEffect(() => {
     if (!organization?.id || !currentUser?.uid || !isAdminNonOwner) {

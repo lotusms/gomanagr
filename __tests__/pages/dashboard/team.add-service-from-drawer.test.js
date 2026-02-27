@@ -17,6 +17,7 @@ jest.mock('next/router', () => ({
     pathname: '/dashboard/team/new',
     query: {},
     asPath: '/dashboard/team/new',
+    isReady: true,
   }),
 }));
 
@@ -48,6 +49,7 @@ jest.mock('@/services/organizationService', () => ({
 }));
 
 const mockSetAccount = jest.fn();
+const mockRefetchAccount = jest.fn();
 const teamMembersForContext = [
   { id: 'tm1', name: 'Alice', email: 'alice@example.com' },
   { id: 'tm2', name: 'Bob', email: 'bob@example.com' },
@@ -56,6 +58,7 @@ jest.mock('@/lib/UserAccountContext', () => ({
   useUserAccount: () => ({
     account: { teamMembers: teamMembersForContext, services: [], locations: [], firstName: 'Owner' },
     setAccount: mockSetAccount,
+    refetch: mockRefetchAccount,
   }),
 }));
 
@@ -112,6 +115,8 @@ describe('Add team member page – Add service from form', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /add team member/i })).toBeInTheDocument();
     });
+
+    expect(mockRefetchAccount).toHaveBeenCalled();
 
     const addServiceBtn = await screen.findByTestId('add-service-from-drawer', {}, { timeout: 3000 });
     expect(addServiceBtn).toBeInTheDocument();

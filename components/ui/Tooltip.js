@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, cloneElement, Children } from 'react';
 import { createPortal } from 'react-dom';
 
 const TOOLTIP_OFFSET = 6;
@@ -6,11 +6,13 @@ const TOOLTIP_OFFSET = 6;
 /**
  * Shows content in a tooltip on hover. Renders in a portal with high z-index so it
  * is not clipped by overflow. Use for truncated text to reveal full label.
+ * When children is a single element, hover is attached to that element (no wrapper div).
  * @param {string} content - Full text to show in the tooltip
- * @param {React.ReactNode} children - Trigger element (e.g. truncated span)
+ * @param {React.ReactNode} children - Trigger element (e.g. button or span)
  * @param {string} placement - 'top' | 'bottom' (default 'top')
+ * @param {string} [wrapperClassName] - Optional; if set, wraps child in a div with this class (for layout). Omit to attach to child only (no wrapper).
  */
-export default function Tooltip({ content, children, placement = 'top' }) {
+export default function Tooltip({ content, children, placement = 'top', wrapperClassName = '' }) {
   const [visible, setVisible] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
@@ -48,15 +50,44 @@ export default function Tooltip({ content, children, placement = 'top' }) {
     </span>
   );
 
+  const child = Children.only(children);
+  const mergedRef = (el) => {
+    triggerRef.current = el;
+    if (child?.ref) {
+      if (typeof child.ref === 'function') child.ref(el);
+      else child.ref.current = el;
+    }
+  };
+  const trigger = cloneElement(child, {
+    ref: mergedRef,
+    onMouseEnter: (e) => {
+      handleMouseEnter();
+      child.props.onMouseEnter?.(e);
+    },
+    onMouseLeave: (e) => {
+      handleMouseLeave();
+      child.props.onMouseLeave?.(e);
+    },
+  });
+
+  if (wrapperClassName) {
+    return (
+      <div
+        ref={triggerRef}
+        className={`relative inline-block min-w-0 max-w-full w-full ${wrapperClassName}`.trim()}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {children}
+        {typeof document !== 'undefined' && tooltipEl && createPortal(tooltipEl, document.body)}
+      </div>
+    );
+  }
+
   return (
-    <div
-      ref={triggerRef}
-      className="relative inline-block min-w-0 max-w-full w-full"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {children}
+    <>
+      {trigger}
       {typeof document !== 'undefined' && tooltipEl && createPortal(tooltipEl, document.body)}
-    </div>
+    </>
   );
 }

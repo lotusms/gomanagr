@@ -97,6 +97,30 @@ describe('Services page', () => {
     mockUpdateTeamMembers.mockResolvedValue(undefined);
   });
 
+  describe('Loading skeleton', () => {
+    it('shows skeleton while loading, then content when loaded', async () => {
+      let resolveAccount;
+      mockGetUserAccount.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveAccount = () => resolve(mockUserAccount());
+          })
+      );
+
+      render(<ServicesPage />);
+
+      expect(screen.getByTestId('services-page-skeleton')).toBeInTheDocument();
+
+      resolveAccount();
+
+      await waitFor(() => {
+        expect(screen.getByText('Haircut')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('services-page-skeleton')).not.toBeInTheDocument();
+    });
+  });
+
   describe('service cards', () => {
     it('shows service cards with name, description, and assigned members or "No team members assigned"', async () => {
       render(<ServicesPage />);

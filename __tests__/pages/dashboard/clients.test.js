@@ -328,6 +328,40 @@ describe('Clients page', () => {
     });
   });
 
+  describe('Loading skeleton', () => {
+    it('shows skeleton while loading, then content when loaded', async () => {
+      let resolveFetch;
+      global.fetch = jest.fn((url, opts = {}) => {
+        const path = typeof url === 'string' ? url : opts?.url ?? '';
+        if (path.includes('get-org-clients')) {
+          return new Promise((resolve) => {
+            resolveFetch = () => resolve({
+              json: () => Promise.resolve({ clients: [{ id: 'c1', name: 'Acme', status: 'active' }], isOrgAdmin: true }),
+            });
+          });
+        }
+        return Promise.resolve({ json: () => Promise.resolve({}) });
+      });
+
+      render(<ClientsPage />);
+
+      expect(screen.getByTestId('clients-page-skeleton')).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(typeof resolveFetch).toBe('function');
+      });
+      await act(async () => {
+        resolveFetch();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Acme')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('clients-page-skeleton')).not.toBeInTheDocument();
+    });
+  });
+
   describe('solo user (no org)', () => {
     it('loads clients from user account when not in org', async () => {
       mockGetUserOrganization.mockResolvedValue(null);

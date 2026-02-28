@@ -51,8 +51,8 @@ export const LOG_TYPES = [
     label: 'Internal notes',
     description: 'Not visible to client',
     icon: HiLockClosed,
-    borderClass: 'border-l-amber-500 dark:border-l-amber-400',
-    badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
+    borderClass: 'border-l-slate-500 dark:border-l-slate-400',
+    badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-200',
   },
 ];
 

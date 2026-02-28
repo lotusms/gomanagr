@@ -59,7 +59,7 @@ export default function MessageLogCards({ messages, onSelect, onDelete, borderCl
             <span>·</span>
             <time dateTime={message.sent_at}>{formatMessageDate(message.sent_at)}</time>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 truncate pr-8">{message.to_from || '—'}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 truncate pr-8">{message.author || '—'}</p>
           <p className="text-sm text-gray-900 dark:text-white mt-1 line-clamp-3 whitespace-pre-wrap">{clipBody(message.body, 3)}</p>
         </div>
       ))}

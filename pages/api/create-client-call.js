@@ -1,6 +1,6 @@
 /**
  * Creates a client call log entry.
- * POST body: { userId, clientId, organizationId?, direction, phone_number, duration, summary, outcome?, follow_up_at?, team_member?, called_at? }
+ * POST body: { userId, clientId, organizationId?, direction, phone_number, duration, summary, follow_up_at?, called_at? }
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -22,15 +22,11 @@ try {
 }
 
 const DIRECTIONS = ['incoming', 'outgoing'];
-const OUTCOMES = ['no_answer', 'left_voicemail', 'resolved', 'follow_up_needed'];
 
 function parseBody(body) {
   const direction = DIRECTIONS.includes(String(body.direction || '').toLowerCase())
     ? String(body.direction).toLowerCase()
     : 'outgoing';
-  const outcome = OUTCOMES.includes(String(body.outcome || '').toLowerCase())
-    ? String(body.outcome).toLowerCase()
-    : 'resolved';
   const calledAt = body.called_at ? new Date(body.called_at).toISOString() : new Date().toISOString();
   const followUpAt = body.follow_up_at ? new Date(body.follow_up_at).toISOString() : null;
   return {
@@ -41,9 +37,7 @@ function parseBody(body) {
     phone_number: String(body.phone_number ?? '').trim() || '',
     duration: String(body.duration ?? '').trim() || '',
     summary: String(body.summary ?? '').trim() || '',
-    outcome,
     follow_up_at: followUpAt,
-    team_member: body.team_member ? String(body.team_member).trim() : null,
     called_at: calledAt,
   };
 }

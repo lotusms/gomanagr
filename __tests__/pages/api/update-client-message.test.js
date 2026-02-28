@@ -42,7 +42,7 @@ describe('update-client-message API', () => {
   it('returns 200 when update succeeds', async () => {
     const h = (await import('@/pages/api/update-client-message')).default;
     const res = mockRes();
-    await h({ method: 'POST', body: { userId: 'u1', messageId: 'message-1', channel: 'sms', direction: 'sent', to_from: 'x', body: 'b' } }, res);
+    await h({ method: 'POST', body: { userId: 'u1', messageId: 'message-1', channel: 'sms', direction: 'sent', author: 'L. Silva', body: 'b' } }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ ok: true });
   });

@@ -25,7 +25,7 @@ export default function NewClientCallPage() {
     if (router.isReady && clientId) setReady(true);
   }, [router.isReady, clientId]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication`;
+  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication&section=calls`;
 
   if (!ready || !currentUser?.uid) return null;
 

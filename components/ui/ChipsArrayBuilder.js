@@ -20,6 +20,8 @@ import {
  * @param {boolean} [disabled]
  * @param {string} [className]
  * @param {string} [addButtonLabel] - e.g. "Add"
+ * @param {(item: string) => boolean} [validateItem] - If provided, only add when this returns true (e.g. email validation)
+ * @param {(item: string) => void} [onInvalidItem] - Called when user tries to add an item that fails validateItem
  */
 export default function ChipsArrayBuilder({
   id,
@@ -30,6 +32,8 @@ export default function ChipsArrayBuilder({
   disabled = false,
   className = '',
   addButtonLabel = 'Add',
+  validateItem,
+  onInvalidItem,
 }) {
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef(null);
@@ -37,6 +41,10 @@ export default function ChipsArrayBuilder({
   const handleAdd = () => {
     const trimmed = inputValue.trim();
     if (!trimmed || disabled) return;
+    if (validateItem && !validateItem(trimmed)) {
+      onInvalidItem?.(trimmed);
+      return;
+    }
     if (value.includes(trimmed)) {
       setInputValue('');
       return;

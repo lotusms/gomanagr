@@ -1,6 +1,6 @@
 /**
  * Creates a client message log entry.
- * POST body: { userId, clientId, organizationId?, channel, direction, to_from, body, sent_at? }
+ * POST body: { userId, clientId, organizationId?, channel, direction, author, body, sent_at? }
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -34,7 +34,7 @@ function parseBody(body) {
     organization_id: body.organizationId || null,
     channel,
     direction: body.direction === 'received' ? 'received' : 'sent',
-    to_from: String(body.to_from ?? '').trim() || '',
+    author: String(body.author ?? '').trim() || '',
     body: String(body.body ?? '').trim() || '',
     sent_at: sentAt,
   };

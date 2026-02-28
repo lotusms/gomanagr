@@ -57,7 +57,7 @@ export default function EditClientCallPage() {
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, clientId, callId, organization?.id]);
 
-  const backUrl = '/dashboard/clients/' + clientId + '/edit?tab=communication';
+  const backUrl = '/dashboard/clients/' + clientId + '/edit?tab=communication&section=calls';
 
   if (!currentUser?.uid || !clientId || !callId) {
     return null;

@@ -1,21 +1,17 @@
 import { useState } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
+import DateTimeField from '@/components/ui/DateTimeField';
+import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
+import { formatPhone } from '@/utils/formatPhone';
 
 const DIRECTION_OPTIONS = [
   { value: 'incoming', label: 'Incoming' },
   { value: 'outgoing', label: 'Outgoing' },
-];
-
-const OUTCOME_OPTIONS = [
-  { value: 'no_answer', label: 'No answer' },
-  { value: 'left_voicemail', label: 'Left voicemail' },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'follow_up_needed', label: 'Follow-up needed' },
 ];
 
 function toDatetimeLocal(iso) {
@@ -48,7 +44,7 @@ export default function ClientCallForm({
   const [direction, setDirection] = useState(
     ['incoming', 'outgoing'].includes(initial.direction) ? initial.direction : 'outgoing'
   );
-  const [phoneNumber, setPhoneNumber] = useState(initial.phone_number ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(initial.phone_number ? formatPhone(initial.phone_number) : '');
   const [duration, setDuration] = useState(initial.duration ?? '');
   const [summary, setSummary] = useState(initial.summary ?? '');
   const [outcome, setOutcome] = useState(
@@ -71,9 +67,7 @@ export default function ClientCallForm({
         phone_number: phoneNumber.trim(),
         duration: duration.trim(),
         summary: summary.trim(),
-        outcome,
         follow_up_at: followUpAt ? fromDatetimeLocal(followUpAt) : null,
-        team_member: teamMember.trim() || null,
         called_at: fromDatetimeLocal(calledAt),
       };
 
@@ -134,14 +128,14 @@ export default function ClientCallForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <InputField
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <PhoneNumberInput
           id="call-phone"
           label="Phone number"
           value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
+          onChange={setPhoneNumber}
           variant="light"
-          placeholder="+1 234 567 8900"
+          placeholder="(717) 123-4567"
         />
         <InputField
           id="call-duration"
@@ -151,18 +145,12 @@ export default function ClientCallForm({
           variant="light"
           placeholder="e.g. 5 min"
         />
-      </div>
-
-      <div>
-        <Label.Root htmlFor="call-called-at" className={getLabelClasses('light') + ' mb-2 block'}>
-          Date / time
-        </Label.Root>
-        <input
+        <DateTimeField
           id="call-called-at"
-          type="datetime-local"
+          label="Date / time"
           value={calledAt}
           onChange={(e) => setCalledAt(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          variant="light"
         />
       </div>
 
@@ -174,40 +162,13 @@ export default function ClientCallForm({
         rows={5}
         placeholder="Summarize the call..."
       />
-
-      <div>
-        <Label.Root className={getLabelClasses('light') + ' mb-2 block'}>Outcome</Label.Root>
-        <select
-          value={outcome}
-          onChange={(e) => setOutcome(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-          {OUTCOME_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div>
-          <Label.Root htmlFor="call-follow-up" className={getLabelClasses('light') + ' mb-2 block'}>
-            Follow-up date / time
-          </Label.Root>
-          <input
-            id="call-follow-up"
-            type="datetime-local"
-            value={followUpAt}
-            onChange={(e) => setFollowUpAt(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          />
-        </div>
-        <InputField
-          id="call-team-member"
-          label="Team member"
-          value={teamMember}
-          onChange={(e) => setTeamMember(e.target.value)}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <DateTimeField
+          id="call-follow-up"
+          label="Follow-up date / time"
+          value={followUpAt}
+          onChange={(e) => setFollowUpAt(e.target.value)}
           variant="light"
-          placeholder="Name of team member"
         />
       </div>
 

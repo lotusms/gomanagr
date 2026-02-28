@@ -21,15 +21,11 @@ try {
 }
 
 const DIRECTIONS = ['incoming', 'outgoing'];
-const OUTCOMES = ['no_answer', 'left_voicemail', 'resolved', 'follow_up_needed'];
 
 function parseBody(body, existing) {
   const direction = DIRECTIONS.includes(String((body.direction ?? existing?.direction ?? '').toLowerCase()))
     ? String(body.direction ?? existing?.direction).toLowerCase()
     : (existing?.direction ?? 'outgoing');
-  const outcome = OUTCOMES.includes(String((body.outcome ?? existing?.outcome ?? '').toLowerCase()))
-    ? String(body.outcome ?? existing?.outcome).toLowerCase()
-    : (existing?.outcome ?? 'resolved');
   const calledAt = body.called_at
     ? new Date(body.called_at).toISOString()
     : (existing?.called_at ?? new Date().toISOString());
@@ -42,9 +38,7 @@ function parseBody(body, existing) {
     phone_number: String(body.phone_number ?? existing?.phone_number ?? '').trim() || '',
     duration: String(body.duration ?? existing?.duration ?? '').trim() || '',
     summary: String(body.summary ?? existing?.summary ?? '').trim() || '',
-    outcome,
     follow_up_at: followUpAt,
-    team_member: body.team_member !== undefined ? (body.team_member ? String(body.team_member).trim() : null) : (existing?.team_member ?? null),
     called_at: calledAt,
     updated_at: new Date().toISOString(),
   };

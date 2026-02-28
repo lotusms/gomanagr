@@ -25,7 +25,7 @@ export default function NewClientMeetingNotePage() {
     if (router.isReady && clientId) setReady(true);
   }, [router.isReady, clientId]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication`;
+  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication&section=meetingNotes`;
 
   if (!ready || !currentUser?.uid) return null;
 

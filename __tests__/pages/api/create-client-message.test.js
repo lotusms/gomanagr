@@ -73,7 +73,7 @@ describe('create-client-message API', () => {
         clientId: 'c1',
         channel: 'sms',
         direction: 'sent',
-        to_from: '+123',
+        author: 'L. Silva',
         body: 'Body',
       },
     };

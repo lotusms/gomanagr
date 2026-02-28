@@ -49,7 +49,7 @@ export default function ClientMessageForm({
     ['sms', 'chat', 'other'].includes(initial.channel) ? initial.channel : 'sms'
   );
   const [direction, setDirection] = useState(initial.direction === 'received' ? 'received' : 'sent');
-  const [toFrom, setToFrom] = useState(initial.to_from ?? '');
+  const [author, setAuthor] = useState(initial.author ?? '');
   const [body, setBody] = useState(initial.body ?? '');
   const [sentAt, setSentAt] = useState(toDatetimeLocal(initial.sent_at) || toDatetimeLocal(new Date().toISOString()));
 
@@ -64,7 +64,7 @@ export default function ClientMessageForm({
         organizationId: organizationId || undefined,
         channel,
         direction,
-        to_from: toFrom.trim(),
+        author: author.trim(),
         body: body.trim(),
         sent_at: fromDatetimeLocal(sentAt),
       };
@@ -154,12 +154,12 @@ export default function ClientMessageForm({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <InputField
-          id="message-to-from"
-          label={direction === 'sent' ? 'To' : 'From'}
-          value={toFrom}
-          onChange={(e) => setToFrom(e.target.value)}
+          id="message-author"
+          label="Author"
+          value={author}
+          onChange={(e) => setAuthor(e.target.value)}
           variant="light"
-          placeholder={direction === 'sent' ? 'Recipient' : 'Sender'}
+          placeholder={direction === 'sent' ? 'Team member who sent (e.g. L. Silva)' : 'Client name (e.g. Mark Peck)'}
         />
         <DateTimeField
           id="message-sent-at"

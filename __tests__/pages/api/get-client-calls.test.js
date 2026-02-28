@@ -70,7 +70,7 @@ describe('get-client-calls API', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  it('returns 200 with emails array when query succeeds', async () => {
+  it('returns 200 with calls array when query succeeds', async () => {
     const handler = (await import('@/pages/api/get-client-calls')).default;
     const req = { method: 'POST', body: { userId: 'u1', clientId: 'c1' } };
     const res = mockRes();

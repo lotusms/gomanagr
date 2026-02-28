@@ -13,57 +13,57 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
 }
 
-const STATUS_LABELS = { draft: 'Draft', sent: 'Sent', signed: 'Signed', expired: 'Expired', terminated: 'Terminated' };
-const TYPE_LABELS = {
-  service_agreement: 'Service agreement',
-  retainer_agreement: 'Retainer agreement',
-  maintenance_agreement: 'Maintenance agreement',
-  nda: 'NDA',
-  vendor_agreement: 'Vendor agreement',
+const STATUS_LABELS = {
+  draft: 'Draft',
+  sent: 'Sent',
+  viewed: 'Viewed',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  expired: 'Expired',
 };
 
-export default function ContractLogCards({ contracts, onSelect, onDelete, borderClass }) {
+export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass }) {
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';
   const cardClass = borderClass ? baseClass + ' ' + borderClass : baseClass;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-      {contracts.map((c) => (
+      {proposals.map((p) => (
         <div
-          key={c.id}
+          key={p.id}
           role="button"
           tabIndex={0}
-          onClick={() => onSelect(c.id)}
+          onClick={() => onSelect(p.id)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              onSelect(c.id);
+              onSelect(p.id);
             }
           }}
           className={cardClass}
         >
           <div className="absolute top-1 right-1 flex items-center">
             <CardDeleteButton
-              onDelete={() => onDelete(c.id)}
-              title="Delete contract"
-              className="group-hover:opacity-100"
+              onDelete={() => onDelete(p.id)}
+              title="Delete proposal"
+              className="opacity-60 group-hover:opacity-100"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
-            {c.contract_number && <span>{c.contract_number}</span>}
-            {c.status && (
-              <span className="font-medium px-2 py-0.5 rounded bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200">
-                {STATUS_LABELS[c.status] || c.status}
+            {p.proposal_number && <span>{p.proposal_number}</span>}
+            {p.status && (
+              <span className="font-medium px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                {STATUS_LABELS[p.status] || p.status}
               </span>
             )}
-            {c.effective_date && <time dateTime={c.effective_date}>{formatDate(c.effective_date)}</time>}
+            {p.date_created && <time dateTime={p.date_created}>{formatDate(p.date_created)}</time>}
           </div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{c.contract_title || 'Untitled contract'}</p>
-          {c.contract_value && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Value: {c.contract_value}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.proposal_title || 'Untitled proposal'}</p>
+          {p.estimated_value && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Est. value: {p.estimated_value}</p>
           )}
-          {c.scope_summary && (
-            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(c.scope_summary, 3)}</p>
+          {p.scope_summary && (
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(p.scope_summary, 3)}</p>
           )}
         </div>
       ))}

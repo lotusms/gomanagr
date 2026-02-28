@@ -7,6 +7,7 @@ import CardDeleteButton from './CardDeleteButton';
 import EmptyStateCard from './EmptyStateCard';
 import SideNavViewerLayout from './SideNavViewerLayout';
 import ContractLogCards from './ContractLogCards';
+import ProposalLogCards from './ProposalLogCards';
 
 export const DOC_TYPES = [
   {
@@ -146,6 +147,99 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries }) {
   );
 }
 
+function ProposalsBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [proposals, setProposals] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [proposalToDelete, setProposalToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setProposals(data.proposals || []))
+      .catch(() => setProposals([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(proposals.length > 0);
+  }, [proposals.length, loading, onHasEntries]);
+
+  const type = DOC_TYPES[1];
+  const newUrl = `/dashboard/clients/${clientId}/proposals/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/proposals/${id}/edit`;
+
+  const handleDeleteConfirm = async () => {
+    if (!proposalToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          proposalId: proposalToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setProposals((prev) => prev.filter((p) => p.id !== proposalToDelete));
+      setProposalToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setProposalToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading proposals…" />;
+  }
+
+  if (proposals.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No proposals yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add proposal
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <ProposalLogCards
+        proposals={proposals}
+        onSelect={(id) => router.push(editUrl(id))}
+        onDelete={setProposalToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!proposalToDelete}
+        onClose={() => setProposalToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete proposal"
+        message="This proposal will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
 function DocumentBlock({ type, items, onAdd, onEdit, onRemove }) {
   if (items.length === 0) {
     return (
@@ -205,9 +299,11 @@ export default function DocumentsFilesSection({
 }) {
   const router = useRouter();
   const useContractsFromApi = Boolean(clientId && userId);
+  const useProposalsFromApi = Boolean(clientId && userId);
   const defaultKey = initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection) ? initialSection : DOC_TYPES[0].key;
   const [selectedKey, setSelectedKey] = useState(defaultKey);
   const [hasContractEntries, setHasContractEntries] = useState(false);
+  const [hasProposalEntries, setHasProposalEntries] = useState(false);
 
   useEffect(() => {
     if (initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection)) {
@@ -278,11 +374,17 @@ export default function DocumentsFilesSection({
   const hasEntriesInSelectedSection =
     selectedKey === 'contracts' && useContractsFromApi
       ? hasContractEntries
-      : (selectedBlock?.items?.length ?? 0) > 0;
+      : selectedKey === 'proposals' && useProposalsFromApi
+        ? hasProposalEntries
+        : (selectedBlock?.items?.length ?? 0) > 0;
 
   const handleAddInHeader = () => {
     if (selectedKey === 'contracts' && useContractsFromApi) {
       router.push(`/dashboard/clients/${clientId}/contracts/new`);
+      return;
+    }
+    if (selectedKey === 'proposals' && useProposalsFromApi) {
+      router.push(`/dashboard/clients/${clientId}/proposals/new`);
       return;
     }
     if (selectedBlock) selectedBlock.onAdd();
@@ -290,7 +392,10 @@ export default function DocumentsFilesSection({
 
   const navItems = DOC_TYPES.map((t) => ({
     ...t,
-    count: t.key === 'contracts' && useContractsFromApi ? null : (blocks.find((b) => b.type.key === t.key)?.items?.length ?? 0),
+    count:
+      (t.key === 'contracts' && useContractsFromApi) || (t.key === 'proposals' && useProposalsFromApi)
+        ? null
+        : (blocks.find((b) => b.type.key === t.key)?.items?.length ?? 0),
   }));
 
   const viewerHeader = selectedType
@@ -311,7 +416,7 @@ export default function DocumentsFilesSection({
       onSelectKey={setSelectedKey}
       viewerHeader={viewerHeader}
       viewerHeaderAction={
-        hasEntriesInSelectedSection || (selectedKey === 'contracts' && useContractsFromApi) ? (
+        hasEntriesInSelectedSection || (selectedKey === 'contracts' && useContractsFromApi) || (selectedKey === 'proposals' && useProposalsFromApi) ? (
           <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2 flex-shrink-0">
             <HiPlus className="w-5 h-5" />
             Add
@@ -325,6 +430,13 @@ export default function DocumentsFilesSection({
           userId={userId}
           organizationId={organizationId}
           onHasEntries={setHasContractEntries}
+        />
+      ) : selectedKey === 'proposals' && useProposalsFromApi ? (
+        <ProposalsBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasProposalEntries}
         />
       ) : selectedBlock ? (
         <DocumentBlock {...selectedBlock} />

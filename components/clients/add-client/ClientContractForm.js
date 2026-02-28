@@ -115,7 +115,7 @@ export default function ClientContractForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <InputField
           id="contract-title"
           label="Contract title"
@@ -132,9 +132,6 @@ export default function ClientContractForm({
           variant="light"
           placeholder="Reference ID"
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Dropdown
           id="contract-status"
           name="contract-status"
@@ -145,6 +142,9 @@ export default function ClientContractForm({
           placeholder="Draft"
           searchable={false}
         />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Dropdown
           id="contract-type"
           name="contract-type"
@@ -155,26 +155,23 @@ export default function ClientContractForm({
           placeholder="None"
           searchable={false}
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DateField id="effective-date" label="Effective date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} variant="light" />
         <DateField id="renewal-date" label="Renewal date" value={renewalDate} onChange={(e) => setRenewalDate(e.target.value)} variant="light" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <DateField id="start-date" label="Start date" value={startDate} onChange={(e) => setStartDate(e.target.value)} variant="light" />
         <DateField id="end-date" label="End date" value={endDate} onChange={(e) => setEndDate(e.target.value)} variant="light" />
+        <InputField
+          id="contract-value"
+          label="Contract value"
+          value={contractValue}
+          onChange={(e) => setContractValue(e.target.value)}
+          variant="light"
+          placeholder="e.g. $5,000 or 5,000 USD"
+        />
       </div>
 
-      <InputField
-        id="contract-value"
-        label="Contract value"
-        value={contractValue}
-        onChange={(e) => setContractValue(e.target.value)}
-        variant="light"
-        placeholder="e.g. $5,000 or 5,000 USD"
-      />
 
       <TextareaField
         id="scope-summary"
@@ -185,6 +182,7 @@ export default function ClientContractForm({
         placeholder="Summary of scope and deliverables"
       />
 
+      {/*  Should be a dropdown with team members in it */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <InputField
           id="signed-by"
@@ -197,6 +195,8 @@ export default function ClientContractForm({
         <DateField id="signed-date" label="Signed date" value={signedDate} onChange={(e) => setSignedDate(e.target.value)} variant="light" />
       </div>
 
+      {/* To be swapped with a darg and drop file upload component */}
+      
       <InputField
         id="file-url"
         label="File (PDF/DOC link)"

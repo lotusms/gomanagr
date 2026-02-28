@@ -57,7 +57,7 @@ export default function EditClientInternalNotePage() {
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, clientId, noteId, organization?.id]);
 
-  const backUrl = '/dashboard/clients/' + clientId + '/edit?tab=communication';
+  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication&section=internalNotes`;
 
   if (!currentUser?.uid || !clientId || !noteId) {
     return null;

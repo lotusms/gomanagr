@@ -1,5 +1,5 @@
-import { HiTrash, HiBookmark } from 'react-icons/hi';
-import { IconButton } from '@/components/ui/buttons';
+import { HiBookmark } from 'react-icons/hi';
+import CardDeleteButton from './CardDeleteButton';
 
 function clipText(text, maxLines) {
   if (maxLines === undefined) maxLines = 3;
@@ -33,19 +33,11 @@ export default function InternalNoteLogCards({ notes, onSelect, onDelete, border
         >
           <div className="absolute top-1 right-1 flex items-center gap-1">
             {note.is_pinned && <HiBookmark className="w-4 h-4 text-amber-500 flex-shrink-0" title="Pinned" />}
-            <IconButton
-              variant="danger"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onDelete(note.id);
-              }}
-              className="!p-1.5 !bg-transparent !border-transparent hover:!bg-red-50 dark:hover:!bg-red-900/20 opacity-60 group-hover:opacity-100 transition-opacity rounded-lg"
+            <CardDeleteButton
+              onDelete={() => onDelete(note.id)}
               title="Delete internal note"
-              aria-label="Delete internal note"
-            >
-              <HiTrash className="w-4 h-4" />
-            </IconButton>
+              className="group-hover:opacity-100"
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
             {note.tag && (

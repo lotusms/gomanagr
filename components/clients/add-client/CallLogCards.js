@@ -1,5 +1,4 @@
-import { HiTrash } from 'react-icons/hi';
-import { IconButton } from '@/components/ui/buttons';
+import CardDeleteButton from './CardDeleteButton';
 
 function clipText(text, maxLines) {
   if (maxLines === undefined) maxLines = 3;
@@ -36,19 +35,11 @@ export default function CallLogCards({ calls, onSelect, onDelete, borderClass })
           className={cardClass}
         >
           <div className="absolute top-1 right-1 flex items-center">
-            <IconButton
-              variant="danger"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onDelete(call.id);
-              }}
-              className="!p-1.5 !bg-transparent !border-transparent hover:!bg-red-50 dark:hover:!bg-red-900/20 opacity-60 group-hover:opacity-100 transition-opacity rounded-lg"
+            <CardDeleteButton
+              onDelete={() => onDelete(call.id)}
               title="Delete call"
-              aria-label="Delete call"
-            >
-              <HiTrash className="w-4 h-4" />
-            </IconButton>
+              className="group-hover:opacity-100"
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
             <span className="font-medium capitalize">{call.direction}</span>

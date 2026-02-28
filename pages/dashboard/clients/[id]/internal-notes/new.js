@@ -25,7 +25,7 @@ export default function NewClientInternalNotePage() {
     if (router.isReady && clientId) setReady(true);
   }, [router.isReady, clientId]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication`;
+  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication&section=internalNotes`;
 
   if (!ready || !currentUser?.uid) return null;
 

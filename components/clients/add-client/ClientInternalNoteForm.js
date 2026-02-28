@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import TextareaField from '@/components/ui/TextareaField';
+import Dropdown from '@/components/ui/Dropdown';
+import Switch from '@/components/ui/Switch';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
-import Checkbox from '@/components/ui/Checkbox';
-import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
+import * as Label from '@radix-ui/react-label';
 
 const TAG_OPTIONS = [
   { value: '', label: 'None' },
@@ -92,27 +93,20 @@ export default function ClientInternalNoteForm({
         placeholder="Private note about this client…"
       />
 
-      <div>
-        <Label.Root htmlFor="internal-note-tag" className={labelClass}>
-          Tag / category (optional)
-        </Label.Root>
-        <select
-          id="internal-note-tag"
-          value={tag}
-          onChange={(e) => setTag(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-          {TAG_OPTIONS.map((opt) => (
-            <option key={opt.value || 'none'} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Dropdown
+        id="internal-note-tag"
+        name="internal-note-tag"
+        label="Tag / category (optional)"
+        value={tag}
+        onChange={(e) => setTag(e.target.value ?? '')}
+        options={TAG_OPTIONS}
+        placeholder="None"
+        searchable={false}
+      />
 
-      <Checkbox
+      <Switch
         id="internal-note-pin"
-        label="Pin note?"
+        label="Pin note"
         checked={isPinned}
         onCheckedChange={(c) => setIsPinned(c === true)}
       />

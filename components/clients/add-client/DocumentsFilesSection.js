@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { HiPlus, HiTrash, HiDocumentText, HiClipboardList, HiReceiptTax, HiPaperClip, HiShare } from 'react-icons/hi';
-import { PrimaryButton, IconButton } from '@/components/ui/buttons';
+import { HiPlus, HiDocumentText, HiClipboardList, HiReceiptTax, HiPaperClip, HiShare } from 'react-icons/hi';
+import { PrimaryButton } from '@/components/ui/buttons';
+import CardDeleteButton from './CardDeleteButton';
 import EmptyStateCard from './EmptyStateCard';
 import SideNavViewerLayout from './SideNavViewerLayout';
 
@@ -77,15 +78,11 @@ function DocumentBlock({ type, items, onAdd, onEdit, onRemove }) {
             className="w-full text-sm bg-transparent border-0 py-0 px-0 focus:ring-0 focus:outline-none placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
             aria-label={`${type.label} entry ${idx + 1}`}
           />
-          <IconButton
-            variant="danger"
-            onClick={() => onRemove(idx)}
-            className="absolute top-1/2 right-3 -translate-y-1/2 !p-1.5 !bg-transparent !border-transparent hover:!bg-red-50 dark:hover:!bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
+          <CardDeleteButton
+            onDelete={() => onRemove(idx)}
             title="Remove entry"
-            aria-label="Remove entry"
-          >
-            <HiTrash className="w-4 h-4" />
-          </IconButton>
+            className="absolute top-1/2 right-3 -translate-y-1/2 opacity-0 group-hover:opacity-100"
+          />
         </div>
       ))}
     </div>

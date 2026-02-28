@@ -1,5 +1,4 @@
-import { HiTrash } from 'react-icons/hi';
-import { IconButton } from '@/components/ui/buttons';
+import CardDeleteButton from './CardDeleteButton';
 
 /**
  * Single communication log entry card: textarea + remove button.
@@ -26,15 +25,11 @@ export default function LogEntryCard({ id, value, onChange, onRemove, ariaLabel,
         className="w-full text-sm min-h-[2.5rem] resize-y bg-transparent border-0 py-0 px-0 focus:ring-0 focus:outline-none placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
         aria-label={ariaLabel}
       />
-      <IconButton
-        variant="danger"
-        onClick={onRemove}
-        className="absolute top-3 right-3 !p-1.5 !bg-transparent !border-transparent hover:!bg-red-50 dark:hover:!bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
+      <CardDeleteButton
+        onDelete={onRemove}
         title="Remove entry"
-        aria-label="Remove entry"
-      >
-        <HiTrash className="w-4 h-4" />
-      </IconButton>
+        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100"
+      />
     </div>
   );
 }

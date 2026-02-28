@@ -1,5 +1,5 @@
-import { HiTrash, HiPaperClip } from 'react-icons/hi';
-import { IconButton } from '@/components/ui/buttons';
+import { HiPaperClip } from 'react-icons/hi';
+import CardDeleteButton from './CardDeleteButton';
 
 function clipBody(text, maxLines = 3) {
   if (!text || typeof text !== 'string') return '';
@@ -54,19 +54,11 @@ export default function EmailLogCards({ emails, onSelect, onDelete, borderClass 
                 <HiPaperClip className="w-4 h-4" />
               </span>
             )}
-            <IconButton
-              variant="danger"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onDelete(email.id);
-              }}
-              className="!p-1.5 !bg-transparent !border-transparent hover:!bg-red-50 dark:hover:!bg-red-900/20 opacity-60 group-hover:opacity-100 transition-opacity rounded-lg"
+            <CardDeleteButton
+              onDelete={() => onDelete(email.id)}
               title="Delete email"
-              aria-label="Delete email"
-            >
-              <HiTrash className="w-4 h-4" />
-            </IconButton>
+              className="group-hover:opacity-100"
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
             <span className="font-medium capitalize">{email.direction}</span>

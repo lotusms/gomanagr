@@ -6,6 +6,7 @@ export { default as ConfirmationDialog } from './ConfirmationDialog';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as CurrencyInput } from './CurrencyInput';
 export { default as DateField } from './DateField';
+export { default as DateTimeField } from './DateTimeField';
 export { default as Drawer } from './Drawer';
 export { default as Dropdown } from './Dropdown';
 export { default as EmptyState } from './EmptyState';

@@ -640,6 +640,7 @@ export default function ClientProfile({
               onCallsChange={setCalls}
               onMeetingNotesChange={setMeetingNotes}
               onInternalNotesChange={(e) => setInternalNotes(e.target.value)}
+              initialSection={typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined}
             />
           ),
         }] 

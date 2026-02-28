@@ -25,7 +25,7 @@ export default function NewClientMessagePage() {
     if (router.isReady && clientId) setReady(true);
   }, [router.isReady, clientId]);
 
-  const backUrl = '/dashboard/clients/' + clientId + '/edit?tab=communication';
+  const backUrl = '/dashboard/clients/' + clientId + '/edit?tab=communication&section=messages';
 
   if (!ready || !currentUser?.uid) {
     return null;

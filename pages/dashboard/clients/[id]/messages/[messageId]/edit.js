@@ -57,7 +57,7 @@ export default function EditClientMessagePage() {
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, clientId, messageId, organization?.id]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication`;
+  const backUrl = `/dashboard/clients/${clientId}/edit?tab=communication&section=messages`;
 
   if (!currentUser?.uid || !clientId || !messageId) {
     return null;

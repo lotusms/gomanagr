@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
+import DateTimeField from '@/components/ui/DateTimeField';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
@@ -151,25 +152,21 @@ export default function ClientMessageForm({
         </div>
       </div>
 
-      <InputField
-        id="message-to-from"
-        label={direction === 'sent' ? 'To' : 'From'}
-        value={toFrom}
-        onChange={(e) => setToFrom(e.target.value)}
-        variant="light"
-        placeholder={direction === 'sent' ? 'Recipient' : 'Sender'}
-      />
-
-      <div>
-        <Label.Root htmlFor="message-sent-at" className={`${getLabelClasses('light')} mb-2 block`}>
-          Date / time
-        </Label.Root>
-        <input
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <InputField
+          id="message-to-from"
+          label={direction === 'sent' ? 'To' : 'From'}
+          value={toFrom}
+          onChange={(e) => setToFrom(e.target.value)}
+          variant="light"
+          placeholder={direction === 'sent' ? 'Recipient' : 'Sender'}
+        />
+        <DateTimeField
           id="message-sent-at"
-          type="datetime-local"
+          label="Date / time"
           value={sentAt}
           onChange={(e) => setSentAt(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          variant="light"
         />
       </div>
 

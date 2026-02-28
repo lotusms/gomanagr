@@ -563,6 +563,8 @@ function LogBlock({ type, items, onAdd, onEdit, onRemove }) {
   );
 }
 
+const VALID_SECTION_KEYS = LOG_TYPES.map((t) => t.key);
+
 export default function CommunicationLogSection({
   clientId,
   userId,
@@ -577,6 +579,7 @@ export default function CommunicationLogSection({
   onCallsChange,
   onMeetingNotesChange,
   onInternalNotesChange,
+  initialSection,
 }) {
   const router = useRouter();
   const useEmailsFromApi = Boolean(clientId && userId);
@@ -584,7 +587,15 @@ export default function CommunicationLogSection({
   const useCallsFromApi = Boolean(clientId && userId);
   const useMeetingNotesFromApi = Boolean(clientId && userId);
   const useInternalNotesFromApi = Boolean(clientId && userId);
-  const [selectedKey, setSelectedKey] = useState(LOG_TYPES[0].key);
+  const defaultKey = initialSection && VALID_SECTION_KEYS.includes(initialSection) ? initialSection : LOG_TYPES[0].key;
+  const [selectedKey, setSelectedKey] = useState(defaultKey);
+
+  useEffect(() => {
+    if (initialSection && VALID_SECTION_KEYS.includes(initialSection)) {
+      setSelectedKey(initialSection);
+    }
+  }, [initialSection]);
+
   const [hasEmailEntries, setHasEmailEntries] = useState(false);
   const [hasMessageEntries, setHasMessageEntries] = useState(false);
   const [hasCallEntries, setHasCallEntries] = useState(false);

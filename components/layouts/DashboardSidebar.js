@@ -9,6 +9,7 @@ import {
   HiUserGroup,
   HiInbox,
   HiDocumentSearch,
+  HiDocumentText,
   HiBriefcase,
   HiSpeakerphone,
   HiChartBar,
@@ -35,6 +36,7 @@ function getOwnerNavItems(accountIndustry) {
     { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
     { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
+    { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
     { divider: true },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
     { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
@@ -57,6 +59,7 @@ function getAdminNavItems(accountIndustry) {
     { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
     { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
+    { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
     { divider: true },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid },
   ];
@@ -72,8 +75,9 @@ function getMemberNavItems(memberAccess, accountIndustry) {
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
+    { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
+    { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
   ];
-  items.push({ name: 'Services', href: '/dashboard/services', icon: HiClipboardList });
   return items;
 }
 

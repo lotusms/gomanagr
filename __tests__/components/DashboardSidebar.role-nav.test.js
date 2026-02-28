@@ -50,6 +50,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Requests', href: '/dashboard/requests' },
       { name: 'Quotes', href: '/dashboard/quotes' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Marketing', href: '/dashboard/marketing' },
       { name: 'Insights', href: '/dashboard/insights' },
       { name: 'Timesheets', href: '/dashboard/timesheets' },
@@ -79,6 +80,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Requests', href: '/dashboard/requests' },
       { name: 'Quotes', href: '/dashboard/quotes' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];
 
@@ -94,13 +96,13 @@ describe('DashboardSidebar role-based navigation', () => {
 
     const items = getNavLinkNamesAndHrefs();
 
-    expect(items).toHaveLength(11);
+    expect(items).toHaveLength(12);
     expect(items[0]).toEqual({ name: 'Home', href: '/dashboard/team-member' });
     expect(items[1]).toEqual({ name: 'My Profile', href: '/dashboard/team-member/profile' });
-    expect(items[10]).toEqual({ name: 'Apps', href: '/dashboard/apps' });
+    expect(items[11]).toEqual({ name: 'Apps', href: '/dashboard/apps' });
   });
 
-  it('member: shows exact member nav items (Home, My Profile, Projects, Schedule, Clients, Services)', () => {
+  it('member: shows exact member nav items (Home, My Profile, Projects, Schedule, Clients, Services, Contracts)', () => {
     renderSidebar({ memberRole: 'member', memberAccess: {} });
 
     const items = getNavLinkNamesAndHrefs();
@@ -112,6 +114,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Schedule', href: '/dashboard/schedule' },
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
+      { name: 'Contracts', href: '/dashboard/contracts' },
     ];
 
     expect(items).toHaveLength(expected.length);
@@ -121,7 +124,7 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('member: does not show Team, Requests, Quotes, Invoices, Marketing, Insights, Timesheets, Apps', () => {
+  it('member: does not show Team, Requests, Quotes, Invoices, Marketing, Insights, Timesheets, Apps (but does show Contracts)', () => {
     renderSidebar({ memberRole: 'member', memberAccess: {} });
 
     const links = screen.getAllByRole('link');

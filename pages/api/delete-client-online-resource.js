@@ -1,5 +1,5 @@
 /**
- * Deletes a client attachment. POST body: { userId, attachmentId, organizationId? }
+ * Deletes a client online resource. POST body: { userId, resourceId, organizationId? }
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -29,27 +29,27 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Service unavailable' });
   }
 
-  const { userId, attachmentId, organizationId } = req.body || {};
+  const { userId, resourceId, organizationId } = req.body || {};
 
-  if (!userId || !attachmentId) {
-    return res.status(400).json({ error: 'Missing userId or attachmentId' });
+  if (!userId || !resourceId) {
+    return res.status(400).json({ error: 'Missing userId or resourceId' });
   }
 
   try {
     const { data: existing, error: fetchErr } = await supabaseAdmin
-      .from('client_attachments')
+      .from('client_online_resources')
       .select('id, user_id, organization_id')
-      .eq('id', attachmentId)
+      .eq('id', resourceId)
       .limit(1)
       .single();
 
     if (fetchErr || !existing) {
-      return res.status(404).json({ error: 'Attachment not found' });
+      return res.status(404).json({ error: 'Online resource not found' });
     }
 
     if (organizationId) {
       if (existing.organization_id !== organizationId) {
-        return res.status(403).json({ error: 'Attachment does not belong to this organization' });
+        return res.status(403).json({ error: 'Online resource does not belong to this organization' });
       }
       const { data: membership } = await supabaseAdmin
         .from('org_members')
@@ -63,20 +63,20 @@ export default async function handler(req, res) {
       }
     } else {
       if (existing.organization_id != null || existing.user_id !== userId) {
-        return res.status(403).json({ error: 'Attachment does not belong to you' });
+        return res.status(403).json({ error: 'Online resource does not belong to you' });
       }
     }
 
-    const { error: deleteErr } = await supabaseAdmin.from('client_attachments').delete().eq('id', attachmentId);
+    const { error: deleteErr } = await supabaseAdmin.from('client_online_resources').delete().eq('id', resourceId);
 
     if (deleteErr) {
-      console.error('[delete-client-attachment]', deleteErr);
-      return res.status(500).json({ error: 'Failed to delete attachment' });
+      console.error('[delete-client-online-resource]', deleteErr);
+      return res.status(500).json({ error: 'Failed to delete online resource' });
     }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('[delete-client-attachment]', err);
-    return res.status(500).json({ error: 'Failed to delete attachment' });
+    console.error('[delete-client-online-resource]', err);
+    return res.status(500).json({ error: 'Failed to delete online resource' });
   }
 }

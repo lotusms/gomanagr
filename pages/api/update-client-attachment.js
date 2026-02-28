@@ -69,18 +69,18 @@ export default async function handler(req, res) {
         .single();
       if (!membership) return res.status(403).json({ error: 'Not a member of this organization' });
     } else {
-      if (existing.organization_id != null || existing.user_id !== userId) return res.status(403).json({ error: 'Invoice does not belong to you' });
+      if (existing.organization_id != null || existing.user_id !== userId) return res.status(403).json({ error: 'Attachment does not belong to you' });
     }
 
     const updates = parseBody(req.body, existing);
-    const { error: updateErr } = await supabaseAdmin.from('client_invoices').update(updates).eq('id', invoiceId);
+    const { error: updateErr } = await supabaseAdmin.from('client_attachments').update(updates).eq('id', attachmentId);
     if (updateErr) {
-      console.error('[update-client-invoice]', updateErr);
-      return res.status(500).json({ error: 'Failed to update invoice' });
+      console.error('[update-client-attachment]', updateErr);
+      return res.status(500).json({ error: 'Failed to update attachment' });
     }
     return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('[update-client-invoice]', err);
-    return res.status(500).json({ error: 'Failed to update invoice' });
+    console.error('[update-client-attachment]', err);
+    return res.status(500).json({ error: 'Failed to update attachment' });
   }
 }

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import InputField from '@/components/ui/InputField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
+import FileUploadList from '@/components/ui/FileUploadList';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -48,6 +49,35 @@ export default function ClientInvoiceForm({
   const [relatedProposalId, setRelatedProposalId] = useState(initial.related_proposal_id ?? '');
   const [relatedProject, setRelatedProject] = useState(initial.related_project ?? '');
   const [relatedService, setRelatedService] = useState(initial.related_service ?? '');
+
+  const uploadFile = useCallback(
+    (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          fetch('/api/upload-client-attachment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              clientId,
+              filename: file.name,
+              contentType: file.type || 'application/octet-stream',
+              base64: reader.result,
+            }),
+          })
+            .then((res) => res.json().then((data) => ({ res, data })))
+            .then(({ res, data }) => {
+              if (!res.ok) throw new Error(data.error || 'Upload failed');
+              resolve(data.url);
+            })
+            .catch(reject);
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      }),
+    [userId, clientId]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -190,13 +220,15 @@ export default function ClientInvoiceForm({
         placeholder="e.g. 0.00 or remaining amount"
       />
 
-      <InputField
-        id="file-url"
-        label="Invoice PDF (link)"
-        value={fileUrl}
-        onChange={(e) => setFileUrl(e.target.value)}
-        variant="light"
-        placeholder="URL to invoice PDF"
+      <FileUploadList
+        id="invoice-file"
+        label="Invoice PDF"
+        value={fileUrl ? [fileUrl] : []}
+        onChange={(urls) => setFileUrl(urls.length ? urls[0] : '')}
+        onUpload={uploadFile}
+        accept=".pdf,application/pdf"
+        multiple={false}
+        placeholder="Drag PDF here or click to upload"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

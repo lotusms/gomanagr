@@ -9,6 +9,8 @@ import SideNavViewerLayout from './SideNavViewerLayout';
 import ContractLogCards from './ContractLogCards';
 import ProposalLogCards from './ProposalLogCards';
 import InvoiceLogCards from './InvoiceLogCards';
+import AttachmentLogCards from './AttachmentLogCards';
+import OnlineResourceLogCards from './OnlineResourceLogCards';
 
 export const DOC_TYPES = [
   {
@@ -46,7 +48,7 @@ export const DOC_TYPES = [
   {
     key: 'sharedAssets',
     label: 'Online Resources',
-    description: 'Links to drives, folders, or online resources',
+    description: 'Links, portals, and web references for this client',
     icon: HiGlobe,
     borderClass: 'border-l-cyan-500 dark:border-l-cyan-400',
     badgeClass: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200',
@@ -334,6 +336,192 @@ function InvoicesBlock({ clientId, userId, organizationId, onHasEntries }) {
   );
 }
 
+function AttachmentsBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [attachments, setAttachments] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [attachmentToDelete, setAttachmentToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-attachments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setAttachments(data.attachments || []))
+      .catch(() => setAttachments([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(attachments.length > 0);
+  }, [attachments.length, loading, onHasEntries]);
+
+  const type = DOC_TYPES[3];
+  const newUrl = `/dashboard/clients/${clientId}/attachments/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/attachments/${id}/edit`;
+
+  const handleDeleteConfirm = async () => {
+    if (!attachmentToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-attachment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          attachmentId: attachmentToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setAttachments((prev) => prev.filter((a) => a.id !== attachmentToDelete));
+      setAttachmentToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setAttachmentToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading attachments…" />;
+  }
+
+  if (attachments.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No attachments yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add attachment
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <AttachmentLogCards
+        attachments={attachments}
+        onSelect={(id) => router.push(editUrl(id))}
+        onDelete={setAttachmentToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!attachmentToDelete}
+        onClose={() => setAttachmentToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete attachment"
+        message="This attachment will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
+function OnlineResourcesBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [resources, setResources] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [resourceToDelete, setResourceToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-online-resources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setResources(data.resources || []))
+      .catch(() => setResources([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(resources.length > 0);
+  }, [resources.length, loading, onHasEntries]);
+
+  const type = DOC_TYPES[4];
+  const newUrl = `/dashboard/clients/${clientId}/online-resources/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/online-resources/${id}/edit`;
+
+  const handleDeleteConfirm = async () => {
+    if (!resourceToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-online-resource', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          resourceId: resourceToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setResources((prev) => prev.filter((r) => r.id !== resourceToDelete));
+      setResourceToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setResourceToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading online resources…" />;
+  }
+
+  if (resources.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No online resources yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add resource
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <OnlineResourceLogCards
+        resources={resources}
+        onSelect={(id) => router.push(editUrl(id))}
+        onDelete={setResourceToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!resourceToDelete}
+        onClose={() => setResourceToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete online resource"
+        message="This resource will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
 function DocumentBlock({ type, items, onAdd, onEdit, onRemove }) {
   if (items.length === 0) {
     return (
@@ -395,11 +583,15 @@ export default function DocumentsFilesSection({
   const useContractsFromApi = Boolean(clientId && userId);
   const useProposalsFromApi = Boolean(clientId && userId);
   const useInvoicesFromApi = Boolean(clientId && userId);
+  const useAttachmentsFromApi = Boolean(clientId && userId);
+  const useOnlineResourcesFromApi = Boolean(clientId && userId);
   const defaultKey = initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection) ? initialSection : DOC_TYPES[0].key;
   const [selectedKey, setSelectedKey] = useState(defaultKey);
   const [hasContractEntries, setHasContractEntries] = useState(false);
   const [hasProposalEntries, setHasProposalEntries] = useState(false);
   const [hasInvoiceEntries, setHasInvoiceEntries] = useState(false);
+  const [hasAttachmentEntries, setHasAttachmentEntries] = useState(false);
+  const [hasOnlineResourceEntries, setHasOnlineResourceEntries] = useState(false);
 
   useEffect(() => {
     if (initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection)) {
@@ -474,7 +666,11 @@ export default function DocumentsFilesSection({
         ? hasProposalEntries
         : selectedKey === 'invoices' && useInvoicesFromApi
           ? hasInvoiceEntries
-          : (selectedBlock?.items?.length ?? 0) > 0;
+          : selectedKey === 'attachments' && useAttachmentsFromApi
+            ? hasAttachmentEntries
+            : selectedKey === 'sharedAssets' && useOnlineResourcesFromApi
+              ? hasOnlineResourceEntries
+              : (selectedBlock?.items?.length ?? 0) > 0;
 
   const handleAddInHeader = () => {
     if (selectedKey === 'contracts' && useContractsFromApi) {
@@ -489,6 +685,14 @@ export default function DocumentsFilesSection({
       router.push(`/dashboard/clients/${clientId}/invoices/new`);
       return;
     }
+    if (selectedKey === 'attachments' && useAttachmentsFromApi) {
+      router.push(`/dashboard/clients/${clientId}/attachments/new`);
+      return;
+    }
+    if (selectedKey === 'sharedAssets' && useOnlineResourcesFromApi) {
+      router.push(`/dashboard/clients/${clientId}/online-resources/new`);
+      return;
+    }
     if (selectedBlock) selectedBlock.onAdd();
   };
 
@@ -497,7 +701,9 @@ export default function DocumentsFilesSection({
     count:
       (t.key === 'contracts' && useContractsFromApi) ||
       (t.key === 'proposals' && useProposalsFromApi) ||
-      (t.key === 'invoices' && useInvoicesFromApi)
+      (t.key === 'invoices' && useInvoicesFromApi) ||
+      (t.key === 'attachments' && useAttachmentsFromApi) ||
+      (t.key === 'sharedAssets' && useOnlineResourcesFromApi)
         ? null
         : (blocks.find((b) => b.type.key === t.key)?.items?.length ?? 0),
   }));
@@ -523,7 +729,8 @@ export default function DocumentsFilesSection({
         hasEntriesInSelectedSection ||
         (selectedKey === 'contracts' && useContractsFromApi) ||
         (selectedKey === 'proposals' && useProposalsFromApi) ||
-        (selectedKey === 'invoices' && useInvoicesFromApi) ? (
+        (selectedKey === 'invoices' && useInvoicesFromApi) ||
+        (selectedKey === 'attachments' && useAttachmentsFromApi) ? (
           <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2 flex-shrink-0">
             <HiPlus className="w-5 h-5" />
             Add
@@ -551,6 +758,20 @@ export default function DocumentsFilesSection({
           userId={userId}
           organizationId={organizationId}
           onHasEntries={setHasInvoiceEntries}
+        />
+      ) : selectedKey === 'attachments' && useAttachmentsFromApi ? (
+        <AttachmentsBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasAttachmentEntries}
+        />
+      ) : selectedKey === 'sharedAssets' && useOnlineResourcesFromApi ? (
+        <OnlineResourcesBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasOnlineResourceEntries}
         />
       ) : selectedBlock ? (
         <DocumentBlock {...selectedBlock} />

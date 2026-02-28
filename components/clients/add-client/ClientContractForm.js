@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
+import FileUploadList from '@/components/ui/FileUploadList';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -56,6 +57,35 @@ export default function ClientContractForm({
   const [signedDate, setSignedDate] = useState(toDateLocal(initial.signed_date) || '');
   const [fileUrl, setFileUrl] = useState(initial.file_url ?? '');
   const [notes, setNotes] = useState(initial.notes ?? '');
+
+  const uploadFile = useCallback(
+    (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          fetch('/api/upload-client-attachment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              clientId,
+              filename: file.name,
+              contentType: file.type || 'application/octet-stream',
+              base64: reader.result,
+            }),
+          })
+            .then((res) => res.json().then((data) => ({ res, data })))
+            .then(({ res, data }) => {
+              if (!res.ok) throw new Error(data.error || 'Upload failed');
+              resolve(data.url);
+            })
+            .catch(reject);
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      }),
+    [userId, clientId]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -195,15 +225,15 @@ export default function ClientContractForm({
         <DateField id="signed-date" label="Signed date" value={signedDate} onChange={(e) => setSignedDate(e.target.value)} variant="light" />
       </div>
 
-      {/* To be swapped with a darg and drop file upload component */}
-      
-      <InputField
-        id="file-url"
-        label="File (PDF/DOC link)"
-        value={fileUrl}
-        onChange={(e) => setFileUrl(e.target.value)}
-        variant="light"
-        placeholder="URL to contract file (upload coming later)"
+      <FileUploadList
+        id="contract-file"
+        label="Contract file (PDF/DOC)"
+        value={fileUrl ? [fileUrl] : []}
+        onChange={(urls) => setFileUrl(urls.length ? urls[0] : '')}
+        onUpload={uploadFile}
+        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        multiple={false}
+        placeholder="Drag file here or click to upload"
       />
 
       <TextareaField

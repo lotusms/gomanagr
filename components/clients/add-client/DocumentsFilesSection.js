@@ -8,6 +8,7 @@ import EmptyStateCard from './EmptyStateCard';
 import SideNavViewerLayout from './SideNavViewerLayout';
 import ContractLogCards from './ContractLogCards';
 import ProposalLogCards from './ProposalLogCards';
+import InvoiceLogCards from './InvoiceLogCards';
 
 export const DOC_TYPES = [
   {
@@ -240,6 +241,99 @@ function ProposalsBlock({ clientId, userId, organizationId, onHasEntries }) {
   );
 }
 
+function InvoicesBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setInvoices(data.invoices || []))
+      .catch(() => setInvoices([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(invoices.length > 0);
+  }, [invoices.length, loading, onHasEntries]);
+
+  const type = DOC_TYPES[2];
+  const newUrl = `/dashboard/clients/${clientId}/invoices/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/invoices/${id}/edit`;
+
+  const handleDeleteConfirm = async () => {
+    if (!invoiceToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          invoiceId: invoiceToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setInvoices((prev) => prev.filter((i) => i.id !== invoiceToDelete));
+      setInvoiceToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setInvoiceToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading invoices…" />;
+  }
+
+  if (invoices.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No invoices yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add invoice
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <InvoiceLogCards
+        invoices={invoices}
+        onSelect={(id) => router.push(editUrl(id))}
+        onDelete={setInvoiceToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!invoiceToDelete}
+        onClose={() => setInvoiceToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete invoice"
+        message="This invoice will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
 function DocumentBlock({ type, items, onAdd, onEdit, onRemove }) {
   if (items.length === 0) {
     return (
@@ -300,10 +394,12 @@ export default function DocumentsFilesSection({
   const router = useRouter();
   const useContractsFromApi = Boolean(clientId && userId);
   const useProposalsFromApi = Boolean(clientId && userId);
+  const useInvoicesFromApi = Boolean(clientId && userId);
   const defaultKey = initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection) ? initialSection : DOC_TYPES[0].key;
   const [selectedKey, setSelectedKey] = useState(defaultKey);
   const [hasContractEntries, setHasContractEntries] = useState(false);
   const [hasProposalEntries, setHasProposalEntries] = useState(false);
+  const [hasInvoiceEntries, setHasInvoiceEntries] = useState(false);
 
   useEffect(() => {
     if (initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection)) {
@@ -376,7 +472,9 @@ export default function DocumentsFilesSection({
       ? hasContractEntries
       : selectedKey === 'proposals' && useProposalsFromApi
         ? hasProposalEntries
-        : (selectedBlock?.items?.length ?? 0) > 0;
+        : selectedKey === 'invoices' && useInvoicesFromApi
+          ? hasInvoiceEntries
+          : (selectedBlock?.items?.length ?? 0) > 0;
 
   const handleAddInHeader = () => {
     if (selectedKey === 'contracts' && useContractsFromApi) {
@@ -387,13 +485,19 @@ export default function DocumentsFilesSection({
       router.push(`/dashboard/clients/${clientId}/proposals/new`);
       return;
     }
+    if (selectedKey === 'invoices' && useInvoicesFromApi) {
+      router.push(`/dashboard/clients/${clientId}/invoices/new`);
+      return;
+    }
     if (selectedBlock) selectedBlock.onAdd();
   };
 
   const navItems = DOC_TYPES.map((t) => ({
     ...t,
     count:
-      (t.key === 'contracts' && useContractsFromApi) || (t.key === 'proposals' && useProposalsFromApi)
+      (t.key === 'contracts' && useContractsFromApi) ||
+      (t.key === 'proposals' && useProposalsFromApi) ||
+      (t.key === 'invoices' && useInvoicesFromApi)
         ? null
         : (blocks.find((b) => b.type.key === t.key)?.items?.length ?? 0),
   }));
@@ -416,7 +520,10 @@ export default function DocumentsFilesSection({
       onSelectKey={setSelectedKey}
       viewerHeader={viewerHeader}
       viewerHeaderAction={
-        hasEntriesInSelectedSection || (selectedKey === 'contracts' && useContractsFromApi) || (selectedKey === 'proposals' && useProposalsFromApi) ? (
+        hasEntriesInSelectedSection ||
+        (selectedKey === 'contracts' && useContractsFromApi) ||
+        (selectedKey === 'proposals' && useProposalsFromApi) ||
+        (selectedKey === 'invoices' && useInvoicesFromApi) ? (
           <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2 flex-shrink-0">
             <HiPlus className="w-5 h-5" />
             Add
@@ -437,6 +544,13 @@ export default function DocumentsFilesSection({
           userId={userId}
           organizationId={organizationId}
           onHasEntries={setHasProposalEntries}
+        />
+      ) : selectedKey === 'invoices' && useInvoicesFromApi ? (
+        <InvoicesBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasInvoiceEntries}
         />
       ) : selectedBlock ? (
         <DocumentBlock {...selectedBlock} />

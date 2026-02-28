@@ -1,6 +1,6 @@
 /**
  * Creates a client email log entry.
- * POST body: { userId, clientId, organizationId?, subject, direction, to_from, summary, body, attachments?, sent_at?, related_project_case?, follow_up_date? }
+ * POST body: { userId, clientId, organizationId?, subject, direction, to_from, body, attachments?, sent_at?, related_project_case?, follow_up_date? }
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -34,7 +34,6 @@ function parseBody(body) {
     subject: String(body.subject ?? '').trim() || '',
     direction: body.direction === 'received' ? 'received' : 'sent',
     to_from: String(body.to_from ?? '').trim() || '',
-    summary: String(body.summary ?? '').trim() || '',
     body: String(body.body ?? '').trim() || '',
     attachments,
     sent_at: sentAt,

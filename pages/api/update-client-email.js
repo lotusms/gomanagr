@@ -1,6 +1,6 @@
 /**
  * Updates a client email log entry. Verifies the email belongs to the user's scope (solo or org).
- * POST body: { userId, emailId, organizationId?, subject, direction, to_from, summary, body, attachments?, sent_at?, related_project_case?, follow_up_date? }
+ * POST body: { userId, emailId, organizationId?, subject, direction, to_from, body, attachments?, sent_at?, related_project_case?, follow_up_date? }
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -37,7 +37,6 @@ function parseBody(body, existing) {
     subject: String(body.subject ?? existing?.subject ?? '').trim() || '',
     direction: body.direction === 'received' ? 'received' : 'sent',
     to_from: String(body.to_from ?? existing?.to_from ?? '').trim() || '',
-    summary: String(body.summary ?? existing?.summary ?? '').trim() || '',
     body: String(body.body ?? existing?.body ?? '').trim() || '',
     attachments,
     sent_at: sentAt,

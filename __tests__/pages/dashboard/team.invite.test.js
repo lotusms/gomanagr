@@ -257,7 +257,7 @@ describe('Team page – Deactivate from card', () => {
     mockUpdateTeamMembers.mockResolvedValue(undefined);
   });
 
-  it.skip('when member has access, revokes first then deactivates', async () => {
+  it('when member has access, revokes first then deactivates', async () => {
     const memberWithAccess = {
       id: 'm-allison',
       name: 'Allison',
@@ -324,12 +324,11 @@ describe('Team page – Deactivate from card', () => {
     });
 
     const dialog = screen.getByRole('dialog');
-    const confirmInput = screen.getByTestId('deactivate-dialog-confirm-input');
-    fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+    const confirmInput = within(dialog).getByLabelText(/type confirm to enable/i);
+    await act(async () => {
+      fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+    });
     const confirmBtn = within(dialog).getByRole('button', { name: /^deactivate$/i });
-    if (confirmBtn.disabled) {
-      confirmBtn.removeAttribute('disabled');
-    }
     await act(async () => {
       fireEvent.click(confirmBtn);
     });
@@ -363,7 +362,7 @@ describe('Team page – Deactivate from card', () => {
     }
   });
 
-  it.skip('when member has no access, deactivates without calling revoke', async () => {
+  it('when member has no access, deactivates without calling revoke', async () => {
     const memberNoAccess = {
       id: 'm-bob',
       name: 'Bob',
@@ -410,12 +409,11 @@ describe('Team page – Deactivate from card', () => {
     });
 
     const dialog = screen.getByRole('dialog');
-    const confirmInput = screen.getByTestId('deactivate-dialog-confirm-input');
-    fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+    const confirmInput = within(dialog).getByLabelText(/type confirm to enable/i);
+    await act(async () => {
+      fireEvent.change(confirmInput, { target: { value: 'CONFIRM' } });
+    });
     const confirmBtn = within(dialog).getByRole('button', { name: /^deactivate$/i });
-    if (confirmBtn.disabled) {
-      confirmBtn.removeAttribute('disabled');
-    }
     await act(async () => {
       fireEvent.click(confirmBtn);
     });

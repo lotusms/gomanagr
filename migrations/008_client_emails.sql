@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS client_emails (
   subject TEXT NOT NULL DEFAULT '',
   direction TEXT NOT NULL CHECK (direction IN ('sent', 'received')) DEFAULT 'sent',
   to_from TEXT NOT NULL DEFAULT '',
-  summary TEXT NOT NULL DEFAULT '',
   body TEXT NOT NULL DEFAULT '',
   attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
   sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

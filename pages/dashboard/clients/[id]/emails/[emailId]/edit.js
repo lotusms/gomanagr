@@ -105,7 +105,7 @@ export default function EditClientEmailPage() {
       <div className="space-y-6">
         <PageHeader
           title="Edit email"
-          description={email.subject ? `Edit: ${email.subject}` : 'Edit this email log entry.'}
+          description="Update the details of this email log entry."
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

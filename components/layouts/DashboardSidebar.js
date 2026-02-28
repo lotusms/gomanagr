@@ -21,7 +21,7 @@ import {
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
-import { isOwnerRole, isAdminRole, isMemberRole } from '@/config/rolePermissions';
+import { isOwnerRole, isAdminRole, isMemberRole, ORG_ROLE } from '@/config/rolePermissions';
 
 function getOwnerNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
@@ -33,7 +33,7 @@ function getOwnerNavItems(accountIndustry) {
     { divider: true },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
     { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
-    { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
+    { name: 'Proposals', href: '/dashboard/proposals', icon: HiInbox },
     { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
@@ -45,9 +45,9 @@ function getOwnerNavItems(accountIndustry) {
   ];
 }
 
-function getAdminNavItems(accountIndustry) {
+function getAdminNavItems(accountIndustry, memberRole) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
-  return [
+  const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
     { name: 'Team', href: '/dashboard/team', icon: HiUsers },
@@ -56,13 +56,18 @@ function getAdminNavItems(accountIndustry) {
     { divider: true },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
     { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
-    { name: 'Requests', href: '/dashboard/requests', icon: HiInbox },
+  ];
+  if (memberRole !== ORG_ROLE.DEVELOPER) {
+    items.push({ name: 'Proposals', href: '/dashboard/proposals', icon: HiInbox });
+  }
+  items.push(
     { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
     { divider: true },
-    { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid },
-  ];
+    { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid }
+  );
+  return items;
 }
 
 const MD_BREAKPOINT = 768;
@@ -101,8 +106,8 @@ export default function DashboardSidebar({ open, onToggle, userAccount, memberRo
     if (!orgLoaded) return placeholderNav;
     if (isMemberRole(memberRole)) return getMemberNavItems(memberAccess, userAccount?.industry);
     if (isOwnerRole(memberRole)) return getOwnerNavItems(userAccount?.industry);
-    if (isAdminRole(memberRole)) return getAdminNavItems(userAccount?.industry);
-    return getAdminNavItems(userAccount?.industry);
+    if (isAdminRole(memberRole)) return getAdminNavItems(userAccount?.industry, memberRole);
+    return getAdminNavItems(userAccount?.industry, memberRole);
   }, [orgLoaded, memberRole, memberAccess, userAccount?.industry, placeholderNav]);
 
   const handleNavClick = () => {

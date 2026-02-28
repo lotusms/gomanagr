@@ -47,7 +47,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Schedule', href: '/dashboard/schedule' },
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
-      { name: 'Requests', href: '/dashboard/requests' },
+      { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Quotes', href: '/dashboard/quotes' },
       { name: 'Invoices', href: '/dashboard/invoices' },
       { name: 'Contracts', href: '/dashboard/contracts' },
@@ -77,7 +77,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Schedule', href: '/dashboard/schedule' },
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
-      { name: 'Requests', href: '/dashboard/requests' },
+      { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Quotes', href: '/dashboard/quotes' },
       { name: 'Invoices', href: '/dashboard/invoices' },
       { name: 'Contracts', href: '/dashboard/contracts' },
@@ -91,15 +91,17 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('developer role: shows same nav as admin', () => {
+  it('developer role: shows admin nav without Proposals (superadmin and admin only)', () => {
     renderSidebar({ memberRole: 'developer', isOwner: false });
 
     const items = getNavLinkNamesAndHrefs();
+    const names = items.map((i) => i.name);
 
-    expect(items).toHaveLength(12);
+    expect(items).toHaveLength(11);
+    expect(names).not.toContain('Proposals');
     expect(items[0]).toEqual({ name: 'Home', href: '/dashboard/team-member' });
     expect(items[1]).toEqual({ name: 'My Profile', href: '/dashboard/team-member/profile' });
-    expect(items[11]).toEqual({ name: 'Apps', href: '/dashboard/apps' });
+    expect(items[10]).toEqual({ name: 'Apps', href: '/dashboard/apps' });
   });
 
   it('member: shows exact member nav items (Home, My Profile, Projects, Schedule, Clients, Services, Contracts)', () => {
@@ -124,14 +126,14 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('member: does not show Team, Requests, Quotes, Invoices, Marketing, Insights, Timesheets, Apps (but does show Contracts)', () => {
+  it('member: does not show Team, Proposals, Quotes, Invoices, Marketing, Insights, Timesheets, Apps (but does show Contracts)', () => {
     renderSidebar({ memberRole: 'member', memberAccess: {} });
 
     const links = screen.getAllByRole('link');
     const names = links.map((l) => l.textContent.trim());
 
     expect(names).not.toContain('Team');
-    expect(names).not.toContain('Requests');
+    expect(names).not.toContain('Proposals');
     expect(names).not.toContain('Quotes');
     expect(names).not.toContain('Invoices');
     expect(names).not.toContain('Marketing');

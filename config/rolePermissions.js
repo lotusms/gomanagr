@@ -3,7 +3,8 @@
  *
  * - superadmin: Org creator (isOwner). Full access: all sidebar, Subscriptions, Developer, all Settings.
  * - admin / developer: Promoted admin (not creator). Limited: Dashboard, Projects, My Profile, Team (no assign admins),
- *   Schedule, Clients, Services, Requests, Quotes, Invoices, Apps. User menu: My Account, Settings (General, Theme), Logout.
+ *   Schedule, Clients, Services, Quotes, Invoices, Apps. Proposals visible to superadmin and admin only (not developer).
+ *   User menu: My Account, Settings (General, Theme), Logout.
  * - member: Team member. Access controlled by admin via Team Access (schedule, clients, projects, services).
  */
 

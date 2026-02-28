@@ -651,6 +651,9 @@ export default function ClientProfile({
           label: 'Documents & Files',
           content: (
             <DocumentsFilesSection
+              clientId={initialClient?.id || clientId}
+              userId={currentUser?.uid}
+              organizationId={organization?.id}
               contracts={contracts}
               proposals={proposals}
               invoices={invoices}
@@ -661,6 +664,7 @@ export default function ClientProfile({
               onInvoicesChange={setInvoices}
               onAttachmentsChange={setAttachments}
               onSharedAssetsChange={setSharedAssets}
+              initialSection={typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined}
             />
           ),
         }] 

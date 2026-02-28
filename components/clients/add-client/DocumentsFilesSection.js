@@ -1,15 +1,18 @@
-import { useState } from 'react';
-import { HiPlus, HiDocumentText, HiClipboardList, HiReceiptTax, HiPaperClip, HiShare } from 'react-icons/hi';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { HiPlus, HiDocumentText, HiInbox, HiCurrencyDollar, HiPaperClip, HiGlobe } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
+import { ConfirmationDialog } from '@/components/ui';
 import CardDeleteButton from './CardDeleteButton';
 import EmptyStateCard from './EmptyStateCard';
 import SideNavViewerLayout from './SideNavViewerLayout';
+import ContractLogCards from './ContractLogCards';
 
 export const DOC_TYPES = [
   {
     key: 'contracts',
     label: 'Contracts',
-    description: 'Contract names, reference numbers, or links',
+    description: 'Contracts with title, status, dates, and file links',
     icon: HiDocumentText,
     borderClass: 'border-l-primary-500 dark:border-l-primary-400',
     badgeClass: 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200',
@@ -18,7 +21,7 @@ export const DOC_TYPES = [
     key: 'proposals',
     label: 'Proposals',
     description: 'Proposals or quotes sent to this client',
-    icon: HiClipboardList,
+    icon: HiInbox,
     borderClass: 'border-l-emerald-500 dark:border-l-emerald-400',
     badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
   },
@@ -26,7 +29,7 @@ export const DOC_TYPES = [
     key: 'invoices',
     label: 'Invoices',
     description: 'Invoice references or payment records',
-    icon: HiReceiptTax,
+    icon: HiCurrencyDollar,
     borderClass: 'border-l-violet-500 dark:border-l-violet-400',
     badgeClass: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
   },
@@ -40,13 +43,108 @@ export const DOC_TYPES = [
   },
   {
     key: 'sharedAssets',
-    label: 'Shared assets',
-    description: 'Shared drives, folders, or resources',
-    icon: HiShare,
+    label: 'Online Resources',
+    description: 'Links to drives, folders, or online resources',
+    icon: HiGlobe,
     borderClass: 'border-l-cyan-500 dark:border-l-cyan-400',
     badgeClass: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200',
   },
 ];
+
+const VALID_DOC_SECTION_KEYS = DOC_TYPES.map((t) => t.key);
+
+function ContractsBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [contracts, setContracts] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [contractToDelete, setContractToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setContracts(data.contracts || []))
+      .catch(() => setContracts([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(contracts.length > 0);
+  }, [contracts.length, loading, onHasEntries]);
+
+  const type = DOC_TYPES[0];
+  const newUrl = `/dashboard/clients/${clientId}/contracts/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/contracts/${id}/edit`;
+
+  const handleDeleteConfirm = async () => {
+    if (!contractToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          contractId: contractToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setContracts((prev) => prev.filter((c) => c.id !== contractToDelete));
+      setContractToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setContractToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading contracts…" />;
+  }
+
+  if (contracts.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No contracts yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add contract
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <ContractLogCards
+        contracts={contracts}
+        onSelect={(id) => router.push(editUrl(id))}
+        onDelete={setContractToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!contractToDelete}
+        onClose={() => setContractToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete contract"
+        message="This contract will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
 
 function DocumentBlock({ type, items, onAdd, onEdit, onRemove }) {
   if (items.length === 0) {
@@ -90,6 +188,9 @@ function DocumentBlock({ type, items, onAdd, onEdit, onRemove }) {
 }
 
 export default function DocumentsFilesSection({
+  clientId,
+  userId,
+  organizationId,
   contracts,
   proposals,
   invoices,
@@ -100,8 +201,19 @@ export default function DocumentsFilesSection({
   onInvoicesChange,
   onAttachmentsChange,
   onSharedAssetsChange,
+  initialSection,
 }) {
-  const [selectedKey, setSelectedKey] = useState(DOC_TYPES[0].key);
+  const router = useRouter();
+  const useContractsFromApi = Boolean(clientId && userId);
+  const defaultKey = initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection) ? initialSection : DOC_TYPES[0].key;
+  const [selectedKey, setSelectedKey] = useState(defaultKey);
+  const [hasContractEntries, setHasContractEntries] = useState(false);
+
+  useEffect(() => {
+    if (initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection)) {
+      setSelectedKey(initialSection);
+    }
+  }, [initialSection]);
 
   const blocks = [
     {
@@ -163,17 +275,23 @@ export default function DocumentsFilesSection({
 
   const selectedType = DOC_TYPES.find((t) => t.key === selectedKey);
   const selectedBlock = blocks.find((b) => b.type.key === selectedKey);
-  const hasEntriesInSelectedSection = (selectedBlock?.items?.length ?? 0) > 0;
+  const hasEntriesInSelectedSection =
+    selectedKey === 'contracts' && useContractsFromApi
+      ? hasContractEntries
+      : (selectedBlock?.items?.length ?? 0) > 0;
 
   const handleAddInHeader = () => {
-    if (!selectedBlock) return;
-    selectedBlock.onAdd();
+    if (selectedKey === 'contracts' && useContractsFromApi) {
+      router.push(`/dashboard/clients/${clientId}/contracts/new`);
+      return;
+    }
+    if (selectedBlock) selectedBlock.onAdd();
   };
 
-  const navItems = DOC_TYPES.map((t) => {
-    const block = blocks.find((b) => b.type.key === t.key);
-    return { ...t, count: block?.items?.length ?? 0 };
-  });
+  const navItems = DOC_TYPES.map((t) => ({
+    ...t,
+    count: t.key === 'contracts' && useContractsFromApi ? null : (blocks.find((b) => b.type.key === t.key)?.items?.length ?? 0),
+  }));
 
   const viewerHeader = selectedType
     ? {
@@ -193,7 +311,7 @@ export default function DocumentsFilesSection({
       onSelectKey={setSelectedKey}
       viewerHeader={viewerHeader}
       viewerHeaderAction={
-        hasEntriesInSelectedSection ? (
+        hasEntriesInSelectedSection || (selectedKey === 'contracts' && useContractsFromApi) ? (
           <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2 flex-shrink-0">
             <HiPlus className="w-5 h-5" />
             Add
@@ -201,7 +319,16 @@ export default function DocumentsFilesSection({
         ) : null
       }
     >
-      {selectedBlock ? <DocumentBlock {...selectedBlock} /> : null}
+      {selectedKey === 'contracts' && useContractsFromApi ? (
+        <ContractsBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasContractEntries}
+        />
+      ) : selectedBlock ? (
+        <DocumentBlock {...selectedBlock} />
+      ) : null}
     </SideNavViewerLayout>
   );
 }

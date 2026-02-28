@@ -29,7 +29,7 @@ function hasAttachments(email) {
  */
 export default function EmailLogCards({ emails, onSelect, onDelete, borderClass }) {
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
       {emails.map((email) => (
         <div
           key={email.id}
@@ -42,7 +42,7 @@ export default function EmailLogCards({ emails, onSelect, onDelete, borderClass 
               onSelect(email.id);
             }
           }}
-          className={`relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer pl-4 pr-11 py-3 min-h-[56px] ${borderClass}`}
+          className={`relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px] ${borderClass}`}
         >
           <div className="absolute top-1 right-1 flex items-center">
             {hasAttachments(email) && (

@@ -6,6 +6,10 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import EmptyStateCard from './EmptyStateCard';
 import SideNavViewerLayout from './SideNavViewerLayout';
 import EmailLogCards from './EmailLogCards';
+import MessageLogCards from './MessageLogCards';
+import CallLogCards from './CallLogCards';
+import MeetingNoteLogCards from './MeetingNoteLogCards';
+import InternalNoteLogCards from './InternalNoteLogCards';
 import LogEntryCard from './LogEntryCard';
 import InternalNotesView from './InternalNotesView';
 
@@ -150,6 +154,383 @@ function EmailsBlock({ clientId, userId, organizationId, onHasEntries }) {
   );
 }
 
+function MessagesBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [messageToDelete, setMessageToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setMessages(data.messages || []))
+      .catch(() => setMessages([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(messages.length > 0);
+  }, [messages.length, loading, onHasEntries]);
+
+  const type = LOG_TYPES[1];
+  const newUrl = `/dashboard/clients/${clientId}/messages/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/messages/${id}/edit`;
+  const handleSelectMessage = (id) => router.push(editUrl(id));
+
+  const handleDeleteConfirm = async () => {
+    if (!messageToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          messageId: messageToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setMessages((prev) => prev.filter((m) => m.id !== messageToDelete));
+      setMessageToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setMessageToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading messages…" />;
+  }
+
+  if (messages.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No messages yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add message
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <MessageLogCards
+        messages={messages}
+        onSelect={handleSelectMessage}
+        onDelete={setMessageToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!messageToDelete}
+        onClose={() => setMessageToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete message"
+        message="This message log entry will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
+function CallsBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [calls, setCalls] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [callToDelete, setCallToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-calls', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setCalls(data.calls || []))
+      .catch(() => setCalls([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(calls.length > 0);
+  }, [calls.length, loading, onHasEntries]);
+
+  const type = LOG_TYPES[2];
+  const newUrl = `/dashboard/clients/${clientId}/calls/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/calls/${id}/edit`;
+  const handleSelectCall = (id) => router.push(editUrl(id));
+
+  const handleDeleteConfirm = async () => {
+    if (!callToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          callId: callToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setCalls((prev) => prev.filter((c) => c.id !== callToDelete));
+      setCallToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setCallToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading calls…" />;
+  }
+
+  if (calls.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No calls yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add call
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <CallLogCards
+        calls={calls}
+        onSelect={handleSelectCall}
+        onDelete={setCallToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!callToDelete}
+        onClose={() => setCallToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete call"
+        message="This call log entry will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
+function MeetingNotesBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-meeting-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setNotes(data.notes || []))
+      .catch(() => setNotes([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(notes.length > 0);
+  }, [notes.length, loading, onHasEntries]);
+
+  const type = LOG_TYPES[3];
+  const newUrl = `/dashboard/clients/${clientId}/meeting-notes/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/meeting-notes/${id}/edit`;
+  const handleSelectNote = (id) => router.push(editUrl(id));
+
+  const handleDeleteConfirm = async () => {
+    if (!noteToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-meeting-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          noteId: noteToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setNotes((prev) => prev.filter((n) => n.id !== noteToDelete));
+      setNoteToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setNoteToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading meeting notes…" />;
+  }
+
+  if (notes.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No meeting notes yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add meeting note
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <MeetingNoteLogCards
+        notes={notes}
+        onSelect={handleSelectNote}
+        onDelete={setNoteToDelete}
+        borderClass={type.borderClass}
+      />
+      <ConfirmationDialog
+        isOpen={!!noteToDelete}
+        onClose={() => setNoteToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete meeting note"
+        message="This meeting note will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
+function InternalNotesBlock({ clientId, userId, organizationId, onHasEntries }) {
+  const router = useRouter();
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(!!clientId && !!userId);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setLoading(true);
+    fetch('/api/get-client-internal-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setNotes(data.notes || []))
+      .catch(() => setNotes([]))
+      .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (onHasEntries && !loading) onHasEntries(notes.length > 0);
+  }, [notes.length, loading, onHasEntries]);
+
+  const type = LOG_TYPES[4];
+  const newUrl = `/dashboard/clients/${clientId}/internal-notes/new`;
+  const editUrl = (id) => `/dashboard/clients/${clientId}/internal-notes/${id}/edit`;
+  const handleSelectNote = (id) => router.push(editUrl(id));
+
+  const handleDeleteConfirm = async () => {
+    if (!noteToDelete) return;
+    try {
+      const res = await fetch('/api/delete-client-internal-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          noteId: noteToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setNotes((prev) => prev.filter((n) => n.id !== noteToDelete));
+      setNoteToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setNoteToDelete(null);
+    }
+  };
+
+  if (loading) {
+    return <EmptyStateCard message="Loading internal notes…" />;
+  }
+
+  if (notes.length === 0) {
+    return (
+      <EmptyStateCard
+        message="No internal notes yet"
+        action={
+          <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
+            <HiPlus className="w-5 h-5" />
+            Add internal note
+          </PrimaryButton>
+        }
+      />
+    );
+  }
+
+  return (
+    <>
+      <InternalNoteLogCards
+        notes={notes}
+        onSelect={handleSelectNote}
+        onDelete={setNoteToDelete}
+        borderClass={type.borderClass}
+        currentUserId={userId}
+      />
+      <ConfirmationDialog
+        isOpen={!!noteToDelete}
+        onClose={() => setNoteToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete internal note"
+        message="This internal note will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
+    </>
+  );
+}
+
 function LogBlock({ type, items, onAdd, onEdit, onRemove }) {
   if (items.length === 0) {
     return (
@@ -199,29 +580,54 @@ export default function CommunicationLogSection({
 }) {
   const router = useRouter();
   const useEmailsFromApi = Boolean(clientId && userId);
+  const useMessagesFromApi = Boolean(clientId && userId);
+  const useCallsFromApi = Boolean(clientId && userId);
+  const useMeetingNotesFromApi = Boolean(clientId && userId);
+  const useInternalNotesFromApi = Boolean(clientId && userId);
   const [selectedKey, setSelectedKey] = useState(LOG_TYPES[0].key);
   const [hasEmailEntries, setHasEmailEntries] = useState(false);
+  const [hasMessageEntries, setHasMessageEntries] = useState(false);
+  const [hasCallEntries, setHasCallEntries] = useState(false);
+  const [hasMeetingNoteEntries, setHasMeetingNoteEntries] = useState(false);
+  const [hasInternalNoteEntries, setHasInternalNoteEntries] = useState(false);
 
   const hasEntriesInSelectedSection =
     selectedKey === 'internalNotes'
-      ? false
+      ? useInternalNotesFromApi ? hasInternalNoteEntries : false
       : selectedKey === 'emails'
         ? useEmailsFromApi
           ? hasEmailEntries
           : (legacyEmails?.length ?? 0) > 0
         : selectedKey === 'messages'
-          ? messages.length > 0
+          ? useMessagesFromApi
+            ? hasMessageEntries
+            : messages.length > 0
           : selectedKey === 'calls'
-            ? calls.length > 0
-            : meetingNotes.length > 0;
+            ? useCallsFromApi
+              ? hasCallEntries
+              : calls.length > 0
+            : selectedKey === 'meetingNotes'
+              ? useMeetingNotesFromApi
+                ? hasMeetingNoteEntries
+                : meetingNotes.length > 0
+              : false;
 
   const handleAddInHeader = () => {
     if (selectedKey === 'emails') {
       if (useEmailsFromApi) router.push(`/dashboard/clients/${clientId}/emails/new`);
       else onEmailsChange([...(legacyEmails ?? []), '']);
-    } else if (selectedKey === 'messages') onMessagesChange([...messages, '']);
-    else if (selectedKey === 'calls') onCallsChange([...calls, '']);
-    else if (selectedKey === 'meetingNotes') onMeetingNotesChange([...meetingNotes, '']);
+    } else if (selectedKey === 'messages') {
+      if (useMessagesFromApi) router.push(`/dashboard/clients/${clientId}/messages/new`);
+      else onMessagesChange([...messages, '']);
+    } else if (selectedKey === 'calls') {
+      if (useCallsFromApi) router.push(`/dashboard/clients/${clientId}/calls/new`);
+      else onCallsChange([...calls, '']);
+    } else if (selectedKey === 'meetingNotes') {
+      if (useMeetingNotesFromApi) router.push(`/dashboard/clients/${clientId}/meeting-notes/new`);
+      else onMeetingNotesChange([...meetingNotes, '']);
+    } else if (selectedKey === 'internalNotes' && useInternalNotesFromApi) {
+      router.push(`/dashboard/clients/${clientId}/internal-notes/new`);
+    }
   };
 
   const blocks = [
@@ -236,13 +642,19 @@ export default function CommunicationLogSection({
     ...t,
     count: t.key === 'emails' && useEmailsFromApi
       ? null
-      : t.key === 'messages'
-        ? messages.length
-        : t.key === 'calls'
-          ? calls.length
-          : t.key === 'meetingNotes'
-            ? meetingNotes.length
-            : null,
+      : t.key === 'messages' && useMessagesFromApi
+        ? null
+        : t.key === 'messages'
+          ? messages.length
+          : t.key === 'calls' && useCallsFromApi
+            ? null
+            : t.key === 'calls'
+              ? calls.length
+              : t.key === 'meetingNotes' && useMeetingNotesFromApi
+                ? null
+                : t.key === 'meetingNotes'
+                  ? meetingNotes.length
+                  : null,
   }));
 
   const viewerHeader = selectedType
@@ -275,7 +687,47 @@ export default function CommunicationLogSection({
       };
       return <LogBlock {...block} />;
     }
+    if (selectedKey === 'messages' && useMessagesFromApi) {
+      return (
+        <MessagesBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasMessageEntries}
+        />
+      );
+    }
+    if (selectedKey === 'calls' && useCallsFromApi) {
+      return (
+        <CallsBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasCallEntries}
+        />
+      );
+    }
+    if (selectedKey === 'meetingNotes' && useMeetingNotesFromApi) {
+      return (
+        <MeetingNotesBlock
+          clientId={clientId}
+          userId={userId}
+          organizationId={organizationId}
+          onHasEntries={setHasMeetingNoteEntries}
+        />
+      );
+    }
     if (selectedKey === 'internalNotes') {
+      if (useInternalNotesFromApi) {
+        return (
+          <InternalNotesBlock
+            clientId={clientId}
+            userId={userId}
+            organizationId={organizationId}
+            onHasEntries={setHasInternalNoteEntries}
+          />
+        );
+      }
       return <InternalNotesView value={internalNotes} onChange={onInternalNotesChange} />;
     }
     const block = blocks.find((b) => b.type.key === selectedKey);
@@ -292,7 +744,7 @@ export default function CommunicationLogSection({
       onSelectKey={setSelectedKey}
       viewerHeader={viewerHeader}
       viewerHeaderAction={
-        selectedKey !== 'internalNotes' && hasEntriesInSelectedSection ? (
+        hasEntriesInSelectedSection ? (
           <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2 flex-shrink-0">
             <HiPlus className="w-5 h-5" />
             Add

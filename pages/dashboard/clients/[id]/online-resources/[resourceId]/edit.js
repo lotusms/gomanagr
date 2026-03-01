@@ -57,7 +57,7 @@ export default function EditClientOnlineResourcePage() {
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, clientId, resourceId, organization?.id]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=sharedAssets`;
+  const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=onlineResources`;
 
   if (!currentUser?.uid || !clientId || !resourceId) {
     return null;

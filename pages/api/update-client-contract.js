@@ -52,6 +52,7 @@ function parseBody(body, existing) {
     signed_date: body.signed_date !== undefined ? toDateOnly(body.signed_date) : (existing?.signed_date ?? null),
     file_url: body.file_url !== undefined ? (body.file_url ? String(body.file_url).trim() || null : null) : (existing?.file_url ?? null),
     notes: String(body.notes ?? existing?.notes ?? '').trim() || '',
+    related_proposal_id: body.related_proposal_id !== undefined ? (body.related_proposal_id ? String(body.related_proposal_id).trim() || null : null) : (existing?.related_proposal_id ?? null),
     updated_at: new Date().toISOString(),
   };
 }

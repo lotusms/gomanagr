@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect, useState } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
+import { getUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ export default function EditClientContractPage() {
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
+  const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -26,6 +28,20 @@ export default function EditClientContractPage() {
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !clientId) return;
+    getUserAccount(currentUser.uid)
+      .then((account) => {
+        const client = account?.clients?.find((c) => c.id === clientId);
+        const currency =
+          client?.defaultCurrency ||
+          account?.clientSettings?.defaultCurrency ||
+          'USD';
+        setDefaultCurrency(currency);
+      })
+      .catch(() => setDefaultCurrency('USD'));
+  }, [currentUser?.uid, clientId]);
 
   useEffect(() => {
     if (!orgReady || !currentUser?.uid || !clientId || !contractId) return;
@@ -122,6 +138,7 @@ export default function EditClientContractPage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             contractId={contractId}
+            defaultCurrency={defaultCurrency}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

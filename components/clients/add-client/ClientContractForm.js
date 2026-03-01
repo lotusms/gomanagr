@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
+import CurrencyInput from '@/components/ui/CurrencyInput';
+import { unformatCurrency } from '@/utils/formatCurrency';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -38,6 +40,7 @@ export default function ClientContractForm({
   userId,
   organizationId,
   contractId,
+  defaultCurrency = 'USD',
   onSuccess,
   onCancel,
 }) {
@@ -51,12 +54,49 @@ export default function ClientContractForm({
   const [startDate, setStartDate] = useState(toDateLocal(initial.start_date) || '');
   const [endDate, setEndDate] = useState(toDateLocal(initial.end_date) || '');
   const [renewalDate, setRenewalDate] = useState(toDateLocal(initial.renewal_date) || '');
-  const [contractValue, setContractValue] = useState(initial.contract_value ?? '');
+  const [contractValue, setContractValue] = useState(
+    initial.contract_value && String(initial.contract_value).trim()
+      ? unformatCurrency(String(initial.contract_value))
+      : ''
+  );
   const [scopeSummary, setScopeSummary] = useState(initial.scope_summary ?? '');
   const [signedBy, setSignedBy] = useState(initial.signed_by ?? '');
   const [signedDate, setSignedDate] = useState(toDateLocal(initial.signed_date) || '');
   const [fileUrl, setFileUrl] = useState(initial.file_url ?? '');
   const [notes, setNotes] = useState(initial.notes ?? '');
+  const [relatedProposalId, setRelatedProposalId] = useState(initial.related_proposal_id ?? '');
+  const [proposals, setProposals] = useState([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamMembersLoading, setTeamMembersLoading] = useState(false);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setProposalsLoading(true);
+    fetch('/api/get-client-proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setProposals(data.proposals || []))
+      .catch(() => setProposals([]))
+      .finally(() => setProposalsLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (!organizationId || !userId) return;
+    setTeamMembersLoading(true);
+    fetch('/api/get-org-team-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizationId, callerUserId: userId }),
+    })
+      .then((res) => res.json())
+      .then((data) => setTeamMembers(data.teamMembers || []))
+      .catch(() => setTeamMembers([]))
+      .finally(() => setTeamMembersLoading(false));
+  }, [organizationId, userId]);
 
   const uploadFile = useCallback(
     (file) =>
@@ -110,6 +150,7 @@ export default function ClientContractForm({
         signed_date: signedDate.trim() || null,
         file_url: fileUrl.trim() || null,
         notes: notes.trim(),
+        related_proposal_id: relatedProposalId.trim() || null,
       };
 
       if (contractId) {
@@ -145,7 +186,7 @@ export default function ClientContractForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         <InputField
           id="contract-title"
           label="Contract title"
@@ -172,9 +213,7 @@ export default function ClientContractForm({
           placeholder="Draft"
           searchable={false}
         />
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Dropdown
           id="contract-type"
           name="contract-type"
@@ -187,20 +226,65 @@ export default function ClientContractForm({
         />
         <DateField id="effective-date" label="Effective date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} variant="light" />
         <DateField id="renewal-date" label="Renewal date" value={renewalDate} onChange={(e) => setRenewalDate(e.target.value)} variant="light" />
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <DateField id="start-date" label="Start date" value={startDate} onChange={(e) => setStartDate(e.target.value)} variant="light" />
         <DateField id="end-date" label="End date" value={endDate} onChange={(e) => setEndDate(e.target.value)} variant="light" />
-        <InputField
-          id="contract-value"
-          label="Contract value"
-          value={contractValue}
-          onChange={(e) => setContractValue(e.target.value)}
-          variant="light"
-          placeholder="e.g. $5,000 or 5,000 USD"
+        <Dropdown
+          id="related-proposal"
+          name="related-proposal"
+          label="Proposal"
+          value={relatedProposalId}
+          onChange={(e) => setRelatedProposalId(e.target.value ?? '')}
+          options={[
+            ...proposals.map((p) => ({
+              value: p.id,
+              label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
+            })),
+          ]}
+          placeholder={proposalsLoading ? 'Loading…' : 'None'}
         />
+        <CurrencyInput
+          id="contract-value"
+          label={`Contract Value (${defaultCurrency})`}
+          value={contractValue}
+          onChange={(e) => setContractValue(e.target.value ?? '')}
+          currency={defaultCurrency}
+          variant="light"
+          placeholder="0.00"
+        />
+        <Dropdown
+          id="signed-by"
+          name="signed-by"
+          label="Signed by (team member)"
+          value={signedBy}
+          onChange={(e) => setSignedBy(e.target.value ?? '')}
+          options={[
+            { value: '', label: 'None' },
+            ...teamMembers
+              .filter((m) => m.name || m.id)
+              .slice()
+              .sort((a, b) => (a.name || 'Unnamed').localeCompare(b.name || 'Unnamed'))
+              .map((m) => ({ value: m.name || m.id, label: m.name || 'Unnamed' })),
+            ...(signedBy && !teamMembers.some((m) => (m.name || m.id) === signedBy)
+              ? [{ value: signedBy, label: signedBy }]
+              : []),
+          ]}
+          placeholder={teamMembersLoading ? 'Loading…' : 'Select team member'}
+          searchable={teamMembers.length > 8}
+        />
+        <DateField id="signed-date" label="Signed date" value={signedDate} onChange={(e) => setSignedDate(e.target.value)} variant="light" />
       </div>
+
+      <FileUploadList
+        id="contract-file"
+        label="Contract files (PDF/DOC)"
+        value={fileUrl ? [fileUrl] : []}
+        onChange={(urls) => setFileUrl(urls.length ? urls[0] : '')}
+        onUpload={uploadFile}
+        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        multiple={true}
+        placeholder="Drag files here or click to upload"
+      />
 
 
       <TextareaField
@@ -212,29 +296,6 @@ export default function ClientContractForm({
         placeholder="Summary of scope and deliverables"
       />
 
-      {/*  Should be a dropdown with team members in it */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField
-          id="signed-by"
-          label="Signed by"
-          value={signedBy}
-          onChange={(e) => setSignedBy(e.target.value)}
-          variant="light"
-          placeholder="Name or role"
-        />
-        <DateField id="signed-date" label="Signed date" value={signedDate} onChange={(e) => setSignedDate(e.target.value)} variant="light" />
-      </div>
-
-      <FileUploadList
-        id="contract-file"
-        label="Contract file (PDF/DOC)"
-        value={fileUrl ? [fileUrl] : []}
-        onChange={(urls) => setFileUrl(urls.length ? urls[0] : '')}
-        onUpload={uploadFile}
-        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        multiple={false}
-        placeholder="Drag file here or click to upload"
-      />
 
       <TextareaField
         id="contract-notes"

@@ -121,7 +121,7 @@ export default function ClientProfile({
   const [proposals, setProposals] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [attachments, setAttachments] = useState([]);
-  const [sharedAssets, setSharedAssets] = useState([]);
+  const [onlineResources, setOnlineResources] = useState([]);
   
   
   const [showAppointmentDrawer, setShowAppointmentDrawer] = useState(false);
@@ -238,7 +238,7 @@ export default function ClientProfile({
         setProposals(clientData.proposals || []);
         setInvoices(clientData.invoices || []);
         setAttachments(clientData.attachments || []);
-        setSharedAssets(clientData.sharedAssets || []);
+        setOnlineResources(clientData.onlineResources || clientData.sharedAssets || []);
       } else {
         setIsCompany(false);
       }
@@ -376,7 +376,7 @@ export default function ClientProfile({
         proposals: proposals.length > 0 ? proposals : undefined,
         invoices: invoices.length > 0 ? invoices : undefined,
         attachments: attachments.length > 0 ? attachments : undefined,
-        sharedAssets: sharedAssets.length > 0 ? sharedAssets : undefined,
+        onlineResources: onlineResources.length > 0 ? onlineResources : undefined,
       };
       
       if (onSaveClient) {
@@ -640,7 +640,10 @@ export default function ClientProfile({
               onCallsChange={setCalls}
               onMeetingNotesChange={setMeetingNotes}
               onInternalNotesChange={(e) => setInternalNotes(e.target.value)}
-              initialSection={typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined}
+              initialSection={(() => {
+                const s = typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined;
+                return s === 'sharedAssets' ? 'onlineResources' : s;
+              })()}
             />
           ),
         }] 
@@ -658,13 +661,16 @@ export default function ClientProfile({
               proposals={proposals}
               invoices={invoices}
               attachments={attachments}
-              sharedAssets={sharedAssets}
+              onlineResources={onlineResources}
               onContractsChange={setContracts}
               onProposalsChange={setProposals}
               onInvoicesChange={setInvoices}
               onAttachmentsChange={setAttachments}
-              onSharedAssetsChange={setSharedAssets}
-              initialSection={typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined}
+              onOnlineResourcesChange={setOnlineResources}
+              initialSection={(() => {
+                const s = typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined;
+                return s === 'sharedAssets' ? 'onlineResources' : s;
+              })()}
             />
           ),
         }] 
@@ -698,7 +704,7 @@ export default function ClientProfile({
     paymentTerms, paymentHistory, pricingTier, defaultCurrency, activeRetainersBalance,
     activeProjects, completedProjects, expandedProjectKey, linkedFiles, deliverables, approvals,
     emails, messages, calls, meetingNotes, internalNotes,
-    contracts, proposals, invoices, attachments, sharedAssets,
+    contracts, proposals, invoices, attachments, onlineResources,
     clientAppointments, userAccount, handleCompanyNameChange, saving,
     sortedCountries, companyAvailableStates, billingAvailableStates,
     userAccount?.clientSettings?.visibleTabs,

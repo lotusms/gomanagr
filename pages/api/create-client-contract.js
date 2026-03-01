@@ -41,6 +41,7 @@ function parseBody(body) {
     signed_date: toDateOnly(body.signed_date),
     file_url: body.file_url ? String(body.file_url).trim() || null : null,
     notes: String(body.notes ?? '').trim() || '',
+    related_proposal_id: body.related_proposal_id ? String(body.related_proposal_id).trim() || null : null,
   };
 }
 

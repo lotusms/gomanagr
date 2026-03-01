@@ -46,7 +46,7 @@ export const DOC_TYPES = [
     badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
   },
   {
-    key: 'sharedAssets',
+    key: 'onlineResources',
     label: 'Online Resources',
     description: 'Links, portals, and web references for this client',
     icon: HiGlobe,
@@ -571,12 +571,12 @@ export default function DocumentsFilesSection({
   proposals,
   invoices,
   attachments,
-  sharedAssets,
+  onlineResources,
   onContractsChange,
   onProposalsChange,
   onInvoicesChange,
   onAttachmentsChange,
-  onSharedAssetsChange,
+  onOnlineResourcesChange,
   initialSection,
 }) {
   const router = useRouter();
@@ -646,14 +646,14 @@ export default function DocumentsFilesSection({
     },
     {
       type: DOC_TYPES[4],
-      items: sharedAssets,
-      onAdd: () => onSharedAssetsChange([...sharedAssets, '']),
+      items: onlineResources,
+      onAdd: () => onOnlineResourcesChange([...onlineResources, '']),
       onEdit: (idx, v) => {
-        const u = [...sharedAssets];
+        const u = [...onlineResources];
         u[idx] = v;
-        onSharedAssetsChange(u);
+        onOnlineResourcesChange(u);
       },
-      onRemove: (idx) => onSharedAssetsChange(sharedAssets.filter((_, i) => i !== idx)),
+      onRemove: (idx) => onOnlineResourcesChange(onlineResources.filter((_, i) => i !== idx)),
     },
   ];
 
@@ -668,7 +668,7 @@ export default function DocumentsFilesSection({
           ? hasInvoiceEntries
           : selectedKey === 'attachments' && useAttachmentsFromApi
             ? hasAttachmentEntries
-            : selectedKey === 'sharedAssets' && useOnlineResourcesFromApi
+            : selectedKey === 'onlineResources' && useOnlineResourcesFromApi
               ? hasOnlineResourceEntries
               : (selectedBlock?.items?.length ?? 0) > 0;
 
@@ -689,7 +689,7 @@ export default function DocumentsFilesSection({
       router.push(`/dashboard/clients/${clientId}/attachments/new`);
       return;
     }
-    if (selectedKey === 'sharedAssets' && useOnlineResourcesFromApi) {
+    if (selectedKey === 'onlineResources' && useOnlineResourcesFromApi) {
       router.push(`/dashboard/clients/${clientId}/online-resources/new`);
       return;
     }
@@ -703,7 +703,7 @@ export default function DocumentsFilesSection({
       (t.key === 'proposals' && useProposalsFromApi) ||
       (t.key === 'invoices' && useInvoicesFromApi) ||
       (t.key === 'attachments' && useAttachmentsFromApi) ||
-      (t.key === 'sharedAssets' && useOnlineResourcesFromApi)
+      (t.key === 'onlineResources' && useOnlineResourcesFromApi)
         ? null
         : (blocks.find((b) => b.type.key === t.key)?.items?.length ?? 0),
   }));
@@ -726,11 +726,7 @@ export default function DocumentsFilesSection({
       onSelectKey={setSelectedKey}
       viewerHeader={viewerHeader}
       viewerHeaderAction={
-        hasEntriesInSelectedSection ||
-        (selectedKey === 'contracts' && useContractsFromApi) ||
-        (selectedKey === 'proposals' && useProposalsFromApi) ||
-        (selectedKey === 'invoices' && useInvoicesFromApi) ||
-        (selectedKey === 'attachments' && useAttachmentsFromApi) ? (
+        hasEntriesInSelectedSection ? (
           <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2 flex-shrink-0">
             <HiPlus className="w-5 h-5" />
             Add
@@ -766,7 +762,7 @@ export default function DocumentsFilesSection({
           organizationId={organizationId}
           onHasEntries={setHasAttachmentEntries}
         />
-      ) : selectedKey === 'sharedAssets' && useOnlineResourcesFromApi ? (
+      ) : selectedKey === 'onlineResources' && useOnlineResourcesFromApi ? (
         <OnlineResourcesBlock
           clientId={clientId}
           userId={userId}

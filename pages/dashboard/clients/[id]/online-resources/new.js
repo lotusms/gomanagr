@@ -25,7 +25,7 @@ export default function NewClientOnlineResourcePage() {
     if (router.isReady && clientId) setReady(true);
   }, [router.isReady, clientId]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=sharedAssets`;
+  const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=onlineResources`;
 
   if (!ready || !currentUser?.uid) return null;
 

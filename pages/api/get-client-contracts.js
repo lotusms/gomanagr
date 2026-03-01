@@ -75,10 +75,38 @@ export default async function handler(req, res) {
     if (contractId) {
       const one = Array.isArray(data) ? data[0] : data;
       if (!one) return res.status(404).json({ error: 'Contract not found' });
+      if (one.related_proposal_id) {
+        const { data: prop } = await supabaseAdmin
+          .from('client_proposals')
+          .select('id, proposal_number, proposal_title')
+          .eq('id', one.related_proposal_id)
+          .limit(1)
+          .single();
+        if (prop) one.related_proposal = prop;
+      }
       return res.status(200).json({ contract: one });
     }
 
-    return res.status(200).json({ contracts: data || [] });
+    const contracts = data || [];
+    const proposalIds = [...new Set(contracts.map((c) => c.related_proposal_id).filter(Boolean))];
+    let proposalsMap = {};
+    if (proposalIds.length > 0) {
+      const { data: proposals } = await supabaseAdmin
+        .from('client_proposals')
+        .select('id, proposal_number, proposal_title')
+        .in('id', proposalIds);
+      if (proposals?.length) {
+        proposalsMap = Object.fromEntries(proposals.map((p) => [p.id, p]));
+      }
+    }
+    const contractsWithProposal = contracts.map((c) => {
+      if (c.related_proposal_id && proposalsMap[c.related_proposal_id]) {
+        return { ...c, related_proposal: proposalsMap[c.related_proposal_id] };
+      }
+      return c;
+    });
+
+    return res.status(200).json({ contracts: contractsWithProposal });
   } catch (err) {
     console.error('[get-client-contracts]', err);
     return res.status(500).json({ error: 'Failed to load contracts' });

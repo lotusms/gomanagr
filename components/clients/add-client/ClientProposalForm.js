@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
+import CurrencyInput from '@/components/ui/CurrencyInput';
+import { unformatCurrency } from '@/utils/formatCurrency';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -30,6 +32,7 @@ export default function ClientProposalForm({
   userId,
   organizationId,
   proposalId,
+  defaultCurrency = 'USD',
   onSuccess,
   onCancel,
 }) {
@@ -41,13 +44,48 @@ export default function ClientProposalForm({
   const [dateSent, setDateSent] = useState(toDateLocal(initial.date_sent) || '');
   const [expirationDate, setExpirationDate] = useState(toDateLocal(initial.expiration_date) || '');
   const [status, setStatus] = useState(initial.status ?? 'draft');
-  const [estimatedValue, setEstimatedValue] = useState(initial.estimated_value ?? '');
+  const [estimatedValue, setEstimatedValue] = useState(
+    initial.estimated_value && String(initial.estimated_value).trim()
+      ? unformatCurrency(String(initial.estimated_value))
+      : ''
+  );
   const [scopeSummary, setScopeSummary] = useState(initial.scope_summary ?? '');
   const [includedServicesProducts, setIncludedServicesProducts] = useState(initial.included_services_products ?? '');
   const [terms, setTerms] = useState(initial.terms ?? '');
-  const [fileUrl, setFileUrl] = useState(initial.file_url ?? '');
+  const [fileUrls, setFileUrls] = useState(
+    Array.isArray(initial.file_urls) && initial.file_urls.length > 0
+      ? initial.file_urls
+      : initial.file_url
+        ? [initial.file_url]
+        : []
+  );
   const [linkedProject, setLinkedProject] = useState(initial.linked_project ?? '');
   const [linkedContractId, setLinkedContractId] = useState(initial.linked_contract_id ?? '');
+  const [contracts, setContracts] = useState([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [projectOptions, setProjectOptions] = useState([]);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setContractsLoading(true);
+    fetch('/api/get-client-contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setContracts(data.contracts || []))
+      .catch(() => setContracts([]))
+      .finally(() => setContractsLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  const contractOptions = [
+    { value: '', label: 'None' },
+    ...contracts.map((c) => ({
+      value: c.id,
+      label: [c.contract_number, c.contract_title].filter(Boolean).join(' – ') || 'Untitled contract',
+    })),
+  ];
 
   const uploadFile = useCallback(
     (file) =>
@@ -97,7 +135,7 @@ export default function ClientProposalForm({
         scope_summary: scopeSummary.trim(),
         included_services_products: includedServicesProducts.trim(),
         terms: terms.trim(),
-        file_url: fileUrl.trim() || null,
+        file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
         linked_project: linkedProject.trim() || null,
         linked_contract_id: linkedContractId.trim() || null,
       };
@@ -135,7 +173,7 @@ export default function ClientProposalForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         <InputField
           id="proposal-title"
           label="Proposal title"
@@ -152,15 +190,6 @@ export default function ClientProposalForm({
           variant="light"
           placeholder="Reference ID"
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DateField id="date-created" label="Date created" value={dateCreated} onChange={(e) => setDateCreated(e.target.value)} variant="light" />
-        <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => setDateSent(e.target.value)} variant="light" />
-        <DateField id="expiration-date" label="Expiration date" value={expirationDate} onChange={(e) => setExpirationDate(e.target.value)} variant="light" />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Dropdown
           id="proposal-status"
           name="proposal-status"
@@ -171,13 +200,37 @@ export default function ClientProposalForm({
           placeholder="Draft"
           searchable={false}
         />
-        <InputField
+        <DateField id="date-created" label="Date created" value={dateCreated} onChange={(e) => setDateCreated(e.target.value)} variant="light" />
+        <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => setDateSent(e.target.value)} variant="light" />
+        <DateField id="expiration-date" label="Expiration date" value={expirationDate} onChange={(e) => setExpirationDate(e.target.value)} variant="light" />
+        <CurrencyInput
           id="estimated-value"
-          label="Estimated value"
+          label={`Estimated value (${defaultCurrency})`}
           value={estimatedValue}
-          onChange={(e) => setEstimatedValue(e.target.value)}
+          onChange={(e) => setEstimatedValue(e.target.value ?? '')}
+          currency={defaultCurrency}
           variant="light"
-          placeholder="e.g. $5,000 or 5,000 USD"
+          placeholder="0.00"
+        />
+        <Dropdown
+          id="linked-project"
+          name="linked-project"
+          label="Linked project"
+          value={linkedProject}
+          onChange={(e) => setLinkedProject(e.target.value ?? '')}
+          options={projectOptions}
+          placeholder="Select project"
+          searchable={false}
+        />
+        <Dropdown
+          id="linked-contract"
+          name="linked-contract"
+          label="Linked contract"
+          value={linkedContractId}
+          onChange={(e) => setLinkedContractId(e.target.value ?? '')}
+          options={contractOptions}
+          placeholder={contractsLoading ? 'Loading…' : 'None'}
+          searchable={contractOptions.length > 10}
         />
       </div>
 
@@ -210,33 +263,14 @@ export default function ClientProposalForm({
 
       <FileUploadList
         id="proposal-file"
-        label="Proposal file (PDF/document)"
-        value={fileUrl ? [fileUrl] : []}
-        onChange={(urls) => setFileUrl(urls.length ? urls[0] : '')}
+        label="Proposal files (PDF/document)"
+        value={fileUrls}
+        onChange={setFileUrls}
         onUpload={uploadFile}
         accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        multiple={false}
-        placeholder="Drag file here or click to upload"
+        multiple={true}
+        placeholder="Drag files here or click to upload"
       />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField
-          id="linked-project"
-          label="Linked project"
-          value={linkedProject}
-          onChange={(e) => setLinkedProject(e.target.value)}
-          variant="light"
-          placeholder="Project name or reference (optional)"
-        />
-        <InputField
-          id="linked-contract-id"
-          label="Linked contract ID"
-          value={linkedContractId}
-          onChange={(e) => setLinkedContractId(e.target.value)}
-          variant="light"
-          placeholder="Contract UUID if converted (optional)"
-        />
-      </div>
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>

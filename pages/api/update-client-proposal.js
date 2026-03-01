@@ -44,7 +44,6 @@ function parseBody(body, existing) {
     scope_summary: String(body.scope_summary ?? existing?.scope_summary ?? '').trim() || '',
     included_services_products: String(body.included_services_products ?? existing?.included_services_products ?? '').trim() || '',
     terms: String(body.terms ?? existing?.terms ?? '').trim() || '',
-    file_url: body.file_url !== undefined ? (body.file_url ? String(body.file_url).trim() || null : null) : (existing?.file_url ?? null),
     linked_project: body.linked_project !== undefined ? (body.linked_project ? String(body.linked_project).trim() || null : null) : (existing?.linked_project ?? null),
     linked_contract_id: body.linked_contract_id !== undefined ? body.linked_contract_id || null : (existing?.linked_contract_id ?? null),
     updated_at: new Date().toISOString(),
@@ -83,10 +82,31 @@ export default async function handler(req, res) {
     }
 
     const updates = parseBody(req.body, existing);
+    if (req.body?.file_urls !== undefined) {
+      updates.file_urls = Array.isArray(req.body.file_urls)
+        ? req.body.file_urls.map((u) => String(u).trim()).filter(Boolean)
+        : [];
+      updates.file_url = updates.file_urls.length > 0 ? updates.file_urls[0] : null;
+    }
     const { error: updateErr } = await supabaseAdmin.from('client_proposals').update(updates).eq('id', proposalId);
     if (updateErr) {
       console.error('[update-client-proposal]', updateErr);
       return res.status(500).json({ error: 'Failed to update proposal' });
+    }
+    const newLinkedContractId = updates.linked_contract_id || null;
+    const oldLinkedContractId = existing.linked_contract_id || null;
+    if (oldLinkedContractId && oldLinkedContractId !== newLinkedContractId) {
+      await supabaseAdmin
+        .from('client_contracts')
+        .update({ related_proposal_id: null, updated_at: new Date().toISOString() })
+        .eq('id', oldLinkedContractId)
+        .eq('related_proposal_id', proposalId);
+    }
+    if (newLinkedContractId) {
+      await supabaseAdmin
+        .from('client_contracts')
+        .update({ related_proposal_id: proposalId, updated_at: new Date().toISOString() })
+        .eq('id', newLinkedContractId);
     }
     return res.status(200).json({ ok: true });
   } catch (err) {

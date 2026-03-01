@@ -61,6 +61,11 @@ export default function ContractLogCards({ contracts, onSelect, onDelete, border
             {c.effective_date && <time dateTime={c.effective_date}>{formatDateFromISO(c.effective_date, dateFormat, timezone)}</time>}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{c.contract_title || 'Untitled contract'}</p>
+          {c.related_proposal && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              From proposal: {[c.related_proposal.proposal_number, c.related_proposal.proposal_title].filter(Boolean).join(' – ') || 'Proposal'}
+            </p>
+          )}
           {c.contract_value != null && c.contract_value !== '' && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               Value: {formatCurrency(c.contract_value, defaultCurrency)}

@@ -98,6 +98,21 @@ export default async function handler(req, res) {
       console.error('[update-client-contract]', updateErr);
       return res.status(500).json({ error: 'Failed to update contract' });
     }
+    const newRelatedProposalId = updates.related_proposal_id || null;
+    const oldRelatedProposalId = existing.related_proposal_id || null;
+    if (oldRelatedProposalId && oldRelatedProposalId !== newRelatedProposalId) {
+      await supabaseAdmin
+        .from('client_proposals')
+        .update({ linked_contract_id: null, updated_at: new Date().toISOString() })
+        .eq('id', oldRelatedProposalId)
+        .eq('linked_contract_id', contractId);
+    }
+    if (newRelatedProposalId) {
+      await supabaseAdmin
+        .from('client_proposals')
+        .update({ linked_contract_id: contractId, updated_at: new Date().toISOString() })
+        .eq('id', newRelatedProposalId);
+    }
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[update-client-contract]', err);

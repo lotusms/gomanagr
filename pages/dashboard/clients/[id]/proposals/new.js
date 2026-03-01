@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect, useState } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
+import { getUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
@@ -14,12 +15,27 @@ export default function NewClientProposalPage() {
   const { id: clientId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid).then((o) => setOrganization(o || null)).catch(() => setOrganization(null));
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !clientId) return;
+    getUserAccount(currentUser.uid)
+      .then((account) => {
+        const client = account?.clients?.find((c) => c.id === clientId);
+        const currency =
+          client?.defaultCurrency ||
+          account?.clientSettings?.defaultCurrency ||
+          'USD';
+        setDefaultCurrency(currency);
+      })
+      .catch(() => setDefaultCurrency('USD'));
+  }, [currentUser?.uid, clientId]);
 
   useEffect(() => {
     if (router.isReady && clientId) setReady(true);
@@ -53,6 +69,7 @@ export default function NewClientProposalPage() {
             clientId={clientId}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
+            defaultCurrency={defaultCurrency}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

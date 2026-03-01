@@ -65,6 +65,12 @@ export default async function handler(req, res) {
       console.error('[create-client-contract]', error);
       return res.status(500).json({ error: 'Failed to create contract' });
     }
+    if (row.related_proposal_id) {
+      await supabaseAdmin
+        .from('client_proposals')
+        .update({ linked_contract_id: data.id, updated_at: new Date().toISOString() })
+        .eq('id', row.related_proposal_id);
+    }
     return res.status(201).json({ id: data.id, contract: { ...row, id: data.id } });
   } catch (err) {
     console.error('[create-client-contract]', err);

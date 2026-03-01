@@ -28,6 +28,9 @@ function parseBody(body) {
     upload_date: toDateOnly(body.upload_date),
     related_item: body.related_item ? String(body.related_item).trim() || null : null,
     linked_contract_id: body.linked_contract_id || null,
+    linked_proposal_id: body.linked_proposal_id || null,
+    linked_invoice_id: body.linked_invoice_id || null,
+    linked_email_id: body.linked_email_id || null,
     version: body.version ? String(body.version).trim() || null : null,
     file_url: body.file_url ? String(body.file_url).trim() || null : null,
   };

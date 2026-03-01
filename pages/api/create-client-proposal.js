@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { ensureAttachmentsFromFiles } = require('@/lib/syncFilesToAttachments');
 
 let supabaseAdmin;
 try {
@@ -69,6 +70,16 @@ export default async function handler(req, res) {
         .from('client_contracts')
         .update({ related_proposal_id: data.id, updated_at: new Date().toISOString() })
         .eq('id', row.linked_contract_id);
+    }
+    const fileUrls = Array.isArray(row.file_urls) ? row.file_urls : [];
+    if (fileUrls.length > 0) {
+      await ensureAttachmentsFromFiles(supabaseAdmin, {
+        clientId: row.client_id,
+        userId: row.user_id,
+        organizationId: row.organization_id,
+        fileUrls,
+        linkedProposalId: data.id,
+      });
     }
     return res.status(201).json({ id: data.id, proposal: { ...row, id: data.id } });
   } catch (err) {

@@ -4,6 +4,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { ensureAttachmentsFromFiles } = require('@/lib/syncFilesToAttachments');
 
 let supabaseAdmin;
 
@@ -80,6 +81,18 @@ export default async function handler(req, res) {
     if (error) {
       console.error('[create-client-email]', error);
       return res.status(500).json({ error: 'Failed to create email' });
+    }
+
+    const emailAttachments = Array.isArray(row.attachments) ? row.attachments : [];
+    const fileUrls = emailAttachments.map((a) => (typeof a === 'object' && a && a.url ? a : { url: String(a), name: a.name || null }));
+    if (fileUrls.length > 0) {
+      await ensureAttachmentsFromFiles(supabaseAdmin, {
+        clientId: row.client_id,
+        userId: row.user_id,
+        organizationId: row.organization_id,
+        fileUrls,
+        linkedEmailId: data.id,
+      });
     }
 
     return res.status(201).json({ id: data.id, email: { ...row, id: data.id } });

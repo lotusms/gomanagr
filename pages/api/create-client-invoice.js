@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { ensureAttachmentsFromFiles } = require('@/lib/syncFilesToAttachments');
 
 let supabaseAdmin;
 try {
@@ -66,6 +67,16 @@ export default async function handler(req, res) {
     if (error) {
       console.error('[create-client-invoice]', error);
       return res.status(500).json({ error: 'Failed to create invoice' });
+    }
+    const fileUrls = Array.isArray(row.file_urls) ? row.file_urls : [];
+    if (fileUrls.length > 0) {
+      await ensureAttachmentsFromFiles(supabaseAdmin, {
+        clientId: row.client_id,
+        userId: row.user_id,
+        organizationId: row.organization_id,
+        fileUrls,
+        linkedInvoiceId: data.id,
+      });
     }
     return res.status(201).json({ id: data.id, invoice: { ...row, id: data.id } });
   } catch (err) {

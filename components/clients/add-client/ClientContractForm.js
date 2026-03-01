@@ -62,7 +62,11 @@ export default function ClientContractForm({
   const [scopeSummary, setScopeSummary] = useState(initial.scope_summary ?? '');
   const [signedBy, setSignedBy] = useState(initial.signed_by ?? '');
   const [signedDate, setSignedDate] = useState(toDateLocal(initial.signed_date) || '');
-  const [fileUrl, setFileUrl] = useState(initial.file_url ?? '');
+  const [fileUrls, setFileUrls] = useState(() => {
+    if (initial.file_urls?.length) return Array.isArray(initial.file_urls) ? [...initial.file_urls] : [];
+    if (initial.file_url && String(initial.file_url).trim()) return [String(initial.file_url).trim()];
+    return [];
+  });
   const [notes, setNotes] = useState(initial.notes ?? '');
   const [relatedProposalId, setRelatedProposalId] = useState(initial.related_proposal_id ?? '');
   const [proposals, setProposals] = useState([]);
@@ -148,7 +152,7 @@ export default function ClientContractForm({
         scope_summary: scopeSummary.trim(),
         signed_by: signedBy.trim(),
         signed_date: signedDate.trim() || null,
-        file_url: fileUrl.trim() || null,
+        file_urls: Array.isArray(fileUrls) ? fileUrls.filter((u) => u && String(u).trim()) : [],
         notes: notes.trim(),
         related_proposal_id: relatedProposalId.trim() || null,
       };
@@ -278,8 +282,8 @@ export default function ClientContractForm({
       <FileUploadList
         id="contract-file"
         label="Contract files (PDF/DOC)"
-        value={fileUrl ? [fileUrl] : []}
-        onChange={(urls) => setFileUrl(urls.length ? urls[0] : '')}
+        value={fileUrls}
+        onChange={(urls) => setFileUrls(Array.isArray(urls) ? urls : [])}
         onUpload={uploadFile}
         accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         multiple={true}

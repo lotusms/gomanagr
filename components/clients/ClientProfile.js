@@ -667,6 +667,7 @@ export default function ClientProfile({
               onInvoicesChange={setInvoices}
               onAttachmentsChange={setAttachments}
               onOnlineResourcesChange={setOnlineResources}
+              defaultCurrency={defaultCurrency}
               initialSection={(() => {
                 const s = typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined;
                 return s === 'sharedAssets' ? 'onlineResources' : s;

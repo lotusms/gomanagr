@@ -1,4 +1,6 @@
 import CardDeleteButton from './CardDeleteButton';
+import { formatDateTimeFromISO } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 function clipBody(text, maxLines) {
   if (maxLines === undefined) maxLines = 3;
@@ -8,18 +10,17 @@ function clipBody(text, maxLines) {
   return lines.length > maxLines ? clipped + '\n…' : clipped;
 }
 
-function formatMessageDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { dateStyle: 'medium' }) + ' ' + d.toLocaleTimeString(undefined, { timeStyle: 'short' });
-}
-
 const CHANNEL_LABELS = { sms: 'SMS', chat: 'Chat', other: 'Other' };
 function channelLabel(channel) {
   return CHANNEL_LABELS[channel] || 'Other';
 }
 
 export default function MessageLogCards({ messages, onSelect, onDelete, borderClass }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
+  const timeFormat = account?.timeFormat ?? '24h';
+  const timezone = account?.timezone ?? 'UTC';
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
       {messages.map((message) => (
@@ -48,7 +49,7 @@ export default function MessageLogCards({ messages, onSelect, onDelete, borderCl
             <span>·</span>
             <span className="font-medium capitalize">{message.direction}</span>
             <span>·</span>
-            <time dateTime={message.sent_at}>{formatMessageDate(message.sent_at)}</time>
+            <time dateTime={message.sent_at}>{formatDateTimeFromISO(message.sent_at, dateFormat, timeFormat, timezone)}</time>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 truncate pr-8">{message.author || '—'}</p>
           <p className="text-sm text-gray-900 dark:text-white mt-1 line-clamp-3 whitespace-pre-wrap">{clipBody(message.body, 3)}</p>

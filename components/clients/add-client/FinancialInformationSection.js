@@ -4,6 +4,8 @@ import { EmptyState } from '@/components/ui';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import { HiDocumentText } from 'react-icons/hi';
 import { PAYMENT_TERMS, PRICING_TIERS, CURRENCIES } from '../clientProfileConstants';
+import { formatDateFromISO } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 export default function FinancialInformationSection({
   paymentTerms,
@@ -16,6 +18,10 @@ export default function FinancialInformationSection({
   onDefaultCurrencyChange,
   onActiveRetainersBalanceChange,
 }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
+  const timezone = account?.timezone ?? 'UTC';
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -103,11 +109,7 @@ export default function FinancialInformationSection({
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         {paymentDate ? (
                           <span className={isPastDate ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-900 dark:text-gray-100'}>
-                            {paymentDate.toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'short', 
-                              day: 'numeric' 
-                            })}
+                            {formatDateFromISO(paymentDate.toISOString(), dateFormat, timezone)}
                           </span>
                         ) : (
                           <span className="text-gray-400 dark:text-gray-500">—</span>

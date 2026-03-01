@@ -57,7 +57,7 @@ export const DOC_TYPES = [
 
 const VALID_DOC_SECTION_KEYS = DOC_TYPES.map((t) => t.key);
 
-function ContractsBlock({ clientId, userId, organizationId, onHasEntries }) {
+function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD' }) {
   const router = useRouter();
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -134,6 +134,7 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries }) {
         onSelect={(id) => router.push(editUrl(id))}
         onDelete={setContractToDelete}
         borderClass={type.borderClass}
+        defaultCurrency={defaultCurrency}
       />
       <ConfirmationDialog
         isOpen={!!contractToDelete}
@@ -578,6 +579,7 @@ export default function DocumentsFilesSection({
   onAttachmentsChange,
   onOnlineResourcesChange,
   initialSection,
+  defaultCurrency = 'USD',
 }) {
   const router = useRouter();
   const useContractsFromApi = Boolean(clientId && userId);
@@ -740,6 +742,7 @@ export default function DocumentsFilesSection({
           userId={userId}
           organizationId={organizationId}
           onHasEntries={setHasContractEntries}
+          defaultCurrency={defaultCurrency}
         />
       ) : selectedKey === 'proposals' && useProposalsFromApi ? (
         <ProposalsBlock

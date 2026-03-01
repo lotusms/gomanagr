@@ -10,6 +10,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ProposalLogCards from '@/components/clients/add-client/ProposalLogCards';
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 describe('ProposalLogCards', () => {
   const proposals = [
     {

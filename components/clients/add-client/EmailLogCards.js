@@ -1,17 +1,13 @@
 import { HiPaperClip } from 'react-icons/hi';
 import CardDeleteButton from './CardDeleteButton';
+import { formatDateTimeFromISO } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 function clipBody(text, maxLines = 3) {
   if (!text || typeof text !== 'string') return '';
   const lines = text.split(/\r?\n/).filter(Boolean);
   const clipped = lines.slice(0, maxLines).join('\n');
   return lines.length > maxLines ? `${clipped}\n…` : clipped;
-}
-
-function formatEmailDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { dateStyle: 'medium' }) + ' ' + d.toLocaleTimeString(undefined, { timeStyle: 'short' });
 }
 
 function hasAttachments(email) {
@@ -28,6 +24,11 @@ function hasAttachments(email) {
  * @param {string} borderClass - Tailwind border class for the left accent (e.g. border-l-primary-500)
  */
 export default function EmailLogCards({ emails, onSelect, onDelete, borderClass }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
+  const timeFormat = account?.timeFormat ?? '24h';
+  const timezone = account?.timezone ?? 'UTC';
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
       {emails.map((email) => (
@@ -63,7 +64,7 @@ export default function EmailLogCards({ emails, onSelect, onDelete, borderClass 
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
             <span className="font-medium capitalize">{email.direction}</span>
             <span>·</span>
-            <time dateTime={email.sent_at}>{formatEmailDate(email.sent_at)}</time>
+            <time dateTime={email.sent_at}>{formatDateTimeFromISO(email.sent_at, dateFormat, timeFormat, timezone)}</time>
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{email.subject || 'No subject'}</p>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap">{clipBody(email.body, 3)}</p>

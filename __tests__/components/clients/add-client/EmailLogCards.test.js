@@ -11,6 +11,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EmailLogCards from '@/components/clients/add-client/EmailLogCards';
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 describe('EmailLogCards', () => {
   const emails = [
     {

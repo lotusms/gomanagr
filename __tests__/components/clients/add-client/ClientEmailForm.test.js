@@ -13,6 +13,10 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import ClientEmailForm from '@/components/clients/add-client/ClientEmailForm';
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 jest.mock('next/router', () => ({
   useRouter: () => ({
     push: jest.fn(),

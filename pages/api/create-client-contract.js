@@ -40,6 +40,9 @@ function parseBody(body) {
     signed_by: String(body.signed_by ?? '').trim() || '',
     signed_date: toDateOnly(body.signed_date),
     file_url: body.file_url ? String(body.file_url).trim() || null : null,
+    file_urls: Array.isArray(body.file_urls)
+      ? body.file_urls.map((u) => String(u).trim()).filter(Boolean)
+      : [],
     notes: String(body.notes ?? '').trim() || '',
     related_proposal_id: body.related_proposal_id ? String(body.related_proposal_id).trim() || null : null,
   };

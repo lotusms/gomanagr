@@ -10,6 +10,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import InvoiceLogCards from '@/components/clients/add-client/InvoiceLogCards';
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 describe('InvoiceLogCards', () => {
   const invoices = [
     {

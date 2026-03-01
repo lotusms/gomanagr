@@ -10,6 +10,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AttachmentLogCards from '@/components/clients/add-client/AttachmentLogCards';
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 describe('AttachmentLogCards', () => {
   const attachments = [
     {

@@ -3,6 +3,8 @@ import * as Label from '@radix-ui/react-label';
 import { HiClock } from 'react-icons/hi';
 import { getInputClasses, getLabelClasses } from './formControlStyles';
 import { buildTimeSlots, parseHour } from '@/components/dashboard/scheduleTimeUtils';
+import { formatTime, parseFormattedTime } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 /**
  * TimeField Component - Custom time picker with time slot popup
@@ -37,10 +39,13 @@ export default function TimeField({
   variant = 'light',
   businessHoursStart = '08:00',
   businessHoursEnd = '18:00',
-  timeFormat = '24h',
+  timeFormat: timeFormatProp,
   options,
   placeholder = 'Select time...',
 }) {
+  const account = useOptionalUserAccount();
+  const timeFormat = timeFormatProp ?? account?.timeFormat ?? '24h';
+
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const popupRef = useRef(null);
@@ -100,7 +105,8 @@ export default function TimeField({
 
   const formatTimeDisplay = (timeValue) => {
     if (!timeValue) return '';
-    return timeValue;
+    const value24 = parseFormattedTime(timeValue, timeFormat) || timeValue;
+    return formatTime(value24, timeFormat);
   };
 
   const handleTimeSelect = (timeValue) => {

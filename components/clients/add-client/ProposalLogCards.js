@@ -1,4 +1,6 @@
 import CardDeleteButton from './CardDeleteButton';
+import { formatDateFromISO } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 function clipText(text, maxLines) {
   if (maxLines === undefined) maxLines = 3;
@@ -6,11 +8,6 @@ function clipText(text, maxLines) {
   const lines = text.split(/\r?\n/).filter(Boolean);
   const clipped = lines.slice(0, maxLines).join('\n');
   return lines.length > maxLines ? clipped + '\n…' : clipped;
-}
-
-function formatDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
 }
 
 const STATUS_LABELS = {
@@ -23,6 +20,10 @@ const STATUS_LABELS = {
 };
 
 export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
+  const timezone = account?.timezone ?? 'UTC';
+
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';
   const cardClass = borderClass ? baseClass + ' ' + borderClass : baseClass;
 
@@ -56,7 +57,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
                 {STATUS_LABELS[p.status] || p.status}
               </span>
             )}
-            {p.date_created && <time dateTime={p.date_created}>{formatDate(p.date_created)}</time>}
+            {p.date_created && <time dateTime={p.date_created}>{formatDateFromISO(p.date_created, dateFormat, timezone)}</time>}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.proposal_title || 'Untitled proposal'}</p>
           {p.estimated_value && (

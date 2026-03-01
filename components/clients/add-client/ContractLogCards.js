@@ -1,4 +1,7 @@
 import CardDeleteButton from './CardDeleteButton';
+import { formatCurrency } from '@/utils/formatCurrency';
+import { formatDateFromISO } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 function clipText(text, maxLines) {
   if (maxLines === undefined) maxLines = 3;
@@ -6,11 +9,6 @@ function clipText(text, maxLines) {
   const lines = text.split(/\r?\n/).filter(Boolean);
   const clipped = lines.slice(0, maxLines).join('\n');
   return lines.length > maxLines ? clipped + '\n…' : clipped;
-}
-
-function formatDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
 }
 
 const STATUS_LABELS = { draft: 'Draft', sent: 'Sent', signed: 'Signed', expired: 'Expired', terminated: 'Terminated' };
@@ -22,7 +20,11 @@ const TYPE_LABELS = {
   vendor_agreement: 'Vendor agreement',
 };
 
-export default function ContractLogCards({ contracts, onSelect, onDelete, borderClass }) {
+export default function ContractLogCards({ contracts, onSelect, onDelete, borderClass, defaultCurrency = 'USD' }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
+  const timezone = account?.timezone ?? 'UTC';
+
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';
   const cardClass = borderClass ? baseClass + ' ' + borderClass : baseClass;
 
@@ -56,11 +58,13 @@ export default function ContractLogCards({ contracts, onSelect, onDelete, border
                 {STATUS_LABELS[c.status] || c.status}
               </span>
             )}
-            {c.effective_date && <time dateTime={c.effective_date}>{formatDate(c.effective_date)}</time>}
+            {c.effective_date && <time dateTime={c.effective_date}>{formatDateFromISO(c.effective_date, dateFormat, timezone)}</time>}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{c.contract_title || 'Untitled contract'}</p>
-          {c.contract_value && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Value: {c.contract_value}</p>
+          {c.contract_value != null && c.contract_value !== '' && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              Value: {formatCurrency(c.contract_value, defaultCurrency)}
+            </p>
           )}
           {c.scope_summary && (
             <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(c.scope_summary, 3)}</p>

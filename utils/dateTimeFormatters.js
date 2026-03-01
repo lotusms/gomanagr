@@ -164,3 +164,49 @@ export function parseFormattedTime(formattedTime, timeFormat = '24h') {
   
   return formattedTime;
 }
+
+/**
+ * Get calendar date YYYY-MM-DD in a timezone from an ISO string
+ * @param {string} iso - ISO date or datetime string
+ * @param {string} timezone - User's timezone
+ * @returns {string} YYYY-MM-DD in that timezone
+ */
+export function getDateInTimezone(iso, timezone = 'UTC') {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-CA', { timeZone: timezone });
+}
+
+/**
+ * Get time HH:MM (24h) in a timezone from an ISO datetime string
+ * @param {string} iso - ISO datetime string
+ * @param {string} timezone - User's timezone
+ * @returns {string} HH:MM in that timezone
+ */
+export function getTimeInTimezone(iso, timezone = 'UTC') {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-US', { timeZone: timezone, hour12: false, hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Format an ISO date/datetime string for display (date only) using user preferences
+ */
+export function formatDateFromISO(iso, dateFormat = 'MM/DD/YYYY', timezone = 'UTC') {
+  const dateStr = getDateInTimezone(iso, timezone);
+  return formatDate(dateStr, dateFormat, timezone);
+}
+
+/**
+ * Format an ISO datetime string for display (date + time) using user preferences
+ */
+export function formatDateTimeFromISO(iso, dateFormat = 'MM/DD/YYYY', timeFormat = '24h', timezone = 'UTC') {
+  if (!iso) return '';
+  const dateStr = getDateInTimezone(iso, timezone);
+  const timeStr = getTimeInTimezone(iso, timezone);
+  const formattedDate = formatDate(dateStr, dateFormat, timezone);
+  const formattedTime = formatTime(timeStr, timeFormat);
+  return `${formattedDate} ${formattedTime}`;
+}

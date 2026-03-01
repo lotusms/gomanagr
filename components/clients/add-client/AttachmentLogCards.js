@@ -1,9 +1,6 @@
 import CardDeleteButton from './CardDeleteButton';
-
-function formatDate(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
-}
+import { formatDateFromISO } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 function clipText(text, maxLen) {
   if (!text || typeof text !== 'string') return '';
@@ -22,6 +19,10 @@ const CATEGORY_LABELS = {
 };
 
 export default function AttachmentLogCards({ attachments, onSelect, onDelete, borderClass }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
+  const timezone = account?.timezone ?? 'UTC';
+
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';
   const cardClass = borderClass ? baseClass + ' ' + borderClass : baseClass;
 
@@ -56,7 +57,7 @@ export default function AttachmentLogCards({ attachments, onSelect, onDelete, bo
               </span>
             )}
             {(a.upload_date || a.created_at) && (
-              <time dateTime={a.upload_date || a.created_at}>{formatDate(a.upload_date || a.created_at)}</time>
+              <time dateTime={a.upload_date || a.created_at}>{formatDateFromISO(a.upload_date || a.created_at, dateFormat, timezone)}</time>
             )}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{a.file_name || 'Unnamed file'}</p>

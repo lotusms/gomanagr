@@ -1,4 +1,6 @@
 import CardDeleteButton from './CardDeleteButton';
+import { formatDateTimeFromISO } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 function clipText(text, maxLines) {
   if (maxLines === undefined) maxLines = 3;
@@ -8,13 +10,12 @@ function clipText(text, maxLines) {
   return lines.length > maxLines ? clipped + '\n…' : clipped;
 }
 
-function formatMeetingDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { dateStyle: 'medium' }) + ' ' + d.toLocaleTimeString(undefined, { timeStyle: 'short' });
-}
-
 export default function MeetingNoteLogCards({ notes, onSelect, onDelete, borderClass }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
+  const timeFormat = account?.timeFormat ?? '24h';
+  const timezone = account?.timezone ?? 'UTC';
+
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';
   const cardClass = borderClass ? baseClass + ' ' + borderClass : baseClass;
 
@@ -42,7 +43,7 @@ export default function MeetingNoteLogCards({ notes, onSelect, onDelete, borderC
             />
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-            <time dateTime={note.meeting_at}>{formatMeetingDate(note.meeting_at)}</time>
+            <time dateTime={note.meeting_at}>{formatDateTimeFromISO(note.meeting_at, dateFormat, timeFormat, timezone)}</time>
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{note.title || 'Untitled meeting'}</p>
           {note.location_zoom_link ? (

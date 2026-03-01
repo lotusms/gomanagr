@@ -51,6 +51,10 @@ function parseBody(body, existing) {
     signed_by: String(body.signed_by ?? existing?.signed_by ?? '').trim() || '',
     signed_date: body.signed_date !== undefined ? toDateOnly(body.signed_date) : (existing?.signed_date ?? null),
     file_url: body.file_url !== undefined ? (body.file_url ? String(body.file_url).trim() || null : null) : (existing?.file_url ?? null),
+    file_urls:
+      body.file_urls !== undefined
+        ? (Array.isArray(body.file_urls) ? body.file_urls.map((u) => String(u).trim()).filter(Boolean) : [])
+        : (existing?.file_urls ?? []),
     notes: String(body.notes ?? existing?.notes ?? '').trim() || '',
     related_proposal_id: body.related_proposal_id !== undefined ? (body.related_proposal_id ? String(body.related_proposal_id).trim() || null : null) : (existing?.related_proposal_id ?? null),
     updated_at: new Date().toISOString(),

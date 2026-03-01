@@ -12,6 +12,10 @@ import React from 'react';
 import { render, screen, within, fireEvent, act } from '@testing-library/react';
 import AppointmentRecurrence, { defaultRecurrence } from '@/components/dashboard/AppointmentRecurrence';
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 describe('AppointmentRecurrence', () => {
   beforeEach(() => {
     jest.clearAllMocks();

@@ -11,6 +11,10 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ServiceSelector from '@/components/dashboard/ServiceSelector';
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 jest.mock('next/router', () => ({
   useRouter: () => ({
     push: jest.fn(),

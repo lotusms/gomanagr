@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import * as Label from '@radix-ui/react-label';
 import { HiCalendar, HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { getInputClasses, getLabelClasses } from './formControlStyles';
-import { formatDate } from '@/utils/dateTimeFormatters';
+import { formatDate, parseFormattedDate } from '@/utils/dateTimeFormatters';
+import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 /**
  * DateField Component - Custom date picker with calendar popup
@@ -36,9 +37,16 @@ export default function DateField({
   variant = 'light',
   min,
   max,
-  timezone = 'UTC',
-  dateFormat = 'MM/DD/YYYY',
+  timezone: timezoneProp,
+  dateFormat: dateFormatProp,
 }) {
+  const account = useOptionalUserAccount();
+  const dateFormat = dateFormatProp ?? account?.dateFormat ?? 'MM/DD/YYYY';
+  const timezone = timezoneProp ?? account?.timezone ?? 'UTC';
+
+  const [isFocused, setIsFocused] = useState(false);
+  const [localInput, setLocalInput] = useState('');
+
   const parseLocalDate = (dateString) => {
     if (!dateString) return null;
     const normalized = dateString.split('T')[0];
@@ -103,10 +111,12 @@ export default function DateField({
     }
   }, [value]);
 
-  const formatDateDisplay = (dateString) => {
-    if (!dateString) return '';
-    return formatDate(dateString, dateFormat, timezone);
-  };
+  // When value changes while focused (e.g. calendar selection), sync display
+  useEffect(() => {
+    if (isFocused && value) {
+      setLocalInput(formatDate(normalizeDateValue(value), dateFormat, timezone));
+    }
+  }, [value, isFocused, dateFormat, timezone]);
 
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -167,17 +177,44 @@ export default function DateField({
     setIsOpen(false);
   };
 
-  const handleInputClick = () => {
+  const handleCalendarButtonClick = (e) => {
+    e.preventDefault();
     if (!disabled) {
       setIsOpen(!isOpen);
     }
   };
 
   const handleInputChange = (e) => {
-    if (onChange) {
-      onChange(e);
-    }
+    setLocalInput(e.target.value);
   };
+
+  const handleInputFocus = () => {
+    setLocalInput(value ? formatDate(normalizeDateValue(value), dateFormat, timezone) : '');
+    setIsFocused(true);
+  };
+
+  const handleInputBlur = (e) => {
+    const parsed = parseFormattedDate(localInput, dateFormat, timezone);
+    if (onChange) {
+      if (parsed) {
+        onChange({
+          target: { name: id, value: parsed },
+          currentTarget: { name: id, value: parsed },
+        });
+      } else if (!localInput.trim()) {
+        onChange({
+          target: { name: id, value: '' },
+          currentTarget: { name: id, value: '' },
+        });
+      }
+    }
+    setIsFocused(false);
+    if (onBlur) onBlur(e);
+  };
+
+  const displayValue = isFocused
+    ? localInput
+    : (value ? formatDate(normalizeDateValue(value), dateFormat, timezone) : '');
 
   const daysInMonth = getDaysInMonth(currentMonth);
   const firstDay = getFirstDayOfMonth(currentMonth);
@@ -207,21 +244,21 @@ export default function DateField({
           <input
             id={id}
             type="text"
-            value={formatDateDisplay(value)}
+            value={displayValue}
             onChange={handleInputChange}
-            onBlur={onBlur}
-            onClick={handleInputClick}
-            readOnly
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
             required={required}
             disabled={disabled}
-            placeholder="Select a date..."
-            className={`${inputClass} pr-10 cursor-pointer`}
+            placeholder={dateFormat}
+            className={`${inputClass} pr-10`}
             aria-invalid={error ? 'true' : 'false'}
             aria-describedby={error ? `${id}-error` : undefined}
+            autoComplete="off"
           />
           <button
             type="button"
-            onClick={handleInputClick}
+            onClick={handleCalendarButtonClick}
             disabled={disabled}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Open calendar"

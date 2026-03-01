@@ -12,6 +12,10 @@ jest.mock('next/router', () => ({
   useRouter: () => ({ pathname: '/', push: jest.fn(), replace: jest.fn(), query: {} }),
 }));
 
+jest.mock('@/lib/UserAccountContext', () => ({
+  useOptionalUserAccount: () => null,
+}));
+
 describe('ClientContractForm', () => {
   const defaultProps = {
     clientId: 'c1',

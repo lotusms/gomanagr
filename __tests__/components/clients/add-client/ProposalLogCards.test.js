@@ -22,7 +22,7 @@ describe('ProposalLogCards', () => {
       status: 'draft',
       date_created: '2026-02-27',
       proposal_title: 'Website Redesign',
-      estimated_value: '$5,000',
+      estimated_value: 5000,
       scope_summary: 'Full redesign.',
     },
     {
@@ -31,7 +31,7 @@ describe('ProposalLogCards', () => {
       status: 'sent',
       date_created: '2026-02-26',
       proposal_title: 'Marketing Retainer',
-      estimated_value: '$2,000/mo',
+      estimated_value: 2000,
       scope_summary: '',
     },
   ];
@@ -44,7 +44,7 @@ describe('ProposalLogCards', () => {
     expect(screen.getByText('P-001')).toBeInTheDocument();
     expect(screen.getByText('Draft')).toBeInTheDocument();
     expect(screen.getByText('Sent')).toBeInTheDocument();
-    expect(screen.getByText(/Est\. value: \$5,000/)).toBeInTheDocument();
+    expect(screen.getByText(/Est\. value: \$5,000\.00/)).toBeInTheDocument();
   });
 
   it('calls onSelect with proposal id when card is clicked', async () => {

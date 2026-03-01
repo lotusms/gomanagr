@@ -45,10 +45,10 @@ function parseBody(body, existing) {
     status,
     payment_method: String(body.payment_method ?? existing?.payment_method ?? '').trim() || '',
     outstanding_balance: String(body.outstanding_balance ?? existing?.outstanding_balance ?? '').trim() || '',
-    file_url: body.file_url !== undefined ? (body.file_url ? String(body.file_url).trim() || null : null) : (existing?.file_url ?? null),
     related_proposal_id: body.related_proposal_id !== undefined ? body.related_proposal_id || null : (existing?.related_proposal_id ?? null),
     related_project: body.related_project !== undefined ? (body.related_project ? String(body.related_project).trim() || null : null) : (existing?.related_project ?? null),
-    related_service: body.related_service !== undefined ? (body.related_service ? String(body.related_service).trim() || null : null) : (existing?.related_service ?? null),
+    linked_contract_id: body.linked_contract_id !== undefined ? body.linked_contract_id || null : (existing?.linked_contract_id ?? null),
+    notes: body.notes !== undefined ? (body.notes ? String(body.notes).trim() || null : null) : (existing?.notes ?? null),
     updated_at: new Date().toISOString(),
   };
 }
@@ -85,6 +85,12 @@ export default async function handler(req, res) {
     }
 
     const updates = parseBody(req.body, existing);
+    if (req.body?.file_urls !== undefined) {
+      updates.file_urls = Array.isArray(req.body.file_urls)
+        ? req.body.file_urls.map((u) => String(u).trim()).filter(Boolean)
+        : [];
+      updates.file_url = updates.file_urls.length > 0 ? updates.file_urls[0] : null;
+    }
     const { error: updateErr } = await supabaseAdmin.from('client_invoices').update(updates).eq('id', invoiceId);
     if (updateErr) {
       console.error('[update-client-invoice]', updateErr);

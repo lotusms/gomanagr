@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import CardDeleteButton from './CardDeleteButton';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
@@ -20,7 +21,7 @@ const TYPE_LABELS = {
   vendor_agreement: 'Vendor agreement',
 };
 
-export default function ContractLogCards({ contracts, onSelect, onDelete, borderClass, defaultCurrency = 'USD' }) {
+export default function ContractLogCards({ contracts, onSelect, onDelete, borderClass, defaultCurrency = 'USD', attachments = [], clientId }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -69,6 +70,24 @@ export default function ContractLogCards({ contracts, onSelect, onDelete, border
           {c.contract_value != null && c.contract_value !== '' && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               Value: {formatCurrency(c.contract_value, defaultCurrency)}
+            </p>
+          )}
+          {clientId && attachments.filter((a) => a.linked_contract_id === c.id).length > 0 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5" onClick={(e) => e.stopPropagation()}>
+              Linked attachments:{' '}
+              {attachments
+                .filter((a) => a.linked_contract_id === c.id)
+                .map((att, i) => (
+                  <span key={att.id}>
+                    {i > 0 && ', '}
+                    <Link
+                      href={`/dashboard/clients/${clientId}/attachments/${att.id}/edit`}
+                      className="text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      {att.file_name || 'Unnamed file'}
+                    </Link>
+                  </span>
+                ))}
             </p>
           )}
           {c.scope_summary && (

@@ -41,6 +41,7 @@ export default function ClientContractForm({
   organizationId,
   contractId,
   defaultCurrency = 'USD',
+  linkedAttachments = [],
   onSuccess,
   onCancel,
 }) {
@@ -288,8 +289,13 @@ export default function ClientContractForm({
         accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         multiple={true}
         placeholder="Drag files here or click to upload"
+        linkedItems={linkedAttachments.map((att) => ({
+          id: att.id,
+          file_name: att.file_name || 'Unnamed file',
+          file_type: att.file_type,
+          href: clientId ? `/dashboard/clients/${clientId}/attachments/${att.id}/edit` : '#',
+        }))}
       />
-
 
       <TextareaField
         id="scope-summary"

@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import InputField from '@/components/ui/InputField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
 import TextareaField from '@/components/ui/TextareaField';
+import CurrencyInput from '@/components/ui/CurrencyInput';
+import { unformatCurrency } from '@/utils/formatCurrency';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -24,12 +26,23 @@ const STATUS_OPTIONS = [
   { value: 'void', label: 'Void' },
 ];
 
+const PAYMENT_METHOD_OPTIONS = [
+  { value: '', label: 'None' },
+  { value: 'bank_transfer', label: 'Bank transfer' },
+  { value: 'card', label: 'Card' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'check', label: 'Check' },
+  { value: 'paypal', label: 'PayPal' },
+  { value: 'other', label: 'Other' },
+];
+
 export default function ClientInvoiceForm({
   initial = {},
   clientId,
   userId,
   organizationId,
   invoiceId,
+  defaultCurrency = 'USD',
   onSuccess,
   onCancel,
 }) {
@@ -37,15 +50,26 @@ export default function ClientInvoiceForm({
   const [error, setError] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState(initial.invoice_number ?? '');
   const [invoiceTitle, setInvoiceTitle] = useState(initial.invoice_title ?? '');
-  const [amount, setAmount] = useState(initial.amount ?? '');
-  const [tax, setTax] = useState(initial.tax ?? '');
-  const [total, setTotal] = useState(initial.total ?? '');
+  const [amount, setAmount] = useState(
+    initial.amount && String(initial.amount).trim() ? unformatCurrency(String(initial.amount)) : ''
+  );
+  const [tax, setTax] = useState(
+    initial.tax && String(initial.tax).trim() ? unformatCurrency(String(initial.tax)) : ''
+  );
+  // Total is computed from amount + tax (display-only, disabled field)
+  const amountNum = parseFloat(unformatCurrency(amount)) || 0;
+  const taxNum = parseFloat(unformatCurrency(tax)) || 0;
+  const computedTotal = (amountNum + taxNum).toFixed(2);
   const [dateIssued, setDateIssued] = useState(toDateLocal(initial.date_issued) || '');
   const [dueDate, setDueDate] = useState(toDateLocal(initial.due_date) || '');
   const [paidDate, setPaidDate] = useState(toDateLocal(initial.paid_date) || '');
   const [status, setStatus] = useState(initial.status ?? 'draft');
   const [paymentMethod, setPaymentMethod] = useState(initial.payment_method ?? '');
-  const [outstandingBalance, setOutstandingBalance] = useState(initial.outstanding_balance ?? '');
+  const [outstandingBalance, setOutstandingBalance] = useState(
+    initial.outstanding_balance && String(initial.outstanding_balance).trim()
+      ? unformatCurrency(String(initial.outstanding_balance))
+      : ''
+  );
   const [fileUrls, setFileUrls] = useState(
     Array.isArray(initial.file_urls) && initial.file_urls.length > 0
       ? initial.file_urls
@@ -53,10 +77,58 @@ export default function ClientInvoiceForm({
         ? [initial.file_url]
         : []
   );
-  const [relatedProposalId, setRelatedProposalId] = useState(initial.related_proposal_id ?? '');
-  const [relatedProject, setRelatedProject] = useState(initial.related_project ?? '');
-  const [relatedService, setRelatedService] = useState(initial.related_service ?? '');
+  const [linkedProposalId, setLinkedProposalId] = useState(initial.related_proposal_id ?? '');
+  const [linkedProject, setLinkedProject] = useState(initial.related_project ?? '');
+  const [linkedContractId, setLinkedContractId] = useState(initial.linked_contract_id ?? '');
   const [notes, setNotes] = useState(initial.notes ?? '');
+  const [proposals, setProposals] = useState([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
+  const [contracts, setContracts] = useState([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [projectOptions, setProjectOptions] = useState([{ value: '', label: 'No project' }]);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setProposalsLoading(true);
+    fetch('/api/get-client-proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setProposals(data.proposals || []))
+      .catch(() => setProposals([]))
+      .finally(() => setProposalsLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setContractsLoading(true);
+    fetch('/api/get-client-contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setContracts(data.contracts || []))
+      .catch(() => setContracts([]))
+      .finally(() => setContractsLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  const proposalOptions = [
+    { value: '', label: 'None' },
+    ...proposals.map((p) => ({
+      value: p.id,
+      label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
+    })),
+  ];
+  const contractOptions = [
+    { value: '', label: 'None' },
+    ...contracts.map((c) => ({
+      value: c.id,
+      label: [c.contract_number, c.contract_title].filter(Boolean).join(' – ') || 'Untitled contract',
+    })),
+  ];
   const uploadFile = useCallback(
     (file) =>
       new Promise((resolve, reject) => {
@@ -99,7 +171,7 @@ export default function ClientInvoiceForm({
         invoice_title: invoiceTitle.trim(),
         amount: amount.trim(),
         tax: tax.trim(),
-        total: total.trim(),
+        total: computedTotal,
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
         paid_date: paidDate.trim() || null,
@@ -107,9 +179,9 @@ export default function ClientInvoiceForm({
         payment_method: paymentMethod.trim(),
         outstanding_balance: outstandingBalance.trim(),
         file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
-        related_proposal_id: relatedProposalId.trim() || null,
-        related_project: relatedProject.trim() || null,
-        related_service: relatedService.trim() || null,
+        related_proposal_id: linkedProposalId.trim() || null,
+        related_project: linkedProject.trim() || null,
+        linked_contract_id: linkedContractId.trim() || null,
         notes: notes.trim() || null,
       };
 
@@ -173,72 +245,85 @@ export default function ClientInvoiceForm({
           placeholder="Draft"
           searchable={false}
         />
-        <InputField
+        <CurrencyInput
           id="amount"
-          label="Amount"
+          label={`Amount (${defaultCurrency})`}
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => setAmount(e.target.value ?? '')}
+          currency={defaultCurrency}
           variant="light"
-          placeholder="e.g. 1,000.00"
+          placeholder="0.00"
         />
-        <InputField
+        <CurrencyInput
           id="tax"
-          label="Tax"
+          label={`Tax (${defaultCurrency})`}
           value={tax}
-          onChange={(e) => setTax(e.target.value)}
+          onChange={(e) => setTax(e.target.value ?? '')}
+          currency={defaultCurrency}
           variant="light"
-          placeholder="e.g. 80.00"
+          placeholder="0.00"
         />
-        <InputField
+        <CurrencyInput
           id="total"
-          label="Total"
-          value={total}
-          onChange={(e) => setTotal(e.target.value)}
+          label={`Total (${defaultCurrency})`}
+          value={computedTotal}
+          onChange={() => {}}
+          currency={defaultCurrency}
           variant="light"
-          placeholder="e.g. 1,080.00"
+          placeholder="0.00"
+          disabled
         />
         <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => setDateIssued(e.target.value)} variant="light" />
         <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} variant="light" />
         <DateField id="paid-date" label="Paid date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} variant="light" />
-        <InputField
+        <Dropdown
           id="payment-method"
+          name="payment-method"
           label="Payment method"
           value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
-          variant="light"
-          placeholder="e.g. Bank transfer, Card"
+          onChange={(e) => setPaymentMethod(e.target.value ?? '')}
+          options={PAYMENT_METHOD_OPTIONS}
+          placeholder="None"
+          searchable={false}
         />
-        <InputField
+        <CurrencyInput
           id="outstanding-balance"
-          label="Outstanding balance"
+          label={`Outstanding balance (${defaultCurrency})`}
           value={outstandingBalance}
-          onChange={(e) => setOutstandingBalance(e.target.value)}
+          onChange={(e) => setOutstandingBalance(e.target.value ?? '')}
+          currency={defaultCurrency}
           variant="light"
-          placeholder="e.g. 0.00 or remaining amount"
+          placeholder="0.00"
         />
-        <InputField
-          id="related-proposal-id"
-          label="Related proposal ID"
-          value={relatedProposalId}
-          onChange={(e) => setRelatedProposalId(e.target.value)}
-          variant="light"
-          placeholder="Proposal UUID (optional)"
+        <Dropdown
+          id="linked-proposal"
+          name="linked-proposal"
+          label="Linked proposal"
+          value={linkedProposalId}
+          onChange={(e) => setLinkedProposalId(e.target.value ?? '')}
+          options={proposalOptions}
+          placeholder={proposalsLoading ? 'Loading…' : 'None'}
+          searchable={proposalOptions.length > 10}
         />
-        <InputField
-          id="related-project"
-          label="Related project"
-          value={relatedProject}
-          onChange={(e) => setRelatedProject(e.target.value)}
-          variant="light"
-          placeholder="Project name (optional)"
+        <Dropdown
+          id="linked-project"
+          name="linked-project"
+          label="Linked project"
+          value={linkedProject}
+          onChange={(e) => setLinkedProject(e.target.value ?? '')}
+          options={projectOptions}
+          placeholder="Select project"
+          searchable={false}
         />
-        <InputField
-          id="related-service"
-          label="Related service"
-          value={relatedService}
-          onChange={(e) => setRelatedService(e.target.value)}
-          variant="light"
-          placeholder="Service (optional)"
+        <Dropdown
+          id="linked-contract"
+          name="linked-contract"
+          label="Linked contract"
+          value={linkedContractId}
+          onChange={(e) => setLinkedContractId(e.target.value ?? '')}
+          options={contractOptions}
+          placeholder={contractsLoading ? 'Loading…' : 'None'}
+          searchable={contractOptions.length > 10}
         />
       </div>
 

@@ -3,6 +3,7 @@
  * - Returns 405 for non-POST
  * - Returns 400 when userId or clientId missing
  * - Returns 201 with id and invoice when insert succeeds
+ * - Accepts file_urls array, notes, and linked_contract_id
  */
 
 const mockFrom = jest.fn();
@@ -92,5 +93,29 @@ describe('create-client-invoice API', () => {
         }),
       })
     );
+  });
+
+  it('accepts file_urls array, notes, and linked_contract_id', async () => {
+    const handler = (await import('@/pages/api/create-client-invoice')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: {
+        userId: 'u1',
+        clientId: 'c1',
+        invoice_number: 'INV-002',
+        invoice_title: 'Invoice with files',
+        status: 'draft',
+        file_urls: ['https://example.com/a.pdf', 'https://example.com/b.pdf'],
+        notes: 'Payment terms: Net 30',
+        linked_contract_id: 'contract-xyz',
+      },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    const call = res.json.mock.calls[0][0];
+    expect(call.invoice.file_urls).toEqual(['https://example.com/a.pdf', 'https://example.com/b.pdf']);
+    expect(call.invoice.notes).toBe('Payment terms: Net 30');
+    expect(call.invoice.linked_contract_id).toBe('contract-xyz');
+    expect(call.invoice.file_url).toBe('https://example.com/a.pdf');
   });
 });

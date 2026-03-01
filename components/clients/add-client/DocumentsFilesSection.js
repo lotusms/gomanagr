@@ -60,6 +60,7 @@ const VALID_DOC_SECTION_KEYS = DOC_TYPES.map((t) => t.key);
 function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD' }) {
   const router = useRouter();
   const [contracts, setContracts] = useState([]);
+  const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
   const [contractToDelete, setContractToDelete] = useState(null);
 
@@ -75,6 +76,18 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
       .then((data) => setContracts(data.contracts || []))
       .catch(() => setContracts([]))
       .finally(() => setLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    fetch('/api/get-client-attachments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setAttachments(data.attachments || []))
+      .catch(() => setAttachments([]));
   }, [clientId, userId, organizationId]);
 
   useEffect(() => {
@@ -131,6 +144,8 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
     <>
       <ContractLogCards
         contracts={contracts}
+        attachments={attachments}
+        clientId={clientId}
         onSelect={(id) => router.push(editUrl(id))}
         onDelete={setContractToDelete}
         borderClass={type.borderClass}
@@ -151,7 +166,7 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   );
 }
 
-function ProposalsBlock({ clientId, userId, organizationId, onHasEntries }) {
+function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD' }) {
   const router = useRouter();
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -228,6 +243,7 @@ function ProposalsBlock({ clientId, userId, organizationId, onHasEntries }) {
         onSelect={(id) => router.push(editUrl(id))}
         onDelete={setProposalToDelete}
         borderClass={type.borderClass}
+        defaultCurrency={defaultCurrency}
       />
       <ConfirmationDialog
         isOpen={!!proposalToDelete}
@@ -244,7 +260,7 @@ function ProposalsBlock({ clientId, userId, organizationId, onHasEntries }) {
   );
 }
 
-function InvoicesBlock({ clientId, userId, organizationId, onHasEntries }) {
+function InvoicesBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD' }) {
   const router = useRouter();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -321,6 +337,7 @@ function InvoicesBlock({ clientId, userId, organizationId, onHasEntries }) {
         onSelect={(id) => router.push(editUrl(id))}
         onDelete={setInvoiceToDelete}
         borderClass={type.borderClass}
+        defaultCurrency={defaultCurrency}
       />
       <ConfirmationDialog
         isOpen={!!invoiceToDelete}
@@ -414,6 +431,7 @@ function AttachmentsBlock({ clientId, userId, organizationId, onHasEntries }) {
         onSelect={(id) => router.push(editUrl(id))}
         onDelete={setAttachmentToDelete}
         borderClass={type.borderClass}
+        clientId={clientId}
       />
       <ConfirmationDialog
         isOpen={!!attachmentToDelete}
@@ -750,6 +768,7 @@ export default function DocumentsFilesSection({
           userId={userId}
           organizationId={organizationId}
           onHasEntries={setHasProposalEntries}
+          defaultCurrency={defaultCurrency}
         />
       ) : selectedKey === 'invoices' && useInvoicesFromApi ? (
         <InvoicesBlock
@@ -757,6 +776,7 @@ export default function DocumentsFilesSection({
           userId={userId}
           organizationId={organizationId}
           onHasEntries={setHasInvoiceEntries}
+          defaultCurrency={defaultCurrency}
         />
       ) : selectedKey === 'attachments' && useAttachmentsFromApi ? (
         <AttachmentsBlock

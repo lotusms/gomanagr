@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import CardDeleteButton from './CardDeleteButton';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
@@ -7,18 +8,7 @@ function clipText(text, maxLen) {
   return text.length <= (maxLen || 80) ? text : text.slice(0, maxLen || 80) + '…';
 }
 
-const CATEGORY_LABELS = {
-  id_documents: 'ID documents',
-  logos_brand_assets: 'Logos / brand',
-  photos: 'Photos',
-  screenshots: 'Screenshots',
-  intake_forms: 'Intake forms',
-  signed_paperwork: 'Signed paperwork',
-  receipts: 'Receipts',
-  reference_docs: 'Reference docs',
-};
-
-export default function AttachmentLogCards({ attachments, onSelect, onDelete, borderClass }) {
+export default function AttachmentLogCards({ attachments, onSelect, onDelete, borderClass, clientId }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -51,11 +41,6 @@ export default function AttachmentLogCards({ attachments, onSelect, onDelete, bo
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
             {a.file_type && <span>{a.file_type}</span>}
-            {a.category && (
-              <span className="font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                {CATEGORY_LABELS[a.category] || a.category}
-              </span>
-            )}
             {(a.upload_date || a.created_at) && (
               <time dateTime={a.upload_date || a.created_at}>{formatDateFromISO(a.upload_date || a.created_at, dateFormat, timezone)}</time>
             )}
@@ -66,6 +51,18 @@ export default function AttachmentLogCards({ attachments, onSelect, onDelete, bo
           )}
           {a.related_item && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Related: {clipText(a.related_item, 40)}</p>
+          )}
+          {clientId && a.linked_contract_id && (
+            <p className="text-xs mt-0.5" onClick={(e) => e.stopPropagation()}>
+              <Link
+                href={`/dashboard/clients/${clientId}/contracts/${a.linked_contract_id}/edit`}
+                className="text-primary-600 dark:text-primary-400 hover:underline"
+              >
+                Linked contract: {a.linked_contract
+                  ? [a.linked_contract.contract_number, a.linked_contract.contract_title].filter(Boolean).join(' – ') || 'View contract'
+                  : 'View contract'}
+              </Link>
+            </p>
           )}
         </div>
       ))}

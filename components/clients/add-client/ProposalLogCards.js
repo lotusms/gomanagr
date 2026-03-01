@@ -1,5 +1,6 @@
 import CardDeleteButton from './CardDeleteButton';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 function clipText(text, maxLines) {
@@ -19,7 +20,7 @@ const STATUS_LABELS = {
   expired: 'Expired',
 };
 
-export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass }) {
+export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, defaultCurrency = 'USD' }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -60,8 +61,8 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
             {p.date_created && <time dateTime={p.date_created}>{formatDateFromISO(p.date_created, dateFormat, timezone)}</time>}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.proposal_title || 'Untitled proposal'}</p>
-          {p.estimated_value && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Est. value: {p.estimated_value}</p>
+          {p.estimated_value != null && p.estimated_value !== '' && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Est. value: {formatCurrency(p.estimated_value, defaultCurrency)}</p>
           )}
           {p.scope_summary && (
             <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(p.scope_summary, 3)}</p>

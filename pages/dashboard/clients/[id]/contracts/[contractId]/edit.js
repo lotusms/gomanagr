@@ -18,6 +18,7 @@ export default function EditClientContractPage() {
   const [orgReady, setOrgReady] = useState(false);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [contract, setContract] = useState(null);
+  const [linkedAttachments, setLinkedAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -72,6 +73,25 @@ export default function EditClientContractPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, clientId, contractId, organization?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !clientId || !contractId || notFound || !contract) return;
+    fetch('/api/get-client-attachments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.uid,
+        clientId,
+        organizationId: organization?.id ?? undefined,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const list = data.attachments || [];
+        setLinkedAttachments(list.filter((a) => a.linked_contract_id === contractId));
+      })
+      .catch(() => setLinkedAttachments([]));
+  }, [currentUser?.uid, clientId, contractId, organization?.id, notFound, contract]);
 
   const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=contracts`;
 
@@ -139,6 +159,7 @@ export default function EditClientContractPage() {
             organizationId={organization?.id ?? null}
             contractId={contractId}
             defaultCurrency={defaultCurrency}
+            linkedAttachments={linkedAttachments}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

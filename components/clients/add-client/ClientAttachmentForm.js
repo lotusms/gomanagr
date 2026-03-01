@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
@@ -15,16 +15,20 @@ function toDateLocal(iso) {
   return `${y}-${m}-${day}`;
 }
 
-const CATEGORY_OPTIONS = [
+const FILE_TYPE_OPTIONS = [
   { value: '', label: 'None' },
-  { value: 'id_documents', label: 'ID documents' },
-  { value: 'logos_brand_assets', label: 'Logos / brand assets' },
-  { value: 'photos', label: 'Photos' },
-  { value: 'screenshots', label: 'Screenshots' },
-  { value: 'intake_forms', label: 'Intake forms' },
-  { value: 'signed_paperwork', label: 'Signed paperwork' },
-  { value: 'receipts', label: 'Receipts' },
-  { value: 'reference_docs', label: 'Reference docs' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'image', label: 'Image' },
+  { value: 'document', label: 'Document' },
+  { value: 'spreadsheet', label: 'Spreadsheet' },
+  { value: 'video', label: 'Video' },
+  { value: 'other', label: 'Other' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'declined', label: 'Declined' },
 ];
 
 export default function ClientAttachmentForm({
@@ -40,12 +44,37 @@ export default function ClientAttachmentForm({
   const [error, setError] = useState('');
   const [fileName, setFileName] = useState(initial.file_name ?? '');
   const [fileType, setFileType] = useState(initial.file_type ?? '');
-  const [category, setCategory] = useState(initial.category ?? '');
   const [description, setDescription] = useState(initial.description ?? '');
   const [uploadDate, setUploadDate] = useState(toDateLocal(initial.upload_date) || toDateLocal(initial.created_at) || '');
-  const [relatedItem, setRelatedItem] = useState(initial.related_item ?? '');
-  const [version, setVersion] = useState(initial.version ?? '');
+  const [linkedProject, setLinkedProject] = useState(initial.related_item ?? '');
+  const [linkedContractId, setLinkedContractId] = useState(initial.linked_contract_id ?? '');
+  const [status, setStatus] = useState(initial.version ?? '');
   const [fileUrl, setFileUrl] = useState(initial.file_url ?? '');
+  const [contracts, setContracts] = useState([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const projectOptions = [{ value: '', label: 'No project' }];
+
+  useEffect(() => {
+    if (!clientId || !userId) return;
+    setContractsLoading(true);
+    fetch('/api/get-client-contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+    })
+      .then((res) => res.json())
+      .then((data) => setContracts(data.contracts || []))
+      .catch(() => setContracts([]))
+      .finally(() => setContractsLoading(false));
+  }, [clientId, userId, organizationId]);
+
+  const contractOptions = [
+    { value: '', label: 'None' },
+    ...contracts.map((c) => ({
+      value: c.id,
+      label: [c.contract_number, c.contract_title].filter(Boolean).join(' – ') || 'Untitled contract',
+    })),
+  ];
 
   const uploadFile = useCallback(
     (file) =>
@@ -87,11 +116,11 @@ export default function ClientAttachmentForm({
         organizationId: organizationId || undefined,
         file_name: fileName.trim(),
         file_type: fileType.trim(),
-        category: category.trim() || null,
         description: description.trim(),
         upload_date: uploadDate.trim() || null,
-        related_item: relatedItem.trim() || null,
-        version: version.trim() || null,
+        related_item: linkedProject.trim() || null,
+        linked_contract_id: linkedContractId.trim() || null,
+        version: status.trim() || null,
         file_url: fileUrl.trim() || null,
       };
 
@@ -128,7 +157,7 @@ export default function ClientAttachmentForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         <InputField
           id="file-name"
           label="File name"
@@ -137,26 +166,58 @@ export default function ClientAttachmentForm({
           variant="light"
           placeholder="e.g. contract-signed.pdf"
         />
-        <InputField
+        <Dropdown
           id="file-type"
+          name="file-type"
           label="File type"
           value={fileType}
-          onChange={(e) => setFileType(e.target.value)}
+          onChange={(e) => setFileType(e.target.value ?? '')}
+          options={FILE_TYPE_OPTIONS}
+          placeholder="None"
+          searchable={false}
+        />
+
+        <Dropdown
+          id="status"
+          name="status"
+          label="Status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value ?? '')}
+          options={STATUS_OPTIONS}
+          placeholder="Draft"
+          searchable={false}
+        />
+        <DateField
+          id="upload-date"
+          label="Upload date"
+          value={uploadDate}
+          onChange={(e) => setUploadDate(e.target.value)}
           variant="light"
-          placeholder="e.g. PDF, image, DOC"
+        />
+
+        <Dropdown
+          id="linked-project"
+          name="linked-project"
+          label="Linked project"
+          value={linkedProject}
+          onChange={(e) => setLinkedProject(e.target.value ?? '')}
+          options={projectOptions}
+          placeholder="No project"
+          searchable={false}
+        />
+
+        <Dropdown
+          id="linked-contract"
+          name="linked-contract"
+          label="Linked contract"
+          value={linkedContractId}
+          onChange={(e) => setLinkedContractId(e.target.value ?? '')}
+          options={contractOptions}
+          placeholder={contractsLoading ? 'Loading…' : 'None'}
+          searchable={contractOptions.length > 10}
         />
       </div>
 
-      <Dropdown
-        id="category"
-        name="category"
-        label="Category / tag"
-        value={category}
-        onChange={(e) => setCategory(e.target.value ?? '')}
-        options={CATEGORY_OPTIONS}
-        placeholder="None"
-        searchable={false}
-      />
 
       <TextareaField
         id="description"
@@ -167,31 +228,6 @@ export default function ClientAttachmentForm({
         placeholder="Brief description of the file"
       />
 
-      <DateField
-        id="upload-date"
-        label="Upload date"
-        value={uploadDate}
-        onChange={(e) => setUploadDate(e.target.value)}
-        variant="light"
-      />
-
-      <InputField
-        id="related-item"
-        label="Related item"
-        value={relatedItem}
-        onChange={(e) => setRelatedItem(e.target.value)}
-        variant="light"
-        placeholder="e.g. Project Alpha, Invoice #123, Appointment 2024-01-15"
-      />
-
-      <InputField
-        id="version"
-        label="Version (optional)"
-        value={version}
-        onChange={(e) => setVersion(e.target.value)}
-        variant="light"
-        placeholder="e.g. v2, final"
-      />
 
       <FileUploadList
         id="attachment-file"

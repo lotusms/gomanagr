@@ -77,8 +77,54 @@ describe('get-client-attachments API', () => {
     const res = mockRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      attachments: [{ id: 'a1', file_name: 'doc.pdf', client_id: 'c1' }],
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.attachments).toHaveLength(1);
+    expect(payload.attachments[0]).toMatchObject({ id: 'a1', file_name: 'doc.pdf', client_id: 'c1' });
+  });
+
+  it('enriches attachments with linked_contract when linked_contract_id is set', async () => {
+    const attachmentsData = [
+      { id: 'a1', file_name: 'signed.pdf', client_id: 'c1', linked_contract_id: 'contract-uuid-1' },
+    ];
+    const contractsData = [
+      { id: 'contract-uuid-1', contract_number: 'CON-001', contract_title: 'Service Agreement' },
+    ];
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_attachments') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                is: () => ({
+                  order: () => ({
+                    order: () => Promise.resolve({ data: attachmentsData, error: null }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'client_contracts') {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({ data: contractsData, error: null }),
+          }),
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/get-client-attachments')).default;
+    const res = mockRes();
+    await handler({ method: 'POST', body: { userId: 'u1', clientId: 'c1' } }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.attachments).toHaveLength(1);
+    expect(payload.attachments[0].linked_contract_id).toBe('contract-uuid-1');
+    expect(payload.attachments[0].linked_contract).toEqual({
+      id: 'contract-uuid-1',
+      contract_number: 'CON-001',
+      contract_title: 'Service Agreement',
     });
   });
 });

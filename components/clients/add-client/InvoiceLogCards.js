@@ -1,5 +1,6 @@
 import CardDeleteButton from './CardDeleteButton';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 const STATUS_LABELS = {
@@ -11,7 +12,7 @@ const STATUS_LABELS = {
   void: 'Void',
 };
 
-export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass }) {
+export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD' }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -53,10 +54,10 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{inv.invoice_title || 'Untitled invoice'}</p>
           {(inv.total || inv.amount) && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Total: {inv.total || inv.amount}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Total: {formatCurrency(inv.total || inv.amount, defaultCurrency)}</p>
           )}
-          {inv.outstanding_balance && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">Outstanding: {inv.outstanding_balance}</p>
+          {inv.outstanding_balance != null && inv.outstanding_balance !== '' && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">Outstanding: {formatCurrency(inv.outstanding_balance, defaultCurrency)}</p>
           )}
         </div>
       ))}

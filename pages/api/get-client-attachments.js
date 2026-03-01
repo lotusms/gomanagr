@@ -72,13 +72,33 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to load attachments' });
     }
 
+    const list = Array.isArray(data) ? data : data ? [data] : [];
+    const contractIds = [...new Set(list.map((a) => a.linked_contract_id).filter(Boolean))];
+    let contractMap = {};
+    if (contractIds.length > 0) {
+      const { data: contracts } = await supabaseAdmin
+        .from('client_contracts')
+        .select('id, contract_number, contract_title')
+        .in('id', contractIds);
+      if (contracts && contracts.length) {
+        contractMap = contracts.reduce((acc, c) => {
+          acc[c.id] = { id: c.id, contract_number: c.contract_number, contract_title: c.contract_title };
+          return acc;
+        }, {});
+      }
+    }
+    const enriched = list.map((a) => ({
+      ...a,
+      linked_contract: a.linked_contract_id ? contractMap[a.linked_contract_id] || null : null,
+    }));
+
     if (attachmentId) {
-      const one = Array.isArray(data) ? data[0] : data;
+      const one = enriched[0];
       if (!one) return res.status(404).json({ error: 'Attachment not found' });
       return res.status(200).json({ attachment: one });
     }
 
-    return res.status(200).json({ attachments: data || [] });
+    return res.status(200).json({ attachments: enriched });
   } catch (err) {
     console.error('[get-client-attachments]', err);
     return res.status(500).json({ error: 'Failed to load attachments' });

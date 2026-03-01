@@ -1,6 +1,7 @@
+import Link from 'next/link';
 import { useRef, useState } from 'react';
 import * as Label from '@radix-ui/react-label';
-import { HiUpload, HiTrash, HiDocument } from 'react-icons/hi';
+import { HiUpload, HiTrash, HiDocument, HiExternalLink } from 'react-icons/hi';
 import { FaFilePdf, FaFileWord, FaFileExcel, FaFileImage } from 'react-icons/fa';
 import { IconButton } from '@/components/ui/buttons';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
@@ -64,6 +65,7 @@ function getFileType(item) {
  * @param {boolean} [multiple=true] - Allow multiple files
  * @param {string} [placeholder] - Placeholder text in drop zone
  * @param {string} [className] - Wrapper class
+ * @param {{ id: string, file_name: string, file_type?: string, href: string }[]} [linkedItems] - Read-only items (e.g. linked attachments) to show in the same list as value; each has href for the link
  */
 export default function FileUploadList({
   id,
@@ -75,6 +77,7 @@ export default function FileUploadList({
   multiple = true,
   placeholder = 'Drag files here or click to browse',
   className = '',
+  linkedItems = [],
 }) {
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
@@ -222,7 +225,7 @@ export default function FileUploadList({
           )}
         </div>
         <div className="flex-1 min-w-0 lg:flex-[3]">
-          {value.length === 0 ? (
+          {value.length === 0 && linkedItems.length === 0 ? (
             <div className="min-h-[120px] rounded-xl border border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center">
               <span className="text-sm text-gray-400 dark:text-gray-500">No files attached</span>
             </div>
@@ -267,6 +270,46 @@ export default function FileUploadList({
                         </span>
                       </div>
                     </div>
+                  </li>
+                );
+              })}
+              {linkedItems.map((att) => {
+                const nameForType = att.file_name || att.file_type || 'file';
+                const { category } = getFileType(nameForType);
+                const Icon = FILE_ICONS[category] || FILE_ICONS.default;
+                const styles = FILE_TYPE_STYLES[category] || FILE_TYPE_STYLES.default;
+                return (
+                  <li
+                    key={att.id}
+                    className="flex flex-col w-[140px] h-[100px] min-w-0 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800/60 p-2 group"
+                  >
+                    <Link
+                      href={att.href}
+                      className="flex flex-col items-center justify-between gap-1 mb-1 h-full min-w-0 w-full no-underline text-inherit hover:opacity-90"
+                    >
+                      <div className="flex items-center justify-between gap-1 w-full">
+                        <span className={`flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 ${styles.icon}`} aria-hidden>
+                          <Icon className="w-4 h-4" />
+                        </span>
+                        <span className="flex items-center justify-center w-7 h-7 rounded-md flex-shrink-0 text-gray-400 dark:text-gray-500" aria-hidden>
+                          <HiExternalLink className="w-4 h-4" />
+                        </span>
+                      </div>
+                      <div className="min-w-0 w-full overflow-hidden mt-0.5 flex-shrink-0">
+                        <span
+                          className="block text-xs text-gray-900 dark:text-white break-words"
+                          style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
+                          title={att.file_name || 'Linked attachment'}
+                        >
+                          {att.file_name || 'Unnamed file'}
+                        </span>
+                      </div>
+                    </Link>
                   </li>
                 );
               })}

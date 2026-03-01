@@ -36,10 +36,16 @@ function parseBody(body) {
     status,
     payment_method: String(body.payment_method ?? '').trim() || '',
     outstanding_balance: String(body.outstanding_balance ?? '').trim() || '',
-    file_url: body.file_url ? String(body.file_url).trim() || null : null,
+    file_url: null,
+    file_urls: Array.isArray(body.file_urls)
+      ? body.file_urls.map((u) => String(u).trim()).filter(Boolean)
+      : body.file_url
+        ? [String(body.file_url).trim()].filter(Boolean)
+        : [],
     related_proposal_id: body.related_proposal_id || null,
     related_project: body.related_project ? String(body.related_project).trim() || null : null,
-    related_service: body.related_service ? String(body.related_service).trim() || null : null,
+    linked_contract_id: body.linked_contract_id || null,
+    notes: body.notes ? String(body.notes).trim() || null : null,
   };
 }
 
@@ -55,6 +61,7 @@ export default async function handler(req, res) {
     }
     const row = parseBody(req.body);
     if (row.user_id !== userId) return res.status(400).json({ error: 'user_id must match userId' });
+    row.file_url = row.file_urls && row.file_urls.length > 0 ? row.file_urls[0] : null;
     const { data, error } = await supabaseAdmin.from('client_invoices').insert(row).select('id').single();
     if (error) {
       console.error('[create-client-invoice]', error);

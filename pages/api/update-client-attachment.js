@@ -31,10 +31,10 @@ function parseBody(body, existing) {
   return {
     file_name: String(body.file_name ?? existing?.file_name ?? '').trim() || '',
     file_type: String(body.file_type ?? existing?.file_type ?? '').trim() || '',
-    category: body.category !== undefined ? (body.category ? String(body.category).trim() || null : null) : (existing?.category ?? null),
     description: String(body.description ?? existing?.description ?? '').trim() || '',
     upload_date: body.upload_date !== undefined ? toDateOnly(body.upload_date) : (existing?.upload_date ?? null),
     related_item: body.related_item !== undefined ? (body.related_item ? String(body.related_item).trim() || null : null) : (existing?.related_item ?? null),
+    linked_contract_id: body.linked_contract_id !== undefined ? body.linked_contract_id || null : (existing?.linked_contract_id ?? null),
     version: body.version !== undefined ? (body.version ? String(body.version).trim() || null : null) : (existing?.version ?? null),
     file_url: body.file_url !== undefined ? (body.file_url ? String(body.file_url).trim() || null : null) : (existing?.file_url ?? null),
     updated_at: new Date().toISOString(),

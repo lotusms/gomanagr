@@ -22,7 +22,7 @@ describe('InvoiceLogCards', () => {
       status: 'paid',
       date_issued: '2026-02-27',
       invoice_title: 'January Retainer',
-      total: '$2,000',
+      total: 2000,
       outstanding_balance: '',
     },
     {
@@ -31,8 +31,8 @@ describe('InvoiceLogCards', () => {
       status: 'sent',
       date_issued: '2026-02-26',
       invoice_title: 'Project Fee',
-      total: '$5,000',
-      outstanding_balance: '$5,000',
+      total: 5000,
+      outstanding_balance: 5000,
     },
   ];
 
@@ -45,8 +45,8 @@ describe('InvoiceLogCards', () => {
     expect(screen.getByText('INV-002')).toBeInTheDocument();
     expect(screen.getByText('Paid')).toBeInTheDocument();
     expect(screen.getByText('Sent')).toBeInTheDocument();
-    expect(screen.getByText(/Total: \$2,000/)).toBeInTheDocument();
-    expect(screen.getByText(/Outstanding: \$5,000/)).toBeInTheDocument();
+    expect(screen.getByText(/Total: \$2,000\.00/)).toBeInTheDocument();
+    expect(screen.getByText(/Outstanding: \$5,000\.00/)).toBeInTheDocument();
   });
 
   it('calls onSelect with invoice id when card is clicked', async () => {

@@ -24,10 +24,10 @@ function parseBody(body) {
     organization_id: body.organizationId || null,
     file_name: String(body.file_name ?? '').trim() || '',
     file_type: String(body.file_type ?? '').trim() || '',
-    category: body.category ? String(body.category).trim() || null : null,
     description: String(body.description ?? '').trim() || '',
     upload_date: toDateOnly(body.upload_date),
     related_item: body.related_item ? String(body.related_item).trim() || null : null,
+    linked_contract_id: body.linked_contract_id || null,
     version: body.version ? String(body.version).trim() || null : null,
     file_url: body.file_url ? String(body.file_url).trim() || null : null,
   };

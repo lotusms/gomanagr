@@ -8,6 +8,22 @@ function clipText(text, maxLen) {
   return text.length <= (maxLen || 80) ? text : text.slice(0, maxLen || 80) + '…';
 }
 
+function displayFileName(attachment) {
+  let segment = attachment.file_name || '';
+  if (!segment && attachment.file_url) {
+    try {
+      if (attachment.file_url.startsWith('http')) {
+        segment = new URL(attachment.file_url).pathname.split('/').filter(Boolean).pop() || '';
+      } else segment = String(attachment.file_url);
+    } catch {
+      segment = '';
+    }
+  }
+  segment = String(segment).trim();
+  const match = segment.match(/^\d+-[a-z0-9]+-(.+)$/);
+  return match ? match[1] : segment || 'Unnamed file';
+}
+
 export default function AttachmentLogCards({ attachments, onSelect, onDelete, borderClass, clientId }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
@@ -45,7 +61,7 @@ export default function AttachmentLogCards({ attachments, onSelect, onDelete, bo
               <time dateTime={a.upload_date || a.created_at}>{formatDateFromISO(a.upload_date || a.created_at, dateFormat, timezone)}</time>
             )}
           </div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{a.file_name || 'Unnamed file'}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{displayFileName(a)}</p>
           {a.description && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{clipText(a.description, 100)}</p>
           )}

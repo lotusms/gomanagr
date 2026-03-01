@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     }
 
     let query = supabaseAdmin
-      .from('client_attachments')
+      .from('client_online_resources')
       .select('*')
       .eq('client_id', clientId);
 

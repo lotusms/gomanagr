@@ -13,6 +13,10 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: (...args) => mockCreateClient(...args),
 }));
 
+jest.mock('@/lib/syncFilesToAttachments', () => ({
+  ensureAttachmentsFromFiles: jest.fn().mockResolvedValue(undefined),
+}));
+
 beforeAll(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';

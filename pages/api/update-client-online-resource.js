@@ -34,6 +34,8 @@ function parseBody(body, existing) {
     resource_type: body.resource_type !== undefined ? (body.resource_type ? String(body.resource_type).trim() || null : null) : (existing?.resource_type ?? null),
     description: String(body.description ?? existing?.description ?? '').trim() || '',
     login_email_username: body.login_email_username !== undefined ? (body.login_email_username ? String(body.login_email_username).trim() || null : null) : (existing?.login_email_username ?? null),
+    related_password: body.related_password !== undefined ? (body.related_password ? String(body.related_password).trim() || null : null) : (existing?.related_password ?? null),
+    has_admin_access: body.has_admin_access !== undefined ? Boolean(body.has_admin_access) : (existing?.has_admin_access ?? false),
     access_instructions: String(body.access_instructions ?? existing?.access_instructions ?? '').trim() || '',
     date_added: body.date_added !== undefined ? toDateOnly(body.date_added) : (existing?.date_added ?? null),
     last_verified_date: body.last_verified_date !== undefined ? toDateOnly(body.last_verified_date) : (existing?.last_verified_date ?? null),

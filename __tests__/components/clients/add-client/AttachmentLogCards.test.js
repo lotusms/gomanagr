@@ -98,4 +98,31 @@ describe('AttachmentLogCards', () => {
     const link = screen.getByRole('link', { name: /View contract/i });
     expect(link).toHaveAttribute('href', '/dashboard/clients/client-1/contracts/cid-1/edit');
   });
+
+  it('strips upload prefix from file name and shows actual filename (e.g. TEST.pdf)', () => {
+    const withPrefixedName = [
+      {
+        id: 'a1',
+        file_name: '1772380654927-4ox18iujs-TEST.pdf',
+        file_type: 'pdf',
+        upload_date: '2026-03-01',
+      },
+    ];
+    render(<AttachmentLogCards attachments={withPrefixedName} onSelect={() => {}} onDelete={() => {}} />);
+    expect(screen.getByText('TEST.pdf')).toBeInTheDocument();
+    expect(screen.queryByText(/1772380654927-4ox18iujs-TEST\.pdf/)).not.toBeInTheDocument();
+  });
+
+  it('uses file_url path segment when file_name is empty and strips prefix', () => {
+    const withUrlOnly = [
+      {
+        id: 'a1',
+        file_name: '',
+        file_url: 'https://example.com/uploads/1772380654927-4ox18iujs-Report.pdf',
+        file_type: 'pdf',
+      },
+    ];
+    render(<AttachmentLogCards attachments={withUrlOnly} onSelect={() => {}} onDelete={() => {}} />);
+    expect(screen.getByText('Report.pdf')).toBeInTheDocument();
+  });
 });

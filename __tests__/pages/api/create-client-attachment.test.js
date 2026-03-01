@@ -93,4 +93,49 @@ describe('create-client-attachment API', () => {
       })
     );
   });
+
+  it('passes linked_proposal_id, linked_invoice_id, linked_email_id through to attachment', async () => {
+    let capturedRow;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_attachments') {
+        return {
+          insert: (row) => {
+            capturedRow = row;
+            return {
+              select: () => ({
+                single: () =>
+                  Promise.resolve({
+                    data: { id: 'new-id' },
+                    error: null,
+                  }),
+              }),
+            };
+          },
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/create-client-attachment')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: {
+          userId: 'u1',
+          clientId: 'c1',
+          file_name: 'doc.pdf',
+          linked_proposal_id: 'prop-1',
+          linked_invoice_id: 'inv-1',
+          linked_email_id: 'email-1',
+        },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(capturedRow).toMatchObject({
+      linked_proposal_id: 'prop-1',
+      linked_invoice_id: 'inv-1',
+      linked_email_id: 'email-1',
+    });
+  });
 });

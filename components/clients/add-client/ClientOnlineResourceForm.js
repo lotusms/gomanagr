@@ -3,6 +3,8 @@ import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
+import PasswordField from '@/components/ui/PasswordField';
+import Switch from '@/components/ui/Switch';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -44,6 +46,8 @@ export default function ClientOnlineResourceForm({
   const [resourceType, setResourceType] = useState(initial.resource_type ?? '');
   const [description, setDescription] = useState(initial.description ?? '');
   const [loginEmailUsername, setLoginEmailUsername] = useState(initial.login_email_username ?? '');
+  const [relatedPassword, setRelatedPassword] = useState(initial.related_password ?? '');
+  const [hasAdminAccess, setHasAdminAccess] = useState(Boolean(initial.has_admin_access));
   const [accessInstructions, setAccessInstructions] = useState(initial.access_instructions ?? '');
   const [dateAdded, setDateAdded] = useState(toDateLocal(initial.date_added) || toDateLocal(initial.created_at) || '');
   const [lastVerifiedDate, setLastVerifiedDate] = useState(toDateLocal(initial.last_verified_date) || '');
@@ -62,6 +66,8 @@ export default function ClientOnlineResourceForm({
         resource_type: resourceType.trim() || null,
         description: description.trim(),
         login_email_username: loginEmailUsername.trim() || null,
+        related_password: relatedPassword.trim() || null,
+        has_admin_access: hasAdminAccess,
         access_instructions: accessInstructions.trim(),
         date_added: dateAdded.trim() || null,
         last_verified_date: lastVerifiedDate.trim() || null,
@@ -100,7 +106,16 @@ export default function ClientOnlineResourceForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <InputField
+          id="url"
+          label="URL"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          variant="light"
+          placeholder="https://..."
+        />
+
         <InputField
           id="resource-name"
           label="Resource name"
@@ -119,45 +134,30 @@ export default function ClientOnlineResourceForm({
           placeholder="None"
           searchable={false}
         />
-      </div>
-
-      <InputField
-        id="url"
-        label="URL"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        variant="light"
-        placeholder="https://..."
-      />
-
-      <TextareaField
-        id="description"
-        label="Description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        rows={3}
-        placeholder="Brief description of the resource"
-      />
-
-      <InputField
-        id="login-email-username"
-        label="Related login email / username (optional)"
-        value={loginEmailUsername}
-        onChange={(e) => setLoginEmailUsername(e.target.value)}
-        variant="light"
-        placeholder="Login used for this resource"
-      />
-
-      <TextareaField
-        id="access-instructions"
-        label="Access instructions"
-        value={accessInstructions}
-        onChange={(e) => setAccessInstructions(e.target.value)}
-        rows={3}
-        placeholder="How to access (passwords, steps, etc.)"
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center pt-8">
+          <Switch
+            id="has-admin-access"
+            label="Do we have admin access?"
+            checked={hasAdminAccess}
+            onCheckedChange={setHasAdminAccess}
+          />
+        </div>
+        <InputField
+          id="login-email-username"
+          label="Username"
+          value={loginEmailUsername}
+          onChange={(e) => setLoginEmailUsername(e.target.value)}
+          variant="light"
+          placeholder="Login used for this resource"
+        />
+        <PasswordField
+          id="related-password"
+          label="Related password"
+          value={relatedPassword}
+          onChange={(e) => setRelatedPassword(e.target.value)}
+          variant="light"
+          placeholder="Password for this resource"
+        />
         <DateField
           id="date-added"
           label="Date added"
@@ -172,7 +172,26 @@ export default function ClientOnlineResourceForm({
           onChange={(e) => setLastVerifiedDate(e.target.value)}
           variant="light"
         />
+
       </div>
+
+      <TextareaField
+        id="description"
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={3}
+        placeholder="Brief description of the resource"
+      />
+
+      <TextareaField
+        id="access-instructions"
+        label="Access instructions"
+        value={accessInstructions}
+        onChange={(e) => setAccessInstructions(e.target.value)}
+        rows={3}
+        placeholder="How to access (passwords, steps, etc.)"
+      />
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>

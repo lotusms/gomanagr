@@ -27,6 +27,8 @@ function parseBody(body) {
     resource_type: body.resource_type ? String(body.resource_type).trim() || null : null,
     description: String(body.description ?? '').trim() || '',
     login_email_username: body.login_email_username ? String(body.login_email_username).trim() || null : null,
+    related_password: body.related_password ? String(body.related_password).trim() || null : null,
+    has_admin_access: Boolean(body.has_admin_access),
     access_instructions: String(body.access_instructions ?? '').trim() || '',
     date_added: toDateOnly(body.date_added),
     last_verified_date: toDateOnly(body.last_verified_date),

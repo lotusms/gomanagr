@@ -15,6 +15,23 @@ function toDateLocal(iso) {
   return `${y}-${m}-${day}`;
 }
 
+/** Strip upload prefix (timestamp-random-) so form shows e.g. "TEST.pdf". Editing only changes file_name; file_url stays the same. */
+function displayNameFromAttachment(attachment) {
+  let segment = attachment?.file_name || '';
+  if (!segment && attachment?.file_url) {
+    try {
+      if (attachment.file_url.startsWith('http')) {
+        segment = new URL(attachment.file_url).pathname.split('/').filter(Boolean).pop() || '';
+      } else segment = String(attachment.file_url);
+    } catch {
+      segment = '';
+    }
+  }
+  segment = String(segment).trim();
+  const match = segment.match(/^\d+-[a-z0-9]+-(.+)$/);
+  return match ? match[1] : segment || '';
+}
+
 const FILE_TYPE_OPTIONS = [
   { value: '', label: 'None' },
   { value: 'pdf', label: 'PDF' },
@@ -42,7 +59,7 @@ export default function ClientAttachmentForm({
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [fileName, setFileName] = useState(initial.file_name ?? '');
+  const [fileName, setFileName] = useState(displayNameFromAttachment(initial) || (initial.file_name ?? ''));
   const [fileType, setFileType] = useState(initial.file_type ?? '');
   const [description, setDescription] = useState(initial.description ?? '');
   const [uploadDate, setUploadDate] = useState(toDateLocal(initial.upload_date) || toDateLocal(initial.created_at) || '');

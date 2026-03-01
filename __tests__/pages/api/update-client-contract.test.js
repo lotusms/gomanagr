@@ -5,6 +5,8 @@
  * - Returns 404 when contract not found
  * - Returns 200 when update succeeds
  * - Updates related_proposal_id when provided
+ * - When related_proposal_id is set, updates that proposal's linked_contract_id (bidirectional link)
+ * - When related_proposal_id is cleared, clears the proposal's linked_contract_id
  */
 
 const mockFrom = jest.fn();
@@ -135,6 +137,10 @@ describe('update-client-contract API', () => {
           },
         };
       }
+      if (table === 'client_proposals') {
+        const thenable = (eq2) => Object.assign(Promise.resolve({ error: null }), { eq: eq2 || (() => Promise.resolve({ error: null })) });
+        return { update: () => ({ eq: () => thenable() }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/update-client-contract')).default;
@@ -145,5 +151,48 @@ describe('update-client-contract API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(updatePayload.related_proposal_id).toBe('proposal-abc');
+  });
+
+  it('updates proposal linked_contract_id when related_proposal_id is set', async () => {
+    let proposalUpdatePayload;
+    let proposalEqId;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_contracts') {
+        return {
+          select: () => ({
+            eq: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({ data: existingContract, error: null }),
+              }),
+            }),
+          }),
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === 'client_proposals') {
+        return {
+          update: (payload) => {
+            proposalUpdatePayload = payload;
+            return {
+              eq: (_col, id) => {
+                proposalEqId = id;
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/update-client-contract')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { userId: 'u1', contractId: 'contract-1', related_proposal_id: 'proposal-xyz' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(proposalUpdatePayload).toBeDefined();
+    expect(proposalUpdatePayload.linked_contract_id).toBe('contract-1');
+    expect(proposalEqId).toBe('proposal-xyz');
   });
 });

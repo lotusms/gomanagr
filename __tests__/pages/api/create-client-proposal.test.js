@@ -3,6 +3,7 @@
  * - Returns 405 for non-POST
  * - Returns 400 when userId or clientId missing
  * - Returns 201 with id and proposal when insert succeeds
+ * - When linked_contract_id is set, updates that contract's related_proposal_id to the new proposal id
  */
 
 const mockFrom = jest.fn();
@@ -42,6 +43,11 @@ describe('create-client-proposal API', () => {
                 Promise.resolve({ data: { id: 'new-proposal-id' }, error: null }),
             }),
           }),
+        };
+      }
+      if (table === 'client_contracts') {
+        return {
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
         };
       }
       return {};
@@ -91,5 +97,53 @@ describe('create-client-proposal API', () => {
         }),
       })
     );
+  });
+
+  it('updates contract related_proposal_id when linked_contract_id is set', async () => {
+    let contractUpdatePayload;
+    let contractEqId;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_proposals') {
+        return {
+          insert: () => ({
+            select: () => ({
+              single: () =>
+                Promise.resolve({ data: { id: 'new-proposal-id' }, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'client_contracts') {
+        return {
+          update: (payload) => {
+            contractUpdatePayload = payload;
+            return {
+              eq: (_col, id) => {
+                contractEqId = id;
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: {
+        userId: 'u1',
+        clientId: 'c1',
+        proposal_title: 'Linked Proposal',
+        proposal_number: 'P-002',
+        status: 'draft',
+        linked_contract_id: 'contract-xyz',
+      },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(contractUpdatePayload).toBeDefined();
+    expect(contractUpdatePayload.related_proposal_id).toBe('new-proposal-id');
+    expect(contractEqId).toBe('contract-xyz');
   });
 });

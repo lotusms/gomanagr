@@ -3,6 +3,7 @@ import InputField from '@/components/ui/InputField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
+import TextareaField from '@/components/ui/TextareaField';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -45,11 +46,17 @@ export default function ClientInvoiceForm({
   const [status, setStatus] = useState(initial.status ?? 'draft');
   const [paymentMethod, setPaymentMethod] = useState(initial.payment_method ?? '');
   const [outstandingBalance, setOutstandingBalance] = useState(initial.outstanding_balance ?? '');
-  const [fileUrl, setFileUrl] = useState(initial.file_url ?? '');
+  const [fileUrls, setFileUrls] = useState(
+    Array.isArray(initial.file_urls) && initial.file_urls.length > 0
+      ? initial.file_urls
+      : initial.file_url
+        ? [initial.file_url]
+        : []
+  );
   const [relatedProposalId, setRelatedProposalId] = useState(initial.related_proposal_id ?? '');
   const [relatedProject, setRelatedProject] = useState(initial.related_project ?? '');
   const [relatedService, setRelatedService] = useState(initial.related_service ?? '');
-
+  const [notes, setNotes] = useState(initial.notes ?? '');
   const uploadFile = useCallback(
     (file) =>
       new Promise((resolve, reject) => {
@@ -99,10 +106,11 @@ export default function ClientInvoiceForm({
         status,
         payment_method: paymentMethod.trim(),
         outstanding_balance: outstandingBalance.trim(),
-        file_url: fileUrl.trim() || null,
+        file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
         related_proposal_id: relatedProposalId.trim() || null,
         related_project: relatedProject.trim() || null,
         related_service: relatedService.trim() || null,
+        notes: notes.trim() || null,
       };
 
       if (invoiceId) {
@@ -138,15 +146,7 @@ export default function ClientInvoiceForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField
-          id="invoice-number"
-          label="Invoice number"
-          value={invoiceNumber}
-          onChange={(e) => setInvoiceNumber(e.target.value)}
-          variant="light"
-          placeholder="e.g. INV-001"
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         <InputField
           id="invoice-title"
           label="Invoice title / reason"
@@ -155,9 +155,24 @@ export default function ClientInvoiceForm({
           variant="light"
           placeholder="Description or reason"
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <InputField
+          id="invoice-number"
+          label="Invoice number"
+          value={invoiceNumber}
+          onChange={(e) => setInvoiceNumber(e.target.value)}
+          variant="light"
+          placeholder="e.g. INV-001"
+        />
+        <Dropdown
+          id="invoice-status"
+          name="invoice-status"
+          label="Status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value ?? 'draft')}
+          options={STATUS_OPTIONS}
+          placeholder="Draft"
+          searchable={false}
+        />
         <InputField
           id="amount"
           label="Amount"
@@ -182,25 +197,9 @@ export default function ClientInvoiceForm({
           variant="light"
           placeholder="e.g. 1,080.00"
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => setDateIssued(e.target.value)} variant="light" />
         <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} variant="light" />
         <DateField id="paid-date" label="Paid date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} variant="light" />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Dropdown
-          id="invoice-status"
-          name="invoice-status"
-          label="Status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value ?? 'draft')}
-          options={STATUS_OPTIONS}
-          placeholder="Draft"
-          searchable={false}
-        />
         <InputField
           id="payment-method"
           label="Payment method"
@@ -209,29 +208,14 @@ export default function ClientInvoiceForm({
           variant="light"
           placeholder="e.g. Bank transfer, Card"
         />
-      </div>
-
-      <InputField
-        id="outstanding-balance"
-        label="Outstanding balance"
-        value={outstandingBalance}
-        onChange={(e) => setOutstandingBalance(e.target.value)}
-        variant="light"
-        placeholder="e.g. 0.00 or remaining amount"
-      />
-
-      <FileUploadList
-        id="invoice-file"
-        label="Invoice PDF"
-        value={fileUrl ? [fileUrl] : []}
-        onChange={(urls) => setFileUrl(urls.length ? urls[0] : '')}
-        onUpload={uploadFile}
-        accept=".pdf,application/pdf"
-        multiple={false}
-        placeholder="Drag PDF here or click to upload"
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <InputField
+          id="outstanding-balance"
+          label="Outstanding balance"
+          value={outstandingBalance}
+          onChange={(e) => setOutstandingBalance(e.target.value)}
+          variant="light"
+          placeholder="e.g. 0.00 or remaining amount"
+        />
         <InputField
           id="related-proposal-id"
           label="Related proposal ID"
@@ -257,6 +241,26 @@ export default function ClientInvoiceForm({
           placeholder="Service (optional)"
         />
       </div>
+
+      <FileUploadList
+        id="invoice-file"
+        label="Invoices (PDF)"
+        value={fileUrls}
+        onChange={setFileUrls}
+        onUpload={uploadFile}
+        accept=".pdf,application/pdf"
+        multiple={true}
+        placeholder="Drag PDF here or click to upload"
+      />
+
+      <TextareaField
+        id="notes"
+        label="Notes"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        rows={4}
+        placeholder="Include any notes here"
+      />
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>

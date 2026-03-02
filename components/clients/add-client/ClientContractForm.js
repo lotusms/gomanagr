@@ -36,10 +36,11 @@ const CONTRACT_TYPE_OPTIONS = [
 
 export default function ClientContractForm({
   initial = {},
-  clientId,
+  clientId: clientIdProp,
   userId,
   organizationId,
   contractId,
+  showClientDropdown = false,
   defaultCurrency = 'USD',
   linkedAttachments = [],
   onSuccess,
@@ -47,6 +48,11 @@ export default function ClientContractForm({
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState(
+    showClientDropdown ? (clientIdProp || initial.client_id || '') : ''
+  );
+  const [clients, setClients] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
   const [contractTitle, setContractTitle] = useState(initial.contract_title ?? '');
   const [contractNumber, setContractNumber] = useState(initial.contract_number ?? '');
   const [status, setStatus] = useState(initial.status ?? 'draft');
@@ -75,19 +81,36 @@ export default function ClientContractForm({
   const [teamMembers, setTeamMembers] = useState([]);
   const [teamMembersLoading, setTeamMembersLoading] = useState(false);
 
+  const clientId = showClientDropdown ? selectedClientId : clientIdProp;
+  const effectiveClientId = (clientId && String(clientId).trim()) || null;
+
   useEffect(() => {
-    if (!clientId || !userId) return;
+    if (!showClientDropdown || !userId) return;
+    setClientsLoading(true);
+    fetch('/api/get-org-clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+      .then((res) => res.json())
+      .then((data) => setClients(data.clients || []))
+      .catch(() => setClients([]))
+      .finally(() => setClientsLoading(false));
+  }, [showClientDropdown, userId]);
+
+  useEffect(() => {
+    if (!effectiveClientId || !userId) return;
     setProposalsLoading(true);
     fetch('/api/get-client-proposals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+      body: JSON.stringify({ userId, clientId: effectiveClientId, organizationId: organizationId || undefined }),
     })
       .then((res) => res.json())
       .then((data) => setProposals(data.proposals || []))
       .catch(() => setProposals([]))
       .finally(() => setProposalsLoading(false));
-  }, [clientId, userId, organizationId]);
+  }, [effectiveClientId, userId, organizationId]);
 
   useEffect(() => {
     if (!organizationId || !userId) return;
@@ -113,7 +136,7 @@ export default function ClientContractForm({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId,
-              clientId,
+              clientId: effectiveClientId,
               filename: file.name,
               contentType: file.type || 'application/octet-stream',
               base64: reader.result,
@@ -129,7 +152,7 @@ export default function ClientContractForm({
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       }),
-    [userId, clientId]
+    [userId, effectiveClientId]
   );
 
   const handleSubmit = async (e) => {
@@ -139,7 +162,7 @@ export default function ClientContractForm({
     try {
       const payload = {
         userId,
-        clientId,
+        clientId: effectiveClientId,
         organizationId: organizationId || undefined,
         contract_title: contractTitle.trim(),
         contract_number: contractNumber.trim(),
@@ -192,6 +215,24 @@ export default function ClientContractForm({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        {showClientDropdown && (
+          <Dropdown
+            id="client"
+            name="client"
+            label="Client"
+            value={selectedClientId}
+            onChange={(e) => setSelectedClientId(e.target.value ?? '')}
+            options={[
+              { value: '', label: 'Select client' },
+              ...clients.map((c) => ({
+                value: c.id,
+                label: (c.name || c.companyName || 'Unnamed client').trim(),
+              })),
+            ]}
+            placeholder={clientsLoading ? 'Loading…' : 'Select client'}
+            searchable={clients.length > 10}
+          />
+        )}
         <InputField
           id="contract-title"
           label="Contract title"
@@ -320,7 +361,7 @@ export default function ClientContractForm({
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={saving}>
+        <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId)}>
           {saving ? 'Saving...' : contractId ? 'Update contract' : 'Add contract'}
         </PrimaryButton>
       </div>

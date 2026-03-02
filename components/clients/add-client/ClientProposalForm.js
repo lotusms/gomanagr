@@ -28,16 +28,22 @@ const STATUS_OPTIONS = [
 
 export default function ClientProposalForm({
   initial = {},
-  clientId,
+  clientId: clientIdProp,
   userId,
   organizationId,
   proposalId,
   defaultCurrency = 'USD',
+  showClientDropdown = false,
   onSuccess,
   onCancel,
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState(
+    showClientDropdown ? (clientIdProp || initial.client_id || '') : ''
+  );
+  const [clients, setClients] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
   const [proposalTitle, setProposalTitle] = useState(initial.proposal_title ?? '');
   const [proposalNumber, setProposalNumber] = useState(initial.proposal_number ?? '');
   const [dateCreated, setDateCreated] = useState(toDateLocal(initial.date_created) || '');
@@ -65,8 +71,33 @@ export default function ClientProposalForm({
   const [contractsLoading, setContractsLoading] = useState(false);
   const [projectOptions, setProjectOptions] = useState([]);
 
+  const clientId = showClientDropdown ? selectedClientId : clientIdProp;
+  const effectiveClientId = (clientId && String(clientId).trim()) || null;
+
   useEffect(() => {
-    if (!clientId || !userId) return;
+    if (!showClientDropdown || !userId) return;
+    setClientsLoading(true);
+    fetch('/api/get-org-clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+      .then((res) => res.json())
+      .then((data) => setClients(data.clients || []))
+      .catch(() => setClients([]))
+      .finally(() => setClientsLoading(false));
+  }, [showClientDropdown, userId]);
+
+  const clientOptions = [
+    { value: '', label: 'Select client' },
+    ...clients.map((c) => ({
+      value: c.id,
+      label: (c.name || c.companyName || 'Unnamed client').trim(),
+    })),
+  ];
+
+  useEffect(() => {
+    if (!effectiveClientId || !userId) return;
     setContractsLoading(true);
     fetch('/api/get-client-contracts', {
       method: 'POST',
@@ -77,7 +108,7 @@ export default function ClientProposalForm({
       .then((data) => setContracts(data.contracts || []))
       .catch(() => setContracts([]))
       .finally(() => setContractsLoading(false));
-  }, [clientId, userId, organizationId]);
+  }, [effectiveClientId, userId, organizationId]);
 
   const contractOptions = [
     { value: '', label: 'None' },
@@ -97,7 +128,7 @@ export default function ClientProposalForm({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId,
-              clientId,
+              clientId: effectiveClientId,
               filename: file.name,
               contentType: file.type || 'application/octet-stream',
               base64: reader.result,
@@ -113,7 +144,7 @@ export default function ClientProposalForm({
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       }),
-    [userId, clientId]
+    [userId, effectiveClientId]
   );
 
   const handleSubmit = async (e) => {
@@ -123,7 +154,7 @@ export default function ClientProposalForm({
     try {
       const payload = {
         userId,
-        clientId,
+        clientId: effectiveClientId,
         organizationId: organizationId || undefined,
         proposal_title: proposalTitle.trim(),
         proposal_number: proposalNumber.trim(),
@@ -174,6 +205,18 @@ export default function ClientProposalForm({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        {showClientDropdown && (
+          <Dropdown
+            id="client"
+            name="client"
+            label="Client"
+            value={selectedClientId}
+            onChange={(e) => setSelectedClientId(e.target.value ?? '')}
+            options={clientOptions}
+            placeholder={clientsLoading ? 'Loading…' : 'Select client'}
+            searchable={clientOptions.length > 10}
+          />
+        )}
         <InputField
           id="proposal-title"
           label="Proposal title"
@@ -276,7 +319,7 @@ export default function ClientProposalForm({
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={saving}>
+        <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId)}>
           {saving ? 'Saving...' : proposalId ? 'Update proposal' : 'Add proposal'}
         </PrimaryButton>
       </div>

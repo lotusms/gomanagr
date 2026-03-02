@@ -60,6 +60,34 @@ export const ToastProvider = ({ children }) => {
 
   return (
     <ToastContext.Provider value={{ success, error, warning, info, removeToast }}>
+      <style jsx global>{`
+        .toast-root[data-state='open'] {
+          animation: toast-enter 0.3s ease-out forwards;
+        }
+        .toast-root[data-state='closed'] {
+          animation: toast-exit 0.25s ease-in forwards;
+        }
+        @keyframes toast-enter {
+          from {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes toast-exit {
+          from {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          to {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
       <ToastPrimitive.Provider duration={5000} label="Notification">
         {children}
         {toasts.map((toast) => (
@@ -85,23 +113,34 @@ function RadixToast({ id, message, type, duration, onClose }) {
   const config = typeConfig[type] || typeConfig.info;
   const Icon = config.icon;
   const dismissMs = typeof duration === 'number' && duration > 0 ? duration : 5000;
+  const [open, setOpen] = useState(true);
 
-  // Guarantee auto-dismiss so toasts always go away even if Radix timer misbehaves
+  // Auto-dismiss after duration; when open becomes false, Radix runs exit animation then calls onOpenChange(false)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, dismissMs);
+    if (!open) return;
+    const timer = setTimeout(() => setOpen(false), dismissMs);
     return () => clearTimeout(timer);
-  }, [dismissMs, onClose]);
+  }, [dismissMs, open]);
+
+  const EXIT_MS = 250;
+
+  const handleOpenChange = useCallback(
+    (next) => {
+      if (!next) {
+        // Delay removal so exit animation (toast-exit) can finish
+        setTimeout(onClose, EXIT_MS);
+      }
+    },
+    [onClose]
+  );
 
   return (
     <ToastPrimitive.Root
-      open
+      open={open}
       duration={dismissMs}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      onOpenChange={handleOpenChange}
       className={`
+        toast-root
         pointer-events-auto
         group
         rounded-lg shadow-lg border p-4
@@ -120,6 +159,7 @@ function RadixToast({ id, message, type, duration, onClose }) {
         </p>
       </ToastPrimitive.Description>
       <ToastPrimitive.Close
+        onClick={() => setOpen(false)}
         className="flex-shrink-0 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-400"
         aria-label="Dismiss"
       >

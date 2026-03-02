@@ -20,7 +20,10 @@ const STATUS_LABELS = {
   expired: 'Expired',
 };
 
-export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, defaultCurrency = 'USD' }) {
+/**
+ * @param {Object} [clientNameByClientId] - Optional map of client_id -> display name (e.g. when listing all proposals)
+ */
+export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientNameByClientId }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -52,6 +55,9 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
             />
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-1">
+            {clientNameByClientId && p.client_id && clientNameByClientId[p.client_id] && (
+              <span className="font-medium">{clientNameByClientId[p.client_id]}</span>
+            )}
             {p.proposal_number && <span>{p.proposal_number}</span>}
             {p.status && (
               <span className="font-medium px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">

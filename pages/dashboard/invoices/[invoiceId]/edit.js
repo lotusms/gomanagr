@@ -10,9 +10,9 @@ import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
 import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
 
-export default function EditClientInvoicePage() {
+export default function EditInvoicePage() {
   const router = useRouter();
-  const { id: clientId, invoiceId } = router.query;
+  const { invoiceId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
@@ -24,36 +24,30 @@ export default function EditClientInvoicePage() {
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid)
-      .then((org) => setOrganization(org || null))
+      .then((o) => setOrganization(o || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
   }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (!currentUser?.uid || !clientId) return;
+    if (!currentUser?.uid) return;
     getUserAccount(currentUser.uid)
       .then((account) => {
-        const client = account?.clients?.find((c) => c.id === clientId);
-        const currency =
-          client?.defaultCurrency ||
-          account?.clientSettings?.defaultCurrency ||
-          'USD';
+        const currency = account?.clientSettings?.defaultCurrency || 'USD';
         setDefaultCurrency(currency);
       })
       .catch(() => setDefaultCurrency('USD'));
-  }, [currentUser?.uid, clientId]);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (!orgReady || !currentUser?.uid || !clientId || !invoiceId) return;
-
+    if (!orgReady || !currentUser?.uid || !invoiceId) return;
     setLoading(true);
     setNotFound(false);
-    fetch('/api/get-client-invoices', {
+    fetch('/api/get-invoices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: currentUser.uid,
-        clientId,
         organizationId: organization?.id ?? undefined,
         invoiceId,
       }),
@@ -71,13 +65,11 @@ export default function EditClientInvoicePage() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [orgReady, currentUser?.uid, clientId, invoiceId, organization?.id]);
+  }, [orgReady, currentUser?.uid, invoiceId, organization?.id]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=invoices`;
+  const backUrl = '/dashboard/invoices';
 
-  if (!currentUser?.uid || !clientId || !invoiceId) {
-    return null;
-  }
+  if (!currentUser?.uid || !invoiceId) return null;
 
   if (loading) {
     return (
@@ -101,13 +93,13 @@ export default function EditClientInvoicePage() {
         </Head>
         <div className="space-y-6">
           <PageHeader
-            title="Edit invoice"
-            description="Invoices for this client."
+            title="Invoices"
+            description="Invoices created for your clients."
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
                   <HiArrowLeft className="w-5 h-5" />
-                  Back to client
+                  Back to invoices
                 </SecondaryButton>
               </Link>
             }
@@ -125,7 +117,7 @@ export default function EditClientInvoicePage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to invoices
               </SecondaryButton>
             </Link>
           </div>
@@ -143,12 +135,12 @@ export default function EditClientInvoicePage() {
       <div className="space-y-6">
         <PageHeader
           title="Edit invoice"
-          description="Update the details of this invoice."
+          description="Update the details of this invoice. You can change the linked client if needed."
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to invoices
               </SecondaryButton>
             </Link>
           }
@@ -156,11 +148,12 @@ export default function EditClientInvoicePage() {
         <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
           <ClientInvoiceForm
             initial={invoice}
-            clientId={clientId}
+            clientId={invoice.client_id}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             invoiceId={invoiceId}
             defaultCurrency={defaultCurrency}
+            showClientDropdown={true}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

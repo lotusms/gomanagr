@@ -1,90 +1,123 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
-import { PageHeader, EmptyState } from '@/components/ui';
-import ProjectCard from '@/components/dashboard/ProjectCard';
+import { getUserOrganization } from '@/services/organizationService';
+import { PageHeader, ConfirmationDialog } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
+import ProjectsPageSkeleton from '@/components/dashboard/ProjectsPageSkeleton';
+import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
+import ProjectCardServiceStyle from '@/components/dashboard/ProjectCardServiceStyle';
 import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
-
-/**
- * Flatten all projects from all clients with client info for display.
- * @param {Array} clients - userAccount.clients
- * @returns {Array} { project, clientId, clientName, variant: 'active'|'completed' }
- */
-function flattenProjectsFromClients(clients) {
-  if (!Array.isArray(clients) || clients.length === 0) return [];
-
-  const items = [];
-
-  clients.forEach((client) => {
-    const clientId = client.id;
-    const clientName = client.name || 'Unknown Client';
-
-    const active = client.activeProjects || [];
-    active.forEach((project) => {
-      items.push({
-        project,
-        clientId,
-        clientName,
-        variant: 'active',
-      });
-    });
-
-    const completed = client.completedProjects || [];
-    completed.forEach((project) => {
-      items.push({
-        project,
-        clientId,
-        clientName,
-        variant: 'completed',
-      });
-    });
-  });
-
-  return items;
-}
+import { HiPlus } from 'react-icons/hi';
 
 function ProjectsContent() {
+  const router = useRouter();
   const { currentUser } = useAuth();
+  const [projects, setProjects] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [organization, setOrganization] = useState(null);
+  const [orgResolved, setOrgResolved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [projectToDelete, setProjectToDelete] = useState(null);
   const [userAccount, setUserAccount] = useState(null);
-  const [loaded, setLoaded] = useState(false);
-
-  const projectsWithClients = useMemo(() => {
-    const clients = userAccount?.clients || [];
-    return flattenProjectsFromClients(clients);
-  }, [userAccount?.clients]);
 
   const projectTermPlural = useMemo(() => getProjectTermForIndustry(userAccount?.industry), [userAccount?.industry]);
-  const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
-  const projectTermLower = projectTerm.toLowerCase();
-  const projectTermPluralLower = projectTermPlural.toLowerCase();
+  const projectTermSingular = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
+  const projectTermPluralLower = (projectTermPlural || 'Projects').toLowerCase();
+  const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
-
-    getUserAccount(currentUser.uid)
-      .then((data) => {
-        setUserAccount(data || null);
-      })
-      .catch(() => setUserAccount(null))
-      .finally(() => setLoaded(true));
+    setOrgResolved(false);
+    getUserOrganization(currentUser.uid)
+      .then((o) => setOrganization(o || null))
+      .catch(() => setOrganization(null))
+      .finally(() => setOrgResolved(true));
   }, [currentUser?.uid]);
 
-  if (!loaded) {
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid)
+      .then((data) => setUserAccount(data || null))
+      .catch(() => setUserAccount(null));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !orgResolved) return;
+    setLoading(true);
+    const orgId = organization?.id ?? undefined;
+
+    Promise.all([
+      fetch('/api/get-projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
+      }).then((r) => r.json().then((d) => d.projects || [])),
+      fetch('/api/get-org-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json().then((d) => d.clients || [])),
+    ])
+      .then(([projectsList, clientsList]) => {
+        setProjects(projectsList);
+        if (clientsList.length > 0) {
+          setClients(clientsList);
+        } else {
+          getUserAccount(currentUser.uid).then((account) => {
+            const fromAccount = Array.isArray(account?.clients) ? account.clients : [];
+            setClients(fromAccount);
+          }).catch(() => setClients([]));
+        }
+      })
+      .catch(() => setProjects([]))
+      .finally(() => setLoading(false));
+  }, [currentUser?.uid, orgResolved, organization?.id]);
+
+  const clientNameByClientId = useMemo(() => {
+    const map = {};
+    clients.forEach((c) => {
+      const name = (c.name || c.companyName || 'Unnamed client').trim();
+      if (c.id) map[c.id] = name;
+    });
+    return map;
+  }, [clients]);
+
+  const handleDeleteConfirm = async () => {
+    if (!projectToDelete || !currentUser?.uid) return;
+    try {
+      const res = await fetch('/api/delete-client-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          projectId: projectToDelete,
+          organizationId: organization?.id ?? undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
+      }
+      setProjects((prev) => prev.filter((p) => p.id !== projectToDelete));
+      setProjectToDelete(null);
+    } catch (err) {
+      console.error(err);
+      setProjectToDelete(null);
+    }
+  };
+
+  const title = projectTermPlural || 'Projects';
+
+  if (loading) {
     return (
       <>
         <Head>
-          <title>{projectTermPlural} - GoManagr</title>
-          <meta name="description" content={`Manage your ${projectTermPluralLower}`} />
+          <title>{title} - GoManagr</title>
         </Head>
-        <div className="space-y-6">
-          <PageHeader title={projectTermPlural} description={`Manage and track your ${projectTermPluralLower}`} />
-          <div className="flex justify-center min-h-[200px] items-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
-          </div>
-        </div>
+        <ProjectsPageSkeleton />
       </>
     );
   }
@@ -92,42 +125,65 @@ function ProjectsContent() {
   return (
     <>
       <Head>
-        <title>{projectTermPlural} - GoManagr</title>
-        <meta name="description" content={`Manage your ${projectTermPluralLower}`} />
+        <title>{title} - GoManagr</title>
+        <meta name="description" content={`Manage ${projectTermPluralLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title={projectTermPlural}
-          description={`All ${projectTermPluralLower} from your clients. Edit ${projectTermPluralLower} from the client profile.`}
+          title={title}
+          description={`${title} for your clients. Create and edit from here.`}
+          actions={
+            <PrimaryButton
+              type="button"
+              className="gap-2"
+              onClick={() => router.push('/dashboard/projects/new')}
+            >
+              <HiPlus className="w-5 h-5" />
+              Create {projectTermSingularLower}
+            </PrimaryButton>
+          }
         />
 
-        {projectsWithClients.length === 0 ? (
-          <EmptyState
-            type="custom"
-            title={`No ${projectTermPluralLower} yet`}
-            description={`${projectTermPlural} are added from client profiles. Add clients and add ${projectTermPluralLower} in their ${projectTermPlural} tab.`}
+        {projects.length === 0 ? (
+          <EmptyStateCard
+            message={`No ${projectTermPluralLower} yet`}
             action={
-              <Link href="/dashboard/clients">
-                <PrimaryButton className="gap-2">Go to Clients</PrimaryButton>
-              </Link>
+              <PrimaryButton
+                type="button"
+                className="gap-2"
+                onClick={() => router.push('/dashboard/projects/new')}
+              >
+                <HiPlus className="w-5 h-5" />
+                Create your first {projectTermSingularLower}
+              </PrimaryButton>
             }
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projectsWithClients.map(({ project, clientId, clientName, variant }, idx) => (
-              <ProjectCard
-                key={`${clientId}-${variant}-${idx}-${project.id || project.name || idx}`}
-                project={project}
-                index={idx}
-                variant={variant}
-                currency={userAccount?.defaultCurrency || 'USD'}
-                readOnly
-                clientId={clientId}
-                clientName={clientName}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map((proj) => (
+                <ProjectCardServiceStyle
+                  key={proj.id}
+                  project={proj}
+                  onSelect={(id) => router.push(`/dashboard/projects/${id}/edit`)}
+                  onDelete={setProjectToDelete}
+                  clientNameByClientId={clientNameByClientId}
+                />
+              ))}
+            </div>
+            <ConfirmationDialog
+              isOpen={!!projectToDelete}
+              onClose={() => setProjectToDelete(null)}
+              onConfirm={handleDeleteConfirm}
+              title={`Delete ${projectTermSingularLower}`}
+              message={`This ${projectTermSingularLower} will be permanently deleted. This cannot be undone.`}
+              confirmText="Delete"
+              cancelText="Cancel"
+              confirmationWord="delete"
+              variant="danger"
+            />
+          </>
         )}
       </div>
     </>
@@ -135,7 +191,5 @@ function ProjectsContent() {
 }
 
 export default function ProjectsPage() {
-  return (
-    <ProjectsContent />
-  );
+  return <ProjectsContent />;
 }

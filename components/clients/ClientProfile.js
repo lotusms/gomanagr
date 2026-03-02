@@ -362,11 +362,6 @@ export default function ClientProfile({
         pricingTier: pricingTier || undefined,
         defaultCurrency,
         activeRetainersBalance: activeRetainersBalance || undefined,
-        activeProjects: activeProjects.length > 0 ? activeProjects : undefined,
-        completedProjects: completedProjects.length > 0 ? completedProjects : undefined,
-        linkedFiles: linkedFiles.length > 0 ? linkedFiles : undefined,
-        deliverables: deliverables.length > 0 ? deliverables : undefined,
-        approvals: approvals.length > 0 ? approvals : undefined,
         emails: emails.length > 0 ? emails : undefined,
         messages: messages.length > 0 ? messages : undefined,
         calls: calls.length > 0 ? calls : undefined,
@@ -588,35 +583,10 @@ export default function ClientProfile({
           label: `${projectTermPlural} Details`,
           content: (
             <ProjectsDetailsSection
-              activeProjects={activeProjects}
-              completedProjects={completedProjects}
-              linkedFiles={linkedFiles}
-              deliverables={deliverables}
-              approvals={approvals}
-              defaultCurrency={defaultCurrency}
-              expandedProjectKey={expandedProjectKey}
-              onActiveProjectsChange={setActiveProjects}
-              onCompletedProjectsChange={setCompletedProjects}
-              onLinkedFilesChange={setLinkedFiles}
-              onDeliverablesChange={setDeliverables}
-              onApprovalsChange={setApprovals}
-              onExpandedProjectKeyChange={setExpandedProjectKey}
               clientId={initialClient?.id || clientId}
+              userId={currentUser?.uid}
+              organizationId={organization?.id}
               companyIndustry={companyIndustry}
-              onRefresh={async () => {
-                if (currentUser?.uid && (initialClient?.id || clientId)) {
-                  try {
-                    const account = await getUserAccount(currentUser.uid);
-                    const client = account?.clients?.find((c) => c.id === (initialClient?.id || clientId));
-                    if (client) {
-                      setActiveProjects(client.activeProjects || []);
-                      setCompletedProjects(client.completedProjects || []);
-                    }
-                  } catch (error) {
-                    console.error('Failed to refresh client data:', error);
-                  }
-                }
-              }}
             />
           ),
         }] 
@@ -703,7 +673,6 @@ export default function ClientProfile({
     taxId, timezone, language, primaryContactName, primaryContactPhone, primaryContactEmail,
     secondaryContactName, secondaryContactPhone, secondaryContactEmail,
     paymentTerms, paymentHistory, pricingTier, defaultCurrency, activeRetainersBalance,
-    activeProjects, completedProjects, expandedProjectKey, linkedFiles, deliverables, approvals,
     emails, messages, calls, meetingNotes, internalNotes,
     contracts, proposals, invoices, attachments, onlineResources,
     clientAppointments, userAccount, handleCompanyNameChange, saving,

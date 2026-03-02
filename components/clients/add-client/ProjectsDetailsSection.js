@@ -1,458 +1,216 @@
-import { useState, useMemo } from 'react';
-import { HiPlus, HiTrash, HiFolder, HiCheckCircle, HiPaperClip, HiGift, HiShieldCheck } from 'react-icons/hi';
-import InputField from '@/components/ui/InputField';
-import ProjectCard from '../../dashboard/ProjectCard';
-import { getLabelClasses } from '@/components/ui/formControlStyles';
+import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/router';
+import { HiPlus, HiFolder, HiCheckCircle } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
-import Drawer from '@/components/ui/Drawer';
-import AddProjectForm from './AddProjectForm';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { useAuth } from '@/lib/AuthContext';
-import { getUserAccount, updateClients } from '@/services/userService';
-import { useToast } from '@/components/ui/Toast';
+import EmptyStateCard from './EmptyStateCard';
+import ProjectLogCards from './ProjectLogCards';
+import { ConfirmationDialog } from '@/components/ui';
+import SideNavViewerLayout from './SideNavViewerLayout';
 import { getProjectTermForIndustry, getProjectTermSingular } from '../clientProfileConstants';
 
-/**
- * Reusable project section component (Active/Completed Projects)
- */
-function ProjectSection({
-  title,
-  description,
-  icon: Icon,
-  iconBgColor,
-  iconColor,
-  projects,
-  variant,
-  defaultCurrency,
-  expandedProjectKey,
-  onProjectsChange,
-  onExpandedProjectKeyChange,
-  emptyMessage,
-  emptyDescription,
-  addButtonText,
-  onAddProject, // Callback to open add project form
-  onDeleteProject, // Callback to delete project (variant, index)
-}) {
-  const projectKeyPrefix = variant === 'active' ? 'active' : 'completed';
-  
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg ${iconBgColor} flex items-center justify-center`}>
-            <Icon className={`w-5 h-5 ${iconColor}`} />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
-          </div>
-        </div>
-        <PrimaryButton
-          onClick={onAddProject}
-        >
-          <HiPlus className="w-4 h-4" />
-          {addButtonText}
-        </PrimaryButton>
-      </div>
-      
-      {projects.length === 0 ? (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
-          <Icon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">{emptyMessage}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">{emptyDescription}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project, idx) => (
-            <ProjectCard
-              key={`${projectKeyPrefix}-${idx}`}
-              project={project}
-              index={idx}
-              variant={variant}
-              currency={defaultCurrency || 'USD'}
-              expanded={expandedProjectKey === `${projectKeyPrefix}-${idx}`}
-              onToggleExpand={() => onExpandedProjectKeyChange((k) => (k === `${projectKeyPrefix}-${idx}` ? null : `${projectKeyPrefix}-${idx}`))}
-              onUpdate={(i, updated) => {
-                const next = [...projects];
-                next[i] = updated;
-                onProjectsChange(next);
-              }}
-              onRemove={(i) => onDeleteProject(variant, i)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+const ACTIVE_STATUSES = ['planning', 'active', 'on_hold'];
+const COMPLETED_STATUSES = ['completed', 'cancelled'];
+
+const ACTIVE_BORDER = 'border-l-blue-500 dark:border-l-blue-400';
+const COMPLETED_BORDER = 'border-l-green-500 dark:border-l-green-400';
+
+const ACTIVE_BADGE = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200';
+const COMPLETED_BADGE = 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200';
 
 /**
- * Reusable list item component for Linked Files, Deliverables, and Approvals
+ * Projects Details tab: same layout as Communication Log and Documents & Files.
+ * Left nav (Active / Completed), right viewer with header, "+ Add", and card grid.
  */
-function ListItemCard({ id, value, onChange, onRemove, placeholder, icon: Icon, index }) {
-  return (
-    <div className="group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-200">
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 mt-1">
-          <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-          </div>
-        </div>
-        <div className="flex-1 min-w-0">
-          <InputField
-            id={id}
-            value={value}
-            onChange={onChange}
-            placeholder={placeholder}
-            variant="light"
-            className="mb-0"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          title="Remove"
-        >
-          <HiTrash className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Reusable section for list-based items (Linked Files, Deliverables, Approvals)
- */
-function ListSection({ 
-  title, 
-  items, 
-  onAdd, 
-  onChange, 
-  onRemove, 
-  placeholder, 
-  icon: Icon,
-  emptyMessage,
-  emptyDescription 
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className={`${getLabelClasses('light')} mb-0 flex items-center gap-2`}>
-          {Icon && <Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" />}
-          {title}
-        </label>
-        <PrimaryButton
-          onClick={onAdd}
-        >
-          <HiPlus className="w-4 h-4" />
-          Add {title}
-        </PrimaryButton>
-      </div>
-      
-      {items.length === 0 ? (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center">
-          <Icon className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{emptyMessage}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{emptyDescription}</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {items.map((item, idx) => (
-            <ListItemCard
-              key={idx}
-              id={`${title.toLowerCase().replace(/\s+/g, '-')}-${idx}`}
-              value={item}
-              onChange={(e) => {
-                const updated = [...items];
-                updated[idx] = e.target.value;
-                onChange(updated);
-              }}
-              onRemove={() => onRemove(items.filter((_, i) => i !== idx))}
-              placeholder={placeholder}
-              icon={Icon}
-              index={idx}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function ProjectsDetailsSection({
-  activeProjects,
-  completedProjects,
-  linkedFiles,
-  deliverables,
-  approvals,
-  defaultCurrency,
-  expandedProjectKey,
-  onActiveProjectsChange,
-  onCompletedProjectsChange,
-  onLinkedFilesChange,
-  onDeliverablesChange,
-  onApprovalsChange,
-  onExpandedProjectKeyChange,
   clientId,
-  onRefresh, // Callback to refresh data after saving
-  companyIndustry, // Industry to determine dynamic project term
+  userId,
+  organizationId,
+  companyIndustry,
 }) {
-  const { currentUser } = useAuth();
-  const { success, error: showError } = useToast();
-  const [showAddProjectDrawer, setShowAddProjectDrawer] = useState(false);
-  const [addingProjectVariant, setAddingProjectVariant] = useState(null); // 'active' or 'completed'
-  const [savingProject, setSavingProject] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletingProject, setDeletingProject] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState(null); // { variant: 'active'|'completed', index: number }
+  const router = useRouter();
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedKey, setSelectedKey] = useState('active');
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
   const projectTermPlural = useMemo(() => getProjectTermForIndustry(companyIndustry), [companyIndustry]);
   const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
   const projectTermLower = projectTerm.toLowerCase();
   const projectTermPluralLower = projectTermPlural.toLowerCase();
 
-  const handleAddProject = (variant) => {
-    setAddingProjectVariant(variant);
-    setShowAddProjectDrawer(true);
+  const projectTypes = useMemo(
+    () => [
+      {
+        key: 'active',
+        label: `Active ${projectTermPlural}`,
+        description: `Current ${projectTermPluralLower} in progress`,
+        icon: HiFolder,
+        borderClass: ACTIVE_BORDER,
+        badgeClass: ACTIVE_BADGE,
+      },
+      {
+        key: 'completed',
+        label: `Completed ${projectTermPlural}`,
+        description: `Previously completed ${projectTermPluralLower}`,
+        icon: HiCheckCircle,
+        borderClass: COMPLETED_BORDER,
+        badgeClass: COMPLETED_BADGE,
+      },
+    ],
+    [projectTermPlural, projectTermPluralLower]
+  );
+
+  const navItems = useMemo(
+    () =>
+      projectTypes.map((t) => ({
+        key: t.key,
+        label: t.label,
+        icon: t.icon,
+        badgeClass: t.badgeClass,
+        count: null,
+      })),
+    [projectTypes]
+  );
+
+  useEffect(() => {
+    if (!userId || !clientId) return;
+    setLoading(true);
+    fetch('/api/get-projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        clientId,
+        organizationId: organizationId || undefined,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => setProjects(d.projects || []))
+      .catch(() => setProjects([]))
+      .finally(() => setLoading(false));
+  }, [userId, clientId, organizationId]);
+
+  const activeProjects = useMemo(
+    () => projects.filter((p) => ACTIVE_STATUSES.includes(p.status)),
+    [projects]
+  );
+  const completedProjects = useMemo(
+    () => projects.filter((p) => COMPLETED_STATUSES.includes(p.status)),
+    [projects]
+  );
+
+  const selectedType = projectTypes.find((t) => t.key === selectedKey);
+  const viewerHeader = selectedType
+    ? {
+        icon: selectedType.icon,
+        title: selectedType.label,
+        description: selectedType.description,
+        badgeClass: selectedType.badgeClass,
+      }
+    : null;
+
+  const filteredProjects = selectedKey === 'active' ? activeProjects : completedProjects;
+  const hasEntriesInSelectedSection = filteredProjects.length > 0;
+
+  const newProjectUrl = `/dashboard/clients/${clientId}/projects/new?status=${selectedKey}`;
+  const editProjectUrl = (projectId) => `/dashboard/clients/${clientId}/projects/${projectId}/edit`;
+
+  const handleAddInHeader = () => {
+    router.push(newProjectUrl);
   };
 
-  const handleProjectSubmit = async (projectData) => {
-    if (!currentUser?.uid || !clientId) {
-      throw new Error('User or client information missing');
-    }
+  const handleEditProject = (id) => {
+    router.push(editProjectUrl(id));
+  };
 
-    setSavingProject(true);
+  const handleDeleteConfirm = async () => {
+    if (!projectToDelete || !userId) return;
     try {
-      const account = await getUserAccount(currentUser.uid);
-      const clients = account?.clients || [];
-      
-      const clientIndex = clients.findIndex((c) => c.id === clientId);
-      if (clientIndex === -1) {
-        throw new Error('Client not found');
+      const res = await fetch('/api/delete-client-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          projectId: projectToDelete,
+          organizationId: organizationId || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete');
       }
-
-      const client = clients[clientIndex];
-      const projectArray = addingProjectVariant === 'active' 
-        ? (client.activeProjects || [])
-        : (client.completedProjects || []);
-
-      const updatedProjects = [...projectArray, projectData];
-      
-      const updatedClient = {
-        ...client,
-        [addingProjectVariant === 'active' ? 'activeProjects' : 'completedProjects']: updatedProjects,
-      };
-
-      const updatedClients = [...clients];
-      updatedClients[clientIndex] = updatedClient;
-
-      await updateClients(currentUser.uid, updatedClients);
-
-      if (addingProjectVariant === 'active') {
-        onActiveProjectsChange(updatedProjects);
-      } else {
-        onCompletedProjectsChange(updatedProjects);
-      }
-
-      success(`${projectTerm} added successfully`);
-      setShowAddProjectDrawer(false);
-      setAddingProjectVariant(null);
-
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      console.error('Failed to save project:', error);
-      throw error;
-    } finally {
-      setSavingProject(false);
-    }
-  };
-
-  const handleCancelAddProject = () => {
-    setShowAddProjectDrawer(false);
-    setAddingProjectVariant(null);
-  };
-
-  const handleDeleteProject = (variant, index) => {
-    setProjectToDelete({ variant, index });
-    setShowDeleteDialog(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!currentUser?.uid || !clientId || !projectToDelete) {
-      showError('Missing information to delete project');
-      setShowDeleteDialog(false);
+      setProjects((prev) => prev.filter((p) => p.id !== projectToDelete));
       setProjectToDelete(null);
-      return;
-    }
-
-    setDeletingProject(true);
-    try {
-      const account = await getUserAccount(currentUser.uid);
-      const clients = account?.clients || [];
-      
-      const clientIndex = clients.findIndex((c) => c.id === clientId);
-      if (clientIndex === -1) {
-        throw new Error('Client not found');
-      }
-
-      const client = clients[clientIndex];
-      const projectArray = projectToDelete.variant === 'active' 
-        ? (client.activeProjects || [])
-        : (client.completedProjects || []);
-
-      const updatedProjects = projectArray.filter((_, idx) => idx !== projectToDelete.index);
-      
-      const updatedClient = {
-        ...client,
-        [projectToDelete.variant === 'active' ? 'activeProjects' : 'completedProjects']: updatedProjects,
-      };
-
-      const updatedClients = [...clients];
-      updatedClients[clientIndex] = updatedClient;
-
-      await updateClients(currentUser.uid, updatedClients);
-
-      if (projectToDelete.variant === 'active') {
-        onActiveProjectsChange(updatedProjects);
-      } else {
-        onCompletedProjectsChange(updatedProjects);
-      }
-
-      onExpandedProjectKeyChange(null);
-
-      success(`${projectTerm} deleted successfully`);
-      setShowDeleteDialog(false);
+    } catch (err) {
+      console.error(err);
       setProjectToDelete(null);
-
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      console.error('Failed to delete project:', error);
-      showError(error.message || `Failed to delete ${projectTermLower}. Please try again.`);
-    } finally {
-      setDeletingProject(false);
     }
   };
 
-  const handleCancelDelete = () => {
-    setShowDeleteDialog(false);
-    setProjectToDelete(null);
+  if (!userId || !clientId) return null;
+
+  const renderViewerContent = () => {
+    if (loading && projects.length === 0) {
+      return <EmptyStateCard message="Loading projects…" />;
+    }
+    if (filteredProjects.length === 0) {
+      const emptyLabel =
+        selectedKey === 'active'
+          ? `No active ${projectTermPluralLower}`
+          : `No completed ${projectTermPluralLower}`;
+      return (
+        <EmptyStateCard
+          message={emptyLabel}
+          action={
+            <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2">
+              <HiPlus className="w-5 h-5" />
+              Add {selectedKey === 'active' ? 'active' : 'completed'} {projectTermLower}
+            </PrimaryButton>
+          }
+        />
+      );
+    }
+    return (
+      <ProjectLogCards
+        projects={filteredProjects}
+        onSelect={handleEditProject}
+        onDelete={setProjectToDelete}
+        borderClass={selectedType?.borderClass ?? ACTIVE_BORDER}
+      />
+    );
   };
 
   return (
     <>
-      <div className="space-y-8">
-        {/* Active Projects Section */}
-        <ProjectSection
-          title={`Active ${projectTermPlural}`}
-          description={`Current ${projectTermLower} in progress`}
-          icon={HiFolder}
-          iconBgColor="bg-blue-50 dark:bg-blue-900/20"
-          iconColor="text-blue-600 dark:text-blue-400"
-          projects={activeProjects}
-          variant="active"
-          defaultCurrency={defaultCurrency}
-          expandedProjectKey={expandedProjectKey}
-          onProjectsChange={onActiveProjectsChange}
-          onExpandedProjectKeyChange={onExpandedProjectKeyChange}
-          emptyMessage={`No active ${projectTermPluralLower}`}
-          emptyDescription={`Add your first active ${projectTermLower} to get started`}
-          addButtonText={`Add Active ${projectTerm}`}
-          onAddProject={() => handleAddProject('active')}
-          onDeleteProject={handleDeleteProject}
-        />
-        
-        {/* Completed Projects Section */}
-        <ProjectSection
-          title={`Completed ${projectTermPlural}`}
-          description={`Previously completed ${projectTermLower}`}
-          icon={HiCheckCircle}
-          iconBgColor="bg-green-50 dark:bg-green-900/20"
-          iconColor="text-green-600 dark:text-green-400"
-          projects={completedProjects}
-          variant="completed"
-          defaultCurrency={defaultCurrency}
-          expandedProjectKey={expandedProjectKey}
-          onProjectsChange={onCompletedProjectsChange}
-          onExpandedProjectKeyChange={onExpandedProjectKeyChange}
-          emptyMessage={`No completed ${projectTermPluralLower}`}
-          emptyDescription={`Completed ${projectTermPluralLower} will appear here`}
-          addButtonText={`Add Completed ${projectTerm}`}
-          onAddProject={() => handleAddProject('completed')}
-          onDeleteProject={handleDeleteProject}
-        />
-        
-        {/* Linked Files, Deliverables, and Approvals */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ListSection
-          title="Linked Files"
-          items={linkedFiles}
-          onAdd={() => onLinkedFilesChange([...linkedFiles, ''])}
-          onChange={onLinkedFilesChange}
-          onRemove={onLinkedFilesChange}
-          placeholder="File name or URL"
-          icon={HiPaperClip}
-          emptyMessage="No linked files"
-          emptyDescription={`Add files related to this ${projectTermLower}`}
-        />
-        
-        <ListSection
-          title="Deliverables"
-          items={deliverables}
-          onAdd={() => onDeliverablesChange([...deliverables, ''])}
-          onChange={onDeliverablesChange}
-          onRemove={onDeliverablesChange}
-          placeholder="Deliverable name"
-          icon={HiGift}
-          emptyMessage="No deliverables"
-          emptyDescription={`Add ${projectTermLower} deliverables`}
-        />
-        
-        <ListSection
-          title="Approvals"
-          items={approvals}
-          onAdd={() => onApprovalsChange([...approvals, ''])}
-          onChange={onApprovalsChange}
-          onRemove={onApprovalsChange}
-          placeholder="Approval name or reference"
-          icon={HiShieldCheck}
-          emptyMessage="No approvals"
-          emptyDescription="Add required approvals"
-        />
-        </div>
-      </div>
+      <SideNavViewerLayout
+        introText={`Track active and completed ${projectTermPluralLower} for this client.`}
+        navAriaLabel="Project sections"
+        navItems={navItems}
+        selectedKey={selectedKey}
+        onSelectKey={setSelectedKey}
+        viewerHeader={viewerHeader}
+        viewerHeaderAction={
+          hasEntriesInSelectedSection ? (
+            <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2 flex-shrink-0">
+              <HiPlus className="w-5 h-5" />
+              Add
+            </PrimaryButton>
+          ) : null
+        }
+      >
+        {renderViewerContent()}
+      </SideNavViewerLayout>
 
-      {/* Add Project Drawer */}
-      {showAddProjectDrawer && (
-        <Drawer
-          isOpen={showAddProjectDrawer}
-          onClose={handleCancelAddProject}
-          title={addingProjectVariant === 'active' ? `Add Active ${projectTerm}` : `Add Completed ${projectTerm}`}
-        >
-          <AddProjectForm
-            currency={defaultCurrency || 'USD'}
-            onSubmit={handleProjectSubmit}
-            onCancel={handleCancelAddProject}
-            loading={savingProject}
-          />
-        </Drawer>
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showDeleteDialog}
-        onClose={handleCancelDelete}
-        onConfirm={handleConfirmDelete}
-        title={`Delete ${projectTerm}`}
-        message={`Are you sure you want to delete this ${projectTermLower}? This action cannot be undone.`}
+      <ConfirmationDialog
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title={`Delete ${projectTermLower}`}
+        message={`This ${projectTermLower} will be permanently deleted. This cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
+        confirmationWord="delete"
         variant="danger"
-        loading={deletingProject}
       />
     </>
   );

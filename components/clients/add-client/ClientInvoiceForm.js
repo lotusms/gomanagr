@@ -38,16 +38,22 @@ const PAYMENT_METHOD_OPTIONS = [
 
 export default function ClientInvoiceForm({
   initial = {},
-  clientId,
+  clientId: clientIdProp,
   userId,
   organizationId,
   invoiceId,
   defaultCurrency = 'USD',
+  showClientDropdown = false,
   onSuccess,
   onCancel,
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState(
+    showClientDropdown ? (clientIdProp || initial.client_id || '') : ''
+  );
+  const [clients, setClients] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState(initial.invoice_number ?? '');
   const [invoiceTitle, setInvoiceTitle] = useState(initial.invoice_title ?? '');
   const [amount, setAmount] = useState(
@@ -87,33 +93,58 @@ export default function ClientInvoiceForm({
   const [contractsLoading, setContractsLoading] = useState(false);
   const [projectOptions, setProjectOptions] = useState([{ value: '', label: 'No project' }]);
 
+  const clientId = showClientDropdown ? selectedClientId : clientIdProp;
+  const effectiveClientId = (clientId && String(clientId).trim()) || null;
+
   useEffect(() => {
-    if (!clientId || !userId) return;
+    if (!showClientDropdown || !userId) return;
+    setClientsLoading(true);
+    fetch('/api/get-org-clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+      .then((res) => res.json())
+      .then((data) => setClients(data.clients || []))
+      .catch(() => setClients([]))
+      .finally(() => setClientsLoading(false));
+  }, [showClientDropdown, userId]);
+
+  const clientOptions = [
+    { value: '', label: 'Select client' },
+    ...clients.map((c) => ({
+      value: c.id,
+      label: (c.name || c.companyName || 'Unnamed client').trim(),
+    })),
+  ];
+
+  useEffect(() => {
+    if (!effectiveClientId || !userId) return;
     setProposalsLoading(true);
     fetch('/api/get-client-proposals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+      body: JSON.stringify({ userId, clientId: effectiveClientId, organizationId: organizationId || undefined }),
     })
       .then((res) => res.json())
       .then((data) => setProposals(data.proposals || []))
       .catch(() => setProposals([]))
       .finally(() => setProposalsLoading(false));
-  }, [clientId, userId, organizationId]);
+  }, [effectiveClientId, userId, organizationId]);
 
   useEffect(() => {
-    if (!clientId || !userId) return;
+    if (!effectiveClientId || !userId) return;
     setContractsLoading(true);
     fetch('/api/get-client-contracts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, clientId, organizationId: organizationId || undefined }),
+      body: JSON.stringify({ userId, clientId: effectiveClientId, organizationId: organizationId || undefined }),
     })
       .then((res) => res.json())
       .then((data) => setContracts(data.contracts || []))
       .catch(() => setContracts([]))
       .finally(() => setContractsLoading(false));
-  }, [clientId, userId, organizationId]);
+  }, [effectiveClientId, userId, organizationId]);
 
   const proposalOptions = [
     { value: '', label: 'None' },
@@ -139,7 +170,7 @@ export default function ClientInvoiceForm({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId,
-              clientId,
+              clientId: effectiveClientId,
               filename: file.name,
               contentType: file.type || 'application/octet-stream',
               base64: reader.result,
@@ -155,7 +186,7 @@ export default function ClientInvoiceForm({
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       }),
-    [userId, clientId]
+    [userId, effectiveClientId]
   );
 
   const handleSubmit = async (e) => {
@@ -165,7 +196,7 @@ export default function ClientInvoiceForm({
     try {
       const payload = {
         userId,
-        clientId,
+        clientId: effectiveClientId,
         organizationId: organizationId || undefined,
         invoice_number: invoiceNumber.trim(),
         invoice_title: invoiceTitle.trim(),
@@ -219,6 +250,18 @@ export default function ClientInvoiceForm({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        {showClientDropdown && (
+          <Dropdown
+            id="client"
+            name="client"
+            label="Client"
+            value={selectedClientId}
+            onChange={(e) => setSelectedClientId(e.target.value ?? '')}
+            options={clientOptions}
+            placeholder={clientsLoading ? 'Loading…' : 'Select client'}
+            searchable={clientOptions.length > 10}
+          />
+        )}
         <InputField
           id="invoice-title"
           label="Invoice title / reason"
@@ -351,7 +394,7 @@ export default function ClientInvoiceForm({
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={saving}>
+        <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId)}>
           {saving ? 'Saving...' : invoiceId ? 'Update invoice' : 'Add invoice'}
         </PrimaryButton>
       </div>

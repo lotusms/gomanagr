@@ -8,54 +8,48 @@ import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
-import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
+import ClientProjectForm from '@/components/clients/add-client/ClientProjectForm';
+import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
 
-export default function EditClientInvoicePage() {
+export default function EditProjectPage() {
   const router = useRouter();
-  const { id: clientId, invoiceId } = router.query;
+  const { projectId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
-  const [invoice, setInvoice] = useState(null);
-  const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [project, setProject] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const projectTermPlural = getProjectTermForIndustry(userAccount?.industry);
+  const projectTermSingular = getProjectTermSingular(projectTermPlural);
+  const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid)
-      .then((org) => setOrganization(org || null))
+      .then((o) => setOrganization(o || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
   }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (!currentUser?.uid || !clientId) return;
-    getUserAccount(currentUser.uid)
-      .then((account) => {
-        const client = account?.clients?.find((c) => c.id === clientId);
-        const currency =
-          client?.defaultCurrency ||
-          account?.clientSettings?.defaultCurrency ||
-          'USD';
-        setDefaultCurrency(currency);
-      })
-      .catch(() => setDefaultCurrency('USD'));
-  }, [currentUser?.uid, clientId]);
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
+  }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (!orgReady || !currentUser?.uid || !clientId || !invoiceId) return;
-
+    if (!orgReady || !currentUser?.uid || !projectId) return;
     setLoading(true);
     setNotFound(false);
-    fetch('/api/get-client-invoices', {
+    fetch('/api/get-projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: currentUser.uid,
-        clientId,
         organizationId: organization?.id ?? undefined,
-        invoiceId,
+        projectId,
       }),
     })
       .then((res) => {
@@ -66,24 +60,22 @@ export default function EditClientInvoicePage() {
         return res.json();
       })
       .then((data) => {
-        if (data?.invoice) setInvoice(data.invoice);
+        if (data?.project) setProject(data.project);
         else setNotFound(true);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [orgReady, currentUser?.uid, clientId, invoiceId, organization?.id]);
+  }, [orgReady, currentUser?.uid, projectId, organization?.id]);
 
-  const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=invoices`;
+  const backUrl = '/dashboard/projects';
 
-  if (!currentUser?.uid || !clientId || !invoiceId) {
-    return null;
-  }
+  if (!currentUser?.uid || !projectId) return null;
 
   if (loading) {
     return (
       <>
         <Head>
-          <title>Edit invoice - GoManagr</title>
+          <title>Edit {projectTermSingularLower} - GoManagr</title>
         </Head>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48" />
@@ -93,21 +85,21 @@ export default function EditClientInvoicePage() {
     );
   }
 
-  if (notFound || !invoice) {
+  if (notFound || !project) {
     return (
       <>
         <Head>
-          <title>Invoice not found - GoManagr</title>
+          <title>{projectTermSingular} not found - GoManagr</title>
         </Head>
         <div className="space-y-6">
           <PageHeader
-            title="Edit invoice"
-            description="Invoices for this client."
+            title={projectTermPlural || 'Projects'}
+            description={`${projectTermPlural || 'Projects'} for your clients.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
                   <HiArrowLeft className="w-5 h-5" />
-                  Back to client
+                  Back to {projectTermPlural?.toLowerCase() || 'projects'}
                 </SecondaryButton>
               </Link>
             }
@@ -118,14 +110,16 @@ export default function EditClientInvoicePage() {
                 <HiDocumentText className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
               </div>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Invoice not found</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {projectTermSingular} not found
+            </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
-              This invoice may have been deleted or you don&apos;t have access to it.
+              This {projectTermSingularLower} may have been deleted or you don&apos;t have access to it.
             </p>
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {projectTermPlural?.toLowerCase() || 'projects'}
               </SecondaryButton>
             </Link>
           </div>
@@ -137,30 +131,30 @@ export default function EditClientInvoicePage() {
   return (
     <>
       <Head>
-        <title>Edit invoice - GoManagr</title>
-        <meta name="description" content="Edit this invoice" />
+        <title>Edit {projectTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Edit this ${projectTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Edit invoice"
-          description="Update the details of this invoice."
+          title={`Edit ${projectTermSingularLower}`}
+          description={`Update the details of this ${projectTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {projectTermPlural?.toLowerCase() || 'projects'}
               </SecondaryButton>
             </Link>
           }
         />
         <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
-          <ClientInvoiceForm
-            initial={invoice}
-            clientId={clientId}
+          <ClientProjectForm
+            initial={project}
+            clientId={project.client_id}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
-            invoiceId={invoiceId}
-            defaultCurrency={defaultCurrency}
+            projectId={projectId}
+            showClientDropdown={false}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

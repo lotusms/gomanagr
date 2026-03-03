@@ -47,7 +47,7 @@ const TODO_ITEMS = [
   {
     id: 'company-logo',
     title: 'Add your organization logo',
-    description: 'Pull your organization logo and brand into GoManagr to use on quotes, invoices, and job forms.',
+    description: 'Pull your organization logo and brand into GoManagr to use on proposals, invoices, and job forms.',
     duration: '2 minutes',
     Icon: HiOfficeBuilding,
     href: '/dashboard/settings',
@@ -55,7 +55,7 @@ const TODO_ITEMS = [
   {
     id: 'client-portal',
     title: 'Explore your personalized online client portal',
-    description: 'Clients can approve quotes, review jobs, and pay all online.',
+    description: 'Clients can approve proposals, review jobs, and pay all online.',
     duration: '5 minutes',
     Icon: HiUserGroup,
     href: '/dashboard/clients',
@@ -69,12 +69,12 @@ const TODO_ITEMS = [
     href: '/dashboard/invoices',
   },
   {
-    id: 'quote',
-    title: 'Create a winning quote',
-    description: 'Boost your revenue with custom quotes.',
+    id: 'proposal',
+    title: 'Create a proposal or quote',
+    description: 'Boost your revenue with proposals and quotes for your clients.',
     duration: '2 minutes',
     Icon: HiCurrencyDollar,
-    href: '/dashboard/quotes',
+    href: '/dashboard/proposals',
   },
   {
     id: 'website',

@@ -48,7 +48,6 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Proposals', href: '/dashboard/proposals' },
-      { name: 'Quotes', href: '/dashboard/quotes' },
       { name: 'Invoices', href: '/dashboard/invoices' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Marketing', href: '/dashboard/marketing' },
@@ -78,7 +77,6 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Proposals', href: '/dashboard/proposals' },
-      { name: 'Quotes', href: '/dashboard/quotes' },
       { name: 'Invoices', href: '/dashboard/invoices' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Apps', href: '/dashboard/apps' },
@@ -97,11 +95,11 @@ describe('DashboardSidebar role-based navigation', () => {
     const items = getNavLinkNamesAndHrefs();
     const names = items.map((i) => i.name);
 
-    expect(items).toHaveLength(11);
+    expect(items).toHaveLength(10);
     expect(names).not.toContain('Proposals');
     expect(items[0]).toEqual({ name: 'Home', href: '/dashboard/team-member' });
     expect(items[1]).toEqual({ name: 'My Profile', href: '/dashboard/team-member/profile' });
-    expect(items[10]).toEqual({ name: 'Apps', href: '/dashboard/apps' });
+    expect(items[9]).toEqual({ name: 'Apps', href: '/dashboard/apps' });
   });
 
   it('member: shows exact member nav items (Home, My Profile, Projects, Schedule, Clients, Services, Contracts)', () => {
@@ -126,7 +124,7 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('member: does not show Team, Proposals, Quotes, Invoices, Marketing, Insights, Timesheets, Apps (but does show Contracts)', () => {
+  it('member: does not show Team, Proposals, Invoices, Marketing, Insights, Timesheets, Apps (but does show Contracts)', () => {
     renderSidebar({ memberRole: 'member', memberAccess: {} });
 
     const links = screen.getAllByRole('link');

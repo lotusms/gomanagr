@@ -8,7 +8,6 @@ import {
   HiCalendar,
   HiUserGroup,
   HiInbox,
-  HiDocumentSearch,
   HiDocumentText,
   HiBriefcase,
   HiSpeakerphone,
@@ -34,7 +33,6 @@ function getOwnerNavItems(accountIndustry) {
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
     { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
     { name: 'Proposals', href: '/dashboard/proposals', icon: HiInbox },
-    { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
     { divider: true },
@@ -61,7 +59,6 @@ function getAdminNavItems(accountIndustry, memberRole) {
     items.push({ name: 'Proposals', href: '/dashboard/proposals', icon: HiInbox });
   }
   items.push(
-    { name: 'Quotes', href: '/dashboard/quotes', icon: HiDocumentSearch },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
     { divider: true },

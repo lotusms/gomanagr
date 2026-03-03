@@ -1,10 +1,10 @@
-import { HiClipboardList, HiUsers, HiUserGroup, HiFolder, HiInbox, HiDocumentSearch, HiBriefcase, HiDocumentText, HiCalendar } from 'react-icons/hi';
+import { HiClipboardList, HiUsers, HiUserGroup, HiFolder, HiInbox, HiBriefcase, HiDocumentText, HiCalendar } from 'react-icons/hi';
 
 /**
  * EmptyState Component - Reusable empty state display
  * 
  * @param {Object} props
- * @param {string} props.type - Type of empty state: 'services', 'clients', 'team', 'projects', 'requests', 'proposals', 'quotes', 'jobs', 'invoices', 'appointments', or 'custom'
+ * @param {string} props.type - Type of empty state: 'services', 'clients', 'team', 'projects', 'requests', 'proposals', 'jobs', 'invoices', 'appointments', or 'custom'
  * @param {string} props.title - Custom title (optional, uses default based on type)
  * @param {string} props.description - Custom description (optional, uses default based on type)
  * @param {React.ReactNode} props.action - Optional action button/element to display
@@ -49,11 +49,6 @@ export default function EmptyState({
       icon: HiInbox,
       title: 'No proposals yet',
       description: 'Proposals from clients and team members will appear here.',
-    },
-    quotes: {
-      icon: HiDocumentSearch,
-      title: 'No quotes yet',
-      description: 'Create your first quote to start sending proposals to clients.',
     },
     jobs: {
       icon: HiBriefcase,

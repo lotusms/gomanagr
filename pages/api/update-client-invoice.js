@@ -30,16 +30,45 @@ function toDateOnly(v) {
 
 const STATUSES = ['draft', 'sent', 'overdue', 'paid', 'partially_paid', 'void'];
 
-function parseBody(body, existing) {
+function toNum(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+  return Number.isNaN(n) ? null : n;
+}
+
+function normalizeLineItem(item) {
+  const quantity = toNum(item.quantity);
+  const unitPrice = String(item.unit_price ?? '').trim();
+  const unitNum = toNum(unitPrice);
+  const amount = item.amount != null && String(item.amount).trim() !== ''
+    ? String(item.amount).trim()
+    : (quantity != null && unitNum != null ? (quantity * unitNum).toFixed(2) : '');
+  return {
+    item_name: String(item.item_name ?? '').trim() || '',
+    description: String(item.description ?? '').trim() || '',
+    quantity: quantity != null ? quantity : 1,
+    unit_price: unitPrice || '',
+    amount: amount || '',
+  };
+}
+
+function parseBody(body, existing, computedFromItems) {
   const status = body.status !== undefined
     ? (STATUSES.includes(String(body.status).toLowerCase()) ? String(body.status).toLowerCase() : (existing?.status ?? 'draft'))
     : (existing?.status ?? 'draft');
-  return {
+  const amount = computedFromItems?.subtotal != null
+    ? String(computedFromItems.subtotal)
+    : String(body.amount ?? existing?.amount ?? '').trim() || '';
+  const tax = String(body.tax ?? existing?.tax ?? '').trim() || '';
+  const total = computedFromItems?.total != null
+    ? String(computedFromItems.total)
+    : String(body.total ?? existing?.total ?? '').trim() || '';
+  const out = {
     invoice_number: String(body.invoice_number ?? existing?.invoice_number ?? '').trim() || '',
     invoice_title: String(body.invoice_title ?? existing?.invoice_title ?? '').trim() || '',
-    amount: String(body.amount ?? existing?.amount ?? '').trim() || '',
-    tax: String(body.tax ?? existing?.tax ?? '').trim() || '',
-    total: String(body.total ?? existing?.total ?? '').trim() || '',
+    amount,
+    tax,
+    total,
     date_issued: body.date_issued !== undefined ? toDateOnly(body.date_issued) : (existing?.date_issued ?? null),
     due_date: body.due_date !== undefined ? toDateOnly(body.due_date) : (existing?.due_date ?? null),
     paid_date: body.paid_date !== undefined ? toDateOnly(body.paid_date) : (existing?.paid_date ?? null),
@@ -52,6 +81,11 @@ function parseBody(body, existing) {
     notes: body.notes !== undefined ? (body.notes ? String(body.notes).trim() || null : null) : (existing?.notes ?? null),
     updated_at: new Date().toISOString(),
   };
+  if (body.line_items !== undefined) {
+    const lineItems = Array.isArray(body.line_items) ? body.line_items : [];
+    out.line_items = lineItems.map(normalizeLineItem).filter((r) => r.item_name || r.unit_price || r.amount);
+  }
+  return out;
 }
 
 export default async function handler(req, res) {
@@ -85,7 +119,17 @@ export default async function handler(req, res) {
       if (existing.organization_id != null || existing.user_id !== userId) return res.status(403).json({ error: 'Invoice does not belong to you' });
     }
 
-    const updates = parseBody(req.body, existing);
+    const lineItems = Array.isArray(req.body.line_items) ? req.body.line_items : [];
+    let computedFromItems = null;
+    if (lineItems.length > 0) {
+      const subtotal = lineItems.reduce((sum, item) => {
+        const a = toNum(item.amount);
+        return sum + (a != null ? a : 0);
+      }, 0);
+      const taxNum = toNum(req.body.tax) || 0;
+      computedFromItems = { subtotal: subtotal.toFixed(2), total: (subtotal + taxNum).toFixed(2) };
+    }
+    const updates = parseBody(req.body, existing, computedFromItems);
     if (req.body?.file_urls !== undefined) {
       updates.file_urls = Array.isArray(req.body.file_urls)
         ? req.body.file_urls.map((u) => String(u).trim()).filter(Boolean)

@@ -14,12 +14,17 @@ export default function NewProposalPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [orgResolved, setOrgResolved] = useState(false);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
-    getUserOrganization(currentUser.uid).then((o) => setOrganization(o || null)).catch(() => setOrganization(null));
+    setOrgResolved(false);
+    getUserOrganization(currentUser.uid)
+      .then((o) => setOrganization(o || null))
+      .catch(() => setOrganization(null))
+      .finally(() => setOrgResolved(true));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -39,6 +44,20 @@ export default function NewProposalPage() {
   const backUrl = '/dashboard/proposals';
 
   if (!ready || !currentUser?.uid) return null;
+
+  if (!orgResolved) {
+    return (
+      <>
+        <Head>
+          <title>Create proposal - GoManagr</title>
+        </Head>
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48" />
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

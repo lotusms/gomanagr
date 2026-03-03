@@ -80,7 +80,7 @@ export default function ProposalCardServiceStyle({
           {clientName && (
             <span className="font-medium text-gray-700 dark:text-gray-300">{clientName}</span>
           )}
-          {proposal.proposal_number && <span>{proposal.proposal_number}</span>}
+          {proposal.proposal_number && <span title="Proposal ID">{proposal.proposal_number}</span>}
           {statusLabel && (
             <span className="font-medium px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
               {statusLabel}

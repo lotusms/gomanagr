@@ -72,13 +72,12 @@ const InputField = forwardRef(({
 
   return (
     <div className={className}>
-      <Label.Root
-        htmlFor={id}
-        className={labelClass}
-      >
-        {label}
-        {required && <span className={isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1'}>*</span>}
-      </Label.Root>
+      {label != null && label !== '' && (
+        <Label.Root htmlFor={id} className={labelClass}>
+          {label}
+          {required && <span className={isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1'}>*</span>}
+        </Label.Root>
+      )}
       <div className="relative">
         <input
           ref={ref}

@@ -20,8 +20,28 @@ function toDateOnly(v) {
 }
 const STATUSES = ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired'];
 
+function normalizeLineItem(item) {
+  const quantity = toNum(item.quantity);
+  const unitPrice = String(item.unit_price ?? '').trim();
+  const unitNum = toNum(unitPrice);
+  const amount = item.amount != null && String(item.amount).trim() !== ''
+    ? String(item.amount).trim()
+    : (quantity != null && unitNum != null ? (quantity * unitNum).toFixed(2) : '');
+  return {
+    item_name: String(item.item_name ?? '').trim() || '',
+    description: String(item.description ?? '').trim() || '',
+    quantity: quantity != null ? quantity : 1,
+    unit_price: unitPrice || '',
+    amount: amount || '',
+  };
+}
+
 function parseBody(body) {
   const status = STATUSES.includes(String(body.status || '').toLowerCase()) ? String(body.status).toLowerCase() : 'draft';
+  const lineItems = Array.isArray(body.line_items) ? body.line_items : [];
+  const lineItemsJson = lineItems
+    .map(normalizeLineItem)
+    .filter((r) => r.item_name || r.unit_price || r.amount);
   return {
     client_id: String(body.clientId ?? ''),
     user_id: body.userId,
@@ -34,7 +54,6 @@ function parseBody(body) {
     status,
     estimated_value: String(body.estimated_value ?? '').trim() || '',
     scope_summary: String(body.scope_summary ?? '').trim() || '',
-    included_services_products: String(body.included_services_products ?? '').trim() || '',
     terms: String(body.terms ?? '').trim() || '',
     file_url: null,
     file_urls: Array.isArray(body.file_urls)
@@ -44,7 +63,14 @@ function parseBody(body) {
         : [],
     linked_project: body.linked_project ? String(body.linked_project).trim() || null : null,
     linked_contract_id: body.linked_contract_id || null,
+    line_items: lineItemsJson,
   };
+}
+
+function toNum(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+  return Number.isNaN(n) ? null : n;
 }
 
 export default async function handler(req, res) {

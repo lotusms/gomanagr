@@ -1,0 +1,294 @@
+/**
+ * Reusable itemized line items table (Wave-style).
+ * Used for Proposals and Invoices. Columns: Service/Item, Description, Quantity, Price, Amount; Add item, delete row.
+ *
+ * When services and onServiceCreated are provided, the first column is a searchable service dropdown
+ * with an "Add" button to create new services (persisted to org/user services). Otherwise it's a plain text input.
+ *
+ * @param {Array<{ id: string, item_name: string, description: string, quantity: number|string, unit_price: string }>} props.items
+ * @param {Function} props.onChange - (items) => void
+ * @param {string} props.currency - e.g. 'USD'
+ * @param {string} [props.itemLabel] - Column header for item name (default 'Service')
+ * @param {string} [props.addLabel] - Button label (default 'Add item')
+ * @param {string} [props.className]
+ * @param {Array<{ id: string, name: string }>} [props.services] - Org/user services for dropdown (when provided with onServiceCreated)
+ * @param {Function} [props.onServiceCreated] - (updatedServices: Array) => Promise<void> — persist new service so it appears everywhere
+ * @param {Array} [props.teamMembers] - For Add Service form when creating from line items
+ */
+import { useCallback } from 'react';
+import InputField from '@/components/ui/InputField';
+import NumberField from '@/components/ui/NumberField';
+import CurrencyInput from '@/components/ui/CurrencyInput';
+import ServiceCombobox from '@/components/dashboard/ServiceCombobox';
+import { PrimaryButton } from '@/components/ui/buttons';
+import { formatCurrency, unformatCurrency } from '@/utils/formatCurrency';
+import { HiPlus, HiTrash } from 'react-icons/hi';
+
+function computeAmount(quantity, unitPrice) {
+  const q = parseFloat(quantity);
+  const p = parseFloat(unformatCurrency(unitPrice) || 0);
+  if (Number.isNaN(q) || Number.isNaN(p)) return '';
+  return (q * p).toFixed(2);
+}
+
+export default function ItemizedLineItems({
+  items = [],
+  onChange,
+  currency = 'USD',
+  itemLabel = 'Service',
+  addLabel = 'Add item',
+  className = '',
+  services,
+  onServiceCreated,
+  teamMembers = [],
+}) {
+  const useServiceDropdown = services != null && typeof onServiceCreated === 'function';
+  const updateItem = useCallback(
+    (index, field, value) => {
+      const next = items.map((item, i) => {
+        if (i !== index) return item;
+        const updated = { ...item, [field]: value };
+        if (field === 'quantity' || field === 'unit_price') {
+          updated.amount = computeAmount(
+            field === 'quantity' ? value : item.quantity,
+            field === 'unit_price' ? value : item.unit_price
+          );
+        }
+        return updated;
+      });
+      onChange(next);
+    },
+    [items, onChange]
+  );
+
+  const addRow = useCallback(() => {
+    const newItem = {
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      item_name: '',
+      description: '',
+      quantity: 1,
+      unit_price: '',
+      amount: '',
+    };
+    onChange([...items, newItem]);
+  }, [items, onChange]);
+
+  const removeRow = useCallback(
+    (index) => {
+      onChange(items.filter((_, i) => i !== index));
+    },
+    [items, onChange]
+  );
+
+  const subtotal = items.reduce((sum, item) => {
+    const a = parseFloat(item.amount);
+    return sum + (Number.isNaN(a) ? 0 : a);
+  }, 0);
+
+  return (
+    <div className={className}>
+      <div className="-mx-4 sm:mx-0 mt-4 sm:mt-0">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border-collapse text-sm lg:table-fixed">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-800/60">
+                <th
+                  scope="col"
+                  className="py-3.5 pl-4 pr-3 text-left font-medium text-gray-700 dark:text-gray-300 w-full max-w-0 sm:pl-3 lg:max-w-none lg:w-[calc((100%-18.5rem)/2)]"
+                >
+                  {itemLabel}
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3.5 text-left font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[calc((100%-18.5rem)/2)]"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3.5 text-right font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[3rem] lg:shrink-0 w-[3rem] sm:w-20"
+                >
+                  Quantity
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3.5 text-right font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[6.5rem] lg:shrink-0 w-[6.5rem] sm:w-28"
+                >
+                  Price
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3.5 text-center font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[4.5rem] lg:shrink-0 w-[4.5rem] sm:w-24"
+                >
+                  Amount
+                </th>
+                <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-3 lg:w-12 lg:shrink-0">
+                  <span className="sr-only">Remove</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white dark:bg-gray-800/40 dark:divide-gray-700">
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500 dark:text-gray-400">
+                    No items yet. Click &quot;{addLabel}&quot; to add a line.
+                  </td>
+                </tr>
+              ) : (
+                items.map((item, index) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-gray-50/50 dark:hover:bg-gray-700/20"
+                  >
+                    <td className="w-full max-w-0 py-3 pl-4 pr-3 font-medium text-gray-900 min-w-[9rem] dark:text-white sm:w-auto sm:max-w-none sm:pl-3">
+                      {useServiceDropdown ? (
+                        <ServiceCombobox
+                          id={`line-${index}-service`}
+                          services={services}
+                          value={item.item_name || ''}
+                          onChange={(name) => updateItem(index, 'item_name', name)}
+                          onServiceCreated={onServiceCreated}
+                          teamMembers={teamMembers}
+                          placeholder="Select service..."
+                          className="!mb-0"
+                          addButtonLabel="Add"
+                          drawerTitle="Add service"
+                        />
+                      ) : (
+                        <InputField
+                          id={`line-${index}-name`}
+                          value={item.item_name || ''}
+                          onChange={(e) => updateItem(index, 'item_name', e.target.value)}
+                          variant="light"
+                          placeholder="Name"
+                          className="!mb-0"
+                        />
+                      )}
+                      <dl className="font-normal lg:hidden">
+                        <dt className="sr-only">Description</dt>
+                        <dd className="mt-1 truncate text-gray-600 dark:text-gray-400">
+                          <InputField
+                            id={`line-${index}-desc`}
+                            value={item.description || ''}
+                            onChange={(e) => updateItem(index, 'description', e.target.value)}
+                            variant="light"
+                            placeholder="Description"
+                            className="!mb-0"
+                          />
+                        </dd>
+                        <dt className="sr-only">Quantity, Price, Amount</dt>
+                        <dd className="mt-0.5 text-gray-500 dark:text-gray-400 tabular-nums">
+                          <div className="flex items-center gap-1">
+                            <NumberField
+                              id={`line-${index}-qty`}
+                              value={item.quantity === '' || item.quantity == null ? '' : Number(item.quantity)}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                updateItem(index, 'quantity', v === '' ? '' : parseFloat(v) || 0);
+                              }}
+                              min={0}
+                              step={0.01}
+                              variant="light"
+                              placeholder="0"
+                              className="!mb-0 w-full max-w-[3rem]"
+                              inputClassName="text-center"
+                            /> x 
+                            <CurrencyInput
+                              id={`line-${index}-price`}
+                              value={item.unit_price || ''}
+                              onChange={(e) => updateItem(index, 'unit_price', e.target.value ?? '')}
+                              currency={currency}
+                              variant="light"
+                              placeholder="0.00"
+                              className="!mb-0 w-full"
+                              inputProps={{ style: { textAlign: 'right' } }}
+                            /> = 
+                            <div className="text-center">
+                              {item.amount != null && item.amount !== '' ? formatCurrency(item.amount, currency) : '—'}
+                            </div>
+                          
+                          </div>
+                        </dd>
+                      </dl>
+                    </td>
+                    <td className="hidden px-3 py-3 align-top min-w-0 lg:table-cell">
+                      <InputField
+                        id={`line-${index}-desc`}
+                        value={item.description || ''}
+                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                        variant="light"
+                        placeholder="Description"
+                        className="!mb-0"
+                      />
+                    </td>
+                    <td className="hidden px-3 py-3 align-middle w-[4.5rem] sm:w-20 lg:table-cell lg:w-[4.5rem] lg:shrink-0">
+                      <div className="flex justify-center">
+                        <NumberField
+                          id={`line-${index}-qty`}
+                          value={item.quantity === '' || item.quantity == null ? '' : Number(item.quantity)}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            updateItem(index, 'quantity', v === '' ? '' : parseFloat(v) || 0);
+                          }}
+                          min={0}
+                          step={0.01}
+                          variant="light"
+                          placeholder="0"
+                          className="!mb-0 w-full max-w-[3rem]"
+                          inputClassName="text-center"
+                        />
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-3 align-middle min-w-[9rem] lg:table-cell lg:w-[9rem] lg:min-w-0 lg:shrink-0">
+                      <div className="flex justify-end">
+                        <CurrencyInput
+                          id={`line-${index}-price`}
+                          value={item.unit_price || ''}
+                          onChange={(e) => updateItem(index, 'unit_price', e.target.value ?? '')}
+                          currency={currency}
+                          variant="light"
+                          placeholder="0.00"
+                          className="!mb-0 w-full"
+                          inputProps={{ style: { textAlign: 'right' } }}
+                        />
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-3 align-middle min-w-[9rem] font-medium text-gray-700 dark:text-gray-300 tabular-nums lg:table-cell lg:w-[4.5rem] lg:min-w-0 lg:shrink-0">
+                      <div className="text-center">
+                        {item.amount != null && item.amount !== ''
+                          ? formatCurrency(item.amount, currency)
+                          : '—'}
+                      </div>
+                    </td>
+                    <td className="py-3 pl-3 pr-4 text-right sm:pr-3 lg:w-12 lg:shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => removeRow(index)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Remove item"
+                      >
+                        <HiTrash className="w-5 h-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+        <PrimaryButton type="button" onClick={addRow} className="gap-2">
+          <HiPlus className="w-5 h-5" />
+          {addLabel}
+        </PrimaryButton>
+        {items.length > 0 && (
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Subtotal: {formatCurrency(subtotal.toFixed(2), currency)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

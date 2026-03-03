@@ -30,11 +30,33 @@ function toDateOnly(v) {
 
 const STATUSES = ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired'];
 
+function toNum(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+  return Number.isNaN(n) ? null : n;
+}
+
+function normalizeLineItem(item) {
+  const quantity = toNum(item.quantity);
+  const unitPrice = String(item.unit_price ?? '').trim();
+  const unitNum = toNum(unitPrice);
+  const amount = item.amount != null && String(item.amount).trim() !== ''
+    ? String(item.amount).trim()
+    : (quantity != null && unitNum != null ? (quantity * unitNum).toFixed(2) : '');
+  return {
+    item_name: String(item.item_name ?? '').trim() || '',
+    description: String(item.description ?? '').trim() || '',
+    quantity: quantity != null ? quantity : 1,
+    unit_price: unitPrice || '',
+    amount: amount || '',
+  };
+}
+
 function parseBody(body, existing) {
   const status = body.status !== undefined
     ? (STATUSES.includes(String(body.status).toLowerCase()) ? String(body.status).toLowerCase() : (existing?.status ?? 'draft'))
     : (existing?.status ?? 'draft');
-  return {
+  const out = {
     proposal_title: String(body.proposal_title ?? existing?.proposal_title ?? '').trim() || '',
     proposal_number: String(body.proposal_number ?? existing?.proposal_number ?? '').trim() || '',
     date_created: body.date_created !== undefined ? toDateOnly(body.date_created) : (existing?.date_created ?? null),
@@ -43,12 +65,16 @@ function parseBody(body, existing) {
     status,
     estimated_value: String(body.estimated_value ?? existing?.estimated_value ?? '').trim() || '',
     scope_summary: String(body.scope_summary ?? existing?.scope_summary ?? '').trim() || '',
-    included_services_products: String(body.included_services_products ?? existing?.included_services_products ?? '').trim() || '',
     terms: String(body.terms ?? existing?.terms ?? '').trim() || '',
     linked_project: body.linked_project !== undefined ? (body.linked_project ? String(body.linked_project).trim() || null : null) : (existing?.linked_project ?? null),
     linked_contract_id: body.linked_contract_id !== undefined ? body.linked_contract_id || null : (existing?.linked_contract_id ?? null),
     updated_at: new Date().toISOString(),
   };
+  if (body.line_items !== undefined) {
+    const lineItems = Array.isArray(body.line_items) ? body.line_items : [];
+    out.line_items = lineItems.map(normalizeLineItem).filter((r) => r.item_name || r.unit_price || r.amount);
+  }
+  return out;
 }
 
 export default async function handler(req, res) {

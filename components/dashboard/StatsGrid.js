@@ -7,7 +7,7 @@ import {
 } from 'react-icons/hi';
 import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
 
-function countTotalProjects(clients) {
+function countTotalProjectsFromClients(clients) {
   if (!Array.isArray(clients) || clients.length === 0) return 0;
   return clients.reduce((sum, client) => {
     const active = client.activeProjects?.length ?? 0;
@@ -16,23 +16,26 @@ function countTotalProjects(clients) {
   }, 0);
 }
 
-function countActiveClients(clients) {
-  if (!Array.isArray(clients)) return 0;
-  return clients.filter((c) => (c.status || 'active') !== 'inactive').length;
-}
-
-function getStats(userAccount, teamMemberCount) {
+function getStats(userAccount, teamMemberCount, apiCounts = {}) {
   const projectTerm = getProjectTermForIndustry(userAccount?.industry);
   const clients = userAccount?.clients ?? [];
-  const totalProjects = countTotalProjects(clients);
-  const totalClients = clients.length;
-  const activeClients = countActiveClients(clients);
+  const totalProjects =
+    apiCounts.projectCount !== undefined && apiCounts.projectCount !== null
+      ? apiCounts.projectCount
+      : countTotalProjectsFromClients(clients);
+  const totalClients =
+    apiCounts.clientCount !== undefined && apiCounts.clientCount !== null
+      ? apiCounts.clientCount
+      : clients.length;
   const teamCount = teamMemberCount ?? userAccount?.teamMembers?.length ?? 0;
-  const invoiceCount = userAccount?.invoices?.length ?? 0;
+  const invoiceCount =
+    apiCounts.invoiceCount !== undefined && apiCounts.invoiceCount !== null
+      ? apiCounts.invoiceCount
+      : (userAccount?.invoices?.length ?? 0);
 
   return [
     { title: `Total ${projectTerm}`, value: String(totalProjects), accent: 'blue', Icon: HiFolder },
-    { title: 'Active Clients', value: String(activeClients), sub: totalClients > 0 ? `of ${totalClients} total` : null, accent: 'emerald', Icon: HiUserGroup },
+    { title: 'Clients', value: String(totalClients), accent: 'emerald', Icon: HiUserGroup },
     { title: 'Team Members', value: String(teamCount), accent: 'primary', Icon: HiUsers },
     { title: 'Total Invoices', value: String(invoiceCount), accent: 'amber', Icon: HiCurrencyDollar },
   ];
@@ -113,11 +116,12 @@ const StatCard = ({ title, value, sub, accent, Icon }) => {
  * @param {Object} props
  * @param {Object} props.userAccount - User account (clients, industry, teamMembers, invoices, etc.)
  * @param {number} [props.teamMemberCount] - Organization member count (when using org-based team)
+ * @param {Object} [props.apiCounts] - Optional counts from APIs: { clientCount, projectCount, invoiceCount }
  */
-export default function StatsGrid({ userAccount, teamMemberCount }) {
+export default function StatsGrid({ userAccount, teamMemberCount, apiCounts }) {
   const stats = useMemo(
-    () => getStats(userAccount ?? {}, teamMemberCount),
-    [userAccount, teamMemberCount]
+    () => getStats(userAccount ?? {}, teamMemberCount, apiCounts),
+    [userAccount, teamMemberCount, apiCounts]
   );
 
   return (

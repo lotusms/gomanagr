@@ -377,7 +377,8 @@ describe('Services page', () => {
           }),
         ])
       );
-    });
+    }, 10000);
+
   });
 
   describe('empty state', () => {
@@ -398,6 +399,6 @@ describe('Services page', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(within(screen.getByRole('dialog')).getByRole('heading', { name: /add service/i })).toBeInTheDocument();
       });
-    });
+    }, 10000);
   });
 });

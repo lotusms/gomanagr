@@ -75,6 +75,7 @@ export default async function handler(req, res) {
     if (proposalId) {
       const one = Array.isArray(data) ? data[0] : data;
       if (!one) return res.status(404).json({ error: 'Proposal not found' });
+      one.line_items = Array.isArray(one.line_items) ? one.line_items : [];
       return res.status(200).json({ proposal: one });
     }
 

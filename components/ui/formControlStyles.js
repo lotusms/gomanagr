@@ -3,7 +3,7 @@
  * Use these in InputField, PasswordField, Dropdown, etc. for a consistent look.
  */
 
-export const FORM_CONTROL_HEIGHT = 'h-9';
+export const FORM_CONTROL_HEIGHT = 'h-9 min-h-[2.25rem]';
 
 export const FORM_CONTROL_BASE =
   'w-full px-3 text-sm rounded-md border outline-none transition-[border-color,background-color,box-shadow] disabled:opacity-50 disabled:cursor-not-allowed';

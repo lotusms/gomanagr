@@ -153,7 +153,7 @@ export default function EditInvoicePage() {
             organizationId={organization?.id ?? null}
             invoiceId={invoiceId}
             defaultCurrency={defaultCurrency}
-            showClientDropdown={true}
+            showClientDropdown={false}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

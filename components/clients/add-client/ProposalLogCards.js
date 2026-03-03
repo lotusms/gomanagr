@@ -58,7 +58,9 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
             {clientNameByClientId && p.client_id && clientNameByClientId[p.client_id] && (
               <span className="font-medium">{clientNameByClientId[p.client_id]}</span>
             )}
-            {p.proposal_number && <span>{p.proposal_number}</span>}
+            {p.proposal_number && (
+              <span title="Proposal ID">{p.proposal_number}</span>
+            )}
             {p.status && (
               <span className="font-medium px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
                 {STATUS_LABELS[p.status] || p.status}

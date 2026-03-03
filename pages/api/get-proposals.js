@@ -70,6 +70,7 @@ export default async function handler(req, res) {
       if (!data) {
         return res.status(404).json({ error: 'Proposal not found' });
       }
+      data.line_items = Array.isArray(data.line_items) ? data.line_items : [];
       return res.status(200).json({ proposal: data });
     }
 

@@ -94,6 +94,7 @@ function DashboardContent() {
   const [teamMemberCount, setTeamMemberCount] = useState(null);
   const [accountLoaded, setAccountLoaded] = useState(false);
   const [orgSchedule, setOrgSchedule] = useState(null);
+  const [statsCounts, setStatsCounts] = useState(null);
 
   useEffect(() => {
     const role = organization?.membership?.role;
@@ -129,6 +130,32 @@ function DashboardContent() {
         setTeamMemberCount(null);
       });
   }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    const orgId = organization?.id ?? undefined;
+    Promise.all([
+      fetch('/api/get-org-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json().then((d) => (d.clients || []).length)),
+      fetch('/api/get-projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
+      }).then((r) => r.json().then((d) => (d.projects || []).length)),
+      fetch('/api/get-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
+      }).then((r) => r.json().then((d) => (d.invoices || []).length)),
+    ])
+      .then(([clientCount, projectCount, invoiceCount]) => {
+        setStatsCounts({ clientCount, projectCount, invoiceCount });
+      })
+      .catch(() => setStatsCounts(null));
+  }, [currentUser?.uid, organization?.id]);
 
   const canSeeFullSchedule = isAdminRole(organization?.membership?.role);
   useEffect(() => {
@@ -239,7 +266,11 @@ function DashboardContent() {
           </h1>
         </div>
 
-        <StatsGrid userAccount={userAccount} teamMemberCount={teamMemberCount} />
+        <StatsGrid
+          userAccount={userAccount}
+          teamMemberCount={teamMemberCount}
+          apiCounts={statsCounts}
+        />
 
         <DashboardTodos
           items={todoItems}

@@ -116,13 +116,12 @@ export default function CurrencyInput({
 
   return (
     <div className={className}>
-      <Label.Root
-        htmlFor={id}
-        className={labelClass}
-      >
-        {label}
-        {required && <span className={isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1'}>*</span>}
-      </Label.Root>
+      {label != null && label !== '' && (
+        <Label.Root htmlFor={id} className={labelClass}>
+          {label}
+          {required && <span className={isLight ? 'text-red-500 ml-1' : 'text-red-400 ml-1'}>*</span>}
+        </Label.Root>
+      )}
       <div className="relative">
         {/* Currency symbol prefix */}
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">

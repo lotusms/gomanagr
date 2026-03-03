@@ -90,6 +90,9 @@ export default function ClientInvoiceForm({
   const [tax, setTax] = useState(
     initial.tax && String(initial.tax).trim() ? unformatCurrency(String(initial.tax)) : ''
   );
+  const [discount, setDiscount] = useState(
+    initial.discount != null && String(initial.discount).trim() !== '' ? unformatCurrency(String(initial.discount)) : ''
+  );
   const [dateIssued, setDateIssued] = useState(
     toDateLocal(initial.date_issued) || toDateLocal(new Date().toISOString())
   );
@@ -278,6 +281,7 @@ export default function ClientInvoiceForm({
     }, 0);
   }, [lineItems]);
   const taxNum = parseFloat(unformatCurrency(tax)) || 0;
+  const discountNum = parseFloat(unformatCurrency(discount)) || 0;
 
   const saveServices = useCallback(
     (nextServices) => {
@@ -290,8 +294,8 @@ export default function ClientInvoiceForm({
     [userId, organizationId]
   );
   const computedTotal = lineItems.length > 0
-    ? (lineItemsSubtotal + taxNum).toFixed(2)
-    : ((parseFloat(unformatCurrency(amount)) || 0) + taxNum).toFixed(2);
+    ? (lineItemsSubtotal + taxNum - discountNum).toFixed(2)
+    : ((parseFloat(unformatCurrency(amount)) || 0) + taxNum - discountNum).toFixed(2);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -308,6 +312,7 @@ export default function ClientInvoiceForm({
         invoice_title: invoiceTitle.trim(),
         amount: amountFromItems || amount.trim(),
         tax: tax.trim(),
+        discount: discount.trim(),
         total: totalFromItems,
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
@@ -412,9 +417,18 @@ export default function ClientInvoiceForm({
               )}
               <CurrencyInput
                 id="tax"
-                label={`Tax (${defaultCurrency})`}
+                label={`Tax / VAT (${defaultCurrency})`}
                 value={tax}
                 onChange={(e) => setTax(e.target.value ?? '')}
+                currency={defaultCurrency}
+                variant="light"
+                placeholder="0.00"
+              />
+              <CurrencyInput
+                id="discount"
+                label={`Discount (${defaultCurrency})`}
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value ?? '')}
                 currency={defaultCurrency}
                 variant="light"
                 placeholder="0.00"
@@ -489,10 +503,14 @@ export default function ClientInvoiceForm({
               services={services}
               onServiceCreated={saveServices}
               teamMembers={teamMembers}
+              tax={tax}
+              discount={discount}
+              onTaxChange={(v) => setTax(v)}
+              onDiscountChange={(v) => setDiscount(v)}
             />
             {lineItems.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Leave empty to use the single Amount from Step 1. Add items to build a line-item total (subtotal + tax = total).
+                Leave empty to use the single Amount from Step 1. Add items to build a line-item total (subtotal + tax − discount = total).
               </p>
             )}
           </FormStepSection>

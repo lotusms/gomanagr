@@ -60,6 +60,7 @@ function parseBody(body, existing, computedFromItems) {
     ? String(computedFromItems.subtotal)
     : String(body.amount ?? existing?.amount ?? '').trim() || '';
   const tax = String(body.tax ?? existing?.tax ?? '').trim() || '';
+  const discount = String(body.discount ?? existing?.discount ?? '').trim() || '';
   const total = computedFromItems?.total != null
     ? String(computedFromItems.total)
     : String(body.total ?? existing?.total ?? '').trim() || '';
@@ -68,6 +69,7 @@ function parseBody(body, existing, computedFromItems) {
     invoice_title: String(body.invoice_title ?? existing?.invoice_title ?? '').trim() || '',
     amount,
     tax,
+    discount,
     total,
     date_issued: body.date_issued !== undefined ? toDateOnly(body.date_issued) : (existing?.date_issued ?? null),
     due_date: body.due_date !== undefined ? toDateOnly(body.due_date) : (existing?.due_date ?? null),
@@ -127,7 +129,8 @@ export default async function handler(req, res) {
         return sum + (a != null ? a : 0);
       }, 0);
       const taxNum = toNum(req.body.tax) || 0;
-      computedFromItems = { subtotal: subtotal.toFixed(2), total: (subtotal + taxNum).toFixed(2) };
+      const discountNum = toNum(req.body.discount) || 0;
+      computedFromItems = { subtotal: subtotal.toFixed(2), total: (subtotal + taxNum - discountNum).toFixed(2) };
     }
     const updates = parseBody(req.body, existing, computedFromItems);
     if (req.body?.file_urls !== undefined) {

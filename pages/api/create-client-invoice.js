@@ -46,6 +46,7 @@ function parseBody(body, computedFromItems) {
   const status = STATUSES.includes(String(body.status || '').toLowerCase()) ? String(body.status).toLowerCase() : 'draft';
   const amount = computedFromItems?.subtotal != null ? String(computedFromItems.subtotal) : String(body.amount ?? '').trim() || '';
   const tax = String(body.tax ?? '').trim() || '';
+  const discount = String(body.discount ?? '').trim() || '';
   const total = computedFromItems?.total != null ? String(computedFromItems.total) : String(body.total ?? '').trim() || '';
   const lineItems = Array.isArray(body.line_items) ? body.line_items : [];
   const lineItemsJson = lineItems.map(normalizeLineItem).filter((r) => r.item_name || r.unit_price || r.amount);
@@ -57,6 +58,7 @@ function parseBody(body, computedFromItems) {
     invoice_title: String(body.invoice_title ?? '').trim() || '',
     amount,
     tax,
+    discount,
     total,
     date_issued: toDateOnly(body.date_issued),
     due_date: toDateOnly(body.due_date),
@@ -96,7 +98,8 @@ export default async function handler(req, res) {
         return sum + (a != null ? a : 0);
       }, 0);
       const taxNum = toNum(req.body.tax) || 0;
-      computedFromItems = { subtotal: subtotal.toFixed(2), total: (subtotal + taxNum).toFixed(2) };
+      const discountNum = toNum(req.body.discount) || 0;
+      computedFromItems = { subtotal: subtotal.toFixed(2), total: (subtotal + taxNum - discountNum).toFixed(2) };
     }
     const row = parseBody(req.body, computedFromItems);
     if (row.user_id !== userId) return res.status(400).json({ error: 'user_id must match userId' });

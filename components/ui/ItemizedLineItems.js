@@ -14,6 +14,13 @@
  * @param {Array<{ id: string, name: string }>} [props.services] - Org/user services for dropdown (when provided with onServiceCreated)
  * @param {Function} [props.onServiceCreated] - (updatedServices: Array) => Promise<void> — persist new service so it appears everywhere
  * @param {Array} [props.teamMembers] - For Add Service form when creating from line items
+ * @param {number|string} [props.tax] - Tax/VAT amount (displayed or editable under subtotal)
+ * @param {number|string} [props.discount] - Discount amount (displayed or editable under subtotal)
+ * @param {Function} [props.onTaxChange] - (value: string) => void — when provided, tax is an editable currency field
+ * @param {Function} [props.onDiscountChange] - (value: string) => void — when provided, discount is an editable currency field
+ * @param {string} [props.taxLabel] - Label for tax row (default 'Tax/VAT')
+ * @param {string} [props.discountLabel] - Label for discount row (default 'Discount')
+ * @param {string} [props.totalLabel] - Label for total row (default 'Total')
  */
 import { useCallback } from 'react';
 import InputField from '@/components/ui/InputField';
@@ -41,6 +48,13 @@ export default function ItemizedLineItems({
   services,
   onServiceCreated,
   teamMembers = [],
+  tax = 0,
+  discount = 0,
+  onTaxChange,
+  onDiscountChange,
+  taxLabel = 'Tax/VAT',
+  discountLabel = 'Discount',
+  totalLabel = 'Total',
 }) {
   const useServiceDropdown = services != null && typeof onServiceCreated === 'function';
   const updateItem = useCallback(
@@ -84,6 +98,10 @@ export default function ItemizedLineItems({
     const a = parseFloat(item.amount);
     return sum + (Number.isNaN(a) ? 0 : a);
   }, 0);
+
+  const taxNum = typeof tax === 'number' ? tax : (parseFloat(unformatCurrency(String(tax ?? ''))) || 0);
+  const discountNum = typeof discount === 'number' ? discount : (parseFloat(unformatCurrency(String(discount ?? ''))) || 0);
+  const total = subtotal + taxNum - discountNum;
 
   return (
     <div className={className}>
@@ -284,8 +302,39 @@ export default function ItemizedLineItems({
           {addLabel}
         </PrimaryButton>
         {items.length > 0 && (
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Subtotal: {formatCurrency(subtotal.toFixed(2), currency)}
+          <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2 text-right tabular-nums">
+            <div className="font-medium">Subtotal: {formatCurrency(subtotal.toFixed(2), currency)}</div>
+            <div className="flex items-center justify-end gap-2">
+              <span className="min-w-[4rem]">{taxLabel}:</span>
+              <CurrencyInput
+                id="line-items-tax"
+                value={tax ?? ''}
+                onChange={(e) => onTaxChange ? onTaxChange(e.target.value ?? '') : undefined}
+                currency={currency}
+                variant="light"
+                placeholder="0.00"
+                className="!mb-0 w-28"
+                disabled={!onTaxChange}
+                inputProps={{ style: { textAlign: 'right' } }}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <span className="min-w-[4rem]">{discountLabel}:</span>
+              <CurrencyInput
+                id="line-items-discount"
+                value={discount ?? ''}
+                onChange={(e) => onDiscountChange ? onDiscountChange(e.target.value ?? '') : undefined}
+                currency={currency}
+                variant="light"
+                placeholder="0.00"
+                className="!mb-0 w-28"
+                disabled={!onDiscountChange}
+                inputProps={{ style: { textAlign: 'right' } }}
+              />
+            </div>
+            <div className="font-semibold pt-1 border-t border-gray-200 dark:border-gray-600 mt-1">
+              {totalLabel}: {formatCurrency(total.toFixed(2), currency)}
+            </div>
           </div>
         )}
       </div>

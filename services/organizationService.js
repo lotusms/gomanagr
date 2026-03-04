@@ -252,11 +252,14 @@ export async function updateOrganization(organizationId, updates) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', organizationId)
-      .select()
-      .single();
+      .select();
 
     if (error) throw error;
-    return data;
+    const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    if (!row) {
+      throw new Error('Organization not found or update did not return a row. You may not have permission to update this organization.');
+    }
+    return row;
   } catch (error) {
     console.error('[organizationService] Error updating organization:', error);
     throw error;

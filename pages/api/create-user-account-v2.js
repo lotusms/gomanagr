@@ -72,7 +72,7 @@ async function getAuthenticatedUserId(req) {
 
 const ROW_KEYS = new Set([
   'userId', 'id', 'email', 'firstName', 'lastName', 'purpose', 'role',
-  'createdAt', 'updatedAt',
+  'createdAt', 'updatedAt', 'companyName', 'companyLogo',
 ]);
 
 function userDataToRow(data) {
@@ -87,6 +87,8 @@ function userDataToRow(data) {
     role: (data.role || '').trim(),
     created_at: data.createdAt || new Date().toISOString(),
     updated_at: data.updatedAt || new Date().toISOString(),
+    company_name: (data.companyName != null && data.companyName !== '') ? String(data.companyName).trim() : null,
+    company_logo: (data.companyLogo != null && data.companyLogo !== '') ? String(data.companyLogo).trim() : '',
   };
 
   Object.entries(data || {}).forEach(([key, value]) => {
@@ -102,6 +104,8 @@ function userDataToRow(data) {
   }
   if (data.developerMode !== undefined) profile.developerMode = data.developerMode;
   if (data.nameView != null) profile.nameView = data.nameView;
+  if (data.companyName != null) profile.companyName = data.companyName;
+  if (data.companyLogo != null) profile.companyLogo = data.companyLogo;
 
   row.profile = profile;
   return row;
@@ -230,11 +234,19 @@ export default async function handler(req, res) {
       console.log('[API] Service role test query result (may be empty table):', testErr.message);
     }
 
-    const { data: existingProfile } = await supabaseAdmin
+    const { data: existingProfile, error: existingError } = await supabaseAdmin
       .from('user_profiles')
       .select('id')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('[API] Error checking existing profile:', existingError);
+      return res.status(500).json({
+        error: 'profile-check-failed',
+        message: existingError.message || 'Failed to check user profile',
+      });
+    }
 
     let userProfile;
     let userError;
@@ -245,19 +257,33 @@ export default async function handler(req, res) {
         .from('user_profiles')
         .update(userRow)
         .eq('id', userId)
-        .select()
-        .single();
-      userProfile = data;
-      userError = error;
+        .select();
+      if (error) {
+        userProfile = null;
+        userError = error;
+      } else {
+        userError = null;
+        userProfile = Array.isArray(data) && data.length > 0 ? data[0] : null;
+        if (!userProfile) {
+          userError = new Error('Update succeeded but no row returned. The profile may not exist or RLS may be blocking the select.');
+        }
+      }
     } else {
       console.log('[API] Creating new profile:', userId);
       const { data, error } = await supabaseAdmin
         .from('user_profiles')
         .insert(userRow)
-        .select()
-        .single();
-      userProfile = data;
-      userError = error;
+        .select();
+      if (error) {
+        userProfile = null;
+        userError = error;
+      } else {
+        userError = null;
+        userProfile = Array.isArray(data) && data.length > 0 ? data[0] : null;
+        if (!userProfile) {
+          userError = new Error('Insert succeeded but no row returned.');
+        }
+      }
     }
 
     if (userError) {
@@ -496,7 +522,7 @@ export default async function handler(req, res) {
         )
       `)
       .eq('id', organizationId)
-      .single();
+      .maybeSingle();
 
     if (orgFetchError) {
       console.error('[API] Error fetching organization:', orgFetchError);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount, listStorageFiles, getStoragePublicUrl, removeStorageFiles } from '@/services/userService';
-import { getUserOrganization, updateOrganization } from '@/services/organizationService';
+import { getUserOrganization } from '@/services/organizationService';
 import { HiCloudUpload, HiX, HiPlus } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import InputField from '@/components/ui/InputField';
@@ -74,34 +74,40 @@ export default function OrganizationSettings() {
       const orgName = orgData?.name || userData?.companyName || '';
       const orgLogo = orgData?.logo_url || userData?.companyLogo || '';
       const orgIndustry = orgData?.industry || userData?.industry || '';
-      
-      console.log('[OrganizationSettings] Resolved values:', {
-        orgName,
-        orgLogo,
-        orgIndustry,
-      });
-      
+      const orgAddress = orgData?.address_line_1 ?? userData?.organizationAddress ?? '';
+      const orgAddress2 = orgData?.address_line_2 ?? userData?.organizationAddress2 ?? '';
+      const orgCity = orgData?.city ?? userData?.organizationCity ?? '';
+      const orgState = orgData?.state ?? userData?.organizationState ?? '';
+      const orgPostalCode = orgData?.postal_code ?? userData?.organizationPostalCode ?? '';
+      const orgCountry = orgData?.country ?? userData?.organizationCountry ?? '';
+      const orgPhone = orgData?.phone ?? userData?.organizationPhone ?? '';
+      const orgBusinessHoursStart = orgData?.business_hours_start ?? userData?.businessHoursStart ?? '08:00';
+      const orgBusinessHoursEnd = orgData?.business_hours_end ?? userData?.businessHoursEnd ?? '18:00';
+      const userLocations = userData?.locations || [];
+      const existingLocations = Array.isArray(orgData?.locations) && orgData.locations.length
+        ? orgData.locations
+        : userLocations;
+
       if (orgLogo && orgLogo.trim() !== '') {
         setLogoPreview(orgLogo);
       } else {
         setLogoPreview(null);
       }
-      
-      const hqAddress = userData?.organizationAddress || '';
-      const existingLocations = userData?.locations || [];
+
+      const hqAddress = orgAddress || userData?.organizationAddress || '';
       let locations = [];
-      
+
       if (hqAddress.trim()) {
         locations = [{
           address: hqAddress.trim(),
-          address2: userData.organizationAddress2 || '',
-          city: userData.organizationCity || '',
-          state: userData.organizationState || '',
-          postalCode: userData.organizationPostalCode || '',
-          country: userData.organizationCountry || '',
+          address2: orgAddress2 || userData?.organizationAddress2 || '',
+          city: orgCity || userData?.organizationCity || '',
+          state: orgState || userData?.organizationState || '',
+          postalCode: orgPostalCode || userData?.organizationPostalCode || '',
+          country: orgCountry || userData?.organizationCountry || '',
         }];
       }
-      
+
       existingLocations.forEach(loc => {
         if (loc) {
           if (typeof loc === 'object' && loc.address) {
@@ -134,15 +140,15 @@ export default function OrganizationSettings() {
         companyLogo: orgLogo,
         logoFile: null,
         industry: orgIndustry,
-        organizationCountry: userData?.organizationCountry || '',
-        organizationAddress: userData?.organizationAddress || '',
-        organizationAddress2: userData?.organizationAddress2 || '',
-        organizationPhone: userData?.organizationPhone || '',
-        organizationCity: userData?.organizationCity || '',
-        organizationState: userData?.organizationState || '',
-        organizationPostalCode: userData?.organizationPostalCode || '',
-        businessHoursStart: userData?.businessHoursStart || '08:00',
-        businessHoursEnd: userData?.businessHoursEnd || '18:00',
+        organizationCountry: orgCountry || '',
+        organizationAddress: orgAddress || '',
+        organizationAddress2: orgAddress2 || '',
+        organizationPhone: orgPhone || '',
+        organizationCity: orgCity || '',
+        organizationState: orgState || '',
+        organizationPostalCode: orgPostalCode || '',
+        businessHoursStart: orgBusinessHoursStart || '08:00',
+        businessHoursEnd: orgBusinessHoursEnd || '18:00',
         locations: locations,
       });
     } catch (err) {
@@ -262,9 +268,19 @@ export default function OrganizationSettings() {
         throw new Error('Organization not found');
       }
 
-      await updateOrganization(orgData.id, {
-        logo_url: '',
+      const orgRes = await fetch('/api/update-organization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: orgData.id,
+          userId: currentUser.uid,
+          updates: { logo_url: '' },
+        }),
       });
+      if (!orgRes.ok) {
+        const errData = await orgRes.json().catch(() => ({}));
+        throw new Error(errData.error || orgRes.statusText || 'Failed to remove logo');
+      }
 
       const userData = await getUserAccount(currentUser.uid);
       const updatedData = await createUserAccount(
@@ -356,11 +372,34 @@ export default function OrganizationSettings() {
         }
       }
       
-      const updatedOrg = await updateOrganization(orgData.id, {
-        name: dataToSave.companyName || '',
-        logo_url: logoUrl,
-        industry: dataToSave.industry || '',
+      const orgRes = await fetch('/api/update-organization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: orgData.id,
+          userId: currentUser.uid,
+          updates: {
+            name: dataToSave.companyName || '',
+            logo_url: logoUrl,
+            industry: dataToSave.industry || '',
+            address_line_1: (dataToSave.organizationAddress || '').trim() || null,
+            address_line_2: (dataToSave.organizationAddress2 || '').trim() || null,
+            city: (dataToSave.organizationCity || '').trim() || null,
+            state: (dataToSave.organizationState || '').trim() || null,
+            postal_code: (dataToSave.organizationPostalCode || '').trim() || null,
+            country: (dataToSave.organizationCountry || '').trim() || null,
+            phone: (dataToSave.organizationPhone || '').trim() || null,
+            website: (dataToSave.organizationWebsite || '').trim() || null,
+            business_hours_start: (dataToSave.businessHoursStart || '').trim() || null,
+            business_hours_end: (dataToSave.businessHoursEnd || '').trim() || null,
+            locations: Array.isArray(dataToSave.locations) ? dataToSave.locations : [],
+          },
+        }),
       });
+      if (!orgRes.ok) {
+        const errData = await orgRes.json().catch(() => ({}));
+        throw new Error(errData.error || orgRes.statusText || 'Failed to update organization');
+      }
 
       const hqAddress = dataToSave.organizationAddress || '';
       let locations = dataToSave.locations || [];

@@ -1,7 +1,9 @@
-import { HiDocumentText, HiTrash } from 'react-icons/hi';
+import { useState } from 'react';
+import { HiDocumentText, HiTrash, HiEye, HiPrinter } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
-import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
+import { DocumentViewDialog } from '@/components/documents';
+import { buildProposalDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -23,13 +25,16 @@ export default function ProposalCardServiceStyle({
   onDelete,
   clientNameByClientId = {},
   defaultCurrency = 'USD',
+  organization = null,
 }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
+  const [viewState, setViewState] = useState({ open: false, autoPrint: false });
 
   const clientName = proposal.client_id && clientNameByClientId[proposal.client_id];
   const statusLabel = proposal.status ? (STATUS_LABELS[proposal.status] || proposal.status) : null;
+  const company = buildCompanyForDocument(account, organization);
 
   return (
     <div
@@ -57,7 +62,31 @@ export default function ProposalCardServiceStyle({
               </h3>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setViewState({ open: true, autoPrint: false });
+              }}
+              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+              title="View proposal"
+            >
+              <HiEye className="size-5" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setViewState({ open: true, autoPrint: true });
+              }}
+              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+              title="Print proposal"
+            >
+              <HiPrinter className="size-5" />
+            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -93,12 +122,6 @@ export default function ProposalCardServiceStyle({
           )}
         </div>
 
-        {proposal.estimated_value != null && proposal.estimated_value !== '' && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            Est. value: {formatCurrency(proposal.estimated_value, defaultCurrency)}
-          </p>
-        )}
-
         {proposal.scope_summary && (
           <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed whitespace-pre-wrap">
             {proposal.scope_summary}
@@ -109,6 +132,18 @@ export default function ProposalCardServiceStyle({
           <p className="text-sm text-gray-400 dark:text-gray-500 italic">No scope summary</p>
         )}
       </div>
+      {viewState.open && (
+        <DocumentViewDialog
+          isOpen={viewState.open}
+          onClose={() => setViewState({ open: false, autoPrint: false })}
+          type="proposal"
+          document={buildProposalDocumentPayload(proposal)}
+          company={company}
+          client={{ name: clientName || 'Client', email: '' }}
+          currency={defaultCurrency}
+          autoPrint={viewState.autoPrint}
+        />
+      )}
     </div>
   );
 }

@@ -166,7 +166,7 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   );
 }
 
-function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD' }) {
+function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
   const router = useRouter();
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -244,6 +244,9 @@ function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaul
         onDelete={setProposalToDelete}
         borderClass={type.borderClass}
         defaultCurrency={defaultCurrency}
+        clientName={clientName}
+        clientEmail={clientEmail}
+        clientAddressLines={clientAddressLines}
       />
       <ConfirmationDialog
         isOpen={!!proposalToDelete}
@@ -260,7 +263,7 @@ function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   );
 }
 
-function InvoicesBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD' }) {
+function InvoicesBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
   const router = useRouter();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -338,6 +341,9 @@ function InvoicesBlock({ clientId, userId, organizationId, onHasEntries, default
         onDelete={setInvoiceToDelete}
         borderClass={type.borderClass}
         defaultCurrency={defaultCurrency}
+        clientName={clientName}
+        clientEmail={clientEmail}
+        clientAddressLines={clientAddressLines}
       />
       <ConfirmationDialog
         isOpen={!!invoiceToDelete}
@@ -598,6 +604,9 @@ export default function DocumentsFilesSection({
   onOnlineResourcesChange,
   initialSection,
   defaultCurrency = 'USD',
+  clientName = '',
+  clientEmail = '',
+  clientAddressLines = [],
 }) {
   const router = useRouter();
   const useContractsFromApi = Boolean(clientId && userId);
@@ -769,6 +778,9 @@ export default function DocumentsFilesSection({
           organizationId={organizationId}
           onHasEntries={setHasProposalEntries}
           defaultCurrency={defaultCurrency}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          clientAddressLines={clientAddressLines}
         />
       ) : selectedKey === 'invoices' && useInvoicesFromApi ? (
         <InvoicesBlock
@@ -777,6 +789,9 @@ export default function DocumentsFilesSection({
           organizationId={organizationId}
           onHasEntries={setHasInvoiceEntries}
           defaultCurrency={defaultCurrency}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          clientAddressLines={clientAddressLines}
         />
       ) : selectedKey === 'attachments' && useAttachmentsFromApi ? (
         <AttachmentsBlock

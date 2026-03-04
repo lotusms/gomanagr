@@ -169,6 +169,7 @@ function InvoicesContent() {
                   onDelete={setInvoiceToDelete}
                   clientNameByClientId={clientNameByClientId}
                   defaultCurrency={defaultCurrency}
+                  organization={organization}
                 />
               ))}
             </div>

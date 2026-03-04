@@ -80,7 +80,6 @@ export default function ServiceCombobox({
           placeholder={placeholder}
           searchable={true}
           searchThreshold={0}
-          listGrowsWithContent={true}
           usePortal={true}
         />
       </div>

@@ -30,7 +30,7 @@ describe('ClientInvoiceForm', () => {
   beforeEach(() => {
     global.fetch = jest.fn((url, opts) => {
       const u = typeof url === 'string' ? url : opts?.url;
-      if (u?.includes?.('get-client-proposals')) {
+      if (u?.includes?.('get-client-proposals') || u?.includes?.('get-proposals')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ proposals: [] }) });
       }
       if (u?.includes?.('get-client-contracts')) {
@@ -66,9 +66,9 @@ describe('ClientInvoiceForm', () => {
     expect(paymentSelect).toBeInTheDocument();
   });
 
-  it('shows Linked proposal, Linked project, Linked contract dropdowns', async () => {
+  it('shows Use Proposal in header and Linked project, Linked contract in step 1', async () => {
     render(<ClientInvoiceForm {...defaultProps} />);
-    expect(await screen.findByText('Linked proposal')).toBeInTheDocument();
+    expect(await screen.findByText('Use Proposal')).toBeInTheDocument();
     expect(screen.getByText('Linked project')).toBeInTheDocument();
     expect(screen.getByText('Linked contract')).toBeInTheDocument();
   });

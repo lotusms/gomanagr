@@ -2,7 +2,7 @@ import InputField from '@/components/ui/InputField';
 import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import * as Label from '@radix-ui/react-label';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
-import { getLabelClasses } from '@/components/ui/formControlStyles';
+import { getLabelClasses, FORM_CONTROL_HEIGHT } from '@/components/ui/formControlStyles';
 
 export default function BasicInfoSection({
   firstName,
@@ -66,7 +66,7 @@ export default function BasicInfoSection({
               onValueChange={(value) => {
                 if (value) onStatusChange(value);
               }}
-              className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-0.5 h-10"
+              className={`inline-flex rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-0.5 ${FORM_CONTROL_HEIGHT}`}
             >
               <ToggleGroup.Item
                 value="active"
@@ -112,6 +112,7 @@ export default function BasicInfoSection({
           <InputField
             id="email"
             label="Email"
+            sublabel="Email must be entered for invoicing purposes."
             type="email"
             value={email}
             onChange={onEmailChange}
@@ -129,7 +130,7 @@ export default function BasicInfoSection({
               onValueChange={(value) => {
                 if (value) onPreferredCommunicationChange(value);
               }}
-              className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-0.5 h-10"
+              className={`inline-flex rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-0.5 ${FORM_CONTROL_HEIGHT}`}
             >
               <ToggleGroup.Item
                 value="email"

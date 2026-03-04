@@ -63,7 +63,6 @@ function parseBody(body, existing) {
     date_sent: body.date_sent !== undefined ? toDateOnly(body.date_sent) : (existing?.date_sent ?? null),
     expiration_date: body.expiration_date !== undefined ? toDateOnly(body.expiration_date) : (existing?.expiration_date ?? null),
     status,
-    estimated_value: String(body.estimated_value ?? existing?.estimated_value ?? '').trim() || '',
     scope_summary: String(body.scope_summary ?? existing?.scope_summary ?? '').trim() || '',
     terms: String(body.terms ?? existing?.terms ?? '').trim() || '',
     linked_project: body.linked_project !== undefined ? (body.linked_project ? String(body.linked_project).trim() || null : null) : (existing?.linked_project ?? null),

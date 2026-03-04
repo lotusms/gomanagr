@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { ensureAttachmentsFromFiles } = require('@/lib/syncFilesToAttachments');
+// Invoice fields aligned with form and Supabase: see lib/invoiceSchema.js
 
 let supabaseAdmin;
 try {
@@ -77,6 +78,8 @@ function parseBody(body, computedFromItems) {
     linked_contract_id: body.linked_contract_id || null,
     notes: body.notes ? String(body.notes).trim() || null : null,
     line_items: lineItemsJson,
+    ever_sent: Boolean(body.ever_sent),
+    date_sent: toDateOnly(body.date_sent),
   };
 }
 

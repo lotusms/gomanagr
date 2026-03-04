@@ -5,7 +5,7 @@ import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
 import CurrencyInput from '@/components/ui/CurrencyInput';
-import { ItemizedLineItems, DocumentFormHeader, FormStepNav, FormStepFooter, FormStepContent, FormStepSection } from '@/components/ui';
+import { ItemizedLineItems, DocumentFormHeader, FormStepNav, FormStepFooter, FormStepContent, FormStepSection, useToast } from '@/components/ui';
 import { unformatCurrency } from '@/utils/formatCurrency';
 import { getOrgServices, updateOrgServices, getUserAccount, updateServices } from '@/services/userService';
 
@@ -58,6 +58,7 @@ export default function ClientProposalForm({
   proposalId,
   defaultCurrency = 'USD',
   showClientDropdown = false,
+  clientEmail: clientEmailProp,
   onSuccess,
   onCancel,
 }) {
@@ -76,13 +77,11 @@ export default function ClientProposalForm({
   const [dateSent, setDateSent] = useState(toDateLocal(initial.date_sent) || '');
   const [expirationDate, setExpirationDate] = useState(toDateLocal(initial.expiration_date) || '');
   const [status, setStatus] = useState(initial.status ?? 'draft');
-  const [estimatedValue, setEstimatedValue] = useState(
-    initial.estimated_value && String(initial.estimated_value).trim()
-      ? unformatCurrency(String(initial.estimated_value))
-      : ''
-  );
   const [scopeSummary, setScopeSummary] = useState(initial.scope_summary ?? '');
   const [lineItems, setLineItems] = useState(() => normalizeLineItems(initial.line_items));
+  const [tax, setTax] = useState(initial.tax != null && String(initial.tax).trim() !== '' ? String(initial.tax) : '');
+  const [discount, setDiscount] = useState(initial.discount != null && String(initial.discount).trim() !== '' ? String(initial.discount) : '');
+  const [discountType, setDiscountType] = useState('amount');
   const [terms, setTerms] = useState(initial.terms ?? '');
   const [fileUrls, setFileUrls] = useState(
     Array.isArray(initial.file_urls) && initial.file_urls.length > 0
@@ -100,6 +99,17 @@ export default function ClientProposalForm({
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const toast = useToast();
+
+  const everSent = Boolean(initial.ever_sent);
+  const secondarySubmitLabel = !everSent
+    ? 'Send Proposal'
+    : hasUserEdited
+      ? 'Save and Resend'
+      : 'Resend';
+
+  const markDirty = useCallback(() => setHasUserEdited(true), []);
 
   const STEPS = [
     { id: 1, label: 'Details', description: 'Dates & value' },
@@ -109,6 +119,13 @@ export default function ClientProposalForm({
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
   const effectiveClientId = (clientId && String(clientId).trim()) || null;
+  const clientEmailFromList = showClientDropdown && effectiveClientId
+    ? (clients.find((c) => c.id === effectiveClientId)?.email ?? '')
+    : '';
+  const clientEmail = (clientEmailProp != null && String(clientEmailProp).trim()) !== ''
+    ? String(clientEmailProp).trim()
+    : (clientEmailFromList && String(clientEmailFromList).trim()) || '';
+  const clientEmailTrimmed = clientEmail;
 
   // Prepopulate next Proposal ID when creating (editable for historical entries).
   // Only fetch when organizationId is set so we always get the org prefix (B2B: org always exists).
@@ -250,54 +267,104 @@ export default function ClientProposalForm({
     [userId, organizationId]
   );
 
+  const buildPayload = () => ({
+    userId,
+    clientId: effectiveClientId,
+    organizationId: organizationId || undefined,
+    proposal_title: proposalTitle.trim(),
+    proposal_number: proposalNumber.trim(),
+    date_created: dateCreated.trim() || null,
+    date_sent: dateSent.trim() || null,
+    expiration_date: expirationDate.trim() || null,
+    status,
+    scope_summary: scopeSummary.trim(),
+    terms: terms.trim(),
+    file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
+    linked_project: linkedProject.trim() || null,
+    linked_contract_id: linkedContractId.trim() || null,
+    line_items: lineItems.map((item) => ({
+      item_name: item.item_name,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      amount: item.amount,
+    })),
+  });
+
+  /** Saves the proposal and returns the proposal id (existing or newly created). */
+  const saveProposal = async () => {
+    const payload = buildPayload();
+    if (proposalId) {
+      const res = await fetch('/api/update-client-proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, proposalId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to update proposal');
+      return proposalId;
+    }
+    const res = await fetch('/api/create-client-proposal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to create proposal');
+    return data?.id ?? null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!proposalTitle.trim()) {
+      setError('Proposal title is required.');
+      return;
+    }
     setSaving(true);
     try {
-      const estimatedFromItems = lineItems.length > 0 ? String(lineItemsSubtotal.toFixed(2)) : estimatedValue.trim();
-      const payload = {
-        userId,
-        clientId: effectiveClientId,
-        organizationId: organizationId || undefined,
-        proposal_title: proposalTitle.trim(),
-        proposal_number: proposalNumber.trim(),
-        date_created: dateCreated.trim() || null,
-        date_sent: dateSent.trim() || null,
-        expiration_date: expirationDate.trim() || null,
-        status,
-        estimated_value: estimatedFromItems || estimatedValue.trim(),
-        scope_summary: scopeSummary.trim(),
-        terms: terms.trim(),
-        file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
-        linked_project: linkedProject.trim() || null,
-        linked_contract_id: linkedContractId.trim() || null,
-        line_items: lineItems.map((item) => ({
-          item_name: item.item_name,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          amount: item.amount,
-        })),
-      };
+      await saveProposal();
+      setHasUserEdited(false);
+      toast.success('Proposal saved.');
+      onSuccess?.();
+    } catch (err) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-      if (proposalId) {
-        const res = await fetch('/api/update-client-proposal', {
+  const handleSaveAndSend = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!proposalTitle.trim()) {
+      setError('Proposal title is required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const id = await saveProposal();
+      if (id && clientEmailTrimmed) {
+        const selectedOption = clientOptions.find((o) => o.value === (showClientDropdown ? selectedClientId : clientIdProp));
+        const clientNameForEmail = selectedOption?.label && selectedOption.label !== 'Select client' ? selectedOption.label : undefined;
+        const sendRes = await fetch('/api/send-proposal-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, proposalId }),
+          body: JSON.stringify({
+            userId,
+            organizationId: organizationId || undefined,
+            proposalId: id,
+            to: clientEmailTrimmed,
+            clientName: clientNameForEmail,
+          }),
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to update proposal');
+        const sendData = await sendRes.json().catch(() => ({}));
+        if (!sendRes.ok) throw new Error(sendData.error || 'Failed to send email');
+        toast.success('Proposal saved and email sent to client.');
       } else {
-        const res = await fetch('/api/create-client-proposal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to create proposal');
+        toast.success('Proposal saved.');
       }
+      setHasUserEdited(false);
       onSuccess?.();
     } catch (err) {
       setError(err.message || 'Something went wrong');
@@ -320,15 +387,16 @@ export default function ClientProposalForm({
         titleLabel="Proposal title"
         titleValue={proposalTitle}
         titlePlaceholder="e.g. Website redesign proposal"
-        onTitleChange={(e) => setProposalTitle(e.target.value)}
+        titleRequired
+        onTitleChange={(e) => { markDirty(); setProposalTitle(e.target.value); }}
         documentIdLabel="Proposal ID"
         documentIdValue={proposalNumber}
         documentIdPlaceholder="Auto-generated or enter your own"
-        onDocumentIdChange={(e) => setProposalNumber(e.target.value)}
+        onDocumentIdChange={(e) => { markDirty(); setProposalNumber(e.target.value); }}
         statusLabel="Status"
         statusValue={status}
         statusOptions={STATUS_OPTIONS}
-        onStatusChange={(e) => setStatus(e.target.value ?? 'draft')}
+        onStatusChange={(e) => { markDirty(); setStatus(e.target.value ?? 'draft'); }}
         statusPlaceholder="Draft"
         showClientDropdown={showClientDropdown}
         selectedClientId={selectedClientId}
@@ -348,24 +416,15 @@ export default function ClientProposalForm({
         {step === 1 && (
           <FormStepSection>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <DateField id="date-created" label="Date created" value={dateCreated} onChange={(e) => setDateCreated(e.target.value)} variant="light" />
-              <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => setDateSent(e.target.value)} variant="light" />
-              <DateField id="expiration-date" label="Expiration date" value={expirationDate} onChange={(e) => setExpirationDate(e.target.value)} variant="light" />
-              <CurrencyInput
-                id="estimated-value"
-                label={`Estimated value (${defaultCurrency})`}
-                value={estimatedValue}
-                onChange={(e) => setEstimatedValue(e.target.value ?? '')}
-                currency={defaultCurrency}
-                variant="light"
-                placeholder="0.00"
-              />
+              <DateField id="date-created" label="Date created" value={dateCreated} onChange={(e) => { markDirty(); setDateCreated(e.target.value); }} variant="light" />
+              <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => { markDirty(); setDateSent(e.target.value); }} variant="light" />
+              <DateField id="expiration-date" label="Expiration date" value={expirationDate} onChange={(e) => { markDirty(); setExpirationDate(e.target.value); }} variant="light" />
               <Dropdown
                 id="linked-project"
                 name="linked-project"
                 label="Linked project"
                 value={linkedProject}
-                onChange={(e) => setLinkedProject(e.target.value ?? '')}
+                onChange={(e) => { markDirty(); setLinkedProject(e.target.value ?? ''); }}
                 options={projectOptions}
                 placeholder="Select project"
                 searchable={false}
@@ -375,7 +434,7 @@ export default function ClientProposalForm({
                 name="linked-contract"
                 label="Linked contract"
                 value={linkedContractId}
-                onChange={(e) => setLinkedContractId(e.target.value ?? '')}
+                onChange={(e) => { markDirty(); setLinkedContractId(e.target.value ?? ''); }}
                 options={contractOptions}
                 placeholder={contractsLoading ? 'Loading…' : 'None'}
                 searchable={contractOptions.length > 10}
@@ -386,7 +445,7 @@ export default function ClientProposalForm({
               id="scope-summary"
               label="Scope summary"
               value={scopeSummary}
-              onChange={(e) => setScopeSummary(e.target.value)}
+              onChange={(e) => { markDirty(); setScopeSummary(e.target.value); }}
               rows={3}
               placeholder="Summary of scope and deliverables"
             />
@@ -401,13 +460,19 @@ export default function ClientProposalForm({
               </label>
               <ItemizedLineItems
                 items={lineItems}
-                onChange={setLineItems}
+                onChange={(items) => { markDirty(); setLineItems(items); }}
                 currency={defaultCurrency}
                 itemLabel="Service"
                 addLabel="Add item"
                 services={services}
                 onServiceCreated={saveServices}
                 teamMembers={teamMembers}
+                tax={tax}
+                discount={discount}
+                onTaxChange={(v) => { markDirty(); setTax(v); }}
+                onDiscountChange={(v) => { markDirty(); setDiscount(v); }}
+                discountType={discountType}
+                onDiscountTypeChange={(v) => { markDirty(); setDiscountType(v); }}
               />
             </div>
           </FormStepSection>
@@ -419,7 +484,7 @@ export default function ClientProposalForm({
               id="proposal-file"
               label="Proposal files (PDF/document)"
               value={fileUrls}
-              onChange={setFileUrls}
+              onChange={(v) => { markDirty(); setFileUrls(v); }}
               onUpload={uploadFile}
               accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               multiple={true}
@@ -429,7 +494,7 @@ export default function ClientProposalForm({
               id="terms"
               label="Terms"
               value={terms}
-              onChange={(e) => setTerms(e.target.value)}
+              onChange={(e) => { markDirty(); setTerms(e.target.value); }}
               rows={4}
               placeholder="Terms and conditions"
             />
@@ -443,9 +508,14 @@ export default function ClientProposalForm({
         onBack={() => setStep(step - 1)}
         onCancel={onCancel}
         onNext={() => setStep(step + 1)}
-        submitLabel={proposalId ? 'Update proposal' : 'Add proposal'}
+        submitLabel="Save proposal"
+        onSubmitClick={() => handleSubmit({ preventDefault: () => {} })}
         saving={saving}
         submitDisabled={showClientDropdown && !effectiveClientId}
+        secondarySubmitLabel={secondarySubmitLabel}
+        onSecondarySubmitClick={handleSaveAndSend}
+        secondarySubmitDisabled={!clientEmailTrimmed}
+        noClientEmailWarning="(no email exists for this client)"
       />
     </form>
   );

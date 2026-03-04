@@ -166,7 +166,7 @@ function ProposalsContent() {
                   onSelect={(id) => router.push(`/dashboard/proposals/${id}/edit`)}
                   onDelete={setProposalToDelete}
                   clientNameByClientId={clientNameByClientId}
-                  defaultCurrency={defaultCurrency}
+                  organization={organization}
                 />
               ))}
             </div>

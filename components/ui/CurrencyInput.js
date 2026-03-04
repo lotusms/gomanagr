@@ -20,10 +20,12 @@ import { formatCurrency, unformatCurrency } from '@/utils/formatCurrency';
  * @param {boolean} props.disabled - Whether field is disabled
  * @param {string} props.variant - 'dark' or 'light' variant
  * @param {Object} props.inputProps - Additional props for input element
+ * @param {string} [props.sublabel] - Optional hint text below the label
  */
 export default function CurrencyInput({
   id,
   label,
+  sublabel,
   value,
   onChange,
   currency = 'USD',
@@ -144,6 +146,11 @@ export default function CurrencyInput({
           {...inputProps}
         />
       </div>
+      {sublabel != null && sublabel !== '' && (!value || String(value).trim() === '') && (
+        <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+          {sublabel}
+        </p>
+      )}
       {error && (
         <p id={`${id}-error`} className={errorTextClass} role="alert">
           {error}

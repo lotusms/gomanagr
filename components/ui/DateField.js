@@ -23,10 +23,12 @@ import { useOptionalUserAccount } from '@/lib/UserAccountContext';
  * @param {string} props.max - Maximum date in YYYY-MM-DD format
  * @param {string} props.timezone - User's timezone (e.g., 'America/New_York')
  * @param {string} props.dateFormat - User's date format preference (e.g., 'MM/DD/YYYY')
+ * @param {string} [props.sublabel] - Optional hint text below the label
  */
 export default function DateField({
   id,
   label,
+  sublabel,
   value = '',
   onChange,
   onBlur,
@@ -350,6 +352,9 @@ export default function DateField({
         )}
       </div>
 
+      {sublabel != null && sublabel !== '' && (!value || String(value).trim() === '') && (
+        <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">{sublabel}</p>
+      )}
       {error && (
         <p id={`${id}-error`} className={errorTextClass} role="alert">
           {error}

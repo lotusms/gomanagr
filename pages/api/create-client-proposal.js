@@ -52,7 +52,6 @@ function parseBody(body) {
     date_sent: toDateOnly(body.date_sent),
     expiration_date: toDateOnly(body.expiration_date),
     status,
-    estimated_value: String(body.estimated_value ?? '').trim() || '',
     scope_summary: String(body.scope_summary ?? '').trim() || '',
     terms: String(body.terms ?? '').trim() || '',
     file_url: null,

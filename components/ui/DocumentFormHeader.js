@@ -1,13 +1,14 @@
 /**
  * Reusable ever-present header for document forms (proposals, invoices, etc.).
- * Shows: title, optional client dropdown, document ID, status.
- * Use at the top of multi-step forms to keep identity visible.
+ * Shows: title, optional client dropdown, document ID, status, and optional extra blocks
+ * (e.g. "Use Proposal" for invoices). Use at the top of multi-step forms to keep identity visible.
  *
  * @param {string} sectionLabel - e.g. "Proposal", "Invoice"
  * @param {string} idPrefix - Prefix for input ids (e.g. "proposal", "invoice")
  * @param {string} titleLabel - Label for title field
  * @param {string} titleValue - Title value
  * @param {string} [titlePlaceholder] - Title placeholder
+ * @param {boolean} [titleRequired] - Whether the title field is required
  * @param {Function} onTitleChange - (e) => void
  * @param {string} documentIdLabel - e.g. "Proposal ID", "Invoice ID"
  * @param {string} documentIdValue - Document ID value
@@ -23,6 +24,12 @@
  * @param {Function} [onClientChange] - (e) => void
  * @param {Array<{value: string, label: string}>} [clientOptions] - Client dropdown options
  * @param {boolean} [clientsLoading] - Client options loading state
+ * @param {boolean} [showUseProposalDropdown] - Whether to show "Use Proposal" dropdown (e.g. invoice from proposal)
+ * @param {string} [useProposalValue] - Selected proposal id
+ * @param {Function} [onUseProposalChange] - (e) => void
+ * @param {Array<{value: string, label: string}>} [useProposalOptions] - Proposal options (per-client or all)
+ * @param {boolean} [useProposalLoading] - Proposal options loading state
+ * @param {string} [useProposalPlaceholder] - Placeholder when no proposal selected
  */
 import InputField from '@/components/ui/InputField';
 import Dropdown from '@/components/ui/Dropdown';
@@ -33,6 +40,7 @@ export default function DocumentFormHeader({
   titleLabel,
   titleValue,
   titlePlaceholder,
+  titleRequired = false,
   onTitleChange,
   documentIdLabel,
   documentIdValue,
@@ -48,10 +56,21 @@ export default function DocumentFormHeader({
   onClientChange,
   clientOptions = [],
   clientsLoading = false,
+  showUseProposalDropdown = false,
+  useProposalValue = '',
+  onUseProposalChange,
+  useProposalOptions = [],
+  useProposalLoading = false,
+  useProposalPlaceholder = 'No — fill manually',
 }) {
+  const gridCols =
+    showClientDropdown && showUseProposalDropdown
+      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-5'
+      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid ${gridCols} gap-4`}>
         <InputField
           id={`${idPrefix}-title`}
           label={titleLabel}
@@ -59,22 +78,19 @@ export default function DocumentFormHeader({
           onChange={onTitleChange}
           variant="light"
           placeholder={titlePlaceholder}
+          required={titleRequired}
         />
         {showClientDropdown && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`${idPrefix}-client`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Client
-            </label>
-            <Dropdown
-              id={`${idPrefix}-client`}
-              name={`${idPrefix}-client`}
-              value={selectedClientId}
-              onChange={(e) => onClientChange?.(e)}
-              options={clientOptions}
-              placeholder={clientsLoading ? 'Loading…' : 'Select client'}
-              searchable={clientOptions.length > 10}
-            />
-          </div>
+          <Dropdown
+            id={`${idPrefix}-client`}
+            name={`${idPrefix}-client`}
+            label="Client"
+            value={selectedClientId}
+            onChange={(e) => onClientChange?.(e)}
+            options={clientOptions}
+            placeholder={clientsLoading ? 'Loading…' : 'Select client'}
+            searchable={clientOptions.length > 10}
+          />
         )}
         <InputField
           id={`${idPrefix}-number`}
@@ -94,6 +110,18 @@ export default function DocumentFormHeader({
           placeholder={statusPlaceholder}
           searchable={false}
         />
+        {showUseProposalDropdown && (
+          <Dropdown
+            id={`${idPrefix}-use-proposal`}
+            name={`${idPrefix}-use-proposal`}
+            label="Use Proposal"
+            value={useProposalValue}
+            onChange={(e) => onUseProposalChange?.(e)}
+            options={useProposalOptions}
+            placeholder={useProposalLoading ? 'Loading…' : useProposalPlaceholder}
+            searchable={useProposalOptions.length > 5}
+          />
+        )}
       </div>
     </div>
   );

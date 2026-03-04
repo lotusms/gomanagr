@@ -198,7 +198,9 @@ export default function DashboardLayout({ children }) {
       setPreview(e.detail || null);
     };
     const handleUpdated = (e) => {
-      if (e.detail) setAccount((prev) => ({ ...prev, ...e.detail }));
+      if (!e.detail) return;
+      const payload = e.detail.payload ?? (e.detail.type === 'useraccount-updated' ? undefined : e.detail);
+      setAccount((prev) => ({ ...prev, ...(payload || e.detail) }));
     };
     window.addEventListener('useraccount-preview', handlePreview);
     window.addEventListener('useraccount-updated', handleUpdated);

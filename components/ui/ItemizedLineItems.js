@@ -18,6 +18,8 @@
  * @param {number|string} [props.discount] - Discount amount (displayed or editable under subtotal)
  * @param {Function} [props.onTaxChange] - (value: string) => void — when provided, tax is an editable currency field
  * @param {Function} [props.onDiscountChange] - (value: string) => void — when provided, discount is an editable currency field
+ * @param {string} [props.discountType] - 'amount' (default) = discount in $; 'percent' = discount as % of subtotal
+ * @param {Function} [props.onDiscountTypeChange] - (value: 'amount' | 'percent') => void
  * @param {string} [props.taxLabel] - Label for tax row (default 'Tax/VAT')
  * @param {string} [props.discountLabel] - Label for discount row (default 'Discount')
  * @param {string} [props.totalLabel] - Label for total row (default 'Total')
@@ -52,6 +54,8 @@ export default function ItemizedLineItems({
   discount = 0,
   onTaxChange,
   onDiscountChange,
+  discountType = 'amount',
+  onDiscountTypeChange,
   taxLabel = 'Tax/VAT',
   discountLabel = 'Discount',
   totalLabel = 'Total',
@@ -100,8 +104,11 @@ export default function ItemizedLineItems({
   }, 0);
 
   const taxNum = typeof tax === 'number' ? tax : (parseFloat(unformatCurrency(String(tax ?? ''))) || 0);
-  const discountNum = typeof discount === 'number' ? discount : (parseFloat(unformatCurrency(String(discount ?? ''))) || 0);
-  const total = subtotal + taxNum - discountNum;
+  const discountAmount =
+    discountType === 'percent'
+      ? subtotal * ((parseFloat(String(discount ?? '').replace(/[^\d.-]/g, '')) || 0) / 100)
+      : (typeof discount === 'number' ? discount : (parseFloat(unformatCurrency(String(discount ?? ''))) || 0));
+  const total = subtotal - discountAmount + taxNum;
 
   return (
     <div className={className}>
@@ -302,37 +309,98 @@ export default function ItemizedLineItems({
           {addLabel}
         </PrimaryButton>
         {items.length > 0 && (
-          <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2 text-right tabular-nums">
+          <div className="text-sm text-gray-700 dark:text-gray-300 space-y-4 text-right tabular-nums">
             <div className="font-medium">Subtotal: {formatCurrency(subtotal.toFixed(2), currency)}</div>
-            <div className="flex items-center justify-end gap-2">
-              <span className="min-w-[4rem]">{taxLabel}:</span>
-              <CurrencyInput
-                id="line-items-tax"
-                value={tax ?? ''}
-                onChange={(e) => onTaxChange ? onTaxChange(e.target.value ?? '') : undefined}
-                currency={currency}
-                variant="light"
-                placeholder="0.00"
-                className="!mb-0 w-28"
-                disabled={!onTaxChange}
-                inputProps={{ style: { textAlign: 'right' } }}
-              />
+            <div className="flex flex-col items-end gap-1">
+              {onDiscountTypeChange && (
+                <div className="flex items-center justify-end gap-2">
+                  <span className="min-w-[4rem]">Discount type:</span>
+                  <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 p-0.5">
+                    <button
+                    type="button"
+                    onClick={() => onDiscountTypeChange('amount')}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      discountType === 'amount'
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    $
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDiscountTypeChange('percent')}
+                    className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                      discountType === 'percent'
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    %
+                  </button>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-2">
+                <span className="min-w-[4rem]">{discountLabel}:</span>
+                {discountType === 'percent' ? (
+                  <NumberField
+                    id="line-items-discount"
+                    value={
+                      discount != null && discount !== ''
+                        ? (() => {
+                            const n = parseFloat(String(discount).replace(/[^\d.-]/g, ''));
+                            return !Number.isNaN(n) && n > 100 ? '100' : discount;
+                          })()
+                        : (discount ?? '')
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value ?? '';
+                      const n = parseFloat(raw.replace(/[^\d.-]/g, ''));
+                      if (raw !== '' && !Number.isNaN(n) && n > 100) {
+                        onDiscountChange?.('100');
+                      } else {
+                        onDiscountChange?.(raw);
+                      }
+                    }}
+                    placeholder="0"
+                    className="!mb-0 w-20"
+                    variant="light"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    inputClassName="text-right"
+                  />
+                ) : (
+                  <CurrencyInput
+                    id="line-items-discount"
+                    value={discount ?? ''}
+                    onChange={(e) => onDiscountChange?.(e.target.value ?? '')}
+                    currency={currency}
+                    variant="light"
+                    placeholder="0.00"
+                    className="!mb-0 w-28"
+                    inputProps={{ style: { textAlign: 'right' } }}
+                  />
+                )}
+                {/* {discountType === 'percent' && <span className="text-gray-500">%</span>} */}
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <span className="min-w-[4rem]">{taxLabel}:</span>
+                <CurrencyInput
+                  id="line-items-tax"
+                  value={tax ?? ''}
+                  onChange={(e) => onTaxChange?.(e.target.value ?? '')}
+                  currency={currency}
+                  variant="light"
+                  placeholder="0.00"
+                  className="!mb-0 w-28"
+                  inputProps={{ style: { textAlign: 'right' } }}
+                />
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-2">
-              <span className="min-w-[4rem]">{discountLabel}:</span>
-              <CurrencyInput
-                id="line-items-discount"
-                value={discount ?? ''}
-                onChange={(e) => onDiscountChange ? onDiscountChange(e.target.value ?? '') : undefined}
-                currency={currency}
-                variant="light"
-                placeholder="0.00"
-                className="!mb-0 w-28"
-                disabled={!onDiscountChange}
-                inputProps={{ style: { textAlign: 'right' } }}
-              />
-            </div>
-            <div className="font-semibold pt-1 border-t border-gray-200 dark:border-gray-600 mt-1">
+            
+            <div className="font-semibold pt-1 border-t border-gray-200 dark:border-gray-600 mt-1 text-lg">
               {totalLabel}: {formatCurrency(total.toFixed(2), currency)}
             </div>
           </div>

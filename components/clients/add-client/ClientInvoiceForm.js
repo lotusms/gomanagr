@@ -8,6 +8,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { ItemizedLineItems, DocumentFormHeader, FormStepNav, FormStepFooter, FormStepContent, FormStepSection } from '@/components/ui';
 import { unformatCurrency } from '@/utils/formatCurrency';
 import { getOrgServices, updateOrgServices, getUserAccount, updateServices } from '@/services/userService';
+// Invoice fields aligned with API and Supabase: see lib/invoiceSchema.js
 
 function toDateLocal(iso) {
   if (!iso) return '';
@@ -93,11 +94,13 @@ export default function ClientInvoiceForm({
   const [discount, setDiscount] = useState(
     initial.discount != null && String(initial.discount).trim() !== '' ? unformatCurrency(String(initial.discount)) : ''
   );
+  const [discountType, setDiscountType] = useState('amount');
   const [dateIssued, setDateIssued] = useState(
     toDateLocal(initial.date_issued) || toDateLocal(new Date().toISOString())
   );
   const [dueDate, setDueDate] = useState(toDateLocal(initial.due_date) || '');
   const [paidDate, setPaidDate] = useState(toDateLocal(initial.paid_date) || '');
+  const [dateSent, setDateSent] = useState(toDateLocal(initial.date_sent) || '');
   const [paymentMethod, setPaymentMethod] = useState(initial.payment_method ?? '');
   const [outstandingBalance, setOutstandingBalance] = useState(
     initial.outstanding_balance && String(initial.outstanding_balance).trim()
@@ -124,6 +127,17 @@ export default function ClientInvoiceForm({
   const [projectOptions, setProjectOptions] = useState([{ value: '', label: 'No project' }]);
   const [services, setServices] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const [hasBeenSentThisSession, setHasBeenSentThisSession] = useState(false);
+
+  const everSent = Boolean(initial.ever_sent) || hasBeenSentThisSession;
+  const secondarySubmitLabel = !everSent
+    ? 'Send Invoice'
+    : hasUserEdited
+      ? 'Save and Resend'
+      : 'Resend';
+
+  const markDirty = useCallback(() => setHasUserEdited(true), []);
 
   const STEPS = [
     { id: 1, label: 'Details', description: 'Dates & amounts' },
@@ -178,19 +192,37 @@ export default function ClientInvoiceForm({
     })),
   ];
 
+  // Load proposals: all on Invoices page; filtered by client when inside a client section
   useEffect(() => {
-    if (!effectiveClientId || !userId) return;
-    setProposalsLoading(true);
-    fetch('/api/get-client-proposals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, clientId: effectiveClientId, organizationId: organizationId || undefined }),
-    })
-      .then((res) => res.json())
-      .then((data) => setProposals(data.proposals || []))
-      .catch(() => setProposals([]))
-      .finally(() => setProposalsLoading(false));
-  }, [effectiveClientId, userId, organizationId]);
+    if (!userId) return;
+    if (clientIdProp) {
+      // Client section (e.g. clients/[id]/invoices/new): load this client's proposals only
+      setProposalsLoading(true);
+      fetch('/api/get-client-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, clientId: clientIdProp, organizationId: organizationId || undefined }),
+      })
+        .then((res) => res.json())
+        .then((data) => setProposals(data.proposals || []))
+        .catch(() => setProposals([]))
+        .finally(() => setProposalsLoading(false));
+    } else if (showClientDropdown) {
+      // Invoices page (e.g. invoices/new): load all proposals, no filter by client
+      setProposalsLoading(true);
+      fetch('/api/get-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, organizationId: organizationId || undefined }),
+      })
+        .then((res) => res.json())
+        .then((data) => setProposals(data.proposals || []))
+        .catch(() => setProposals([]))
+        .finally(() => setProposalsLoading(false));
+    } else {
+      setProposals([]);
+    }
+  }, [clientIdProp, userId, organizationId, showClientDropdown]);
 
   useEffect(() => {
     if (!effectiveClientId || !userId) return;
@@ -240,7 +272,7 @@ export default function ClientInvoiceForm({
   ];
 
   const startFromProposalOptions = [
-    { value: '', label: 'No — fill invoice manually' },
+    { value: '', label: 'Fill invoice manually' },
     ...proposals.map((p) => ({
       value: p.id,
       label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
@@ -261,9 +293,10 @@ export default function ClientInvoiceForm({
         setInvoiceTitle(proposal.proposal_title ?? '');
         setLinkedProposalId(proposalId);
         if (proposal.linked_project) setLinkedProject(proposal.linked_project);
+        if (showClientDropdown && proposal.client_id) setSelectedClientId(proposal.client_id);
       }
     },
-    [proposals]
+    [proposals, showClientDropdown]
   );
   const contractOptions = [
     { value: '', label: 'None' },
@@ -309,7 +342,12 @@ export default function ClientInvoiceForm({
     }, 0);
   }, [lineItems]);
   const taxNum = parseFloat(unformatCurrency(tax)) || 0;
-  const discountNum = parseFloat(unformatCurrency(discount)) || 0;
+  const discountPctRaw = parseFloat(String(discount).replace(/[^\d.-]/g, '')) || 0;
+  const discountPctClamped = discountType === 'percent' ? Math.min(100, Math.max(0, discountPctRaw)) : 0;
+  const discountAmount =
+    discountType === 'percent'
+      ? lineItemsSubtotal * (discountPctClamped / 100)
+      : parseFloat(unformatCurrency(discount)) || 0;
 
   const saveServices = useCallback(
     (nextServices) => {
@@ -322,8 +360,8 @@ export default function ClientInvoiceForm({
     [userId, organizationId]
   );
   const computedTotal = lineItems.length > 0
-    ? (lineItemsSubtotal + taxNum - discountNum).toFixed(2)
-    : ((parseFloat(unformatCurrency(amount)) || 0) + taxNum - discountNum).toFixed(2);
+    ? (lineItemsSubtotal + taxNum - discountAmount).toFixed(2)
+    : ((parseFloat(unformatCurrency(amount)) || 0) + taxNum - discountAmount).toFixed(2);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -332,6 +370,12 @@ export default function ClientInvoiceForm({
     try {
       const amountFromItems = lineItems.length > 0 ? String(lineItemsSubtotal.toFixed(2)) : amount.trim();
       const totalFromItems = lineItems.length > 0 ? computedTotal : computedTotal;
+      const pct = discountType === 'percent'
+        ? Math.min(100, Math.max(0, parseFloat(String(discount).replace(/[^\d.-]/g, '')) || 0)) / 100
+        : 0;
+      const baseForPct = lineItems.length > 0 ? lineItemsSubtotal : (parseFloat(unformatCurrency(amount)) || 0);
+      const discountPayload =
+        discountType === 'percent' ? String((baseForPct * pct).toFixed(2)) : discount.trim();
       const payload = {
         userId,
         clientId: effectiveClientId,
@@ -340,11 +384,13 @@ export default function ClientInvoiceForm({
         invoice_title: invoiceTitle.trim(),
         amount: amountFromItems || amount.trim(),
         tax: tax.trim(),
-        discount: discount.trim(),
+        discount: discountPayload,
         total: totalFromItems,
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
         paid_date: paidDate.trim() || null,
+        date_sent: dateSent.trim() || null,
+        ever_sent: invoiceId ? (initial.ever_sent ?? false) : false,
         status,
         payment_method: paymentMethod.trim(),
         outstanding_balance: outstandingBalance.trim(),
@@ -379,9 +425,84 @@ export default function ClientInvoiceForm({
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Failed to create invoice');
       }
+      setHasUserEdited(false);
       onSuccess?.();
     } catch (err) {
       setError(err.message || 'Something went wrong');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAndSend = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSaving(true);
+    const dateSentToday = new Date().toISOString().slice(0, 10);
+    try {
+      const amountFromItems = lineItems.length > 0 ? String(lineItemsSubtotal.toFixed(2)) : amount.trim();
+      const totalFromItems = lineItems.length > 0 ? computedTotal : computedTotal;
+      const pct = discountType === 'percent'
+        ? Math.min(100, Math.max(0, parseFloat(String(discount).replace(/[^\d.-]/g, '')) || 0)) / 100
+        : 0;
+      const baseForPct = lineItems.length > 0 ? lineItemsSubtotal : (parseFloat(unformatCurrency(amount)) || 0);
+      const discountPayload =
+        discountType === 'percent' ? String((baseForPct * pct).toFixed(2)) : discount.trim();
+      const payload = {
+        userId,
+        clientId: effectiveClientId,
+        organizationId: organizationId || undefined,
+        invoice_number: invoiceNumber.trim(),
+        invoice_title: invoiceTitle.trim(),
+        amount: amountFromItems || amount.trim(),
+        tax: tax.trim(),
+        discount: discountPayload,
+        total: totalFromItems,
+        date_issued: dateIssued.trim() || null,
+        due_date: dueDate.trim() || null,
+        paid_date: paidDate.trim() || null,
+        date_sent: dateSentToday,
+        ever_sent: true,
+        status,
+        payment_method: paymentMethod.trim(),
+        outstanding_balance: outstandingBalance.trim(),
+        file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
+        related_proposal_id: linkedProposalId.trim() || null,
+        related_project: linkedProject.trim() || null,
+        linked_contract_id: linkedContractId.trim() || null,
+        notes: notes.trim() || null,
+        line_items: lineItems.map((item) => ({
+          item_name: item.item_name,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          amount: item.amount,
+        })),
+      };
+
+      if (invoiceId) {
+        const res = await fetch('/api/update-client-invoice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, invoiceId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to update invoice');
+      } else {
+        const res = await fetch('/api/create-client-invoice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to create invoice');
+      }
+      setDateSent(dateSentToday);
+      setHasBeenSentThisSession(true);
+      setHasUserEdited(false);
+      onSuccess?.();
+    } catch (err) {
+      setError(err.message || 'Failed to save and send invoice');
     } finally {
       setSaving(false);
     }
@@ -401,21 +522,27 @@ export default function ClientInvoiceForm({
         titleLabel="Invoice title"
         titleValue={invoiceTitle}
         titlePlaceholder="Description or reason"
-        onTitleChange={(e) => setInvoiceTitle(e.target.value)}
+        onTitleChange={(e) => { markDirty(); setInvoiceTitle(e.target.value); }}
         documentIdLabel="Invoice ID"
         documentIdValue={invoiceNumber}
         documentIdPlaceholder="Auto-generated or enter your own"
-        onDocumentIdChange={(e) => setInvoiceNumber(e.target.value)}
+        onDocumentIdChange={(e) => { markDirty(); setInvoiceNumber(e.target.value); }}
         statusLabel="Status"
         statusValue={status}
         statusOptions={STATUS_OPTIONS}
-        onStatusChange={(e) => setStatus(e.target.value ?? 'draft')}
+        onStatusChange={(e) => { markDirty(); setStatus(e.target.value ?? 'draft'); }}
         statusPlaceholder="Draft"
         showClientDropdown={showClientDropdown}
         selectedClientId={selectedClientId}
-        onClientChange={(e) => setSelectedClientId(e.target.value ?? '')}
+        onClientChange={(e) => { markDirty(); setSelectedClientId(e.target.value ?? ''); }}
         clientOptions={clientOptions}
         clientsLoading={clientsLoading}
+        showUseProposalDropdown={true}
+        useProposalValue={startFromProposalId}
+        onUseProposalChange={(e) => { markDirty(); handleStartFromProposalChange(e.target.value ?? ''); }}
+        useProposalOptions={startFromProposalOptions}
+        useProposalLoading={proposalsLoading}
+        useProposalPlaceholder={effectiveClientId ? 'Fill invoice manually' : 'Select a proposal'}
       />
 
       <FormStepNav
@@ -427,31 +554,18 @@ export default function ClientInvoiceForm({
 
       <FormStepContent>
         {step === 1 && (
-          <FormStepSection>
+          <FormStepSection title="Details" description="Dates, payment & links">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {effectiveClientId && (
-                <div className="sm:col-span-2 lg:col-span-3">
-                  <Dropdown
-                    id="start-from-proposal"
-                    name="start-from-proposal"
-                    label="Start from a proposal?"
-                    value={startFromProposalId}
-                    onChange={(e) => handleStartFromProposalChange(e.target.value ?? '')}
-                    options={startFromProposalOptions}
-                    placeholder={proposalsLoading ? 'Loading…' : 'No — fill invoice manually'}
-                    searchable={startFromProposalOptions.length > 10}
-                  />
-                </div>
-              )}
-              <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => setDateIssued(e.target.value)} variant="light" />
-              <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} variant="light" />
-              <DateField id="paid-date" label="Paid date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} variant="light" />
+              <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => { markDirty(); setDateIssued(e.target.value); }} variant="light" />
+              <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => { markDirty(); setDueDate(e.target.value); }} variant="light" />
+              <DateField id="paid-date" label="Paid date" value={paidDate} onChange={(e) => { markDirty(); setPaidDate(e.target.value); }} variant="light" />
+              <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => { markDirty(); setDateSent(e.target.value); }} variant="light" />
               {lineItems.length === 0 && (
                 <CurrencyInput
                   id="amount"
                   label={`Amount (${defaultCurrency})`}
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value ?? '')}
+                  onChange={(e) => { markDirty(); setAmount(e.target.value ?? ''); }}
                   currency={defaultCurrency}
                   variant="light"
                   placeholder="0.00"
@@ -462,7 +576,7 @@ export default function ClientInvoiceForm({
                 name="payment-method"
                 label="Payment method"
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value ?? '')}
+                onChange={(e) => { markDirty(); setPaymentMethod(e.target.value ?? ''); }}
                 options={PAYMENT_METHOD_OPTIONS}
                 placeholder="None"
                 searchable={false}
@@ -471,27 +585,17 @@ export default function ClientInvoiceForm({
                 id="outstanding-balance"
                 label={`Outstanding balance (${defaultCurrency})`}
                 value={outstandingBalance}
-                onChange={(e) => setOutstandingBalance(e.target.value ?? '')}
+                onChange={(e) => { markDirty(); setOutstandingBalance(e.target.value ?? ''); }}
                 currency={defaultCurrency}
                 variant="light"
                 placeholder="0.00"
-              />
-              <Dropdown
-                id="linked-proposal"
-                name="linked-proposal"
-                label="Linked proposal"
-                value={linkedProposalId}
-                onChange={(e) => setLinkedProposalId(e.target.value ?? '')}
-                options={proposalOptions}
-                placeholder={proposalsLoading ? 'Loading…' : 'None'}
-                searchable={proposalOptions.length > 10}
               />
               <Dropdown
                 id="linked-project"
                 name="linked-project"
                 label="Linked project"
                 value={linkedProject}
-                onChange={(e) => setLinkedProject(e.target.value ?? '')}
+                onChange={(e) => { markDirty(); setLinkedProject(e.target.value ?? ''); }}
                 options={projectOptions}
                 placeholder="Select project"
                 searchable={false}
@@ -501,7 +605,7 @@ export default function ClientInvoiceForm({
                 name="linked-contract"
                 label="Linked contract"
                 value={linkedContractId}
-                onChange={(e) => setLinkedContractId(e.target.value ?? '')}
+                onChange={(e) => { markDirty(); setLinkedContractId(e.target.value ?? ''); }}
                 options={contractOptions}
                 placeholder={contractsLoading ? 'Loading…' : 'None'}
                 searchable={contractOptions.length > 10}
@@ -511,10 +615,10 @@ export default function ClientInvoiceForm({
         )}
 
         {step === 2 && (
-          <FormStepSection>
+          <FormStepSection title="Line items" description="Itemize what you're charging for">
             <ItemizedLineItems
               items={lineItems}
-              onChange={setLineItems}
+              onChange={(items) => { markDirty(); setLineItems(items); }}
               currency={defaultCurrency}
               itemLabel="Item"
               addLabel="Add item"
@@ -523,8 +627,10 @@ export default function ClientInvoiceForm({
               teamMembers={teamMembers}
               tax={tax}
               discount={discount}
-              onTaxChange={(v) => setTax(v)}
-              onDiscountChange={(v) => setDiscount(v)}
+              onTaxChange={(v) => { markDirty(); setTax(v); }}
+              onDiscountChange={(v) => { markDirty(); setDiscount(v); }}
+              discountType={discountType}
+              onDiscountTypeChange={(v) => { markDirty(); setDiscountType(v); }}
             />
             {lineItems.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -540,7 +646,7 @@ export default function ClientInvoiceForm({
               id="notes"
               label="Notes"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => { markDirty(); setNotes(e.target.value); }}
               rows={4}
               placeholder="Include any notes here"
             />
@@ -548,7 +654,7 @@ export default function ClientInvoiceForm({
               id="invoice-file"
               label="Invoice files (PDF)"
               value={fileUrls}
-              onChange={setFileUrls}
+              onChange={(v) => { markDirty(); setFileUrls(v); }}
               onUpload={uploadFile}
               accept=".pdf,application/pdf"
               multiple={true}
@@ -565,8 +671,11 @@ export default function ClientInvoiceForm({
         onCancel={onCancel}
         onNext={() => setStep(step + 1)}
         submitLabel={invoiceId ? 'Update invoice' : 'Add invoice'}
+        onSubmitClick={() => handleSubmit({ preventDefault: () => {} })}
         saving={saving}
         submitDisabled={showClientDropdown && !effectiveClientId}
+        secondarySubmitLabel={secondarySubmitLabel}
+        onSecondarySubmitClick={handleSaveAndSend}
       />
     </form>
   );

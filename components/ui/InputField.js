@@ -25,10 +25,12 @@ import { getInputClasses, getLabelClasses } from './formControlStyles';
  * @param {Object} props.inputProps - Additional props to pass to the input element
  * @param {Function} props.validate - Validation function that returns error message or null
  * @param {string} props.variant - 'dark' (default) for dark backgrounds, 'light' for light backgrounds
+ * @param {string} [props.sublabel] - Optional hint text below the label (e.g. "Required for invoicing")
  */
 const InputField = forwardRef(({
   id,
   label,
+  sublabel,
   type = 'text',
   value,
   onChange,
@@ -128,7 +130,11 @@ const InputField = forwardRef(({
           </div>
         )}
       </div>
-      
+      {sublabel != null && sublabel !== '' && (!value || String(value).trim() === '') && (
+        <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+          {sublabel}
+        </p>
+      )}
       {/* Error message */}
       {displayError && (
         <p id={`${id}-error`} className={errorTextClass} role="alert">

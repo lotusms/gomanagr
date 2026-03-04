@@ -16,6 +16,7 @@ export default function NewClientProposalPage() {
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [clientEmail, setClientEmail] = useState('');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -25,16 +26,30 @@ export default function NewClientProposalPage() {
 
   useEffect(() => {
     if (!currentUser?.uid || !clientId) return;
-    getUserAccount(currentUser.uid)
-      .then((account) => {
-        const client = account?.clients?.find((c) => c.id === clientId);
+    (async () => {
+      try {
+        const account = await getUserAccount(currentUser.uid);
+        let clients = account?.clients ?? [];
+        const orgRes = await fetch('/api/get-org-clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.uid }),
+        });
+        const orgData = await orgRes.json().catch(() => ({}));
+        const orgClients = orgData?.clients ?? [];
+        if (orgClients.length > 0) clients = orgClients;
+        const client = clients.find((c) => c.id === clientId);
         const currency =
           client?.defaultCurrency ||
           account?.clientSettings?.defaultCurrency ||
           'USD';
         setDefaultCurrency(currency);
-      })
-      .catch(() => setDefaultCurrency('USD'));
+        const email = (client?.email && String(client.email).trim()) || '';
+        setClientEmail(email);
+      } catch {
+        setDefaultCurrency('USD');
+      }
+    })();
   }, [currentUser?.uid, clientId]);
 
   useEffect(() => {
@@ -70,6 +85,7 @@ export default function NewClientProposalPage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
+            clientEmail={clientEmail}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

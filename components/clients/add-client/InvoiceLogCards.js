@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import CardDeleteButton from './CardDeleteButton';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
+import { DocumentViewDialog } from '@/components/documents';
+import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
+import { HiEye, HiPrinter } from 'react-icons/hi';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -12,10 +16,19 @@ const STATUS_LABELS = {
   void: 'Void',
 };
 
-export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD' }) {
+/**
+ * @param {string} [clientName] - Client display name (for document view when in single-client context)
+ * @param {string} [clientEmail] - Client email (for document view)
+ * @param {string[]} [clientAddressLines] - Client address lines for Bill to (e.g. from billing or company address)
+ */
+export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
+  const [viewState, setViewState] = useState({ invoice: null, autoPrint: false });
+
+  const company = buildCompanyForDocument(account);
+  const closeView = () => setViewState({ invoice: null, autoPrint: false });
 
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';
   const cardClass = borderClass ? baseClass + ' ' + borderClass : baseClass;
@@ -36,7 +49,31 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
           }}
           className={cardClass}
         >
-          <div className="absolute top-1 right-1 flex items-center">
+          <div className="absolute top-1 right-1 flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setViewState({ invoice: inv, autoPrint: false });
+              }}
+              className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 transition-colors"
+              title="View invoice"
+            >
+              <HiEye className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setViewState({ invoice: inv, autoPrint: true });
+              }}
+              className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 transition-colors"
+              title="Print invoice"
+            >
+              <HiPrinter className="w-4 h-4" />
+            </button>
             <CardDeleteButton
               onDelete={() => onDelete(inv.id)}
               title="Delete invoice"
@@ -61,6 +98,22 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
           )}
         </div>
       ))}
+      {viewState.invoice && (
+        <DocumentViewDialog
+          isOpen={!!viewState.invoice}
+          onClose={closeView}
+          type="invoice"
+          document={buildInvoiceDocumentPayload(viewState.invoice)}
+          company={company}
+          client={{
+            name: clientName || 'Client',
+            email: clientEmail || '',
+            ...(clientAddressLines.length > 0 ? { addressLines: clientAddressLines } : {}),
+          }}
+          currency={defaultCurrency}
+          autoPrint={viewState.autoPrint}
+        />
+      )}
     </div>
   );
 }

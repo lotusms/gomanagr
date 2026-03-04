@@ -1,7 +1,7 @@
 /**
  * Updates a client invoice. POST body: { userId, invoiceId, organizationId?, ...fields }
+ * Invoice fields aligned with form and Supabase: see lib/invoiceSchema.js
  */
-
 const { createClient } = require('@supabase/supabase-js');
 const { ensureAttachmentsFromFiles } = require('@/lib/syncFilesToAttachments');
 
@@ -81,6 +81,8 @@ function parseBody(body, existing, computedFromItems) {
     related_project: body.related_project !== undefined ? (body.related_project ? String(body.related_project).trim() || null : null) : (existing?.related_project ?? null),
     linked_contract_id: body.linked_contract_id !== undefined ? body.linked_contract_id || null : (existing?.linked_contract_id ?? null),
     notes: body.notes !== undefined ? (body.notes ? String(body.notes).trim() || null : null) : (existing?.notes ?? null),
+    ever_sent: body.ever_sent !== undefined ? Boolean(body.ever_sent) : (existing?.ever_sent ?? false),
+    date_sent: body.date_sent !== undefined ? toDateOnly(body.date_sent) : (existing?.date_sent ?? null),
     updated_at: new Date().toISOString(),
   };
   if (body.line_items !== undefined) {

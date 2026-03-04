@@ -18,6 +18,7 @@ export default function EditClientProposalPage() {
   const [orgReady, setOrgReady] = useState(false);
   const [proposal, setProposal] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [clientEmail, setClientEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -31,16 +32,30 @@ export default function EditClientProposalPage() {
 
   useEffect(() => {
     if (!currentUser?.uid || !clientId) return;
-    getUserAccount(currentUser.uid)
-      .then((account) => {
-        const client = account?.clients?.find((c) => c.id === clientId);
+    (async () => {
+      try {
+        const account = await getUserAccount(currentUser.uid);
+        let clients = account?.clients ?? [];
+        const orgRes = await fetch('/api/get-org-clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.uid }),
+        });
+        const orgData = await orgRes.json().catch(() => ({}));
+        const orgClients = orgData?.clients ?? [];
+        if (orgClients.length > 0) clients = orgClients;
+        const client = clients.find((c) => c.id === clientId);
         const currency =
           client?.defaultCurrency ||
           account?.clientSettings?.defaultCurrency ||
           'USD';
         setDefaultCurrency(currency);
-      })
-      .catch(() => setDefaultCurrency('USD'));
+        const email = (client?.email && String(client.email).trim()) || '';
+        setClientEmail(email);
+      } catch {
+        setDefaultCurrency('USD');
+      }
+    })();
   }, [currentUser?.uid, clientId]);
 
   useEffect(() => {
@@ -139,6 +154,7 @@ export default function EditClientProposalPage() {
             organizationId={organization?.id ?? null}
             proposalId={proposalId}
             defaultCurrency={defaultCurrency}
+            clientEmail={clientEmail}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

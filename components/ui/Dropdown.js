@@ -22,6 +22,7 @@ import {
  * @param {boolean} props.disabled - Whether dropdown is disabled
  * @param {string} props.className - Additional CSS classes
  * @param {string} props.label - Label text
+ * @param {string} [props.sublabel] - Optional hint text below the label
  * @param {boolean} props.required - Whether field is required
  * @param {boolean} props.searchable - Whether to show search field (default: true if options.length > 10)
  * @param {number} props.searchThreshold - Show search when options exceed this count (default: 10)
@@ -43,6 +44,7 @@ export default function Dropdown({
   searchThreshold = 10,
   listGrowsWithContent = false,
   usePortal = false,
+  sublabel,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,6 +84,7 @@ export default function Dropdown({
       const rect = containerRef.current.getBoundingClientRect();
       setPopupRect({
         top: rect.bottom,
+        triggerTop: rect.top,
         left: rect.left,
         width: rect.width,
       });
@@ -160,7 +163,7 @@ export default function Dropdown({
       const opening = !isOpen;
       if (opening && usePortal && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        setPopupRect({ top: rect.bottom, left: rect.left, width: rect.width });
+        setPopupRect({ top: rect.bottom, triggerTop: rect.top, left: rect.left, width: rect.width });
       }
       setIsOpen(!isOpen);
     }
@@ -202,7 +205,13 @@ export default function Dropdown({
           </div>
         </div>
       )}
-      <div className={listGrowsWithContent ? '' : 'max-h-[300px] overflow-y-auto'}>
+      <div
+        className={
+          listGrowsWithContent
+            ? ''
+            : 'min-h-0 flex-1 overflow-y-auto max-h-[300px]'
+        }
+      >
         {filteredOptions.length === 0 ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">
             {searchQuery ? 'No options found' : 'No options available'}
@@ -252,9 +261,31 @@ export default function Dropdown({
 
   const popupBaseClass = 'bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700';
   const popupWrapperClassName = `z-[9999] ${popupBaseClass} min-w-full`;
-  const popupPortalClassName = `z-[9999] ${popupBaseClass}`;
-  const popupWrapperStyle = usePortal && popupRect
-    ? { position: 'fixed', top: popupRect.top + 4, left: popupRect.left, width: popupRect.width, minWidth: popupRect.width }
+  const popupPortalClassName = `z-[9999] ${popupBaseClass} overflow-hidden flex flex-col`;
+  const VIEWPORT_GAP_PX = 80;
+  const MIN_SPACE_BELOW_TO_OPEN_DOWN_PX = 250;
+
+  const popupWrapperStyle = usePortal && popupRect && typeof window !== 'undefined'
+    ? (() => {
+        const spaceBelow = window.innerHeight - popupRect.top;
+        const openUpward = spaceBelow < MIN_SPACE_BELOW_TO_OPEN_DOWN_PX;
+        const triggerTop = popupRect.triggerTop ?? 0;
+        return {
+          position: 'fixed',
+          left: popupRect.left,
+          width: popupRect.width,
+          minWidth: popupRect.width,
+          ...(openUpward
+            ? {
+                bottom: window.innerHeight - triggerTop + 4,
+                maxHeight: Math.max(150, triggerTop - 4 - VIEWPORT_GAP_PX),
+              }
+            : {
+                top: popupRect.top + 4,
+                maxHeight: `calc(100vh - ${popupRect.top + 4}px - ${VIEWPORT_GAP_PX}px)`,
+              }),
+        };
+      })()
     : {};
 
   return (
@@ -293,10 +324,15 @@ export default function Dropdown({
           </div>
         )}
       </div>
+      {sublabel != null && sublabel !== '' && (value === undefined || value === null || value === '') && (
+        <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">{sublabel}</p>
+      )}
       {isOpen && !disabled && usePortal && popupRect && typeof document !== 'undefined' &&
         createPortal(
           <div ref={popupRef} className={popupPortalClassName} style={popupWrapperStyle}>
-            {dropdownPanelContent}
+            <div className="flex flex-col min-h-0 h-full overflow-hidden">
+              {dropdownPanelContent}
+            </div>
           </div>,
           document.body
         )}

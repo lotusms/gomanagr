@@ -69,6 +69,20 @@ function getAdminNavItems(accountIndustry, memberRole) {
 
 const MD_BREAKPOINT = 768;
 
+/** Paths that must match exactly (no child routes). Home/dashboard only when on that page. */
+const EXACT_ONLY_HREFS = ['/dashboard', '/dashboard/team-member'];
+
+/**
+ * Returns true if the current path should highlight this nav item.
+ * Home/dashboard: exact match only. Others: exact or any child route (e.g. Clients active on /dashboard/clients/123/edit).
+ */
+function isNavItemActive(pathname, href) {
+  if (EXACT_ONLY_HREFS.includes(href)) return pathname === href;
+  if (pathname === href) return true;
+  const prefix = href.endsWith('/') ? href : href + '/';
+  return pathname.startsWith(prefix);
+}
+
 function getMemberNavItems(memberAccess, accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const items = [
@@ -127,14 +141,14 @@ export default function DashboardSidebar({ open, onToggle, userAccount, memberRo
             if (item.divider) {
               return <hr key={`divider-${index}`} className="border-gray-200 dark:border-gray-700 my-1.5" />;
             }
-            const isActive = router.pathname === item.href;
+            const isActive = isNavItemActive(router.pathname, item.href);
             const IconComponent = item.icon;
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={handleNavClick}
-                className={`flex items-center rounded-lg transition-all duration-300 ${
+                className={`flex items-center rounded-lg transition-all duration-200 ${
                   open ? 'space-x-2.5 px-3 py-2' : 'justify-center px-2 py-2'
                 } ${
                   isActive

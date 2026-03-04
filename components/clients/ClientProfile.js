@@ -147,7 +147,16 @@ export default function ClientProfile({
     if (!userAccount?.appointments || !initialClient?.id) return [];
     return userAccount.appointments.filter((apt) => apt.clientId === initialClient.id);
   }, [userAccount?.appointments, initialClient?.id]);
-  
+
+  const clientAddressLines = useMemo(() => {
+    if (!initialClient) return [];
+    const billing = initialClient.billingAddress || {};
+    const company = initialClient.companyAddress || {};
+    const line1 = billing.address1 || billing.address || company.address1 || company.address || '';
+    const line2 = billing.address2 || company.address2 || '';
+    return [line1, line2].filter(Boolean);
+  }, [initialClient?.billingAddress, initialClient?.companyAddress]);
+
   const existingClientIds = useMemo(() => {
     if (!userAccount?.clients) return [];
     return userAccount.clients.map((c) => c.id).filter(Boolean);
@@ -638,6 +647,9 @@ export default function ClientProfile({
               onAttachmentsChange={setAttachments}
               onOnlineResourcesChange={setOnlineResources}
               defaultCurrency={defaultCurrency}
+              clientName={initialClient?.name ?? ''}
+              clientEmail={initialClient?.email ?? ''}
+              clientAddressLines={clientAddressLines}
               initialSection={(() => {
                 const s = typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined;
                 return s === 'sharedAssets' ? 'onlineResources' : s;

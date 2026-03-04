@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HiDocumentText, HiTrash, HiEye, HiPrinter } from 'react-icons/hi';
+import { HiInbox, HiTrash, HiEye, HiPrinter } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
@@ -36,25 +36,27 @@ export default function ProposalCardServiceStyle({
   const statusLabel = proposal.status ? (STATUS_LABELS[proposal.status] || proposal.status) : null;
   const company = buildCompanyForDocument(account, organization);
 
+  const openEdit = () => onSelect(proposal.id);
+
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(proposal.id)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect(proposal.id);
-        }
-      }}
-      className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col cursor-pointer"
-    >
+    <div className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col">
       {/* Header with gradient background (primary) */}
       <div className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 px-5 py-4">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={openEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openEdit();
+              }
+            }}
+            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+          >
             <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <HiDocumentText className="w-6 h-6 text-white" />
+              <HiInbox className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-bold text-white truncate">
@@ -65,11 +67,7 @@ export default function ProposalCardServiceStyle({
           <div className="flex items-center gap-1 ml-2 flex-shrink-0">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setViewState({ open: true, autoPrint: false });
-              }}
+              onClick={() => setViewState({ open: true, autoPrint: false })}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
               title="View proposal"
             >
@@ -77,11 +75,7 @@ export default function ProposalCardServiceStyle({
             </button>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setViewState({ open: true, autoPrint: true });
-              }}
+              onClick={() => setViewState({ open: true, autoPrint: true })}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
               title="Print proposal"
             >
@@ -89,11 +83,7 @@ export default function ProposalCardServiceStyle({
             </button>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onDelete(proposal.id);
-              }}
+              onClick={() => onDelete(proposal.id)}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
               title="Delete proposal"
             >
@@ -103,8 +93,19 @@ export default function ProposalCardServiceStyle({
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="p-5 flex-1 flex flex-col">
+      {/* Content area - click opens edit */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openEdit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openEdit();
+          }
+        }}
+        className="p-5 flex-1 flex flex-col cursor-pointer"
+      >
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">
           {clientName && (
             <span className="font-medium text-gray-700 dark:text-gray-300">{clientName}</span>

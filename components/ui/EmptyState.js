@@ -1,4 +1,4 @@
-import { HiClipboardList, HiUsers, HiUserGroup, HiFolder, HiInbox, HiBriefcase, HiDocumentText, HiCalendar } from 'react-icons/hi';
+import { HiClipboardList, HiUsers, HiUserGroup, HiFolder, HiInbox, HiBriefcase, HiDocumentText, HiCalendar, HiTag } from 'react-icons/hi';
 
 /**
  * EmptyState Component - Reusable empty state display
@@ -21,7 +21,7 @@ export default function EmptyState({
 }) {
   const configs = {
     services: {
-      icon: HiClipboardList,
+      icon: HiTag,
       title: 'No services yet',
       description: 'Create your first service to start assigning them to team members and appointments.',
     },
@@ -46,7 +46,7 @@ export default function EmptyState({
       description: 'Requests from clients and team members will appear here.',
     },
     proposals: {
-      icon: HiInbox,
+      icon: HiDocumentText,
       title: 'No proposals yet',
       description: 'Proposals from clients and team members will appear here.',
     },
@@ -54,6 +54,11 @@ export default function EmptyState({
       icon: HiBriefcase,
       title: 'No jobs yet',
       description: 'Jobs will appear here once you create quotes and convert them to jobs.',
+    },
+    contracts: {
+      icon: HiClipboardList,
+      title: 'No contracts yet',
+      description: 'Create and manage contracts for your clients.',
     },
     invoices: {
       icon: HiDocumentText,

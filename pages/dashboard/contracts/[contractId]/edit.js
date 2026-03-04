@@ -7,7 +7,7 @@ import { getUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
-import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
+import { HiArrowLeft, HiClipboardList } from 'react-icons/hi';
 import ClientContractForm from '@/components/clients/add-client/ClientContractForm';
 
 export default function EditContractPage() {
@@ -131,7 +131,7 @@ export default function EditContractPage() {
           <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 shadow-sm p-12 text-center">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <HiDocumentText className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
+                <HiClipboardList className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
               </div>
             </div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Contract not found</h2>

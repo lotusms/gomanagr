@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HiInbox, HiTrash, HiEye, HiPrinter } from 'react-icons/hi';
+import { HiDocumentText, HiTrash, HiEye, HiPrinter } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
@@ -56,7 +56,7 @@ export default function ProposalCardServiceStyle({
             className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
           >
             <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <HiInbox className="w-6 h-6 text-white" />
+              <HiDocumentText className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-bold text-white truncate">

@@ -7,7 +7,6 @@ import {
   HiHome,
   HiCalendar,
   HiUserGroup,
-  HiInbox,
   HiDocumentText,
   HiBriefcase,
   HiSpeakerphone,
@@ -17,6 +16,7 @@ import {
   HiChatAlt2,
   HiViewGrid,
   HiClipboardList,
+  HiTag,
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
@@ -31,10 +31,10 @@ function getOwnerNavItems(accountIndustry) {
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
-    { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
-    { name: 'Proposals', href: '/dashboard/proposals', icon: HiInbox },
+    { name: 'Services', href: '/dashboard/services', icon: HiTag },
+    { name: 'Proposals', href: '/dashboard/proposals', icon: HiDocumentText },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
-    { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
+    { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
     { divider: true },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
     { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
@@ -53,14 +53,14 @@ function getAdminNavItems(accountIndustry, memberRole) {
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
-    { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
+    { name: 'Services', href: '/dashboard/services', icon: HiTag },
   ];
   if (memberRole !== ORG_ROLE.DEVELOPER) {
-    items.push({ name: 'Proposals', href: '/dashboard/proposals', icon: HiInbox });
+    items.push({ name: 'Proposals', href: '/dashboard/proposals', icon: HiDocumentText });
   }
   items.push(
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
-    { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
+    { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
     { divider: true },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid }
   );
@@ -91,8 +91,8 @@ function getMemberNavItems(memberAccess, accountIndustry) {
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
-    { name: 'Services', href: '/dashboard/services', icon: HiClipboardList },
-    { name: 'Contracts', href: '/dashboard/contracts', icon: HiDocumentText },
+    { name: 'Services', href: '/dashboard/services', icon: HiTag },
+    { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
   ];
   return items;
 }

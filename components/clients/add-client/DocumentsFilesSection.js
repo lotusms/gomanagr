@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { HiPlus, HiDocumentText, HiInbox, HiCurrencyDollar, HiPaperClip, HiGlobe } from 'react-icons/hi';
+import { HiPlus, HiDocumentText, HiClipboardList, HiCurrencyDollar, HiPaperClip, HiGlobe } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { ConfirmationDialog } from '@/components/ui';
 import CardDeleteButton from './CardDeleteButton';
@@ -17,7 +17,7 @@ export const DOC_TYPES = [
     key: 'contracts',
     label: 'Contracts',
     description: 'Contracts with title, status, dates, and file links',
-    icon: HiDocumentText,
+    icon: HiClipboardList,
     borderClass: 'border-l-primary-500 dark:border-l-primary-400',
     badgeClass: 'bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-200',
   },
@@ -25,7 +25,7 @@ export const DOC_TYPES = [
     key: 'proposals',
     label: 'Proposals',
     description: 'Proposals or quotes sent to this client',
-    icon: HiInbox,
+    icon: HiDocumentText,
     borderClass: 'border-l-emerald-500 dark:border-l-emerald-400',
     badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
   },

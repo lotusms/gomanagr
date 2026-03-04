@@ -21,13 +21,13 @@ const STATUS_LABELS = {
  * @param {string} [clientEmail] - Client email (for document view)
  * @param {string[]} [clientAddressLines] - Client address lines for Bill to (e.g. from billing or company address)
  */
-export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
+export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], organization = null }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
   const [viewState, setViewState] = useState({ invoice: null, autoPrint: false });
 
-  const company = buildCompanyForDocument(account);
+  const company = buildCompanyForDocument(account, organization);
   const closeView = () => setViewState({ invoice: null, autoPrint: false });
 
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';

@@ -88,25 +88,38 @@ export default async function handler(req, res) {
     if (profile?.company_name) companyName = String(profile.company_name).trim();
     if (profile?.company_logo) companyLogoUrl = String(profile.company_logo).trim();
     const profileJson = profile?.profile && typeof profile.profile === 'object' ? profile.profile : {};
+    let orgAddressLines = [];
+    let orgPhone = '';
+    let orgWebsite = '';
     if (organizationId) {
       const { data: org } = await supabaseAdmin
         .from('organizations')
-        .select('name, logo_url')
+        .select('name, logo_url, address_line_1, address_line_2, city, state, postal_code, country, phone, website')
         .eq('id', organizationId)
         .limit(1)
         .maybeSingle();
       if (org?.name) orgName = String(org.name).trim();
       if (org?.logo_url) orgLogoUrl = String(org.logo_url).trim();
+      if (org?.address_line_1?.trim()) {
+        orgAddressLines = [org.address_line_1.trim()];
+        if (org.address_line_2?.trim()) orgAddressLines.push(org.address_line_2.trim());
+        const cityStateZip = [org.city, org.state, org.postal_code].filter(Boolean).map((s) => String(s).trim()).join(', ');
+        if (cityStateZip) orgAddressLines.push(cityStateZip);
+        if (org.country?.trim()) orgAddressLines.push(org.country.trim());
+      }
+      if (org?.phone?.trim()) orgPhone = String(org.phone).trim();
+      if (org?.website?.trim()) orgWebsite = String(org.website).trim();
     }
     const displayName = orgName || companyName;
     const displayLogo = orgLogoUrl || companyLogoUrl;
-    const companyAddressLines = Array.isArray(profileJson.companyAddressLines)
+    const profileAddressLines = Array.isArray(profileJson.companyAddressLines)
       ? profileJson.companyAddressLines.filter(Boolean)
       : profileJson.companyAddress
         ? [String(profileJson.companyAddress).trim()].filter(Boolean)
         : [];
-    const companyPhone = (profileJson.companyPhone && String(profileJson.companyPhone).trim()) || undefined;
-    const companyWebsite = (profileJson.companyWebsite && String(profileJson.companyWebsite).trim()) || undefined;
+    const companyAddressLines = orgAddressLines.length > 0 ? orgAddressLines : profileAddressLines;
+    const companyPhone = orgPhone || (profileJson.companyPhone && String(profileJson.companyPhone).trim()) || undefined;
+    const companyWebsite = orgWebsite || (profileJson.companyWebsite && String(profileJson.companyWebsite).trim()) || undefined;
 
     let clientName = (clientNameBody && String(clientNameBody).trim()) || '';
     let clientContactName = (clientContactNameBody && String(clientContactNameBody).trim()) || '';

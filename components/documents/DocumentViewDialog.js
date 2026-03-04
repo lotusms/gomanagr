@@ -177,6 +177,7 @@ export default function DocumentViewDialog({
         @media print {
           @page {
             size: letter;
+            margin: 0;
           }
           body * {
             visibility: hidden;

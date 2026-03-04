@@ -28,14 +28,15 @@ const STATUS_LABELS = {
  * @param {string} [clientName] - Client display name (for document view when in single-client context)
  * @param {string} [clientEmail] - Client email (for document view)
  * @param {string[]} [clientAddressLines] - Client address lines for Bill to (e.g. from billing or company address)
+ * @param {Object|null} [organization] - User's organization (for company name, logo, address, phone on document)
  */
-export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, clientNameByClientId, clientName = '', clientEmail = '', clientAddressLines = [], defaultCurrency = 'USD' }) {
+export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, clientNameByClientId, clientName = '', clientEmail = '', clientAddressLines = [], defaultCurrency = 'USD', organization = null }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
   const [viewState, setViewState] = useState({ proposal: null, autoPrint: false });
 
-  const company = buildCompanyForDocument(account);
+  const company = buildCompanyForDocument(account, organization);
   const closeView = () => setViewState({ proposal: null, autoPrint: false });
 
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';

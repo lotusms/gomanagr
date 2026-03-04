@@ -35,11 +35,11 @@ function formatDate(value) {
 }
 
 const cellStyle = {
-  padding: '6px 10px',
+  padding: '4px 8px',
   borderBottom: `1px dotted ${BORDER_COLOR}`,
   textAlign: 'right',
   color: TEXT_COLOR,
-  fontSize: '14px',
+  fontSize: '10pt',
 };
 
 export default function ProposalInvoiceDocument({ type, company = {}, client = {}, document: doc = {}, currency = 'USD' }) {
@@ -58,36 +58,37 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
     width: '8.5in',
     minHeight: '11in',
     margin: 0,
-    padding: '28px 32px',
-    borderTop: `4px solid ${BORDER_COLOR}`,
-    borderRight: `4px solid ${BORDER_COLOR}`,
-    borderBottom: `4px solid ${BORDER_COLOR}`,
-    borderLeft: `4px solid ${BORDER_COLOR}`,
+    padding: '0.35in 0.4in',
+    borderTop: `3px solid ${BORDER_COLOR}`,
+    borderRight: `3px solid ${BORDER_COLOR}`,
+    borderBottom: `3px solid ${BORDER_COLOR}`,
+    borderLeft: `3px solid ${BORDER_COLOR}`,
     boxSizing: 'border-box',
     overflow: 'visible',
     backgroundColor: '#ffffff',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    fontSize: '14px',
+    fontSize: '11pt',
     color: TEXT_COLOR,
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   };
 
   const headerStyle = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: '24px',
-    padding: '20px 24px',
+    gap: '16px',
+    marginBottom: '14px',
+    padding: '12px 16px',
     backgroundColor: '#f8fafc',
-    borderRadius: '10px',
+    borderRadius: '6px',
     border: `1px solid #e2e8f0`,
-    minHeight: '80px',
+    minHeight: '56px',
   };
 
   const companyColumnStyle = {
     flex: '0 1 auto',
-    maxWidth: '320px',
-    fontSize: '13px',
+    maxWidth: '280px',
+    fontSize: '11pt',
     color: TEXT_COLOR,
     lineHeight: 1.5,
   };
@@ -109,8 +110,8 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
 
   const logoImgStyle = {
     display: 'block',
-    maxHeight: '48px',
-    maxWidth: '200px',
+    maxHeight: '36px',
+    maxWidth: '160px',
     width: 'auto',
     height: 'auto',
     objectFit: 'contain',
@@ -119,37 +120,33 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
 
   const companyNameStyle = {
     fontWeight: 700,
-    fontSize: '16px',
-    marginBottom: '4px',
+    fontSize: '12pt',
+    marginBottom: '2px',
     color: TEXT_COLOR,
   };
 
   const companyAddressStyle = {
-    marginBottom: '2px',
-    fontSize: '13px',
+    marginBottom: '1px',
+    fontSize: '10pt',
     color: TEXT_COLOR,
   };
 
-  const titleFrameStyle = {
-    margin: '32px 0 28px',
-    paddingBottom: '12px',
-    borderBottom: `1px solid #e5e7eb`,
-  };
-
-  const titleTextStyle = {
+  const headerTitleStyle = {
     margin: 0,
-    fontSize: '13px',
-    fontWeight: 600,
-    letterSpacing: '0.12em',
+    fontSize: '13pt',
+    fontWeight: 700,
+    letterSpacing: '0.06em',
     textTransform: 'uppercase',
-    color: MUTED_COLOR,
+    color: BORDER_COLOR,
+    textAlign: 'right',
+    flexShrink: 0,
   };
 
   const metaGridStyle = {
     display: 'flex',
     justifyContent: 'space-between',
-    gap: '24px',
-    marginBottom: '24px',
+    gap: '20px',
+    marginBottom: '16px',
   };
 
   const billToStyle = {
@@ -169,7 +166,7 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
 
   const sectionLabelStyle = {
     fontWeight: 700,
-    fontSize: '12px',
+    fontSize: '10pt',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     color: TEXT_COLOR,
@@ -192,19 +189,14 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
           <div style={companyNameStyle}>{company.name || 'Company'}</div>
           {addressLines.filter(Boolean).length > 0 && (
             <div style={companyAddressStyle}>
-              {addressLines.filter(Boolean).map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
+              {addressLines.filter(Boolean).join(', ')}
             </div>
           )}
-          {company.phone && <div style={{ marginBottom: '2px', fontSize: '13px' }}>{company.phone}</div>}
-          {company.website && <div style={{ fontSize: '13px' }}>{company.website}</div>}
+          {company.phone && <div style={{ marginBottom: '1px', fontSize: '10pt' }}>{company.phone}</div>}
+          {company.website && <div style={{ fontSize: '10pt' }}>{company.website}</div>}
         </div>
+        <h1 style={headerTitleStyle}>{title}</h1>
       </header>
-
-      <div style={titleFrameStyle}>
-        <h1 style={titleTextStyle}>{title}</h1>
-      </div>
 
       <div style={metaGridStyle}>
         <div style={billToStyle}>
@@ -273,7 +265,7 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
             <tr key={i}>
               <td style={{ ...cellStyle, textAlign: 'left' }}>
                 <div>{row.item_name || '—'}</div>
-                {row.description && <div style={{ fontSize: '12px', color: MUTED_COLOR }}>{row.description}</div>}
+                {row.description && <div style={{ fontSize: '9pt', color: MUTED_COLOR }}>{row.description}</div>}
               </td>
               <td style={cellStyle}>{row.quantity != null ? row.quantity : '—'}</td>
               <td style={cellStyle}>{formatMoney(row.unit_price, currency)}</td>
@@ -298,7 +290,7 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
           <strong>Tax:</strong> {formatMoney(taxNum, currency)}
         </div>
       )}
-      <div style={{ textAlign: 'right', fontSize: '16px', fontWeight: 700, marginTop: '12px' }}>
+      <div style={{ textAlign: 'right', fontSize: '12pt', fontWeight: 700, marginTop: '10px' }}>
         Total: {formatMoney(total, currency)}
       </div>
 
@@ -317,7 +309,7 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
       )}
 
       {!isProposal && (doc.paymentMethod || doc.paidDate) && (
-        <div style={{ marginTop: '24px', textAlign: 'right', fontSize: '13px', color: MUTED_COLOR }}>
+        <div style={{ marginTop: '16px', textAlign: 'right', fontSize: '10pt', color: MUTED_COLOR }}>
           {doc.paidDate && <div>Payment on {formatDate(doc.paidDate)}{doc.paymentMethod ? ` using ${doc.paymentMethod}` : ''}</div>}
           {doc.amountDue != null && Number(doc.amountDue) === 0 && <div><strong>Amount due: {formatMoney(0, currency)}</strong></div>}
         </div>

@@ -636,6 +636,7 @@ export default function ClientProfile({
               clientId={initialClient?.id || clientId}
               userId={currentUser?.uid}
               organizationId={organization?.id}
+              organization={organization}
               contracts={contracts}
               proposals={proposals}
               invoices={invoices}

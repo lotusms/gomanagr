@@ -166,7 +166,7 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   );
 }
 
-function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
+function ProposalsBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
   const router = useRouter();
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -247,6 +247,7 @@ function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaul
         clientName={clientName}
         clientEmail={clientEmail}
         clientAddressLines={clientAddressLines}
+        organization={organization}
       />
       <ConfirmationDialog
         isOpen={!!proposalToDelete}
@@ -263,7 +264,7 @@ function ProposalsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   );
 }
 
-function InvoicesBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
+function InvoicesBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
   const router = useRouter();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -344,6 +345,7 @@ function InvoicesBlock({ clientId, userId, organizationId, onHasEntries, default
         clientName={clientName}
         clientEmail={clientEmail}
         clientAddressLines={clientAddressLines}
+        organization={organization}
       />
       <ConfirmationDialog
         isOpen={!!invoiceToDelete}
@@ -592,6 +594,7 @@ export default function DocumentsFilesSection({
   clientId,
   userId,
   organizationId,
+  organization = null,
   contracts,
   proposals,
   invoices,
@@ -776,6 +779,7 @@ export default function DocumentsFilesSection({
           clientId={clientId}
           userId={userId}
           organizationId={organizationId}
+          organization={organization}
           onHasEntries={setHasProposalEntries}
           defaultCurrency={defaultCurrency}
           clientName={clientName}
@@ -787,6 +791,7 @@ export default function DocumentsFilesSection({
           clientId={clientId}
           userId={userId}
           organizationId={organizationId}
+          organization={organization}
           onHasEntries={setHasInvoiceEntries}
           defaultCurrency={defaultCurrency}
           clientName={clientName}

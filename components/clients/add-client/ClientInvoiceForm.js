@@ -6,7 +6,7 @@ import FileUploadList from '@/components/ui/FileUploadList';
 import TextareaField from '@/components/ui/TextareaField';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import { ItemizedLineItems, DocumentFormHeader, FormStepNav, FormStepFooter, FormStepContent, FormStepSection } from '@/components/ui';
-import { unformatCurrency, formatCurrency } from '@/utils/formatCurrency';
+import { unformatCurrency } from '@/utils/formatCurrency';
 import { getOrgServices, updateOrgServices, getUserAccount, updateServices } from '@/services/userService';
 
 function toDateLocal(iso) {
@@ -111,6 +111,7 @@ export default function ClientInvoiceForm({
         ? [initial.file_url]
         : []
   );
+  const [startFromProposalId, setStartFromProposalId] = useState(initial.related_proposal_id ?? '');
   const [linkedProposalId, setLinkedProposalId] = useState(initial.related_proposal_id ?? '');
   const [linkedProject, setLinkedProject] = useState(initial.related_project ?? '');
   const [linkedContractId, setLinkedContractId] = useState(initial.linked_contract_id ?? '');
@@ -237,6 +238,33 @@ export default function ClientInvoiceForm({
       label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
     })),
   ];
+
+  const startFromProposalOptions = [
+    { value: '', label: 'No — fill invoice manually' },
+    ...proposals.map((p) => ({
+      value: p.id,
+      label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
+    })),
+  ];
+
+  const handleStartFromProposalChange = useCallback(
+    (proposalId) => {
+      setStartFromProposalId(proposalId ?? '');
+      if (!proposalId) {
+        setLineItems([defaultLineItem()]);
+        setLinkedProposalId('');
+        return;
+      }
+      const proposal = proposals.find((p) => p.id === proposalId);
+      if (proposal) {
+        setLineItems(normalizeLineItems(proposal.line_items ?? []));
+        setInvoiceTitle(proposal.proposal_title ?? '');
+        setLinkedProposalId(proposalId);
+        if (proposal.linked_project) setLinkedProject(proposal.linked_project);
+      }
+    },
+    [proposals]
+  );
   const contractOptions = [
     { value: '', label: 'None' },
     ...contracts.map((c) => ({
@@ -399,8 +427,22 @@ export default function ClientInvoiceForm({
 
       <FormStepContent>
         {step === 1 && (
-          <FormStepSection title="Details" description="Dates, amounts, payment & links">
+          <FormStepSection>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {effectiveClientId && (
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <Dropdown
+                    id="start-from-proposal"
+                    name="start-from-proposal"
+                    label="Start from a proposal?"
+                    value={startFromProposalId}
+                    onChange={(e) => handleStartFromProposalChange(e.target.value ?? '')}
+                    options={startFromProposalOptions}
+                    placeholder={proposalsLoading ? 'Loading…' : 'No — fill invoice manually'}
+                    searchable={startFromProposalOptions.length > 10}
+                  />
+                </div>
+              )}
               <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => setDateIssued(e.target.value)} variant="light" />
               <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} variant="light" />
               <DateField id="paid-date" label="Paid date" value={paidDate} onChange={(e) => setPaidDate(e.target.value)} variant="light" />
@@ -415,30 +457,6 @@ export default function ClientInvoiceForm({
                   placeholder="0.00"
                 />
               )}
-              <CurrencyInput
-                id="tax"
-                label={`Tax / VAT (${defaultCurrency})`}
-                value={tax}
-                onChange={(e) => setTax(e.target.value ?? '')}
-                currency={defaultCurrency}
-                variant="light"
-                placeholder="0.00"
-              />
-              <CurrencyInput
-                id="discount"
-                label={`Discount (${defaultCurrency})`}
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value ?? '')}
-                currency={defaultCurrency}
-                variant="light"
-                placeholder="0.00"
-              />
-              <div className="text-sm">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total</label>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white tabular-nums">
-                  {computedTotal ? formatCurrency(computedTotal, defaultCurrency) : '—'}
-                </p>
-              </div>
               <Dropdown
                 id="payment-method"
                 name="payment-method"
@@ -493,7 +511,7 @@ export default function ClientInvoiceForm({
         )}
 
         {step === 2 && (
-          <FormStepSection title="Line items" description="Itemize what you're charging for">
+          <FormStepSection>
             <ItemizedLineItems
               items={lineItems}
               onChange={setLineItems}
@@ -517,7 +535,7 @@ export default function ClientInvoiceForm({
         )}
 
         {step === 3 && (
-          <FormStepSection title="Notes & files" description="Attachments and notes">
+          <FormStepSection>
             <TextareaField
               id="notes"
               label="Notes"

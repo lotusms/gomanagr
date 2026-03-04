@@ -1,13 +1,14 @@
 /**
  * Unit tests for ClientInvoiceForm:
- * - Amount, Tax, Total, Outstanding balance labels show currency (e.g. Amount (USD))
+ * - Outstanding balance label shows currency; Tax/Total are in Line items step (ItemizedLineItems)
  * - Payment method is a dropdown
  * - Linked proposal, Linked project, Linked contract are dropdowns with correct labels
  * - defaultCurrency defaults to USD
+ * - Notes and Invoices (PDF) are on Step 3 (Notes & files)
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
 
 jest.mock('next/router', () => ({
@@ -43,21 +44,19 @@ describe('ClientInvoiceForm', () => {
     global.fetch?.mockRestore?.();
   });
 
-  it('shows Amount label with USD when defaultCurrency is USD', async () => {
+  it('shows Outstanding balance label with USD when defaultCurrency is USD', async () => {
     render(<ClientInvoiceForm {...defaultProps} defaultCurrency="USD" />);
-    expect(await screen.findByText('Amount (USD)')).toBeInTheDocument();
+    expect(await screen.findByText('Outstanding balance (USD)')).toBeInTheDocument();
   });
 
-  it('shows Tax, Total, Outstanding balance labels with currency', async () => {
+  it('shows Outstanding balance label with currency', async () => {
     render(<ClientInvoiceForm {...defaultProps} defaultCurrency="EUR" />);
-    expect(await screen.findByText('Tax (EUR)')).toBeInTheDocument();
-    expect(screen.getByText('Total (EUR)')).toBeInTheDocument();
-    expect(screen.getByText('Outstanding balance (EUR)')).toBeInTheDocument();
+    expect(await screen.findByText('Outstanding balance (EUR)')).toBeInTheDocument();
   });
 
   it('defaults to USD when defaultCurrency is not passed', async () => {
     render(<ClientInvoiceForm {...defaultProps} />);
-    expect(await screen.findByText('Amount (USD)')).toBeInTheDocument();
+    expect(await screen.findByText('Outstanding balance (USD)')).toBeInTheDocument();
   });
 
   it('shows Payment method dropdown', async () => {
@@ -74,13 +73,17 @@ describe('ClientInvoiceForm', () => {
     expect(screen.getByText('Linked contract')).toBeInTheDocument();
   });
 
-  it('shows Notes textarea', async () => {
+  it('shows Notes textarea on step 3', async () => {
     render(<ClientInvoiceForm {...defaultProps} />);
+    const step3Button = screen.getByRole('button', { name: /3/ });
+    fireEvent.click(step3Button);
     expect(await screen.findByLabelText('Notes')).toBeInTheDocument();
   });
 
-  it('shows Invoices (PDF) file upload with multiple support', async () => {
+  it('shows Invoice files (PDF) upload on step 3', async () => {
     render(<ClientInvoiceForm {...defaultProps} />);
-    expect(await screen.findByText('Invoices (PDF)')).toBeInTheDocument();
+    const step3Button = screen.getByRole('button', { name: /3/ });
+    fireEvent.click(step3Button);
+    expect(await screen.findByText('Invoice files (PDF)')).toBeInTheDocument();
   });
 });

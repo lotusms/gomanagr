@@ -29,15 +29,9 @@ export function FormStepContent({ children, className = '' }) {
  * @param {React.ReactNode} children
  * @param {string} [className]
  */
-export function FormStepSection({ title, description, children, className = '' }) {
+export function FormStepSection({ children, className = '' }) {
   return (
     <div className={`${SECTION_CLASSES} ${className}`.trim()}>
-      {(title || description) && (
-        <div>
-          {title && <h3 className={TITLE_CLASSES}>{title}</h3>}
-          {description && <p className={DESCRIPTION_CLASSES}>{description}</p>}
-        </div>
-      )}
       {children}
     </div>
   );

@@ -109,6 +109,7 @@ export default function ClientInvoiceForm({
   );
   const [dueDate, setDueDate] = useState(toDateLocal(initial.due_date) || '');
   const [dateSent, setDateSent] = useState(toDateLocal(initial.date_sent) || '');
+  const [paidDate, setPaidDate] = useState(toDateLocal(initial.paid_date) || '');
   const [paymentTerms, setPaymentTerms] = useState(initial.payment_terms ?? 'due_on_receipt');
   const [paymentMethod, setPaymentMethod] = useState(initial.payment_method ?? '');
   const [fileUrls, setFileUrls] = useState(
@@ -148,7 +149,7 @@ export default function ClientInvoiceForm({
   const STEPS = [
     { id: 1, label: 'Details', description: 'Dates & amounts' },
     { id: 2, label: 'Line items', description: 'What you\'re charging' },
-    { id: 3, label: 'Notes & files', description: 'Attachments' },
+    { id: 3, label: 'Attachments', description: 'Attachments' },
   ];
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
@@ -439,6 +440,7 @@ export default function ClientInvoiceForm({
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
         date_sent: dateSent.trim() || null,
+        paid_date: paidDate.trim() || null,
         ever_sent: invoiceId ? (initial.ever_sent ?? false) : false,
         status,
         payment_terms: paymentTerms.trim() || null,
@@ -515,6 +517,7 @@ export default function ClientInvoiceForm({
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
         date_sent: dateSentToday,
+        paid_date: paidDate.trim() || null,
         ever_sent: true,
         status,
         payment_terms: paymentTerms.trim() || null,
@@ -614,6 +617,7 @@ export default function ClientInvoiceForm({
               <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => { markDirty(); setDateIssued(e.target.value); }} variant="light" />
               <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => { markDirty(); setDueDate(e.target.value); }} variant="light" />
               <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => { markDirty(); setDateSent(e.target.value); }} variant="light" />
+              <DateField id="date-paid" label="Date paid" value={paidDate} onChange={(e) => { markDirty(); setPaidDate(e.target.value); }} variant="light" />
               {lineItems.length === 0 && (
                 <CurrencyInput
                   id="amount"

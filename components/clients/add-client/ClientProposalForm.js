@@ -114,7 +114,7 @@ export default function ClientProposalForm({
   const STEPS = [
     { id: 1, label: 'Details', description: 'Dates & value' },
     { id: 2, label: 'Line items', description: 'What you\'re offering' },
-    { id: 3, label: 'Terms & files', description: 'Conditions & attachments' },
+    { id: 3, label: 'Attachments', description: 'Conditions & attachments' },
   ];
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;

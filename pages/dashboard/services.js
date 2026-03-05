@@ -272,7 +272,7 @@ function ServicesContent() {
               variant="danger"
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {paginatedServices.map((service) => {
                 const assignedMembers = service.assignedTeamMemberIds
                   ?.map((id) => {
@@ -288,16 +288,16 @@ function ServicesContent() {
                   >
                     {/* Header with gradient background */}
                     <div className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 px-5 py-4">
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-wrap items-start justify-between gap-y-2">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
                             <HiTag className="w-6 h-6 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-bold text-white truncate">{service.name}</h3>
+                            <h3 className="text-lg font-bold text-white line-clamp-2">{service.name}</h3>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                           <button
                             type="button"
                             onClick={(e) => {

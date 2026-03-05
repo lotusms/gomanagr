@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
@@ -82,6 +82,28 @@ function InvoicesContent() {
     return map;
   }, [clients]);
 
+  const clientEmailByClientId = useMemo(() => {
+    const map = {};
+    clients.forEach((c) => {
+      const email = (c.email && String(c.email).trim()) || '';
+      if (c.id && email) map[c.id] = email;
+    });
+    return map;
+  }, [clients]);
+
+  const refreshInvoices = useCallback(() => {
+    if (!currentUser?.uid || !orgResolved) return;
+    const orgId = organization?.id ?? undefined;
+    fetch('/api/get-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
+    })
+      .then((r) => r.json().then((d) => d.invoices || []))
+      .then(setInvoices)
+      .catch(() => {});
+  }, [currentUser?.uid, orgResolved, organization?.id]);
+
   const handleDeleteConfirm = async () => {
     if (!invoiceToDelete || !currentUser?.uid) return;
     try {
@@ -160,16 +182,19 @@ function InvoicesContent() {
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {invoices.map((inv) => (
                 <InvoiceCardServiceStyle
                   key={inv.id}
                   invoice={inv}
                   onSelect={handleSelectInvoice}
                   onDelete={setInvoiceToDelete}
+                  onInvoiceUpdated={refreshInvoices}
                   clientNameByClientId={clientNameByClientId}
+                  clientEmailByClientId={clientEmailByClientId}
                   defaultCurrency={defaultCurrency}
                   organization={organization}
+                  userId={currentUser?.uid}
                 />
               ))}
             </div>

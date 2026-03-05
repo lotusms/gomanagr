@@ -41,18 +41,18 @@ export default function ProjectCardServiceStyle({
       className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col cursor-pointer"
     >
       <div className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 px-5 py-4">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-y-2">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <HiFolder className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold text-white truncate">
+              <h3 className="text-lg font-bold text-white line-clamp-2">
                 {project.project_name || 'Untitled project'}
               </h3>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               type="button"
               onClick={(e) => {

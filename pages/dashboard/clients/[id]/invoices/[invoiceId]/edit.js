@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
@@ -9,6 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
 import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
+import InvoicePaymentSummary from '@/components/invoices/InvoicePaymentSummary';
 
 export default function EditClientInvoicePage() {
   const router = useRouter();
@@ -18,8 +19,32 @@ export default function EditClientInvoicePage() {
   const [orgReady, setOrgReady] = useState(false);
   const [invoice, setInvoice] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientName, setClientName] = useState('');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const fetchInvoice = useCallback(() => {
+    if (!currentUser?.uid || !clientId || !invoiceId || !orgReady) return;
+    return fetch('/api/get-client-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.uid,
+        clientId,
+        organizationId: organization?.id ?? undefined,
+        invoiceId,
+      }),
+    })
+      .then((res) => {
+        if (res.status === 404) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (data?.invoice) setInvoice(data.invoice);
+      })
+      .catch(() => {});
+  }, [currentUser?.uid, clientId, invoiceId, orgReady, organization?.id]);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -72,6 +97,23 @@ export default function EditClientInvoicePage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, clientId, invoiceId, organization?.id]);
+
+  useEffect(() => {
+    if (!clientId || !currentUser?.uid) return;
+    getUserAccount(currentUser.uid)
+      .then((account) => {
+        const client = account?.clients?.find((c) => c.id === clientId);
+        if (client) {
+          setClientEmail((client.email && String(client.email).trim()) || '');
+          setClientName(
+            (client.name || client.companyName || '').trim() ||
+            [client.firstName, client.lastName].filter(Boolean).join(' ') ||
+            ''
+          );
+        }
+      })
+      .catch(() => {});
+  }, [clientId, currentUser?.uid]);
 
   const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=invoices`;
 
@@ -153,17 +195,28 @@ export default function EditClientInvoicePage() {
             </Link>
           }
         />
-        <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
-          <ClientInvoiceForm
-            initial={invoice}
-            clientId={clientId}
-            userId={currentUser.uid}
-            organizationId={organization?.id ?? null}
-            invoiceId={invoiceId}
+        <div className="space-y-6">
+          <InvoicePaymentSummary
+            invoice={invoice}
             defaultCurrency={defaultCurrency}
-            onSuccess={() => router.push(backUrl)}
-            onCancel={() => router.push(backUrl)}
+            clientEmail={clientEmail}
+            clientName={clientName}
+            onInvoiceUpdated={fetchInvoice}
+            organizationId={organization?.id ?? null}
+            userId={currentUser.uid}
           />
+          <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
+            <ClientInvoiceForm
+              initial={invoice}
+              clientId={clientId}
+              userId={currentUser.uid}
+              organizationId={organization?.id ?? null}
+              invoiceId={invoiceId}
+              defaultCurrency={defaultCurrency}
+              onSuccess={() => router.push(backUrl)}
+              onCancel={() => router.push(backUrl)}
+            />
+          </div>
         </div>
       </div>
     </>

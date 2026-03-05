@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
-import { PageHeader, ConfirmationDialog } from '@/components/ui';
+import { PageHeader, ConfirmationDialog, Paginator } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import ProposalsPageSkeleton from '@/components/dashboard/ProposalsPageSkeleton';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
@@ -21,6 +21,23 @@ function ProposalsContent() {
   const [loading, setLoading] = useState(true);
   const [proposalToDelete, setProposalToDelete] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  const paginatedProposals = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return proposals.slice(start, start + itemsPerPage);
+  }, [proposals, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    const totalPages = Math.ceil(proposals.length / itemsPerPage);
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [proposals.length, itemsPerPage, currentPage]);
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   // Resolve org first so we never fetch proposals with wrong org (which would return [] for org users)
   useEffect(() => {
@@ -159,7 +176,7 @@ function ProposalsContent() {
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {proposals.map((p) => (
+              {paginatedProposals.map((p) => (
                 <ProposalCardServiceStyle
                   key={p.id}
                   proposal={p}
@@ -170,6 +187,21 @@ function ProposalsContent() {
                 />
               ))}
             </div>
+            {proposals.length > 6 && (
+              <Paginator
+                currentPage={currentPage}
+                totalItems={proposals.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                itemsPerPageOptions={[6, 12, 24, 48, 96]}
+                showItemsPerPage={true}
+                maxVisiblePages={5}
+                showInfo={false}
+                showFirstLast={false}
+                className="mt-6"
+              />
+            )}
             <ConfirmationDialog
               isOpen={!!proposalToDelete}
               onClose={() => setProposalToDelete(null)}

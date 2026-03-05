@@ -1,10 +1,10 @@
 /**
  * Unit tests for ClientInvoiceForm:
- * - Outstanding balance label shows currency; Tax/Total are in Line items step (ItemizedLineItems)
+ * - Step 1 shows Payment method and currency is used in Line items (step 2)
  * - Payment method is a dropdown
  * - Linked proposal, Linked project, Linked contract are dropdowns with correct labels
  * - defaultCurrency defaults to USD
- * - Notes and Invoices (PDF) are on Step 3 (Notes & files)
+ * - Terms and Invoice files (PDF) are on Step 3 (Attachments)
  */
 
 import React from 'react';
@@ -44,19 +44,25 @@ describe('ClientInvoiceForm', () => {
     global.fetch?.mockRestore?.();
   });
 
-  it('shows Outstanding balance label with USD when defaultCurrency is USD', async () => {
+  it('shows Payment method and step 2 Line items when defaultCurrency is USD', async () => {
     render(<ClientInvoiceForm {...defaultProps} defaultCurrency="USD" />);
-    expect(await screen.findByText('Outstanding balance (USD)')).toBeInTheDocument();
+    expect(await screen.findByText('Payment method')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /2/ }));
+    expect(await screen.findByText('Add item')).toBeInTheDocument();
   });
 
-  it('shows Outstanding balance label with currency', async () => {
+  it('shows Payment method and step 2 Line items when defaultCurrency is EUR', async () => {
     render(<ClientInvoiceForm {...defaultProps} defaultCurrency="EUR" />);
-    expect(await screen.findByText('Outstanding balance (EUR)')).toBeInTheDocument();
+    expect(await screen.findByText('Payment method')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /2/ }));
+    expect(await screen.findByText('Add item')).toBeInTheDocument();
   });
 
   it('defaults to USD when defaultCurrency is not passed', async () => {
     render(<ClientInvoiceForm {...defaultProps} />);
-    expect(await screen.findByText('Outstanding balance (USD)')).toBeInTheDocument();
+    expect(await screen.findByText('Payment method')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /2/ }));
+    expect(await screen.findByText('Add item')).toBeInTheDocument();
   });
 
   it('shows Payment method dropdown', async () => {
@@ -73,11 +79,11 @@ describe('ClientInvoiceForm', () => {
     expect(screen.getByText('Linked contract')).toBeInTheDocument();
   });
 
-  it('shows Notes textarea on step 3', async () => {
+  it('shows Terms textarea on step 3', async () => {
     render(<ClientInvoiceForm {...defaultProps} />);
     const step3Button = screen.getByRole('button', { name: /3/ });
     fireEvent.click(step3Button);
-    expect(await screen.findByLabelText('Notes')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Terms')).toBeInTheDocument();
   });
 
   it('shows Invoice files (PDF) upload on step 3', async () => {

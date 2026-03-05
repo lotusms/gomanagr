@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
-import { PageHeader, ConfirmationDialog } from '@/components/ui';
+import { PageHeader, ConfirmationDialog, Paginator } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import ContractsPageSkeleton from '@/components/dashboard/ContractsPageSkeleton';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
@@ -20,6 +20,23 @@ function ContractsContent() {
   const [orgResolved, setOrgResolved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [contractToDelete, setContractToDelete] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  const paginatedContracts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return contracts.slice(start, start + itemsPerPage);
+  }, [contracts, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    const totalPages = Math.ceil(contracts.length / itemsPerPage);
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [contracts.length, itemsPerPage, currentPage]);
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -146,7 +163,7 @@ function ContractsContent() {
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {contracts.map((c) => (
+              {paginatedContracts.map((c) => (
                 <ContractCardServiceStyle
                   key={c.id}
                   contract={c}
@@ -156,6 +173,21 @@ function ContractsContent() {
                 />
               ))}
             </div>
+            {contracts.length > 6 && (
+              <Paginator
+                currentPage={currentPage}
+                totalItems={contracts.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                itemsPerPageOptions={[6, 12, 24, 48, 96]}
+                showItemsPerPage={true}
+                maxVisiblePages={5}
+                showInfo={false}
+                showFirstLast={false}
+                className="mt-6"
+              />
+            )}
             <ConfirmationDialog
               isOpen={!!contractToDelete}
               onClose={() => setContractToDelete(null)}

@@ -371,7 +371,7 @@ function ServicesContent() {
             </div>
 
             {/* Pagination */}
-            {services.length > 0 && (
+            {services.length > 6 && (
               <Paginator
                 currentPage={currentPage}
                 totalItems={services.length}

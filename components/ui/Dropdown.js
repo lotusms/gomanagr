@@ -310,11 +310,11 @@ export default function Dropdown({
           aria-expanded={isOpen}
           aria-haspopup="listbox"
         >
-          <span className={selectedLabel ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
+          <span className={`min-w-0 truncate ${selectedLabel ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
             {selectedLabel || placeholder}
           </span>
           <HiChevronDown
-            className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           />
         </button>
 

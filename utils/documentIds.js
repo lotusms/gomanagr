@@ -12,7 +12,8 @@ export const DOCUMENT_ID_PREFIX = {
   QUO: 'QUO',     // Quotes (use proposals; kept for reference)
   INV: 'INV',     // Invoices
   SAL: 'SAL',     // Sales receipts
-  CON: 'CON',     // Contracts
+  CON: 'CON',     // Contracts (legacy)
+  CONT: 'CONT',   // Contracts
   PROJ: 'PROJ',   // Projects
   SERV: 'SERV',   // Services
   CLI: 'CLI',     // Clients

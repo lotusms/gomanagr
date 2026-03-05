@@ -65,6 +65,8 @@ function parseBody(body, existing) {
     status,
     scope_summary: String(body.scope_summary ?? existing?.scope_summary ?? '').trim() || '',
     terms: String(body.terms ?? existing?.terms ?? '').trim() || '',
+    tax: body.tax !== undefined ? String(body.tax ?? '').trim() || '' : (existing?.tax ?? ''),
+    discount: body.discount !== undefined ? String(body.discount ?? '').trim() || '' : (existing?.discount ?? ''),
     linked_project: body.linked_project !== undefined ? (body.linked_project ? String(body.linked_project).trim() || null : null) : (existing?.linked_project ?? null),
     linked_contract_id: body.linked_contract_id !== undefined ? body.linked_contract_id || null : (existing?.linked_contract_id ?? null),
     updated_at: new Date().toISOString(),

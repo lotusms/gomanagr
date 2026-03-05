@@ -33,6 +33,7 @@ function parseBody(body, existing) {
       : (existing?.status ?? 'planning');
   return {
     project_name: String(body.project_name ?? existing?.project_name ?? '').trim() || '',
+    project_number: body.project_number !== undefined ? String(body.project_number ?? '').trim() : (existing?.project_number ?? ''),
     status,
     start_date: body.start_date !== undefined ? toDateOnly(body.start_date) : (existing?.start_date ?? null),
     end_date: body.end_date !== undefined ? toDateOnly(body.end_date) : (existing?.end_date ?? null),

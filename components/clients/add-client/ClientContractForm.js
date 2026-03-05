@@ -55,6 +55,7 @@ export default function ClientContractForm({
   const [clientsLoading, setClientsLoading] = useState(false);
   const [contractTitle, setContractTitle] = useState(initial.contract_title ?? '');
   const [contractNumber, setContractNumber] = useState(initial.contract_number ?? '');
+  const [contractIdSuggested, setContractIdSuggested] = useState(false);
   const [status, setStatus] = useState(initial.status ?? 'draft');
   const [contractType, setContractType] = useState(initial.contract_type ?? '');
   const [effectiveDate, setEffectiveDate] = useState(toDateLocal(initial.effective_date) || '');
@@ -83,6 +84,29 @@ export default function ClientContractForm({
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
   const effectiveClientId = (clientId && String(clientId).trim()) || null;
+
+  // Auto-suggest next Contract ID when creating (same logic as proposal/invoice); field stays editable for legacy IDs.
+  useEffect(() => {
+    if (contractId || !userId || !organizationId || contractIdSuggested) return;
+    fetch('/api/get-next-document-id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        organizationId: organizationId || undefined,
+        prefix: 'CONT',
+        date: effectiveDate.trim() || startDate.trim() || new Date().toISOString().slice(0, 10),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.suggestedId) {
+          setContractNumber(data.suggestedId);
+          setContractIdSuggested(true);
+        }
+      })
+      .catch(() => {});
+  }, [contractId, userId, organizationId, contractIdSuggested, effectiveDate, startDate]);
 
   useEffect(() => {
     if (!showClientDropdown || !userId) return;
@@ -158,6 +182,10 @@ export default function ClientContractForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!contractTitle.trim()) {
+      setError('Contract title is required');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -240,14 +268,15 @@ export default function ClientContractForm({
           onChange={(e) => setContractTitle(e.target.value)}
           variant="light"
           placeholder="Contract title"
+          required
         />
         <InputField
           id="contract-number"
-          label="Contract number / reference ID"
+          label="Contract ID"
           value={contractNumber}
           onChange={(e) => setContractNumber(e.target.value)}
           variant="light"
-          placeholder="Reference ID"
+          placeholder={contractId ? undefined : 'Auto-generated; editable for legacy IDs'}
         />
         <Dropdown
           id="contract-status"
@@ -284,10 +313,11 @@ export default function ClientContractForm({
           options={[
             ...proposals.map((p) => ({
               value: p.id,
-              label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
+              label: (p.proposal_number || 'Untitled proposal').trim() || 'Untitled proposal',
             })),
           ]}
           placeholder={proposalsLoading ? 'Loading…' : 'None'}
+          searchable={proposals.length > 5}
         />
         <CurrencyInput
           id="contract-value"
@@ -361,7 +391,7 @@ export default function ClientContractForm({
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId)}>
+        <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId) || !contractTitle.trim()}>
           {saving ? 'Saving...' : contractId ? 'Update contract' : 'Add contract'}
         </PrimaryButton>
       </div>

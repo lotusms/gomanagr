@@ -3,7 +3,7 @@
  * - Returns 405 for non-POST/non-PUT
  * - Returns 400 when userId or invoiceId missing
  * - Returns 404 when invoice not found
- * - Returns 200 and updates file_urls, notes, linked_contract_id
+ * - Returns 200 and updates file_urls, terms, scope_summary, linked_contract_id
  */
 
 const mockFrom = jest.fn();
@@ -52,7 +52,8 @@ describe('update-client-invoice API', () => {
     related_proposal_id: null,
     related_project: null,
     linked_contract_id: null,
-    notes: null,
+    terms: null,
+    scope_summary: null,
     file_url: null,
     file_urls: [],
   };
@@ -117,7 +118,7 @@ describe('update-client-invoice API', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Invoice not found' });
   });
 
-  it('updates file_urls, notes, and linked_contract_id and returns 200', async () => {
+  it('updates file_urls, terms, scope_summary, and linked_contract_id and returns 200', async () => {
     let capturedUpdate;
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
@@ -143,7 +144,8 @@ describe('update-client-invoice API', () => {
         userId: 'u1',
         invoiceId: 'inv-1',
         file_urls: ['https://example.com/new.pdf'],
-        notes: 'Updated notes',
+        terms: 'Updated terms',
+        scope_summary: 'Updated scope',
         linked_contract_id: 'contract-abc',
       },
     }, res);
@@ -151,7 +153,8 @@ describe('update-client-invoice API', () => {
     expect(res.json).toHaveBeenCalledWith({ ok: true });
     expect(capturedUpdate.file_urls).toEqual(['https://example.com/new.pdf']);
     expect(capturedUpdate.file_url).toBe('https://example.com/new.pdf');
-    expect(capturedUpdate.notes).toBe('Updated notes');
+    expect(capturedUpdate.terms).toBe('Updated terms');
+    expect(capturedUpdate.scope_summary).toBe('Updated scope');
     expect(capturedUpdate.linked_contract_id).toBe('contract-abc');
   });
 });

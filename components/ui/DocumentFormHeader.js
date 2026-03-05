@@ -3,6 +3,14 @@
  * Shows: title, optional client dropdown, document ID, status, and optional extra blocks
  * (e.g. "Use Proposal" for invoices). Use at the top of multi-step forms to keep identity visible.
  *
+ * Column logic:
+ * - Standalone proposal: title full width, then other fields (Client, Doc ID, Status) in one row
+ *   with 3 cols at lg+, 2 at md, 1 at <md.
+ * - Standalone invoice (has Use Proposal): title full width, then other fields (Client, Doc ID,
+ *   Status, Use Proposal) in one row with 4 cols at lg+, 3 at md, 1 at <md.
+ * - Client section (proposal or invoice, client implied): title is in the same row as document ID
+ *   and status; one grid with 3 cols at lg+, 2 at md, 1 at <md.
+ *
  * @param {string} sectionLabel - e.g. "Proposal", "Invoice"
  * @param {string} idPrefix - Prefix for input ids (e.g. "proposal", "invoice")
  * @param {string} titleLabel - Label for title field
@@ -63,66 +71,98 @@ export default function DocumentFormHeader({
   useProposalLoading = false,
   useProposalPlaceholder = 'No — fill manually',
 }) {
-  const gridCols =
-    showClientDropdown && showUseProposalDropdown
-      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-5'
-      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+  const showFullWidthTitle = showClientDropdown || showUseProposalDropdown;
+  // 3-field row: 1 col < md, 2 at md, 3 at lg+
+  const gridColsThree = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+  // 4-field row (invoice with Client + Doc ID + Status + Use Proposal): 1 col < md, 3 at md, 4 at lg+
+  const gridColsFour = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
+  const titleField = (
+    <InputField
+      id={`${idPrefix}-title`}
+      label={titleLabel}
+      value={titleValue}
+      onChange={onTitleChange}
+      variant="light"
+      placeholder={titlePlaceholder}
+      required={titleRequired}
+    />
+  );
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
-      <div className={`grid ${gridCols} gap-4`}>
-        <InputField
-          id={`${idPrefix}-title`}
-          label={titleLabel}
-          value={titleValue}
-          onChange={onTitleChange}
-          variant="light"
-          placeholder={titlePlaceholder}
-          required={titleRequired}
-        />
-        {showClientDropdown && (
-          <Dropdown
-            id={`${idPrefix}-client`}
-            name={`${idPrefix}-client`}
-            label="Client"
-            value={selectedClientId}
-            onChange={(e) => onClientChange?.(e)}
-            options={clientOptions}
-            placeholder={clientsLoading ? 'Loading…' : 'Select client'}
-            searchable={clientOptions.length > 10}
+      {showFullWidthTitle ? (
+        <>
+          <div className="grid grid-cols-1 gap-4">
+            {titleField}
+          </div>
+          <div className={`grid ${showClientDropdown && showUseProposalDropdown ? gridColsFour : gridColsThree} gap-4`}>
+            {showClientDropdown && (
+              <Dropdown
+                id={`${idPrefix}-client`}
+                name={`${idPrefix}-client`}
+                label="Client"
+                value={selectedClientId}
+                onChange={(e) => onClientChange?.(e)}
+                options={clientOptions}
+                placeholder={clientsLoading ? 'Loading…' : 'Select client'}
+                searchable={clientOptions.length > 10}
+              />
+            )}
+            <InputField
+              id={`${idPrefix}-number`}
+              label={documentIdLabel}
+              value={documentIdValue}
+              onChange={onDocumentIdChange}
+              variant="light"
+              placeholder={documentIdPlaceholder}
+            />
+            <Dropdown
+              id={`${idPrefix}-status`}
+              name={`${idPrefix}-status`}
+              label={statusLabel}
+              value={statusValue}
+              onChange={(e) => onStatusChange(e)}
+              options={statusOptions}
+              placeholder={statusPlaceholder}
+              searchable={false}
+            />
+            {showUseProposalDropdown && (
+              <Dropdown
+                id={`${idPrefix}-use-proposal`}
+                name={`${idPrefix}-use-proposal`}
+                label="Use Proposal"
+                value={useProposalValue}
+                onChange={(e) => onUseProposalChange?.(e)}
+                options={useProposalOptions}
+                placeholder={useProposalLoading ? 'Loading…' : useProposalPlaceholder}
+                searchable={useProposalOptions.length > 5}
+              />
+            )}
+          </div>
+        </>
+      ) : (
+        <div className={`grid ${gridColsThree} gap-4`}>
+          {titleField}
+          <InputField
+            id={`${idPrefix}-number`}
+            label={documentIdLabel}
+            value={documentIdValue}
+            onChange={onDocumentIdChange}
+            variant="light"
+            placeholder={documentIdPlaceholder}
           />
-        )}
-        <InputField
-          id={`${idPrefix}-number`}
-          label={documentIdLabel}
-          value={documentIdValue}
-          onChange={onDocumentIdChange}
-          variant="light"
-          placeholder={documentIdPlaceholder}
-        />
-        <Dropdown
-          id={`${idPrefix}-status`}
-          name={`${idPrefix}-status`}
-          label={statusLabel}
-          value={statusValue}
-          onChange={(e) => onStatusChange(e)}
-          options={statusOptions}
-          placeholder={statusPlaceholder}
-          searchable={false}
-        />
-        {showUseProposalDropdown && (
           <Dropdown
-            id={`${idPrefix}-use-proposal`}
-            name={`${idPrefix}-use-proposal`}
-            label="Use Proposal"
-            value={useProposalValue}
-            onChange={(e) => onUseProposalChange?.(e)}
-            options={useProposalOptions}
-            placeholder={useProposalLoading ? 'Loading…' : useProposalPlaceholder}
-            searchable={useProposalOptions.length > 5}
+            id={`${idPrefix}-status`}
+            name={`${idPrefix}-status`}
+            label={statusLabel}
+            value={statusValue}
+            onChange={(e) => onStatusChange(e)}
+            options={statusOptions}
+            placeholder={statusPlaceholder}
+            searchable={false}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

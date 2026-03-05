@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   try {
     const { data: proposal, error: fetchErr } = await supabaseAdmin
       .from('client_proposals')
-      .select('id, proposal_title, proposal_number, user_id, organization_id, client_id, date_created, date_sent, expiration_date, scope_summary, terms, line_items')
+      .select('id, proposal_title, proposal_number, user_id, organization_id, client_id, date_created, date_sent, expiration_date, scope_summary, terms, tax, discount, line_items')
       .eq('id', proposalId)
       .limit(1)
       .single();
@@ -160,10 +160,10 @@ export default async function handler(req, res) {
       scopeSummary: proposal.scope_summary ?? '',
       terms: proposal.terms ?? '',
       subtotal,
-      tax: 0,
-      discount: 0,
-      total: subtotal,
-      amountDue: subtotal,
+      tax: unformatNum(proposal.tax),
+      discount: unformatNum(proposal.discount),
+      total: subtotal - unformatNum(proposal.discount) + unformatNum(proposal.tax),
+      amountDue: subtotal - unformatNum(proposal.discount) + unformatNum(proposal.tax),
     };
 
     const html = renderDocumentToHtml({

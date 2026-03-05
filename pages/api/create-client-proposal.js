@@ -54,6 +54,8 @@ function parseBody(body) {
     status,
     scope_summary: String(body.scope_summary ?? '').trim() || '',
     terms: String(body.terms ?? '').trim() || '',
+    tax: String(body.tax ?? '').trim() || '',
+    discount: String(body.discount ?? '').trim() || '',
     file_url: null,
     file_urls: Array.isArray(body.file_urls)
       ? body.file_urls.map((u) => String(u).trim()).filter(Boolean)

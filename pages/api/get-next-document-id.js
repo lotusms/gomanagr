@@ -28,7 +28,8 @@ const PREFIX_TO_TABLE_AND_COL = {
   PROP: { table: 'client_proposals', column: 'proposal_number' },
   INV: { table: 'client_invoices', column: 'invoice_number' },
   CON: { table: 'client_contracts', column: 'contract_number' },
-  // Add more as needed: PROJ, etc.
+  CONT: { table: 'client_contracts', column: 'contract_number' },
+  PROJ: { table: 'client_projects', column: 'project_number' },
 };
 
 function toDateYyyyMmDd(dateStr) {

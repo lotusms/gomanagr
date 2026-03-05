@@ -16,21 +16,22 @@ function countTotalProjectsFromClients(clients) {
   }, 0);
 }
 
-function getStats(userAccount, teamMemberCount, apiCounts = {}) {
+function getStats(userAccount, teamMemberCount, apiCounts) {
+  const counts = apiCounts && typeof apiCounts === 'object' ? apiCounts : {};
   const projectTerm = getProjectTermForIndustry(userAccount?.industry);
   const clients = userAccount?.clients ?? [];
   const totalProjects =
-    apiCounts.projectCount !== undefined && apiCounts.projectCount !== null
-      ? apiCounts.projectCount
+    counts.projectCount !== undefined && counts.projectCount !== null
+      ? counts.projectCount
       : countTotalProjectsFromClients(clients);
   const totalClients =
-    apiCounts.clientCount !== undefined && apiCounts.clientCount !== null
-      ? apiCounts.clientCount
+    counts.clientCount !== undefined && counts.clientCount !== null
+      ? counts.clientCount
       : clients.length;
   const teamCount = teamMemberCount ?? userAccount?.teamMembers?.length ?? 0;
   const invoiceCount =
-    apiCounts.invoiceCount !== undefined && apiCounts.invoiceCount !== null
-      ? apiCounts.invoiceCount
+    counts.invoiceCount !== undefined && counts.invoiceCount !== null
+      ? counts.invoiceCount
       : (userAccount?.invoices?.length ?? 0);
 
   return [

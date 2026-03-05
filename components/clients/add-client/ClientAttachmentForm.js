@@ -89,7 +89,7 @@ export default function ClientAttachmentForm({
     { value: '', label: 'None' },
     ...contracts.map((c) => ({
       value: c.id,
-      label: [c.contract_number, c.contract_title].filter(Boolean).join(' – ') || 'Untitled contract',
+      label: (c.contract_number || 'Untitled contract').trim() || 'Untitled contract',
     })),
   ];
 

@@ -28,7 +28,7 @@ export default function FormStepNav({ steps = [], currentStep, onStepChange, ari
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-current/20 text-xs tabular-nums">
               {s.id}
             </span>
-            <span className="hidden sm:inline">{s.label}</span>
+            <span className="hidden sm:inline -ms-2">{s.label}</span>
           </button>
           {i < steps.length - 1 && (
             <span className="text-gray-300 dark:text-gray-600" aria-hidden>→</span>

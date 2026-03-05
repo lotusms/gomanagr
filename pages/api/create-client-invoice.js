@@ -66,6 +66,7 @@ function parseBody(body, computedFromItems) {
     paid_date: toDateOnly(body.paid_date),
     status,
     payment_method: String(body.payment_method ?? '').trim() || '',
+    payment_terms: body.payment_terms ? String(body.payment_terms).trim() || null : null,
     outstanding_balance: String(body.outstanding_balance ?? '').trim() || '',
     file_url: null,
     file_urls: Array.isArray(body.file_urls)
@@ -76,7 +77,8 @@ function parseBody(body, computedFromItems) {
     related_proposal_id: body.related_proposal_id || null,
     related_project: body.related_project ? String(body.related_project).trim() || null : null,
     linked_contract_id: body.linked_contract_id || null,
-    notes: body.notes ? String(body.notes).trim() || null : null,
+    terms: body.terms ? String(body.terms).trim() || null : null,
+    scope_summary: body.scope_summary ? String(body.scope_summary).trim() || null : null,
     line_items: lineItemsJson,
     ever_sent: Boolean(body.ever_sent),
     date_sent: toDateOnly(body.date_sent),
@@ -110,7 +112,8 @@ export default async function handler(req, res) {
     const { data, error } = await supabaseAdmin.from('client_invoices').insert(row).select('id').single();
     if (error) {
       console.error('[create-client-invoice]', error);
-      return res.status(500).json({ error: 'Failed to create invoice' });
+      const message = error.message || 'Failed to create invoice';
+      return res.status(500).json({ error: message });
     }
     const fileUrls = Array.isArray(row.file_urls) ? row.file_urls : [];
     if (fileUrls.length > 0) {

@@ -113,7 +113,7 @@ export default function ClientProposalForm({
 
   const STEPS = [
     { id: 1, label: 'Details', description: 'Dates & value' },
-    { id: 2, label: 'Scope & items', description: 'What you\'re offering' },
+    { id: 2, label: 'Line items', description: 'What you\'re offering' },
     { id: 3, label: 'Terms & files', description: 'Conditions & attachments' },
   ];
 
@@ -216,7 +216,7 @@ export default function ClientProposalForm({
     { value: '', label: 'None' },
     ...contracts.map((c) => ({
       value: c.id,
-      label: [c.contract_number, c.contract_title].filter(Boolean).join(' – ') || 'Untitled contract',
+      label: (c.contract_number || 'Untitled contract').trim() || 'Untitled contract',
     })),
   ];
 
@@ -279,6 +279,8 @@ export default function ClientProposalForm({
     status,
     scope_summary: scopeSummary.trim(),
     terms: terms.trim(),
+    tax: tax.trim(),
+    discount: discount.trim(),
     file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
     linked_project: linkedProject.trim() || null,
     linked_contract_id: linkedContractId.trim() || null,

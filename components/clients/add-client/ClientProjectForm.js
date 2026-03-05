@@ -40,6 +40,8 @@ export default function ClientProjectForm({
   const [clients, setClients] = useState([]);
   const [clientsLoading, setClientsLoading] = useState(false);
   const [projectName, setProjectName] = useState(initial.project_name ?? '');
+  const [projectNumber, setProjectNumber] = useState(initial.project_number ?? '');
+  const [projectIdSuggested, setProjectIdSuggested] = useState(false);
   const [status, setStatus] = useState(initial.status ?? 'planning');
   const [startDate, setStartDate] = useState(toDateLocal(initial.start_date) || '');
   const [endDate, setEndDate] = useState(toDateLocal(initial.end_date) || '');
@@ -47,6 +49,30 @@ export default function ClientProjectForm({
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
   const effectiveClientId = (clientId && String(clientId).trim()) || null;
+
+  // Auto-suggest next Project ID when creating (same logic as proposal/invoice). Requires organizationId so we never use PER.
+  useEffect(() => {
+    if (projectId || !userId || !organizationId || projectIdSuggested) return;
+    const datePart = startDate.trim() || new Date().toISOString().slice(0, 10);
+    fetch('/api/get-next-document-id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        organizationId,
+        prefix: 'PROJ',
+        date: datePart,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.suggestedId) {
+          setProjectNumber(data.suggestedId);
+          setProjectIdSuggested(true);
+        }
+      })
+      .catch(() => {});
+  }, [projectId, userId, organizationId, projectIdSuggested]);
 
   useEffect(() => {
     if (!showClientDropdown || !userId) return;
@@ -73,6 +99,10 @@ export default function ClientProjectForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!projectName.trim()) {
+      setError('Project name is required');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -80,6 +110,7 @@ export default function ClientProjectForm({
         clientId: effectiveClientId,
         organizationId: organizationId || undefined,
         project_name: projectName.trim(),
+        project_number: projectNumber.trim() || undefined,
         status,
         start_date: startDate.trim() || null,
         end_date: endDate.trim() || null,
@@ -146,6 +177,15 @@ export default function ClientProjectForm({
           onChange={(e) => setProjectName(e.target.value)}
           variant="light"
           placeholder="e.g. Website redesign"
+          required
+        />
+        <InputField
+          id="project-number"
+          label="Project ID"
+          value={projectNumber}
+          onChange={(e) => setProjectNumber(e.target.value)}
+          variant="light"
+          placeholder={projectId ? undefined : 'Auto-generated; editable for legacy IDs'}
         />
         <Dropdown
           id="project-status"
@@ -186,7 +226,7 @@ export default function ClientProjectForm({
         <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId)}>
+        <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId) || !projectName.trim()}>
           {saving ? 'Saving...' : projectId ? 'Update project' : 'Add project'}
         </PrimaryButton>
       </div>

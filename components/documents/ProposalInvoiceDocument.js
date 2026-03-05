@@ -280,28 +280,24 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
       <div style={{ textAlign: 'right', marginBottom: '8px' }}>
         <strong>Subtotal:</strong> {formatMoney(subtotal, currency)}
       </div>
-      {discountNum > 0 && (
-        <div style={{ textAlign: 'right', marginBottom: '8px' }}>
-          <strong>Discount:</strong> {formatMoney(-discountNum, currency)}
-        </div>
-      )}
-      {taxNum > 0 && (
-        <div style={{ textAlign: 'right', marginBottom: '8px' }}>
-          <strong>Tax:</strong> {formatMoney(taxNum, currency)}
-        </div>
-      )}
+      <div style={{ textAlign: 'right', marginBottom: '8px' }}>
+        <strong>Discount:</strong> {formatMoney(-discountNum, currency)}
+      </div>
+      <div style={{ textAlign: 'right', marginBottom: '8px' }}>
+        <strong>Tax/VAT:</strong> {formatMoney(taxNum, currency)}
+      </div>
       <div style={{ textAlign: 'right', fontSize: '12pt', fontWeight: 700, marginTop: '10px' }}>
         Total: {formatMoney(total, currency)}
       </div>
 
-      {isProposal && doc.scopeSummary && (
+      {doc.scopeSummary && (
         <>
           <div style={{ ...sectionLabelStyle, marginTop: '24px' }}>Scope summary</div>
           <div style={{ whiteSpace: 'pre-wrap', marginTop: '4px' }}>{doc.scopeSummary}</div>
         </>
       )}
 
-      {isProposal && doc.terms && (
+      {doc.terms && (
         <>
           <div style={{ ...sectionLabelStyle, marginTop: '24px' }}>Terms</div>
           <div style={{ whiteSpace: 'pre-wrap', marginTop: '4px' }}>{doc.terms}</div>

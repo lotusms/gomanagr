@@ -61,6 +61,15 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
+const PAYMENT_TERMS_OPTIONS = [
+  { value: '', label: 'None' },
+  { value: 'net_30', label: 'Net 30' },
+  { value: 'net_45', label: 'Net 45' },
+  { value: 'net_60', label: 'Net 60' },
+  { value: 'due_on_receipt', label: 'Due on receipt' },
+  { value: 'other', label: 'Other' },
+];
+
 export default function ClientInvoiceForm({
   initial = {},
   clientId: clientIdProp,
@@ -99,14 +108,9 @@ export default function ClientInvoiceForm({
     toDateLocal(initial.date_issued) || toDateLocal(new Date().toISOString())
   );
   const [dueDate, setDueDate] = useState(toDateLocal(initial.due_date) || '');
-  const [paidDate, setPaidDate] = useState(toDateLocal(initial.paid_date) || '');
   const [dateSent, setDateSent] = useState(toDateLocal(initial.date_sent) || '');
+  const [paymentTerms, setPaymentTerms] = useState(initial.payment_terms ?? 'due_on_receipt');
   const [paymentMethod, setPaymentMethod] = useState(initial.payment_method ?? '');
-  const [outstandingBalance, setOutstandingBalance] = useState(
-    initial.outstanding_balance && String(initial.outstanding_balance).trim()
-      ? unformatCurrency(String(initial.outstanding_balance))
-      : ''
-  );
   const [fileUrls, setFileUrls] = useState(
     Array.isArray(initial.file_urls) && initial.file_urls.length > 0
       ? initial.file_urls
@@ -118,13 +122,15 @@ export default function ClientInvoiceForm({
   const [linkedProposalId, setLinkedProposalId] = useState(initial.related_proposal_id ?? '');
   const [linkedProject, setLinkedProject] = useState(initial.related_project ?? '');
   const [linkedContractId, setLinkedContractId] = useState(initial.linked_contract_id ?? '');
-  const [notes, setNotes] = useState(initial.notes ?? '');
+  const [terms, setTerms] = useState(initial.terms ?? '');
+  const [scopeSummary, setScopeSummary] = useState(initial.scope_summary ?? '');
   const [lineItems, setLineItems] = useState(() => normalizeLineItems(initial.line_items));
   const [proposals, setProposals] = useState([]);
   const [proposalsLoading, setProposalsLoading] = useState(false);
   const [contracts, setContracts] = useState([]);
   const [contractsLoading, setContractsLoading] = useState(false);
-  const [projectOptions, setProjectOptions] = useState([{ value: '', label: 'No project' }]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
   const [services, setServices] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [hasUserEdited, setHasUserEdited] = useState(false);
@@ -240,6 +246,24 @@ export default function ClientInvoiceForm({
 
   useEffect(() => {
     if (!userId) return;
+    setProjectsLoading(true);
+    fetch('/api/get-projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        organizationId: organizationId || undefined,
+        clientId: effectiveClientId || undefined,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => setProjects(data.projects || []))
+      .catch(() => setProjects([]))
+      .finally(() => setProjectsLoading(false));
+  }, [userId, organizationId, effectiveClientId]);
+
+  useEffect(() => {
+    if (!userId) return;
     if (organizationId) {
       getOrgServices(organizationId, userId)
         .then((data) => {
@@ -267,7 +291,7 @@ export default function ClientInvoiceForm({
     { value: '', label: 'None' },
     ...proposals.map((p) => ({
       value: p.id,
-      label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
+      label: (p.proposal_number || 'Untitled proposal').trim() || 'Untitled proposal',
     })),
   ];
 
@@ -275,7 +299,7 @@ export default function ClientInvoiceForm({
     { value: '', label: 'Fill invoice manually' },
     ...proposals.map((p) => ({
       value: p.id,
-      label: [p.proposal_number, p.proposal_title].filter(Boolean).join(' – ') || 'Untitled proposal',
+      label: (p.proposal_number || 'Untitled proposal').trim() || 'Untitled proposal',
     })),
   ];
 
@@ -285,6 +309,9 @@ export default function ClientInvoiceForm({
       if (!proposalId) {
         setLineItems([defaultLineItem()]);
         setLinkedProposalId('');
+        setFileUrls([]);
+        setTerms('');
+        setScopeSummary('');
         return;
       }
       const proposal = proposals.find((p) => p.id === proposalId);
@@ -294,6 +321,17 @@ export default function ClientInvoiceForm({
         setLinkedProposalId(proposalId);
         if (proposal.linked_project) setLinkedProject(proposal.linked_project);
         if (showClientDropdown && proposal.client_id) setSelectedClientId(proposal.client_id);
+        setScopeSummary(String(proposal.scope_summary ?? '').trim());
+        setTerms(String(proposal.terms ?? '').trim());
+        if (proposal.tax != null && String(proposal.tax).trim() !== '') setTax(String(proposal.tax).trim());
+        if (proposal.discount != null && String(proposal.discount).trim() !== '') setDiscount(String(proposal.discount).trim());
+        // Prepopulate invoice files from proposal attachments (Step 3)
+        const urls = Array.isArray(proposal.file_urls) && proposal.file_urls.length > 0
+          ? proposal.file_urls.filter((u) => u && String(u).trim())
+          : proposal.file_url
+            ? [String(proposal.file_url).trim()].filter(Boolean)
+            : [];
+        setFileUrls(urls);
       }
     },
     [proposals, showClientDropdown]
@@ -302,7 +340,15 @@ export default function ClientInvoiceForm({
     { value: '', label: 'None' },
     ...contracts.map((c) => ({
       value: c.id,
-      label: [c.contract_number, c.contract_title].filter(Boolean).join(' – ') || 'Untitled contract',
+      label: (c.contract_number || 'Untitled contract').trim() || 'Untitled contract',
+    })),
+  ];
+
+  const projectOptions = [
+    { value: '', label: 'No project' },
+    ...projects.map((p) => ({
+      value: p.id,
+      label: (p.project_number || p.id || 'Untitled project').trim() || 'Untitled project',
     })),
   ];
 
@@ -366,6 +412,10 @@ export default function ClientInvoiceForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!invoiceTitle.trim()) {
+      setError('Invoice title is required');
+      return;
+    }
     setSaving(true);
     try {
       const amountFromItems = lineItems.length > 0 ? String(lineItemsSubtotal.toFixed(2)) : amount.trim();
@@ -388,17 +438,17 @@ export default function ClientInvoiceForm({
         total: totalFromItems,
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
-        paid_date: paidDate.trim() || null,
         date_sent: dateSent.trim() || null,
         ever_sent: invoiceId ? (initial.ever_sent ?? false) : false,
         status,
+        payment_terms: paymentTerms.trim() || null,
         payment_method: paymentMethod.trim(),
-        outstanding_balance: outstandingBalance.trim(),
         file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
         related_proposal_id: linkedProposalId.trim() || null,
         related_project: linkedProject.trim() || null,
         linked_contract_id: linkedContractId.trim() || null,
-        notes: notes.trim() || null,
+        terms: terms.trim() || null,
+        scope_summary: scopeSummary.trim() || null,
         line_items: lineItems.map((item) => ({
           item_name: item.item_name,
           description: item.description,
@@ -437,6 +487,10 @@ export default function ClientInvoiceForm({
   const handleSaveAndSend = async (e) => {
     e.preventDefault();
     setError('');
+    if (!invoiceTitle.trim()) {
+      setError('Invoice title is required');
+      return;
+    }
     setSaving(true);
     const dateSentToday = new Date().toISOString().slice(0, 10);
     try {
@@ -460,17 +514,17 @@ export default function ClientInvoiceForm({
         total: totalFromItems,
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
-        paid_date: paidDate.trim() || null,
         date_sent: dateSentToday,
         ever_sent: true,
         status,
+        payment_terms: paymentTerms.trim() || null,
         payment_method: paymentMethod.trim(),
-        outstanding_balance: outstandingBalance.trim(),
         file_urls: fileUrls.filter(Boolean).map((u) => String(u).trim()).filter(Boolean),
         related_proposal_id: linkedProposalId.trim() || null,
         related_project: linkedProject.trim() || null,
         linked_contract_id: linkedContractId.trim() || null,
-        notes: notes.trim() || null,
+        terms: terms.trim() || null,
+        scope_summary: scopeSummary.trim() || null,
         line_items: lineItems.map((item) => ({
           item_name: item.item_name,
           description: item.description,
@@ -522,6 +576,7 @@ export default function ClientInvoiceForm({
         titleLabel="Invoice title"
         titleValue={invoiceTitle}
         titlePlaceholder="Description or reason"
+        titleRequired={true}
         onTitleChange={(e) => { markDirty(); setInvoiceTitle(e.target.value); }}
         documentIdLabel="Invoice ID"
         documentIdValue={invoiceNumber}
@@ -558,7 +613,6 @@ export default function ClientInvoiceForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => { markDirty(); setDateIssued(e.target.value); }} variant="light" />
               <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => { markDirty(); setDueDate(e.target.value); }} variant="light" />
-              <DateField id="paid-date" label="Paid date" value={paidDate} onChange={(e) => { markDirty(); setPaidDate(e.target.value); }} variant="light" />
               <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => { markDirty(); setDateSent(e.target.value); }} variant="light" />
               {lineItems.length === 0 && (
                 <CurrencyInput
@@ -572,6 +626,16 @@ export default function ClientInvoiceForm({
                 />
               )}
               <Dropdown
+                id="payment-terms"
+                name="payment-terms"
+                label="Payment terms"
+                value={paymentTerms}
+                onChange={(e) => { markDirty(); setPaymentTerms(e.target.value ?? ''); }}
+                options={PAYMENT_TERMS_OPTIONS}
+                placeholder="Select payment terms"
+                searchable={false}
+              />
+              <Dropdown
                 id="payment-method"
                 name="payment-method"
                 label="Payment method"
@@ -581,15 +645,6 @@ export default function ClientInvoiceForm({
                 placeholder="None"
                 searchable={false}
               />
-              <CurrencyInput
-                id="outstanding-balance"
-                label={`Outstanding balance (${defaultCurrency})`}
-                value={outstandingBalance}
-                onChange={(e) => { markDirty(); setOutstandingBalance(e.target.value ?? ''); }}
-                currency={defaultCurrency}
-                variant="light"
-                placeholder="0.00"
-              />
               <Dropdown
                 id="linked-project"
                 name="linked-project"
@@ -597,8 +652,8 @@ export default function ClientInvoiceForm({
                 value={linkedProject}
                 onChange={(e) => { markDirty(); setLinkedProject(e.target.value ?? ''); }}
                 options={projectOptions}
-                placeholder="Select project"
-                searchable={false}
+                placeholder={projectsLoading ? 'Loading…' : projectOptions.length > 10 ? 'Select project' : 'No project'}
+                searchable={projectOptions.length > 10}
               />
               <Dropdown
                 id="linked-contract"
@@ -607,9 +662,20 @@ export default function ClientInvoiceForm({
                 value={linkedContractId}
                 onChange={(e) => { markDirty(); setLinkedContractId(e.target.value ?? ''); }}
                 options={contractOptions}
-                placeholder={contractsLoading ? 'Loading…' : 'None'}
+                placeholder={contractsLoading ? 'Loading…' : contractOptions.length > 10 ? 'Select contract' : 'None'}
                 searchable={contractOptions.length > 10}
               />
+              <div className="sm:col-span-2 lg:col-span-3">
+                <TextareaField
+                  id="scope-summary"
+                  label="Scope"
+                  value={scopeSummary}
+                  onChange={(e) => { markDirty(); setScopeSummary(e.target.value); }}
+                  rows={3}
+                  placeholder="Scope of work (prepopulated from linked proposal)"
+                  variant="light"
+                />
+              </div>
             </div>
           </FormStepSection>
         )}
@@ -643,12 +709,13 @@ export default function ClientInvoiceForm({
         {step === 3 && (
           <FormStepSection>
             <TextareaField
-              id="notes"
-              label="Notes"
-              value={notes}
-              onChange={(e) => { markDirty(); setNotes(e.target.value); }}
-              rows={4}
-              placeholder="Include any notes here"
+              id="terms"
+              label="Terms"
+              value={terms}
+              onChange={(e) => { markDirty(); setTerms(e.target.value); }}
+              rows={6}
+              placeholder="Terms and conditions (prepopulated from linked proposal)"
+              variant="light"
             />
             <FileUploadList
               id="invoice-file"
@@ -673,7 +740,7 @@ export default function ClientInvoiceForm({
         submitLabel={invoiceId ? 'Update invoice' : 'Add invoice'}
         onSubmitClick={() => handleSubmit({ preventDefault: () => {} })}
         saving={saving}
-        submitDisabled={showClientDropdown && !effectiveClientId}
+        submitDisabled={(showClientDropdown && !effectiveClientId) || !invoiceTitle.trim()}
         secondarySubmitLabel={secondarySubmitLabel}
         onSecondarySubmitClick={handleSaveAndSend}
       />

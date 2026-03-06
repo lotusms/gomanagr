@@ -253,6 +253,7 @@ export default function ServiceSelector({
           zIndex={110}
         >
           <AddServiceForm
+            mode="drawer"
             teamMembers={teamMembers}
             existingServices={services || []}
             onSubmit={async (data) => {

@@ -1,13 +1,13 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateServices, updateTeamMembers, getOrgServices, updateOrgServices } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { isOwnerRole } from '@/config/rolePermissions';
-import { PageHeader, Drawer, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
+import { PageHeader, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
 import ServicesPageSkeleton from '@/components/dashboard/ServicesPageSkeleton';
-import AddServiceForm from '@/components/services/AddServiceForm';
-import { HiPlus, HiX, HiPencil, HiTrash, HiTag, HiUserGroup } from 'react-icons/hi';
+import { HiPlus, HiPencil, HiTrash, HiTag, HiUserGroup } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
 
 function ServicesContent() {
@@ -18,8 +18,6 @@ function ServicesContent() {
   const [loaded, setLoaded] = useState(false);
   const [services, setServices] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [editingService, setEditingService] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,30 +87,6 @@ function ServicesContent() {
       });
   }, [currentUser?.uid]);
 
-  const saveServices = (nextServices) => {
-    if (!currentUser?.uid) return;
-    setSaving(true);
-    const done = () => {
-      setUserAccount((prev) => (prev ? { ...prev, services: nextServices } : null));
-      setServices(nextServices);
-      setSaving(false);
-    };
-    if (ownerUserId && organization?.id) {
-      updateOrgServices(organization.id, currentUser.uid, nextServices)
-        .then(done)
-        .catch((err) => {
-          console.error('Failed to save services:', err);
-          setSaving(false);
-        });
-    } else {
-      updateServices(currentUser.uid, nextServices)
-        .then(done)
-        .catch((err) => {
-          console.error('Failed to save services:', err);
-          setSaving(false);
-        });
-    }
-  };
 
   const handleRemoveClick = (service) => {
     setServiceToDelete(service);
@@ -191,29 +165,6 @@ function ServicesContent() {
     setServiceToDelete(null);
   };
 
-  const handleEdit = (service) => {
-    setEditingService(service);
-    setShowDrawer(true);
-  };
-
-  const handleServiceSubmit = (serviceData) => {
-    let next;
-    if (editingService) {
-      next = services.map((s) => (s.id === editingService.id ? serviceData : s));
-    } else {
-      next = [...services, serviceData];
-    }
-    setServices(next);
-    saveServices(next);
-    setShowDrawer(false);
-    setEditingService(null);
-  };
-
-  const handleCancel = () => {
-    setShowDrawer(false);
-    setEditingService(null);
-  };
-
   return (
     <>
       <Head>
@@ -231,35 +182,16 @@ function ServicesContent() {
               description="Manage your services and assign them to team members. Services can be selected when creating appointments."
               actions={
                 <>
-                  <PrimaryButton 
-                    type="button" 
-                    onClick={() => {
-                      setEditingService(null);
-                      setShowDrawer(true);
-                    }} 
-                    className="gap-2">
-                    <HiPlus className="w-5 h-5" />
-                    Add service
-                  </PrimaryButton>
+                  <Link href="/dashboard/services/new">
+                    <PrimaryButton type="button" className="gap-2">
+                      <HiPlus className="w-5 h-5" />
+                      Add service
+                    </PrimaryButton>
+                  </Link>
                   {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
                 </>
               }
             />
-            <Drawer
-              isOpen={showDrawer}
-              onClose={handleCancel}
-              title={editingService ? 'Edit Service' : 'Add Service'}
-            >
-              <AddServiceForm
-                teamMembers={teamMembers}
-                existingServices={services}
-                initialService={editingService}
-                onSubmit={handleServiceSubmit}
-                onCancel={handleCancel}
-                saving={saving}
-              />
-            </Drawer>
-
             <ConfirmationDialog
               isOpen={deleteDialogOpen}
               onClose={handleRemoveCancel}
@@ -298,17 +230,14 @@ function ServicesContent() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(service);
-                            }}
-                            className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                          <Link
+                            href={`/dashboard/services/${service.id}/edit`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors inline-flex"
                             title="Edit service"
                           >
                             <HiPencil className="size-5" />
-                          </button>
+                          </Link>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -327,6 +256,23 @@ function ServicesContent() {
 
                     {/* Content area */}
                     <div className="p-5 flex-1 flex flex-col">
+                      {(service.service_number || service.cost_amount != null) && (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                          {service.service_number && (
+                            <span title="Service ID">{service.service_number}</span>
+                          )}
+                          {service.cost_amount != null && String(service.cost_amount).trim() !== '' && (
+                            <span>
+                              {service.cost_type === 'per_hour' && 'Per hour: '}
+                              {service.cost_type === 'daily' && 'Daily: '}
+                              {service.cost_type === 'per_session' && 'Per session: '}
+                              {service.cost_type === 'recurrent' && 'Recurrent: '}
+                              {(!service.cost_type || service.cost_type === 'one_time') && 'One-time: '}
+                              ${Number(String(service.cost_amount).replace(/[^0-9.-]/g, '')) || 0}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {/* Description */}
                       {service.description && (
                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 leading-relaxed">
@@ -391,17 +337,12 @@ function ServicesContent() {
               <EmptyState
                 type="services"
                 action={
-                  <PrimaryButton
-                    type="button"
-                    onClick={() => {
-                      setEditingService(null);
-                      setShowDrawer(true);
-                    }}
-                    className="gap-2"
-                  >
-                    <HiPlus className="w-5 h-5" />
-                    Add your first service
-                  </PrimaryButton>
+                  <Link href="/dashboard/services/new">
+                    <PrimaryButton type="button" className="gap-2">
+                      <HiPlus className="w-5 h-5" />
+                      Add your first service
+                    </PrimaryButton>
+                  </Link>
                 }
               />
             )}

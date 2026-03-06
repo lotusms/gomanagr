@@ -106,6 +106,7 @@ export default function ServiceCombobox({
           zIndex={110}
         >
           <AddServiceForm
+            mode="drawer"
             teamMembers={teamMembers}
             existingServices={services || []}
             onSubmit={handleCreateService}

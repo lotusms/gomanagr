@@ -35,6 +35,11 @@ export function isAdminNonOwnerRole(role) {
   return (role === ORG_ROLE.ADMIN || role === ORG_ROLE.DEVELOPER);
 }
 
+/** True if role can export org backup (owner or admin only; developer cannot export full org data). */
+export function isOrgBackupAllowedRole(role) {
+  return role === ORG_ROLE.SUPERADMIN || role === ORG_ROLE.ADMIN;
+}
+
 /** Settings tab IDs that admin (non-owner) cannot see; only General and Theme are visible. */
 export const ADMIN_NON_OWNER_HIDDEN_SETTINGS = [
   'organization',

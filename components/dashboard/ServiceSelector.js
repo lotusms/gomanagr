@@ -190,6 +190,9 @@ export default function ServiceSelector({
             options={[{ value: '', label: dropdownPlaceholder }, ...serviceOptions]}
             placeholder={dropdownPlaceholder}
             disabled={disabled}
+            searchable={serviceOptions.length > 5}
+            searchThreshold={5}
+            usePortal
           />
         </div>
         <PrimaryButton

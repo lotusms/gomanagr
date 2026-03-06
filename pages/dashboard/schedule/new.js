@@ -33,6 +33,7 @@ export default function NewAppointmentPage() {
     isOrgAdmin,
     loading,
     fetchOrgSchedule,
+    fetchOrgClients,
     broadcastScheduleUpdated,
   } = useScheduleData();
 
@@ -60,6 +61,7 @@ export default function NewAppointmentPage() {
             if (!res.ok) throw new Error(data.error || 'Failed to add client');
           }
           await fetchOrgSchedule();
+          if (fetchOrgClients) fetchOrgClients();
         } else {
           const existingIds = (userAccount?.clients || clients).map((c) => c.id).filter(Boolean);
           const updatedClients = [...(userAccount?.clients || clients), ...pending];
@@ -145,7 +147,7 @@ export default function NewAppointmentPage() {
             </Link>
           }
         />
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible">
           <AppointmentForm
             teamMembers={teamMembers}
             businessHoursStart={businessHoursStart}

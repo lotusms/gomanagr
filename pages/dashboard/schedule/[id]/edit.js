@@ -50,6 +50,7 @@ export default function EditAppointmentPage() {
     isOrgAdmin,
     loading,
     fetchOrgSchedule,
+    fetchOrgClients,
     broadcastScheduleUpdated,
   } = useScheduleData();
 
@@ -63,12 +64,14 @@ export default function EditAppointmentPage() {
         id: appointment.id,
         title: appointment.title,
         staffId: appointment.staffId,
+        staffIds: appointment.staffIds,
         date: appointment.date,
         start: appointment.start,
         end: appointment.end,
         label: appointment.label,
         clientId: appointment.clientId,
         services: appointment.services,
+        recurrence: appointment.recurrence,
         createdAt: appointment.createdAt,
         updatedAt: appointment.updatedAt,
       }
@@ -98,6 +101,7 @@ export default function EditAppointmentPage() {
             if (!res.ok) throw new Error(data.error || 'Failed to add client');
           }
           await fetchOrgSchedule();
+          if (fetchOrgClients) fetchOrgClients();
         } else {
           const updatedClients = [...(userAccount?.clients || clients), ...pending];
           await updateClients(currentUser.uid, updatedClients);
@@ -297,7 +301,7 @@ export default function EditAppointmentPage() {
             </Link>
           }
         />
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible">
           <AppointmentForm
             teamMembers={teamMembers}
             businessHoursStart={businessHoursStart}

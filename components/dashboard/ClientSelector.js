@@ -107,6 +107,9 @@ export default function ClientSelector({
             options={[{ value: '', label: 'None' }, ...clientOptions]}
             placeholder={dropdownPlaceholder}
             disabled={disabled}
+            searchable={clientOptions.length > 5}
+            searchThreshold={5}
+            usePortal
           />
         </div>
         {canAdd && (

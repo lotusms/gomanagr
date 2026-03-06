@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
@@ -8,26 +9,11 @@ import { isAdminRole } from '@/config/rolePermissions';
 import { useState, useEffect } from 'react';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
-import Link from 'next/link';
-import { HiUserGroup, HiInformationCircle, HiKey, HiPencil } from 'react-icons/hi';
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
+import { HiUserGroup, HiKey } from 'react-icons/hi';
 
 const TEAM_MEMBER_TODO_ITEMS = [
-  {
-    id: 'team-member-info',
-    title: 'Your team member area',
-    description: 'You only have access to this area for now. Your admin can grant access to more sections when needed.',
-    duration: null,
-    Icon: HiInformationCircle,
-    href: null,
-  },
-  {
-    id: 'need-more-access',
-    title: 'Need access to more features?',
-    description: 'Reach out to your organization admin to request access to projects, schedule, or other tools.',
-    duration: null,
-    Icon: HiKey,
-    href: null,
-  },
+ 
 ];
 
 function getWelcomeName(account) {
@@ -42,11 +28,15 @@ function getWelcomeName(account) {
 }
 
 export default function TeamMemberPage() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const [userAccount, setUserAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
   const [scheduleAccount, setScheduleAccount] = useState(null);
   const [accountLoaded, setAccountLoaded] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -94,7 +84,9 @@ export default function TeamMemberPage() {
     );
     if (!me) return { staffForToday: [], appointmentsForToday: [], schedulePrefs: scheduleAccount };
     const myAppointments = (scheduleAccount.appointments || []).filter(
-      (a) => String(a.staffId) === String(me.id)
+      (a) =>
+        (Array.isArray(a.staffIds) && a.staffIds.some((id) => String(id) === String(me.id))) ||
+        String(a.staffId) === String(me.id)
     );
     return {
       staffForToday: [me],
@@ -102,6 +94,53 @@ export default function TeamMemberPage() {
       schedulePrefs: scheduleAccount,
     };
   }, [scheduleAccount, currentUser?.email, showAllAppointments]);
+
+  const currentUserStaffId = showAllAppointments ? null : (staffForToday?.[0]?.id ?? null);
+  const handleAppointmentClick = (appointment) => {
+    router.push(`/dashboard/schedule/${appointment.id}/edit`);
+  };
+  const handleAppointmentDelete = (appointment) => {
+    setAppointmentToDelete(appointment);
+    setDeleteDialogOpen(true);
+  };
+  const handleDeleteConfirm = async () => {
+    if (!currentUser?.uid || !appointmentToDelete) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/org-schedule-mutation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          action: 'delete',
+          appointmentId: appointmentToDelete.id,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || 'Failed to delete appointment');
+      }
+      const data = await fetch('/api/org-schedule-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json());
+      setScheduleAccount(data?.schedule ?? null);
+      setDeleteDialogOpen(false);
+      setAppointmentToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete appointment:', error);
+      alert(error.message || 'Failed to delete appointment. Please try again.');
+      setDeleteDialogOpen(false);
+      setAppointmentToDelete(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setAppointmentToDelete(null);
+  };
 
   const handleDismissTodo = createDismissTodoHandler({
     userId: currentUser?.uid,
@@ -152,17 +191,39 @@ export default function TeamMemberPage() {
           <DashboardTodos items={todoItems} onDismiss={handleDismissTodo} />
 
           {schedulePrefs && (
-            <TodaysAppointments
-              businessHoursStart={schedulePrefs.businessHoursStart}
-              businessHoursEnd={schedulePrefs.businessHoursEnd}
-              timeFormat={schedulePrefs.timeFormat}
-              dateFormat={schedulePrefs.dateFormat}
-              timezone={schedulePrefs.timezone}
-              staff={staffForToday || []}
-              appointments={appointmentsForToday || []}
-              clients={schedulePrefs.clients || []}
-              services={schedulePrefs.services || []}
-            />
+            <>
+              <TodaysAppointments
+                businessHoursStart={schedulePrefs.businessHoursStart}
+                businessHoursEnd={schedulePrefs.businessHoursEnd}
+                timeFormat={schedulePrefs.timeFormat}
+                dateFormat={schedulePrefs.dateFormat}
+                timezone={schedulePrefs.timezone}
+                staff={staffForToday || []}
+                appointments={appointmentsForToday || []}
+                clients={schedulePrefs.clients || []}
+                services={schedulePrefs.services || []}
+                teamMembers={staffForToday || []}
+                onAppointmentClick={handleAppointmentClick}
+                onAppointmentDelete={handleAppointmentDelete}
+                isTeamMember={!showAllAppointments}
+                currentUserStaffId={currentUserStaffId}
+              />
+              <ConfirmationDialog
+                isOpen={deleteDialogOpen}
+                onClose={handleDeleteCancel}
+                onConfirm={handleDeleteConfirm}
+                title="Delete Appointment"
+                message={
+                  appointmentToDelete
+                    ? `Are you sure you want to delete "${appointmentToDelete?.title || appointmentToDelete?.label || 'this appointment'}"? This action cannot be undone.`
+                    : 'Delete this appointment?'
+                }
+                confirmText="Delete"
+                cancelText="Cancel"
+                confirmationWord="delete"
+                variant="danger"
+              />
+            </>
           )}
 
         </div>

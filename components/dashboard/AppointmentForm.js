@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import TimeField from '@/components/ui/TimeField';
-import Dropdown from '@/components/ui/Dropdown';
+import { Dropdown, SearchableMultiselect } from '@/components/ui';
 import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import AppointmentRecurrence, { defaultRecurrence } from '@/components/dashboard/AppointmentRecurrence';
@@ -60,7 +60,7 @@ export default function AppointmentForm({
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
 
   const [title, setTitle] = useState('');
-  const [staffId, setStaffId] = useState(staffRestrictedToId || '');
+  const [staffIds, setStaffIds] = useState(() => (staffRestrictedToId ? [staffRestrictedToId] : []));
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -73,6 +73,7 @@ export default function AppointmentForm({
   const [hasChanges, setHasChanges] = useState(false);
   const markDirty = useCallback(() => setHasChanges(true), []);
   const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
+  const lastTeamMemberSelectValueRef = useRef([]);
 
   const getCurrentDateTimeInTimezone = useMemo(() => {
     return () => {
@@ -141,35 +142,40 @@ export default function AppointmentForm({
     };
   }, [date, todayDateStringLocal, getCurrentDateTimeLocal, timeFormat]);
 
+  const effectiveStaffIds = useMemo(
+    () => (staffRestrictedToId ? [staffRestrictedToId] : staffIds),
+    [staffRestrictedToId, staffIds]
+  );
+
   const isTimeSlotConflicting = useMemo(() => {
     return (timeSlot) => {
-      if (!staffId || !date) return false;
+      if (!date || effectiveStaffIds.length === 0) return false;
 
-      const conflictingAppointments = appointments.filter((apt) => {
-        if (initialAppointment && apt.id === initialAppointment.id) return false;
-        
-        if (String(apt.staffId) !== String(staffId)) return false;
-        
-        let appointmentDateKey;
-        if (typeof apt.date === 'string') {
-          appointmentDateKey = apt.date;
-        } else {
-          const aptDate = new Date(apt.date);
-          appointmentDateKey = aptDate.toISOString().split('T')[0];
-        }
-        
-        return appointmentDateKey === date;
-      });
-
-      return conflictingAppointments.some((apt) => {
-        const slotIndex = parseTimeToSlotIndex(timeSlot, startHour);
-        const aptStartSlot = parseTimeToSlotIndex(apt.start, startHour);
-        const aptEndSlot = parseTimeToSlotIndex(apt.end, startHour);
-        
-        return slotIndex >= aptStartSlot && slotIndex < aptEndSlot;
-      });
+      const slotIndex = parseTimeToSlotIndex(timeSlot, startHour);
+      for (const sid of effectiveStaffIds) {
+        const conflictingAppointments = appointments.filter((apt) => {
+          if (initialAppointment && apt.id === initialAppointment.id) return false;
+          const aptStaffMatch = (apt.staffIds && apt.staffIds.some((id) => String(id) === String(sid))) || String(apt.staffId) === String(sid);
+          if (!aptStaffMatch) return false;
+          let appointmentDateKey;
+          if (typeof apt.date === 'string') {
+            appointmentDateKey = apt.date;
+          } else {
+            const aptDate = new Date(apt.date);
+            appointmentDateKey = aptDate.toISOString().split('T')[0];
+          }
+          return appointmentDateKey === date;
+        });
+        const hasConflict = conflictingAppointments.some((apt) => {
+          const aptStartSlot = parseTimeToSlotIndex(apt.start, startHour);
+          const aptEndSlot = parseTimeToSlotIndex(apt.end, startHour);
+          return slotIndex >= aptStartSlot && slotIndex < aptEndSlot;
+        });
+        if (hasConflict) return true;
+      }
+      return false;
     };
-  }, [staffId, date, appointments, initialAppointment, startHour]);
+  }, [effectiveStaffIds, date, appointments, initialAppointment, startHour]);
 
   const timeSlotOptions = useMemo(() => {
     return timeSlots.map((slot) => ({
@@ -178,6 +184,8 @@ export default function AppointmentForm({
       disabled: isTimeSlotConflicting(slot) || isTimeSlotInPast(slot),
     }));
   }, [timeSlots, isTimeSlotConflicting, isTimeSlotInPast]);
+
+  const ALL_MEMBERS_VALUE = '__all__';
 
   const teamMemberOptions = useMemo(() => {
     const sorted = [...teamMembers].sort((a, b) => {
@@ -191,20 +199,22 @@ export default function AppointmentForm({
       return nameA.localeCompare(nameB);
     });
     
-    return sorted.map((member) => ({
+    const memberOpts = sorted.map((member) => ({
       value: member.id,
       label: member.name || 'Unnamed',
     }));
+    if (memberOpts.length <= 1) return memberOpts;
+    return [{ value: ALL_MEMBERS_VALUE, label: 'All Members' }, ...memberOpts];
   }, [teamMembers]);
 
   const availableServices = useMemo(() => {
     if (!Array.isArray(services)) return [];
-    if (!staffId) return services;
+    if (effectiveStaffIds.length === 0) return services;
     return services.filter((service) => {
       const assignedIds = service.assignedTeamMemberIds || [];
-      return assignedIds.includes(staffId);
+      return effectiveStaffIds.some((sid) => assignedIds.includes(sid));
     });
-  }, [services, staffId]);
+  }, [services, effectiveStaffIds]);
 
 
   useEffect(() => {
@@ -216,6 +226,10 @@ export default function AppointmentForm({
       const ids = (services || []).filter((s) => names.includes(s.name)).map((s) => s.id);
       setSelectedServiceIds(ids);
       setClientId(initialAppointment.clientId || '');
+      const initialStaffIds = Array.isArray(initialAppointment.staffIds) && initialAppointment.staffIds.length > 0
+        ? initialAppointment.staffIds.map(String)
+        : (initialAppointment.staffId ? [String(initialAppointment.staffId)] : []);
+      setStaffIds(staffRestrictedToId ? [staffRestrictedToId] : initialStaffIds);
       if (initialAppointment.recurrence && typeof initialAppointment.recurrence === 'object') {
         setRecurrence((prev) => ({ ...defaultRecurrence(), ...prev, ...initialAppointment.recurrence }));
       }
@@ -231,7 +245,7 @@ export default function AppointmentForm({
       
       setDate(defaultDate);
       setTitle('');
-      setStaffId('');
+      setStaffIds(staffRestrictedToId ? [staffRestrictedToId] : []);
       setStartTime('');
       setEndTime('');
       setSelectedServiceIds([]);
@@ -240,23 +254,24 @@ export default function AppointmentForm({
       setRecurrence(defaultRecurrence());
     }
     setErrors({});
-  }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone]);
+  }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone, staffRestrictedToId]);
 
   useEffect(() => {
-    if (!initialAppointment && staffId && Array.isArray(services)) {
+    if (!initialAppointment && effectiveStaffIds.length > 0 && Array.isArray(services)) {
       const validIds = selectedServiceIds.filter((id) => {
         const service = services.find((s) => s.id === id);
-        return service?.assignedTeamMemberIds?.includes(staffId);
+        const assigned = service?.assignedTeamMemberIds || [];
+        return effectiveStaffIds.some((sid) => assigned.includes(sid));
       });
       if (validIds.length !== selectedServiceIds.length) {
         setSelectedServiceIds(validIds);
       }
     }
-  }, [staffId, services, initialAppointment]);
+  }, [effectiveStaffIds, services, initialAppointment]);
 
   useEffect(() => {
     if (staffRestrictedToId) {
-      setStaffId(staffRestrictedToId);
+      setStaffIds([staffRestrictedToId]);
     }
   }, [staffRestrictedToId]);
 
@@ -280,11 +295,11 @@ export default function AppointmentForm({
         }
       }
     }
-  }, [staffId, date, timeSlotOptions, todayDateString, getCurrentDateTimeInTimezone]);
+  }, [effectiveStaffIds, date, timeSlotOptions, todayDateString, getCurrentDateTimeInTimezone]);
 
   useEffect(() => {
     if (!initialAppointment) {
-      setStaffId(staffRestrictedToId || '');
+      setStaffIds(staffRestrictedToId ? [staffRestrictedToId] : []);
       setStartTime('');
       setEndTime('');
       return;
@@ -294,15 +309,16 @@ export default function AppointmentForm({
       return;
     }
 
-    const staffOpt = teamMemberOptions.find(
-      (opt) => String(opt.value) === String(initialAppointment.staffId)
-    );
+    const initialStaffIds = Array.isArray(initialAppointment.staffIds) && initialAppointment.staffIds.length > 0
+      ? initialAppointment.staffIds.map(String)
+      : (initialAppointment.staffId ? [String(initialAppointment.staffId)] : []);
     if (staffRestrictedToId) {
-      setStaffId(staffRestrictedToId);
-    } else if (staffOpt) {
-      setStaffId(String(staffOpt.value));
+      setStaffIds([staffRestrictedToId]);
+    } else if (initialStaffIds.length > 0) {
+      const valid = initialStaffIds.filter((id) => teamMemberOptions.some((o) => String(o.value) === id));
+      setStaffIds(valid.length > 0 ? valid : initialStaffIds);
     } else {
-      setStaffId('');
+      setStaffIds([]);
     }
 
     const startOpt = timeSlotOptions.find(
@@ -326,9 +342,8 @@ export default function AppointmentForm({
 
   const validate = () => {
     const newErrors = {};
-    const effectiveStaffId = staffRestrictedToId || staffId;
-    if (!effectiveStaffId) {
-      newErrors.staffId = 'Please select a team member';
+    if (effectiveStaffIds.length === 0) {
+      newErrors.staffId = 'Please select at least one team member';
     }
 
     const trimmedTitle = (title || '').trim();
@@ -411,7 +426,8 @@ export default function AppointmentForm({
 
     const appointmentData = {
       id: initialAppointment?.id || `apt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      staffId: staffRestrictedToId || staffId,
+      staffIds: effectiveStaffIds.length > 0 ? [...effectiveStaffIds] : undefined,
+      staffId: effectiveStaffIds[0] || undefined,
       title: title.trim() || undefined,
       date,
       start: startTime,
@@ -430,7 +446,6 @@ export default function AppointmentForm({
     onSubmit(appointmentData);
   };
 
-  const effectiveStaffId = staffRestrictedToId || staffId;
   const isTeamMemberView = !!staffRestrictedToId;
 
   return (
@@ -455,20 +470,44 @@ export default function AppointmentForm({
         </div>
         {!staffRestrictedToId ? (
           <div>
-            <Dropdown
-              key={`staffId-${staffId || 'empty'}-${initialAppointment?.id ?? 'new'}`}
-              id="staffId"
-              label="Team Member"
-              value={staffId}
-              onChange={(e) => {
-                setStaffId(e.target.value ?? '');
-                setErrors((prev) => ({ ...prev, staffId: '' }));
-              }}
-              options={teamMemberOptions}
-              placeholder="Select team member..."
-              required
-              error={errors.staffId}
-            />
+            {(() => {
+              const teamMemberSelectValue =
+                teamMembers.length > 1 && staffIds.length === teamMembers.length
+                  ? [ALL_MEMBERS_VALUE, ...staffIds]
+                  : staffIds;
+              lastTeamMemberSelectValueRef.current = teamMemberSelectValue;
+              const allMemberIds = teamMemberOptions
+                .filter((o) => o.value !== ALL_MEMBERS_VALUE)
+                .map((o) => o.value);
+              return (
+                <SearchableMultiselect
+                  id="staffIds"
+                  label="Team Member(s)"
+                  options={teamMemberOptions}
+                  value={teamMemberSelectValue}
+                  onChange={(ids) => {
+                    const next = ids || [];
+                    const hadAllSelected = lastTeamMemberSelectValueRef.current.includes(ALL_MEMBERS_VALUE);
+                    const withoutAll = next.filter((v) => v !== ALL_MEMBERS_VALUE);
+                    if (next.includes(ALL_MEMBERS_VALUE)) {
+                      if (next.length === 1 || next.length === allMemberIds.length + 1) {
+                        setStaffIds(allMemberIds);
+                      } else {
+                        setStaffIds(withoutAll);
+                      }
+                    } else if (hadAllSelected && !next.includes(ALL_MEMBERS_VALUE)) {
+                      setStaffIds([]);
+                    } else {
+                      setStaffIds(withoutAll);
+                    }
+                    setErrors((prev) => ({ ...prev, staffId: '' }));
+                  }}
+                  placeholder="Select team member(s)..."
+                  required
+                  error={errors.staffId}
+                />
+              );
+            })()}
             {errors.staffId && <p className="mt-1 text-sm text-red-600">{errors.staffId}</p>}
           </div>
         ) : null}
@@ -570,7 +609,7 @@ export default function AppointmentForm({
             onNestedDrawerChange={onNestedDrawerChange}
             teamMembers={teamMembers}
             multiple={false}
-            preselectedTeamMemberIds={staffRestrictedToId || staffId ? [staffRestrictedToId || staffId] : []}
+            preselectedTeamMemberIds={effectiveStaffIds}
             label="Service"
             disabled={saving}
             dropdownPlaceholder="Select service..."

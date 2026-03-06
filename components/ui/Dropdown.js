@@ -49,9 +49,14 @@ export default function Dropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [popupRect, setPopupRect] = useState(null);
+  const [openUpward, setOpenUpward] = useState(false);
+  const [nonPortalMaxHeight, setNonPortalMaxHeight] = useState(300);
   const containerRef = useRef(null);
   const popupRef = useRef(null);
   const searchInputRef = useRef(null);
+
+  const BOTTOM_GAP_PX = 10;
+  const MIN_SPACE_BELOW_TO_OPEN_DOWN_PX = 250;
 
   const showSearch = searchable !== undefined ? searchable : options.length > searchThreshold;
 
@@ -104,6 +109,19 @@ export default function Dropdown({
     }
     if (!isOpen && usePortal) setPopupRect(null);
   }, [isOpen, usePortal, updatePopupRect]);
+
+  useEffect(() => {
+    if (isOpen && !usePortal && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < MIN_SPACE_BELOW_TO_OPEN_DOWN_PX;
+      setOpenUpward(openUp);
+      const maxH = openUp
+        ? Math.min(300, rect.top - BOTTOM_GAP_PX)
+        : Math.min(300, spaceBelow - 4 - BOTTOM_GAP_PX);
+      setNonPortalMaxHeight(Math.max(120, maxH));
+    }
+  }, [isOpen, usePortal]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -209,8 +227,9 @@ export default function Dropdown({
         className={
           listGrowsWithContent
             ? ''
-            : 'min-h-0 flex-1 overflow-y-auto max-h-[300px]'
+            : 'min-h-0 flex-1 overflow-y-auto'
         }
+        style={listGrowsWithContent ? undefined : { maxHeight: '100%', paddingBottom: BOTTOM_GAP_PX }}
       >
         {filteredOptions.length === 0 ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">
@@ -262,27 +281,26 @@ export default function Dropdown({
   const popupBaseClass = 'bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700';
   const popupWrapperClassName = `z-[9999] ${popupBaseClass} min-w-full`;
   const popupPortalClassName = `z-[9999] ${popupBaseClass} overflow-hidden flex flex-col`;
-  const VIEWPORT_GAP_PX = 80;
-  const MIN_SPACE_BELOW_TO_OPEN_DOWN_PX = 250;
+  const VIEWPORT_GAP_TOP_PX = 80;
 
   const popupWrapperStyle = usePortal && popupRect && typeof window !== 'undefined'
     ? (() => {
         const spaceBelow = window.innerHeight - popupRect.top;
-        const openUpward = spaceBelow < MIN_SPACE_BELOW_TO_OPEN_DOWN_PX;
+        const portalOpenUpward = spaceBelow < MIN_SPACE_BELOW_TO_OPEN_DOWN_PX;
         const triggerTop = popupRect.triggerTop ?? 0;
         return {
           position: 'fixed',
           left: popupRect.left,
           width: popupRect.width,
           minWidth: popupRect.width,
-          ...(openUpward
+          ...(portalOpenUpward
             ? {
                 bottom: window.innerHeight - triggerTop + 4,
-                maxHeight: Math.max(150, triggerTop - 4 - VIEWPORT_GAP_PX),
+                maxHeight: Math.max(150, triggerTop - 4 - VIEWPORT_GAP_TOP_PX),
               }
             : {
                 top: popupRect.top + 4,
-                maxHeight: `calc(100vh - ${popupRect.top + 4}px - ${VIEWPORT_GAP_PX}px)`,
+                maxHeight: `calc(100vh - ${popupRect.top + 4}px - ${BOTTOM_GAP_PX}px)`,
               }),
         };
       })()
@@ -319,8 +337,17 @@ export default function Dropdown({
         </button>
 
         {isOpen && !disabled && !usePortal && (
-          <div ref={popupRef} className={`absolute mt-1 ${popupWrapperClassName}`} style={{ top: '100%', left: 0 }}>
-            {dropdownPanelContent}
+          <div
+            ref={popupRef}
+            className={`absolute left-0 ${popupWrapperClassName}`}
+            style={{
+              ...(openUpward ? { bottom: '100%', marginBottom: 4 } : { top: '100%', marginTop: 4 }),
+              maxHeight: nonPortalMaxHeight,
+            }}
+          >
+            <div className="flex flex-col min-h-0 h-full overflow-hidden">
+              {dropdownPanelContent}
+            </div>
           </div>
         )}
       </div>

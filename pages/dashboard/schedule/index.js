@@ -200,6 +200,8 @@ export default function ScheduleIndexPage() {
               services={services}
               onAppointmentClick={handleAppointmentClick}
               onAppointmentDelete={handleDeleteClick}
+              isTeamMember={isTeamMember}
+              currentUserStaffId={myStaffId ?? null}
             />
             <Dialog.Root
               open={deleteRecurrenceChoiceOpen}

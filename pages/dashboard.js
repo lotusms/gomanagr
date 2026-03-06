@@ -17,6 +17,7 @@ import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import StatsGrid from '@/components/dashboard/StatsGrid';
 import WebsiteConsultationDialog from '@/components/dashboard/WebsiteConsultationDialog';
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import { isAdminRole, isOwnerRole } from '@/config/rolePermissions';
 
 function getWelcomeName(account, email = '') {
@@ -150,9 +151,14 @@ function DashboardContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
       }).then((r) => r.json().then((d) => (d.invoices || []).length)),
+      fetch('/api/get-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
+      }).then((r) => r.json().then((d) => (d.proposals || []).length)),
     ])
-      .then(([clientCount, projectCount, invoiceCount]) => {
-        setStatsCounts({ clientCount, projectCount, invoiceCount });
+      .then(([clientCount, projectCount, invoiceCount, proposalCount]) => {
+        setStatsCounts({ clientCount, projectCount, invoiceCount, proposalCount });
       })
       .catch(() => setStatsCounts(null));
   }, [currentUser?.uid, organization?.id]);
@@ -198,6 +204,51 @@ function DashboardContent() {
   const welcomeName = getWelcomeName(userAccount, currentUser?.email ?? '');
   const dismissedTodoIds = accountLoaded ? (userAccount?.dismissedTodoIds ?? []) : null;
   const [websiteDialogOpen, setWebsiteDialogOpen] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleAppointmentClick = (appointment) => {
+    router.push(`/dashboard/schedule/${appointment.id}/edit`);
+  };
+  const handleAppointmentDelete = (appointment) => {
+    setAppointmentToDelete(appointment);
+    setDeleteDialogOpen(true);
+  };
+  const handleDeleteConfirm = async () => {
+    if (!currentUser?.uid || !appointmentToDelete) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/org-schedule-mutation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, action: 'delete', appointmentId: appointmentToDelete.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || 'Failed to delete appointment');
+      }
+      const data = await fetch('/api/org-schedule-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json());
+      setOrgSchedule(data?.schedule ?? null);
+      setDeleteDialogOpen(false);
+      setAppointmentToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete appointment:', error);
+      alert(error.message || 'Failed to delete appointment. Please try again.');
+      setDeleteDialogOpen(false);
+      setAppointmentToDelete(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setAppointmentToDelete(null);
+  };
 
   const handleDismissTodo = createDismissTodoHandler({
     userId: currentUser?.uid,
@@ -229,6 +280,10 @@ function DashboardContent() {
             if (!accountLoaded) return true;
             const hasInvoices = Array.isArray(userAccount?.invoices) && userAccount.invoices.length > 0;
             if (hasInvoices) return false;
+          }
+          if (item.id === 'proposal') {
+            const hasProposals = (statsCounts?.proposalCount ?? 0) > 0;
+            if (hasProposals) return false;
           }
           if (item.id === 'quote') {
             if (!accountLoaded) return true;
@@ -296,6 +351,26 @@ function DashboardContent() {
           appointments={todayAppointments}
           clients={todayClients}
           services={todayServices}
+          teamMembers={todayStaff}
+          onAppointmentClick={handleAppointmentClick}
+          onAppointmentDelete={handleAppointmentDelete}
+          isTeamMember={false}
+          currentUserStaffId={null}
+        />
+        <ConfirmationDialog
+          isOpen={deleteDialogOpen}
+          onClose={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Appointment"
+          message={
+            appointmentToDelete
+              ? `Are you sure you want to delete "${appointmentToDelete?.title || appointmentToDelete?.label || 'this appointment'}"? This action cannot be undone.`
+              : 'Delete this appointment?'
+          }
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmationWord="delete"
+          variant="danger"
         />
       </div>
     </>

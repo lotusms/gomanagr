@@ -85,6 +85,8 @@ export default function Schedule({
   services = [],
   onAppointmentClick,
   onAppointmentDelete,
+  isTeamMember = false,
+  currentUserStaffId = null,
 }) {
   const today = new Date();
   const todayKey = toDateKey(today);
@@ -197,13 +199,21 @@ export default function Schedule({
                     if (appointment) {
                       const timeRange = `${formatTime(appointment.start, timeFormat)} – ${formatTime(appointment.end, timeFormat)}`;
                       const displayTitle = (appointment.title || '').trim() || 'Appointment';
+                      const isGroup =
+                        Array.isArray(appointment.staffIds) && appointment.staffIds.length > 1;
+                      const isOwn =
+                        currentUserStaffId &&
+                        ((Array.isArray(appointment.staffIds) &&
+                          appointment.staffIds.some((id) => String(id) === String(currentUserStaffId))) ||
+                          String(appointment.staffId) === String(currentUserStaffId));
+                      const canEdit = !isTeamMember || (isOwn && !isGroup);
+                      const canDelete = !isTeamMember || (isOwn && !isGroup);
 
                       return (
                         <td
                           key={toDateKey(d)}
                           rowSpan={appointment.endSlot - appointment.startSlot}
                           className={`relative align-top p-1 min-w-0 overflow-hidden ${appointment.color} dark:bg-primary-900/40 dark:border-primary-600 dark:text-primary-200 border-2 border-primary-600/50 dark:border-primary-500/50 cursor-pointer hover:opacity-80 transition-opacity`}
-                          onClick={() => onAppointmentClick && onAppointmentClick(appointment)}
                         >
                           <AppointmentPopover
                             appointment={appointment}
@@ -212,6 +222,8 @@ export default function Schedule({
                             timeFormat={timeFormat}
                             onOpenEdit={onAppointmentClick}
                             onDelete={onAppointmentDelete}
+                            canEdit={canEdit}
+                            canDelete={canDelete}
                           >
                             <span className="text-xs font-medium truncate block">{displayTitle}</span>
                             <span className="text-xs text-gray-600 dark:text-primary-300 truncate block mt-0.5">

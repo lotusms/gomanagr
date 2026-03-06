@@ -1,7 +1,7 @@
 /**
  * Reusable appointment popover: shows a compact trigger (e.g. title + time).
  * On hover, shows a rich HTML popover with title, team member, time, service, client, notes (3-line clip).
- * Clicking the trigger or popover calls onOpenEdit to open the appointment in edit mode.
+ * Only "Click to edit" inside the popover opens the appointment in edit mode; the trigger just shows the popover.
  *
  * @param {Object} appointment - { id, title, staffId, start, end, services, clientId, label, ... }
  * @param {Array} teamMembers - [{ id, name }, ...]
@@ -9,6 +9,8 @@
  * @param {string} timeFormat - '12h' | '24h'
  * @param {Function} onOpenEdit - (appointment) => void when user clicks to edit
  * @param {Function} [onDelete] - (appointment) => void when user clicks delete in popover
+ * @param {boolean} [canEdit=true] - If false, "Click to edit" is hidden (trigger only opens popover)
+ * @param {boolean} [canDelete=true] - If false, Delete button is hidden
  * @param {React.ReactNode} children - Trigger content (optional; default is title + time)
  */
 
@@ -28,6 +30,8 @@ export default function AppointmentPopover({
   timeFormat = '24h',
   onOpenEdit,
   onDelete,
+  canEdit = true,
+  canDelete = true,
   children,
 }) {
   const [visible, setVisible] = useState(false);
@@ -48,8 +52,13 @@ export default function AppointmentPopover({
     closeTimeoutRef.current = setTimeout(() => setVisible(false), CLOSE_DELAY_MS);
   };
 
-  const teamMember = teamMembers.find((m) => String(m.id) === String(appointment?.staffId));
-  const teamMemberName = teamMember?.name ?? '—';
+  const appointmentStaffIds = Array.isArray(appointment?.staffIds) && appointment.staffIds.length > 0
+    ? appointment.staffIds
+    : (appointment?.staffId ? [appointment.staffId] : []);
+  const teamMemberNames = appointmentStaffIds
+    .map((sid) => teamMembers.find((m) => String(m.id) === String(sid))?.name)
+    .filter(Boolean);
+  const teamMemberName = teamMemberNames.length > 0 ? teamMemberNames.join(', ') : '—';
   const client = appointment?.clientId
     ? clients.find((c) => String(c.id) === String(appointment.clientId))
     : null;
@@ -90,9 +99,16 @@ export default function AppointmentPopover({
     scheduleClose();
   };
 
-  const handleClick = (e) => {
+  const handleTriggerClick = () => {
+    clearCloseTimeout();
+    updatePosition();
+    setVisible(true);
+  };
+
+  const handleEditClick = (e) => {
     e.stopPropagation();
-    onOpenEdit?.(appointment);
+    e.preventDefault();
+    if (canEdit) onOpenEdit?.(appointment);
   };
 
   const handleDeleteClick = (e) => {
@@ -134,7 +150,6 @@ export default function AppointmentPopover({
         }}
         onMouseEnter={handlePopoverMouseEnter}
         onMouseLeave={handlePopoverMouseLeave}
-        onClick={handleClick}
       >
         <div className="space-y-2 text-sm">
           <div className="font-semibold text-gray-900 dark:text-white">{title}</div>
@@ -161,8 +176,18 @@ export default function AppointmentPopover({
           ) : null}
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="text-xs text-gray-500 dark:text-gray-400">Click to edit</span>
-          {onDelete ? (
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={handleEditClick}
+              className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium cursor-pointer"
+            >
+              Click to edit
+            </button>
+          ) : (
+            <span className="text-xs text-gray-400 dark:text-gray-500">View only</span>
+          )}
+          {canDelete && onDelete ? (
             <button
               type="button"
               onClick={handleDeleteClick}
@@ -180,10 +205,13 @@ export default function AppointmentPopover({
   return (
     <div
       ref={triggerRef}
+      role="button"
+      tabIndex={0}
       className="relative inline-block min-w-0 max-w-full w-full cursor-pointer"
       onMouseEnter={handleTriggerMouseEnter}
       onMouseLeave={handleTriggerMouseLeave}
-      onClick={handleClick}
+      onClick={handleTriggerClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTriggerClick(); } }}
     >
       {triggerContent}
       {typeof document !== 'undefined' && popoverEl && createPortal(popoverEl, document.body)}

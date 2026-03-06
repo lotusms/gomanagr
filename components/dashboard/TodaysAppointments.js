@@ -3,7 +3,7 @@ import { formatDate } from '@/utils/dateTimeFormatters';
 import Tooltip from '@/components/ui/Tooltip';
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
-import { HiCalendar } from 'react-icons/hi';
+import AppointmentPopover from '@/components/dashboard/AppointmentPopover';
 
 /**
  * @param {Array} appointments - Array of appointment objects
@@ -47,16 +47,25 @@ export default function TodaysAppointments({
   appointments = [],
   clients = [],
   services = [],
+  teamMembers: teamMembersProp,
+  onAppointmentClick,
+  onAppointmentDelete,
+  isTeamMember = false,
+  currentUserStaffId = null,
 }) {
   const staff = staffProp || [];
+  const teamMembers = teamMembersProp ?? staff;
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
   const todayInTimezone = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
   const todayKey = todayInTimezone;
   const appointmentsForToday = getAppointmentsForToday(appointments, todayKey, startHour);
   const todayLabel = formatDate(todayInTimezone, dateFormat, timezone);
+  const appointmentMatchesStaff = (apt, staffId) =>
+    (Array.isArray(apt.staffIds) && apt.staffIds.some((id) => String(id) === String(staffId))) ||
+    String(apt.staffId) === String(staffId);
   const staffWithAppointments = staff.filter((staffRow) => {
-    const staffAppointments = appointmentsForToday.filter((a) => a.staffId === staffRow.id);
+    const staffAppointments = appointmentsForToday.filter((a) => appointmentMatchesStaff(a, staffRow.id));
     return staffAppointments.length > 0;
   });
 
@@ -89,7 +98,7 @@ export default function TodaysAppointments({
               </thead>
               <tbody>
                 {staffWithAppointments.map((staffRow) => {
-                  const staffAppointments = appointmentsForToday.filter((a) => a.staffId === staffRow.id);
+                  const staffAppointments = appointmentsForToday.filter((a) => appointmentMatchesStaff(a, staffRow.id));
                   return (
                     <tr key={staffRow.id}>
                       <td className="w-36 py-1 px-2 border-r border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 font-medium text-gray-900 dark:text-white leading-tight">
@@ -111,17 +120,12 @@ export default function TodaysAppointments({
                         if (appointment && !isStart) return null;
                         if (isStart) {
                           const span = appointment.endSlot - appointment.startSlot;
-                          const timeRangeText =
-                            timeSlots[appointment.startSlot] +
-                            (appointment.endSlot < timeSlots.length
-                              ? ` – ${timeSlots[appointment.endSlot]}`
-                              : '');
+                          const serviceNames = appointment.services || [];
+                          const firstService = serviceNames.length > 0 ? serviceNames[0] : '';
                           const client = appointment.clientId
                             ? clients.find(c => c.id === appointment.clientId)
                             : null;
                           const clientName = client ? client.name : '';
-                          const serviceNames = appointment.services || [];
-                          const firstService = serviceNames.length > 0 ? serviceNames[0] : '';
                           let displayText = '';
                           if (clientName && firstService) {
                             displayText = `${clientName} - ${firstService}`;
@@ -132,19 +136,33 @@ export default function TodaysAppointments({
                           } else {
                             displayText = 'Appointment';
                           }
-                          
-                          const tooltipContent = `${displayText}\n${timeRangeText}`;
+                          const isGroup =
+                            Array.isArray(appointment.staffIds) && appointment.staffIds.length > 1;
+                          const isOwn =
+                            currentUserStaffId &&
+                            ((Array.isArray(appointment.staffIds) &&
+                              appointment.staffIds.some((id) => String(id) === String(currentUserStaffId))) ||
+                              String(appointment.staffId) === String(currentUserStaffId));
+                          const canEdit = !isTeamMember || (isOwn && !isGroup);
+                          const canDelete = !isTeamMember || (isOwn && !isGroup);
                           return (
                             <td
                               key={colIndex}
                               colSpan={span}
                               className="min-w-0 py-1 px-0.5 align-top border-b border-r border-gray-100 dark:border-gray-700 overflow-hidden"
                             >
-                              <Tooltip content={tooltipContent}>
-                                <div className="bg-primary-100 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 text-primary-800 dark:text-primary-200 rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight">
-                                  <span className="truncate block">
-                                    {displayText}
-                                  </span>
+                              <AppointmentPopover
+                                appointment={appointment}
+                                teamMembers={teamMembers}
+                                clients={clients}
+                                timeFormat={timeFormat}
+                                onOpenEdit={onAppointmentClick}
+                                onDelete={onAppointmentDelete}
+                                canEdit={canEdit}
+                                canDelete={canDelete}
+                              >
+                                <div className="block rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight bg-primary-100 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 text-primary-800 dark:text-primary-200 hover:bg-primary-200 dark:hover:bg-primary-800/50 cursor-pointer transition-colors">
+                                  <span className="truncate block">{displayText}</span>
                                   <span className="truncate block text-primary-600 dark:text-primary-300 mt-px">
                                     {timeSlots[appointment.startSlot]}
                                     {appointment.endSlot < timeSlots.length
@@ -152,7 +170,7 @@ export default function TodaysAppointments({
                                       : ''}
                                   </span>
                                 </div>
-                              </Tooltip>
+                              </AppointmentPopover>
                             </td>
                           );
                         }

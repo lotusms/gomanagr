@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { HiDocumentText, HiTrash, HiEye, HiPrinter } from 'react-icons/hi';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { HiDocumentText, HiTrash, HiEye, HiPrinter, HiDotsVertical } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
@@ -31,6 +32,21 @@ export default function ProposalCardServiceStyle({
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
   const [viewState, setViewState] = useState({ open: false, autoPrint: false });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchorRect, setMenuAnchorRect] = useState(null);
+  const menuButtonRef = useRef(null);
+  const menuContentRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e) => {
+      const inTrigger = menuButtonRef.current?.contains(e.target);
+      const inMenu = menuContentRef.current?.contains(e.target);
+      if (!inTrigger && !inMenu) setMenuOpen(false);
+    };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [menuOpen]);
 
   const clientName = proposal.client_id && clientNameByClientId[proposal.client_id];
   const statusLabel = proposal.status ? (STATUS_LABELS[proposal.status] || proposal.status) : null;
@@ -64,31 +80,77 @@ export default function ProposalCardServiceStyle({
               </h3>
             </div>
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               type="button"
-              onClick={() => setViewState({ open: true, autoPrint: false })}
-              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-              title="View proposal"
-            >
-              <HiEye className="size-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewState({ open: true, autoPrint: true })}
-              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-              title="Print proposal"
-            >
-              <HiPrinter className="size-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(proposal.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onDelete(proposal.id);
+              }}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
               title="Delete proposal"
             >
               <HiTrash className="size-5" />
             </button>
+            <div className="relative">
+              <button
+                ref={menuButtonRef}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  const rect = menuButtonRef.current?.getBoundingClientRect();
+                  if (rect) setMenuAnchorRect(rect);
+                  setMenuOpen((o) => !o);
+                }}
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                title="More actions"
+                aria-expanded={menuOpen}
+                aria-haspopup="true"
+              >
+                <HiDotsVertical className="size-5" />
+              </button>
+              {menuOpen && menuAnchorRect && createPortal(
+                <div
+                  ref={menuContentRef}
+                  role="menu"
+                  className="fixed z-50 min-w-[10rem] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 py-1 shadow-lg"
+                  style={{
+                    top: menuAnchorRect.bottom + 4,
+                    right: typeof window !== 'undefined' ? window.innerWidth - menuAnchorRect.right : 0,
+                  }}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      setViewState({ open: true, autoPrint: false });
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <HiEye className="w-4 h-4 flex-shrink-0" />
+                    View proposal
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      setViewState({ open: true, autoPrint: true });
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <HiPrinter className="w-4 h-4 flex-shrink-0" />
+                    Print proposal
+                  </button>
+                </div>,
+                document.body
+              )}
+            </div>
           </div>
         </div>
       </div>

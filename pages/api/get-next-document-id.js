@@ -2,9 +2,9 @@
  * Returns the next suggested document ID for a given type and date.
  * POST body: { userId, organizationId?, prefix, date? }
  * prefix: 'PROP' | 'INV' | 'CON' | etc.
- * date: YYYY-MM-DD or YYYYMMDD (default: today)
+ * date: YYYY-MM-DD or YYYYMMDD (default: today) — used only in the ID string; sequence ignores date.
  * Returns: { suggestedId, orgPrefix }
- * Sequence is computed so it never repeats for (org + prefix + date), including trashed/deleted records.
+ * Sequence is global per (org + prefix): next number across all existing IDs, regardless of date.
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -115,7 +115,7 @@ export default async function handler(req, res) {
       const value = row[mapping.column];
       if (!value) continue;
       const parsed = parseDocumentId(value);
-      if (parsed && parsed.docPrefix === docPrefix && parsed.date === datePart) {
+      if (parsed && parsed.docPrefix === docPrefix) {
         if (parsed.sequence > maxSeq) maxSeq = parsed.sequence;
       }
     }

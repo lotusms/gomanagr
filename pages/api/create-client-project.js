@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       let maxSeq = 0;
       for (const r of rows || []) {
         const parsed = parseDocumentId(r.project_number);
-        if (parsed && parsed.docPrefix === 'PROJ' && parsed.date === datePart && parsed.sequence > maxSeq) maxSeq = parsed.sequence;
+        if (parsed && parsed.docPrefix === 'PROJ' && parsed.sequence > maxSeq) maxSeq = parsed.sequence;
       }
       row.project_number = formatDocumentId(orgPrefix, 'PROJ', datePart, maxSeq + 1);
     }

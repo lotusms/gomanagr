@@ -61,15 +61,11 @@ export default function DiscardChangesDialog({
               {message}
             </Dialog.Description>
             <div className="flex justify-end gap-3">
-              <SecondaryButton type="button" onClick={onClose} className="px-5 py-2.5">
-                {stayText}
-              </SecondaryButton>
-              <PrimaryButton
-                type="button"
-                onClick={handleDiscard}
-                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 focus:ring-amber-500"
-              >
+              <SecondaryButton type="button" onClick={handleDiscard} className="px-5 py-2.5">
                 {discardText}
+              </SecondaryButton>
+              <PrimaryButton type="button" onClick={onClose} className="px-5 py-2.5" autoFocus>
+                {stayText}
               </PrimaryButton>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { PrimaryButton, SecondaryButton, DangerButton } from '@/components/ui/buttons';
 import {
   InputField,
@@ -8,6 +8,7 @@ import {
   Dropdown,
   AddressAutocomplete,
   Checkbox,
+  useCancelWithConfirm,
 } from '@/components/ui';
 import ServiceSelector from '@/components/dashboard/ServiceSelector';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
@@ -94,6 +95,8 @@ export default function AddTeamMemberForm({
   const [fileInputKey, setFileInputKey] = useState(0);
   const [sendInviteToLogin, setSendInviteToLogin] = useState(false);
   const [isAdminCheckbox, setIsAdminCheckbox] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
 
   const isEdit = !!initialMember?.id;
 
@@ -256,7 +259,14 @@ export default function AddTeamMemberForm({
     setPicturePreviewUrl('');
     setFileInputKey((k) => k + 1);
     setIsAdminCheckbox(false);
+    setHasChanges(false);
   };
+
+  const handleCancelConfirm = useCallback(() => {
+    resetForm();
+    onCancel();
+  }, [onCancel]);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(handleCancelConfirm, hasChanges);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -330,11 +340,6 @@ export default function AddTeamMemberForm({
     resetForm();
   };
 
-  const handleCancel = () => {
-    resetForm();
-    onCancel();
-  };
-
   const handlePictureChange = (file) => {
     setPictureFile(file);
     if (!file) {
@@ -372,7 +377,7 @@ export default function AddTeamMemberForm({
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="p-6 overflow-y-auto">
+      <form onSubmit={handleSubmit} onInput={markDirty} className="p-6 overflow-y-auto">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
         {/* Left column */}
         <div className="space-y-6">
@@ -389,7 +394,7 @@ export default function AddTeamMemberForm({
               id="first-name"
               label="First name"
               value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
+              onChange={(e) => { markDirty(); setFirstName(e.target.value); }}
               placeholder="First name"
               disabled={saving}
               variant="light"
@@ -398,7 +403,7 @@ export default function AddTeamMemberForm({
               id="last-name"
               label="Last name"
               value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
+              onChange={(e) => { markDirty(); setLastName(e.target.value); }}
               placeholder="Last name"
               disabled={saving}
               variant="light"
@@ -662,6 +667,7 @@ export default function AddTeamMemberForm({
           {isEdit ? 'Save member' : 'Add member'}
         </PrimaryButton>
       </div>
+      {discardDialog}
       </form>
     </>
   );

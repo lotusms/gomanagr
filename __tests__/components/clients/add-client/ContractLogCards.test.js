@@ -19,8 +19,8 @@ describe('ContractLogCards', () => {
       id: 'c1',
       contract_number: 'CON-001',
       contract_title: 'Service Agreement',
-      status: 'signed',
-      effective_date: '2026-02-27',
+      status: 'completed',
+      start_date: '2026-02-27',
       contract_value: 5000,
     },
     {
@@ -39,7 +39,7 @@ describe('ContractLogCards', () => {
     expect(screen.getByText('NDA')).toBeInTheDocument();
     expect(screen.getByText('CON-001')).toBeInTheDocument();
     expect(screen.getByText('CON-002')).toBeInTheDocument();
-    expect(screen.getByText('Signed')).toBeInTheDocument();
+    expect(screen.getByText('Completed')).toBeInTheDocument();
     expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 

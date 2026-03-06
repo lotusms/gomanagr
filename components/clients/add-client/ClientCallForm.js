@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateTimeField from '@/components/ui/DateTimeField';
 import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
+import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
@@ -53,6 +54,9 @@ export default function ClientCallForm({
   const [followUpAt, setFollowUpAt] = useState(toDatetimeLocal(initial.follow_up_at) || '');
   const [teamMember, setTeamMember] = useState(initial.team_member ?? '');
   const [calledAt, setCalledAt] = useState(toDatetimeLocal(initial.called_at) || toDatetimeLocal(new Date().toISOString()));
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -98,7 +102,7 @@ export default function ClientCallForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} onInput={markDirty} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -173,13 +177,14 @@ export default function ClientCallForm({
       </div>
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : callId ? 'Update call' : 'Add call'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

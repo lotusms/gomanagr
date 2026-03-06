@@ -4,10 +4,10 @@ import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 const STATUS_LABELS = {
   draft: 'Draft',
-  sent: 'Sent',
-  signed: 'Signed',
-  expired: 'Expired',
-  terminated: 'Terminated',
+  active: 'Active',
+  inactive: 'Inactive',
+  completed: 'Completed',
+  abandoned: 'Abandoned',
 };
 
 /**
@@ -82,9 +82,9 @@ export default function ContractCardServiceStyle({
               {statusLabel}
             </span>
           )}
-          {contract.effective_date && (
-            <time dateTime={contract.effective_date}>
-              {formatDateFromISO(contract.effective_date, dateFormat, timezone)}
+          {contract.start_date && (
+            <time dateTime={contract.start_date}>
+              {formatDateFromISO(contract.start_date, dateFormat, timezone)}
             </time>
           )}
           {contract.end_date && (

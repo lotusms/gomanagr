@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { formatDocumentId, parseDocumentId } = require('@/lib/documentIdsServer');
+const { ensureAttachmentsFromFiles } = require('@/lib/syncFilesToAttachments');
 
 let supabaseAdmin;
 try {
@@ -19,7 +20,7 @@ function toDateOnly(v) {
   return s.includes('T') ? s.slice(0, 10) : s;
 }
 
-const STATUSES = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
+const STATUSES = ['draft', 'active', 'inactive', 'on_hold', 'completed', 'abandoned'];
 
 function toDateYyyyMmDd(dateStr) {
   if (!dateStr) return null;
@@ -28,7 +29,7 @@ function toDateYyyyMmDd(dateStr) {
 }
 
 function parseBody(body) {
-  const status = STATUSES.includes(String(body.status || '').toLowerCase()) ? String(body.status).toLowerCase() : 'planning';
+  const status = STATUSES.includes(String(body.status || '').toLowerCase()) ? String(body.status).toLowerCase() : 'draft';
   return {
     client_id: String(body.clientId ?? ''),
     user_id: body.userId,
@@ -38,7 +39,12 @@ function parseBody(body) {
     status,
     start_date: toDateOnly(body.start_date),
     end_date: toDateOnly(body.end_date),
-    description: String(body.description ?? '').trim() || '',
+    scope_summary: String(body.scope_summary ?? '').trim() || '',
+    project_owner: String(body.project_owner ?? '').trim() || '',
+    related_proposal_id: body.related_proposal_id ? String(body.related_proposal_id).trim() || null : null,
+    related_contract_id: body.related_contract_id ? String(body.related_contract_id).trim() || null : null,
+    notes: String(body.notes ?? '').trim() || '',
+    file_urls: Array.isArray(body.file_urls) ? body.file_urls.map((u) => String(u).trim()).filter(Boolean) : [],
   };
 }
 
@@ -87,6 +93,16 @@ export default async function handler(req, res) {
     if (error) {
       console.error('[create-client-project]', error);
       return res.status(500).json({ error: 'Failed to create project' });
+    }
+    const fileUrls = Array.isArray(row.file_urls) ? row.file_urls : [];
+    if (fileUrls.length > 0) {
+      await ensureAttachmentsFromFiles(supabaseAdmin, {
+        clientId: row.client_id,
+        userId: row.user_id,
+        organizationId: row.organization_id,
+        fileUrls,
+        linkedProjectId: data.id,
+      });
     }
     return res.status(201).json({ id: data.id });
   } catch (err) {

@@ -3,6 +3,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { ensureAttachmentsFromFiles } = require('@/lib/syncFilesToAttachments');
 
 let supabaseAdmin;
 try {
@@ -22,22 +23,27 @@ function toDateOnly(v) {
   return s.includes('T') ? s.slice(0, 10) : s;
 }
 
-const STATUSES = ['planning', 'active', 'on_hold', 'completed', 'cancelled'];
+const STATUSES = ['draft', 'active', 'inactive', 'on_hold', 'completed', 'abandoned'];
 
 function parseBody(body, existing) {
   const status =
     body.status !== undefined
       ? STATUSES.includes(String(body.status).toLowerCase())
         ? String(body.status).toLowerCase()
-        : (existing?.status ?? 'planning')
-      : (existing?.status ?? 'planning');
+        : (existing?.status ?? 'draft')
+      : (existing?.status ?? 'draft');
   return {
     project_name: String(body.project_name ?? existing?.project_name ?? '').trim() || '',
     project_number: body.project_number !== undefined ? String(body.project_number ?? '').trim() : (existing?.project_number ?? ''),
     status,
     start_date: body.start_date !== undefined ? toDateOnly(body.start_date) : (existing?.start_date ?? null),
     end_date: body.end_date !== undefined ? toDateOnly(body.end_date) : (existing?.end_date ?? null),
-    description: String(body.description ?? existing?.description ?? '').trim() || '',
+    scope_summary: String(body.scope_summary ?? existing?.scope_summary ?? '').trim() || '',
+    project_owner: body.project_owner !== undefined ? String(body.project_owner ?? '').trim() || '' : (existing?.project_owner ?? ''),
+    related_proposal_id: body.related_proposal_id !== undefined ? (body.related_proposal_id ? String(body.related_proposal_id).trim() || null : null) : (existing?.related_proposal_id ?? null),
+    related_contract_id: body.related_contract_id !== undefined ? (body.related_contract_id ? String(body.related_contract_id).trim() || null : null) : (existing?.related_contract_id ?? null),
+    notes: body.notes !== undefined ? String(body.notes ?? '').trim() || '' : (existing?.notes ?? ''),
+    file_urls: body.file_urls !== undefined ? (Array.isArray(body.file_urls) ? body.file_urls.map((u) => String(u).trim()).filter(Boolean) : []) : (existing?.file_urls ?? []),
     updated_at: new Date().toISOString(),
   };
 }
@@ -78,6 +84,16 @@ export default async function handler(req, res) {
     if (updateErr) {
       console.error('[update-client-project]', updateErr);
       return res.status(500).json({ error: 'Failed to update project' });
+    }
+    const fileUrls = Array.isArray(updates.file_urls) ? updates.file_urls : [];
+    if (fileUrls.length > 0) {
+      await ensureAttachmentsFromFiles(supabaseAdmin, {
+        clientId: existing.client_id,
+        userId: existing.user_id,
+        organizationId: existing.organization_id,
+        fileUrls,
+        linkedProjectId: projectId,
+      });
     }
     return res.status(200).json({ ok: true });
   } catch (err) {

@@ -745,6 +745,7 @@ export default function ClientInvoiceForm({
         onSubmitClick={() => handleSubmit({ preventDefault: () => {} })}
         saving={saving}
         submitDisabled={(showClientDropdown && !effectiveClientId) || !invoiceTitle.trim()}
+        hasChanges={hasUserEdited}
         secondarySubmitLabel={secondarySubmitLabel}
         onSecondarySubmitClick={handleSaveAndSend}
       />

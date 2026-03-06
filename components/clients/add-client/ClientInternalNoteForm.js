@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import TextareaField from '@/components/ui/TextareaField';
 import Dropdown from '@/components/ui/Dropdown';
 import Switch from '@/components/ui/Switch';
+import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import * as Label from '@radix-ui/react-label';
@@ -29,6 +30,9 @@ export default function ClientInternalNoteForm({
   const [content, setContent] = useState(initial.content ?? '');
   const [tag, setTag] = useState(initial.tag ?? '');
   const [isPinned, setIsPinned] = useState(Boolean(initial.is_pinned));
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   const createdByLabel = noteId
     ? (initial.user_id === userId ? 'You' : 'Team member')
@@ -77,7 +81,7 @@ export default function ClientInternalNoteForm({
   const labelClass = getLabelClasses('light') + ' mb-2 block';
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} onInput={markDirty} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -117,11 +121,12 @@ export default function ClientInternalNoteForm({
       </div>
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>Cancel</SecondaryButton>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>Cancel</SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : noteId ? 'Update internal note' : 'Add internal note'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

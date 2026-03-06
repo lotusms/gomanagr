@@ -5,6 +5,7 @@ import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import { useCancelWithConfirm } from '@/components/ui';
 import { unformatCurrency } from '@/utils/formatCurrency';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
@@ -19,10 +20,10 @@ function toDateLocal(iso) {
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
-  { value: 'sent', label: 'Sent' },
-  { value: 'signed', label: 'Signed' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'terminated', label: 'Terminated' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'abandoned', label: 'Abandoned' },
 ];
 
 const CONTRACT_TYPE_OPTIONS = [
@@ -58,10 +59,8 @@ export default function ClientContractForm({
   const [contractIdSuggested, setContractIdSuggested] = useState(false);
   const [status, setStatus] = useState(initial.status ?? 'draft');
   const [contractType, setContractType] = useState(initial.contract_type ?? '');
-  const [effectiveDate, setEffectiveDate] = useState(toDateLocal(initial.effective_date) || '');
   const [startDate, setStartDate] = useState(toDateLocal(initial.start_date) || '');
   const [endDate, setEndDate] = useState(toDateLocal(initial.end_date) || '');
-  const [renewalDate, setRenewalDate] = useState(toDateLocal(initial.renewal_date) || '');
   const [contractValue, setContractValue] = useState(
     initial.contract_value && String(initial.contract_value).trim()
       ? unformatCurrency(String(initial.contract_value))
@@ -77,10 +76,16 @@ export default function ClientContractForm({
   });
   const [notes, setNotes] = useState(initial.notes ?? '');
   const [relatedProposalId, setRelatedProposalId] = useState(initial.related_proposal_id ?? '');
+  const [relatedProjectId, setRelatedProjectId] = useState(initial.related_project_id ?? '');
   const [proposals, setProposals] = useState([]);
   const [proposalsLoading, setProposalsLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
   const [teamMembers, setTeamMembers] = useState([]);
   const [teamMembersLoading, setTeamMembersLoading] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
   const effectiveClientId = (clientId && String(clientId).trim()) || null;
@@ -95,7 +100,7 @@ export default function ClientContractForm({
         userId,
         organizationId: organizationId || undefined,
         prefix: 'CONT',
-        date: effectiveDate.trim() || startDate.trim() || new Date().toISOString().slice(0, 10),
+        date: startDate.trim() || new Date().toISOString().slice(0, 10),
       }),
     })
       .then((res) => res.json())
@@ -106,7 +111,7 @@ export default function ClientContractForm({
         }
       })
       .catch(() => {});
-  }, [contractId, userId, organizationId, contractIdSuggested, effectiveDate, startDate]);
+  }, [contractId, userId, organizationId, contractIdSuggested, startDate]);
 
   useEffect(() => {
     if (!showClientDropdown || !userId) return;
@@ -122,19 +127,85 @@ export default function ClientContractForm({
       .finally(() => setClientsLoading(false));
   }, [showClientDropdown, userId]);
 
+  // Linked proposals: when a client is selected/implied, that client's only; when no client selected, all proposals.
   useEffect(() => {
-    if (!effectiveClientId || !userId) return;
+    if (!userId) return;
     setProposalsLoading(true);
-    fetch('/api/get-client-proposals', {
+    if (effectiveClientId) {
+      fetch('/api/get-client-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          clientId: effectiveClientId,
+          organizationId: organizationId || undefined,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => setProposals(data.proposals || []))
+        .catch(() => setProposals([]))
+        .finally(() => setProposalsLoading(false));
+    } else {
+      fetch('/api/get-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, organizationId: organizationId || undefined }),
+      })
+        .then((res) => res.json())
+        .then((data) => setProposals(data.proposals || []))
+        .catch(() => setProposals([]))
+        .finally(() => setProposalsLoading(false));
+    }
+  }, [effectiveClientId, userId, organizationId]);
+
+  // Linked project: when a client is selected/implied, that client's only; when no client selected, all projects.
+  useEffect(() => {
+    if (!userId) return;
+    setProjectsLoading(true);
+    fetch('/api/get-projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, clientId: effectiveClientId, organizationId: organizationId || undefined }),
+      body: JSON.stringify({
+        userId,
+        organizationId: organizationId || undefined,
+        clientId: effectiveClientId || undefined,
+      }),
     })
       .then((res) => res.json())
-      .then((data) => setProposals(data.proposals || []))
-      .catch(() => setProposals([]))
-      .finally(() => setProposalsLoading(false));
+      .then((data) => setProjects(data.projects || []))
+      .catch(() => setProjects([]))
+      .finally(() => setProjectsLoading(false));
   }, [effectiveClientId, userId, organizationId]);
+
+  // When a proposal is linked, set contract value from proposal total; when unlinked, clear value. Field stays disabled.
+  useEffect(() => {
+    if (!relatedProposalId.trim()) {
+      setContractValue('');
+      return;
+    }
+    if (!userId) return;
+    fetch('/api/get-proposals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        organizationId: organizationId || undefined,
+        proposalId: relatedProposalId.trim(),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const p = data.proposal;
+        if (!p) return;
+        const items = Array.isArray(p.line_items) ? p.line_items : [];
+        const subtotal = items.reduce((sum, li) => sum + (parseFloat(li.amount) || 0), 0);
+        const tax = parseFloat(p.tax) || 0;
+        const discount = parseFloat(p.discount) || 0;
+        const total = Math.max(0, subtotal + tax - discount);
+        setContractValue(total > 0 ? String(total) : '');
+      })
+      .catch(() => {});
+  }, [relatedProposalId, userId, organizationId]);
 
   useEffect(() => {
     if (!organizationId || !userId) return;
@@ -196,10 +267,8 @@ export default function ClientContractForm({
         contract_number: contractNumber.trim(),
         status,
         contract_type: contractType.trim() || null,
-        effective_date: effectiveDate.trim() || null,
         start_date: startDate.trim() || null,
         end_date: endDate.trim() || null,
-        renewal_date: renewalDate.trim() || null,
         contract_value: contractValue.trim(),
         scope_summary: scopeSummary.trim(),
         signed_by: signedBy.trim(),
@@ -207,6 +276,7 @@ export default function ClientContractForm({
         file_urls: Array.isArray(fileUrls) ? fileUrls.filter((u) => u && String(u).trim()) : [],
         notes: notes.trim(),
         related_proposal_id: relatedProposalId.trim() || null,
+        related_project_id: relatedProjectId.trim() || null,
       };
 
       if (contractId) {
@@ -249,7 +319,7 @@ export default function ClientContractForm({
             name="client"
             label="Client"
             value={selectedClientId}
-            onChange={(e) => setSelectedClientId(e.target.value ?? '')}
+            onChange={(e) => { markDirty(); setSelectedClientId(e.target.value ?? ''); }}
             options={[
               { value: '', label: 'Select client' },
               ...clients.map((c) => ({
@@ -258,14 +328,14 @@ export default function ClientContractForm({
               })),
             ]}
             placeholder={clientsLoading ? 'Loading…' : 'Select client'}
-            searchable={clients.length > 10}
+            searchable={clients.length > 5}
           />
         )}
         <InputField
           id="contract-title"
           label="Contract title"
           value={contractTitle}
-          onChange={(e) => setContractTitle(e.target.value)}
+          onChange={(e) => { markDirty(); setContractTitle(e.target.value); }}
           variant="light"
           placeholder="Contract title"
           required
@@ -283,7 +353,7 @@ export default function ClientContractForm({
           name="contract-status"
           label="Status"
           value={status}
-          onChange={(e) => setStatus(e.target.value ?? 'draft')}
+          onChange={(e) => { markDirty(); setStatus(e.target.value ?? 'draft'); }}
           options={STATUS_OPTIONS}
           placeholder="Draft"
           searchable={false}
@@ -294,26 +364,24 @@ export default function ClientContractForm({
           name="contract-type"
           label="Contract type"
           value={contractType}
-          onChange={(e) => setContractType(e.target.value ?? '')}
+          onChange={(e) => { markDirty(); setContractType(e.target.value ?? ''); }}
           options={CONTRACT_TYPE_OPTIONS}
           placeholder="None"
           searchable={false}
         />
-        <DateField id="effective-date" label="Effective date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} variant="light" />
-        <DateField id="renewal-date" label="Renewal date" value={renewalDate} onChange={(e) => setRenewalDate(e.target.value)} variant="light" />
-
-        <DateField id="start-date" label="Start date" value={startDate} onChange={(e) => setStartDate(e.target.value)} variant="light" />
-        <DateField id="end-date" label="End date" value={endDate} onChange={(e) => setEndDate(e.target.value)} variant="light" />
+        <DateField id="start-date" label="Start date" value={startDate} onChange={(e) => { markDirty(); setStartDate(e.target.value); }} variant="light" />
+        <DateField id="end-date" label="End date" value={endDate} onChange={(e) => { markDirty(); setEndDate(e.target.value); }} variant="light" />
         <Dropdown
           id="related-proposal"
           name="related-proposal"
-          label="Proposal"
+          label="Linked proposal"
           value={relatedProposalId}
-          onChange={(e) => setRelatedProposalId(e.target.value ?? '')}
+          onChange={(e) => { markDirty(); setRelatedProposalId(e.target.value ?? ''); }}
           options={[
+            { value: '', label: 'None' },
             ...proposals.map((p) => ({
               value: p.id,
-              label: (p.proposal_number || 'Untitled proposal').trim() || 'Untitled proposal',
+              label: (p.proposal_number || p.proposal_title || 'Untitled proposal').trim() || 'Untitled proposal',
             })),
           ]}
           placeholder={proposalsLoading ? 'Loading…' : 'None'}
@@ -321,19 +389,36 @@ export default function ClientContractForm({
         />
         <CurrencyInput
           id="contract-value"
-          label={`Contract Value (${defaultCurrency})`}
+          label={`Contract value (${defaultCurrency})`}
           value={contractValue}
-          onChange={(e) => setContractValue(e.target.value ?? '')}
+          onChange={(e) => { markDirty(); setContractValue(e.target.value ?? ''); }}
           currency={defaultCurrency}
           variant="light"
-          placeholder="0.00"
+          placeholder={relatedProposalId ? 'From linked proposal' : 'Link a proposal to set value'}
+          disabled
+        />
+        <Dropdown
+          id="related-project"
+          name="related-project"
+          label="Linked project"
+          value={relatedProjectId}
+          onChange={(e) => { markDirty(); setRelatedProjectId(e.target.value ?? ''); }}
+          options={[
+            { value: '', label: 'None' },
+            ...projects.map((pr) => ({
+              value: pr.id,
+              label: (pr.project_name || pr.project_number || 'Unnamed project').trim() || 'Unnamed project',
+            })),
+          ]}
+          placeholder={projectsLoading ? 'Loading…' : 'None'}
+          searchable={projects.length > 5}
         />
         <Dropdown
           id="signed-by"
           name="signed-by"
           label="Signed by (team member)"
           value={signedBy}
-          onChange={(e) => setSignedBy(e.target.value ?? '')}
+          onChange={(e) => { markDirty(); setSignedBy(e.target.value ?? ''); }}
           options={[
             { value: '', label: 'None' },
             ...teamMembers
@@ -348,14 +433,14 @@ export default function ClientContractForm({
           placeholder={teamMembersLoading ? 'Loading…' : 'Select team member'}
           searchable={teamMembers.length > 8}
         />
-        <DateField id="signed-date" label="Signed date" value={signedDate} onChange={(e) => setSignedDate(e.target.value)} variant="light" />
+        <DateField id="signed-date" label="Signed date" value={signedDate} onChange={(e) => { markDirty(); setSignedDate(e.target.value); }} variant="light" />
       </div>
 
       <FileUploadList
         id="contract-file"
         label="Contract files (PDF/DOC)"
         value={fileUrls}
-        onChange={(urls) => setFileUrls(Array.isArray(urls) ? urls : [])}
+        onChange={(urls) => { markDirty(); setFileUrls(Array.isArray(urls) ? urls : []); }}
         onUpload={uploadFile}
         accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         multiple={true}
@@ -372,7 +457,7 @@ export default function ClientContractForm({
         id="scope-summary"
         label="Scope summary"
         value={scopeSummary}
-        onChange={(e) => setScopeSummary(e.target.value)}
+        onChange={(e) => { markDirty(); setScopeSummary(e.target.value); }}
         rows={4}
         placeholder="Summary of scope and deliverables"
       />
@@ -382,19 +467,20 @@ export default function ClientContractForm({
         id="contract-notes"
         label="Notes / special terms"
         value={notes}
-        onChange={(e) => setNotes(e.target.value)}
+        onChange={(e) => { markDirty(); setNotes(e.target.value); }}
         rows={4}
         placeholder="Notes or special terms"
       />
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId) || !contractTitle.trim()}>
           {saving ? 'Saving...' : contractId ? 'Update contract' : 'Add contract'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

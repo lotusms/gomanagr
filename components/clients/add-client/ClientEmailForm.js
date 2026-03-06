@@ -3,6 +3,7 @@ import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import FileUploadList from '@/components/ui/FileUploadList';
+import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
@@ -48,6 +49,9 @@ export default function ClientEmailForm({
     Array.isArray(initial.attachments) ? [...initial.attachments] : []
   );
   const [sentAt, setSentAt] = useState(toDatetimeLocal(initial.sent_at) || toDatetimeLocal(new Date().toISOString()));
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
   const [relatedProjectCase, setRelatedProjectCase] = useState(initial.related_project_case ?? '');
   const [followUpDate, setFollowUpDate] = useState(initial.follow_up_date ?? '');
 
@@ -126,7 +130,7 @@ export default function ClientEmailForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} onInput={markDirty} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -229,13 +233,14 @@ export default function ClientEmailForm({
       />
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : emailId ? 'Update email' : 'Add email'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

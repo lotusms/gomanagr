@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateTimeField from '@/components/ui/DateTimeField';
 import DateField from '@/components/ui/DateField';
 import ChipsArrayBuilder from '@/components/ui/ChipsArrayBuilder';
+import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDatetimeLocal(iso) {
@@ -69,6 +70,9 @@ export default function ClientMeetingNoteForm({
   const [nextMeetingDate, setNextMeetingDate] = useState(
     toDateLocal(initial.next_meeting_date) || ''
   );
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,7 +121,7 @@ export default function ClientMeetingNoteForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} onInput={markDirty} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -210,13 +214,14 @@ export default function ClientMeetingNoteForm({
       </div>
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : noteId ? 'Update meeting note' : 'Add meeting note'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

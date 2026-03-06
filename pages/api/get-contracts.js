@@ -86,7 +86,7 @@ export default async function handler(req, res) {
     }
 
     query = query
-      .order('effective_date', { ascending: false, nullsFirst: false })
+      .order('start_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false });
 
     const { data, error } = await query;

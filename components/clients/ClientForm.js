@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import * as Switch from '@radix-ui/react-switch';
 import * as Label from '@radix-ui/react-label';
 import InputField from '@/components/ui/InputField';
-import { AddressAutocomplete } from '@/components/ui';
+import { AddressAutocomplete, useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { formatPhone, unformatPhone } from '@/utils/formatPhone';
 import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
@@ -48,6 +48,9 @@ export default function ClientForm({
   const [companyCountry, setCompanyCountry] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
   const [isCompany, setIsCompany] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
   const [companySectionOpen, setCompanySectionOpen] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -149,7 +152,7 @@ export default function ClientForm({
   };
 
   return (
-    <form onSubmit={onFormSubmit} className="space-y-6 p-6">
+    <form onSubmit={onFormSubmit} onInput={markDirty} className="space-y-6 p-6">
       <div>
       </div>
 
@@ -332,13 +335,14 @@ export default function ClientForm({
       )}
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : initialClient ? 'Update Client' : 'Add Client'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

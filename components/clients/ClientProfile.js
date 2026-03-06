@@ -9,6 +9,7 @@ import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
 import { HiPlus } from 'react-icons/hi';
 import Drawer from '@/components/ui/Drawer';
+import { useCancelWithConfirm } from '@/components/ui';
 import AppointmentForm from '@/components/dashboard/AppointmentForm';
 import { generateClientId } from '@/utils/clientIdGenerator';
 import ResponsiveSectionWrapper from '../dashboard/ResponsiveSectionWrapper';
@@ -58,7 +59,10 @@ export default function ClientProfile({
   const defaultTab = tabFromQuery && typeof tabFromQuery === 'string' ? tabFromQuery : 'basic';
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-  
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [clientId, setClientId] = useState('');
@@ -694,7 +698,7 @@ export default function ClientProfile({
   ]);
   
   return (
-    <form onSubmit={handleSave} className="space-y-6">
+    <form onSubmit={handleSave} onInput={markDirty} className="space-y-6">
       {/* Toggle right below page header (Update this client's details / Add a new client) */}
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">This client is a company</span>
@@ -717,13 +721,14 @@ export default function ClientProfile({
 
       {/* Form Actions – below and outside the tabbed card */}
       <div className="flex justify-end gap-3">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : initialClient ? 'Update Client' : 'Add Client'}
         </PrimaryButton>
       </div>
+      {discardDialog}
 
       {errors.submit && (
         <p className="text-sm text-red-600 dark:text-red-400">{errors.submit}</p>

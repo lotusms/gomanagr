@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateTimeField from '@/components/ui/DateTimeField';
+import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
@@ -52,6 +53,9 @@ export default function ClientMessageForm({
   const [author, setAuthor] = useState(initial.author ?? '');
   const [body, setBody] = useState(initial.body ?? '');
   const [sentAt, setSentAt] = useState(toDatetimeLocal(initial.sent_at) || toDatetimeLocal(new Date().toISOString()));
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -180,13 +184,14 @@ export default function ClientMessageForm({
       />
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : messageId ? 'Update message' : 'Add message'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

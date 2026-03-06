@@ -514,6 +514,7 @@ export default function ClientProposalForm({
         onSubmitClick={() => handleSubmit({ preventDefault: () => {} })}
         saving={saving}
         submitDisabled={showClientDropdown && !effectiveClientId}
+        hasChanges={hasUserEdited}
         secondarySubmitLabel={secondarySubmitLabel}
         onSecondarySubmitClick={handleSaveAndSend}
         secondarySubmitDisabled={!clientEmailTrimmed}

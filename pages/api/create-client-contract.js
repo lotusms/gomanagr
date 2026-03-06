@@ -18,7 +18,7 @@ function toDateOnly(v) {
   if (!s) return null;
   return s.includes('T') ? s.slice(0, 10) : s;
 }
-const STATUSES = ['draft', 'sent', 'signed', 'expired', 'terminated'];
+const STATUSES = ['draft', 'active', 'inactive', 'completed', 'abandoned'];
 const CONTRACT_TYPES = ['service_agreement', 'retainer_agreement', 'maintenance_agreement', 'nda', 'vendor_agreement'];
 
 function parseBody(body) {
@@ -32,10 +32,8 @@ function parseBody(body) {
     contract_number: String(body.contract_number ?? '').trim() || '',
     status,
     contract_type: contractType,
-    effective_date: toDateOnly(body.effective_date),
     start_date: toDateOnly(body.start_date),
     end_date: toDateOnly(body.end_date),
-    renewal_date: toDateOnly(body.renewal_date),
     contract_value: String(body.contract_value ?? '').trim() || '',
     scope_summary: String(body.scope_summary ?? '').trim() || '',
     signed_by: String(body.signed_by ?? '').trim() || '',
@@ -46,6 +44,7 @@ function parseBody(body) {
       : [],
     notes: String(body.notes ?? '').trim() || '',
     related_proposal_id: body.related_proposal_id ? String(body.related_proposal_id).trim() || null : null,
+    related_project_id: body.related_project_id ? String(body.related_project_id).trim() || null : null,
   };
 }
 

@@ -3,11 +3,12 @@ import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 const STATUS_LABELS = {
-  planning: 'Planning',
+  draft: 'Draft',
   active: 'Active',
+  inactive: 'Inactive',
   on_hold: 'On hold',
   completed: 'Completed',
-  cancelled: 'Cancelled',
+  abandoned: 'Abandoned',
 };
 
 /**
@@ -94,12 +95,12 @@ export default function ProjectCardServiceStyle({
           )}
         </div>
 
-        {project.description ? (
+        {(project.scope_summary ?? project.description) ? (
           <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed whitespace-pre-wrap">
-            {project.description}
+            {project.scope_summary ?? project.description}
           </p>
         ) : (
-          <p className="text-sm text-gray-400 dark:text-gray-500 italic">No description</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 italic">No scope summary</p>
         )}
       </div>
     </div>

@@ -4,6 +4,7 @@ import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
+import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 function toDateLocal(iso) {
@@ -70,6 +71,9 @@ export default function ClientAttachmentForm({
   const [contracts, setContracts] = useState([]);
   const [contractsLoading, setContractsLoading] = useState(false);
   const projectOptions = [{ value: '', label: 'No project' }];
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   useEffect(() => {
     if (!clientId || !userId) return;
@@ -167,7 +171,7 @@ export default function ClientAttachmentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} onInput={markDirty} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -258,13 +262,14 @@ export default function ClientAttachmentForm({
       />
 
       <div className="flex flex-wrap justify-end gap-3 pt-2">
-        <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
           {saving ? 'Saving...' : attachmentId ? 'Update attachment' : 'Add attachment'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

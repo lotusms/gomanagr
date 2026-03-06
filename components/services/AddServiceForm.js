@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
-import { InputField, TextareaField } from '@/components/ui';
+import { InputField, TextareaField, useCancelWithConfirm } from '@/components/ui';
 import { ChipsMulti } from '@/components/ui/Chips';
 import Avatar from '@/components/ui/Avatar';
 
@@ -70,6 +70,9 @@ export default function AddServiceForm({
   const [description, setDescription] = useState('');
   const [assignedTeamMemberIds, setAssignedTeamMemberIds] = useState([]);
   const [errors, setErrors] = useState({});
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   useEffect(() => {
     if (initialService) {
@@ -88,6 +91,7 @@ export default function AddServiceForm({
       setAssignedTeamMemberIds(preselectedIds);
     }
     setErrors({});
+    setHasChanges(false);
   }, [initialService?.id, JSON.stringify(preselectedTeamMemberIds)]); // Use JSON.stringify for array comparison
 
   const sortedTeamMembers = [...teamMembers].sort((a, b) => {
@@ -166,6 +170,7 @@ export default function AddServiceForm({
           label="Service Name"
           value={name}
           onChange={(e) => {
+            markDirty();
             setName(e.target.value);
             if (errors.name) {
               setErrors((prev) => ({ ...prev, name: '' }));
@@ -200,6 +205,7 @@ export default function AddServiceForm({
           label="Description"
           value={description}
           onChange={(e) => {
+            markDirty();
             setDescription(e.target.value);
             setErrors((prev) => ({ ...prev, description: '' }));
           }}
@@ -218,6 +224,7 @@ export default function AddServiceForm({
             options={teamMemberOptions}
             value={Array.isArray(assignedTeamMemberIds) ? assignedTeamMemberIds : []}
             onValueChange={(selectedIds) => {
+              markDirty();
               setAssignedTeamMemberIds(Array.isArray(selectedIds) ? selectedIds : []);
             }}
             variant="light"
@@ -248,7 +255,7 @@ export default function AddServiceForm({
       <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
         <div></div>
         <div className="flex justify-end gap-3">
-          <SecondaryButton type="button" onClick={onCancel} disabled={saving}>
+          <SecondaryButton type="button" onClick={handleCancel} disabled={saving}>
             Cancel
           </SecondaryButton>
           <PrimaryButton
@@ -264,6 +271,7 @@ export default function AddServiceForm({
           </PrimaryButton>
         </div>
       </div>
+      {discardDialog}
     </form>
   );
 }

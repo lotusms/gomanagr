@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import CurrencyInput from '@/components/ui/CurrencyInput';
+import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 
 /**
@@ -27,6 +28,9 @@ export default function AddProjectForm({
   const [address, setAddress] = useState(initialProject?.address || '');
   const [invoices, setInvoices] = useState(initialProject?.invoices || '');
   const [errors, setErrors] = useState({});
+  const [hasChanges, setHasChanges] = useState(false);
+  const markDirty = useCallback(() => setHasChanges(true), []);
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,7 +63,7 @@ export default function AddProjectForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-6">
+    <form onSubmit={handleSubmit} onInput={markDirty} className="space-y-6 p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <InputField
           id="project-name"
@@ -127,13 +131,14 @@ export default function AddProjectForm({
       )}
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <SecondaryButton type="button" onClick={onCancel} disabled={loading}>
+        <SecondaryButton type="button" onClick={handleCancel} disabled={loading}>
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={loading}>
           {loading ? 'Saving...' : initialProject ? 'Update Project' : 'Add Project'}
         </PrimaryButton>
       </div>
+      {discardDialog}
     </form>
   );
 }

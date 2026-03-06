@@ -12,7 +12,7 @@ function clipText(text, maxLines) {
   return lines.length > maxLines ? clipped + '\n…' : clipped;
 }
 
-const STATUS_LABELS = { draft: 'Draft', sent: 'Sent', signed: 'Signed', expired: 'Expired', terminated: 'Terminated' };
+const STATUS_LABELS = { draft: 'Draft', active: 'Active', inactive: 'Inactive', completed: 'Completed', abandoned: 'Abandoned' };
 const TYPE_LABELS = {
   service_agreement: 'Service agreement',
   retainer_agreement: 'Retainer agreement',
@@ -59,7 +59,7 @@ export default function ContractLogCards({ contracts, onSelect, onDelete, border
                 {STATUS_LABELS[c.status] || c.status}
               </span>
             )}
-            {c.effective_date && <time dateTime={c.effective_date}>{formatDateFromISO(c.effective_date, dateFormat, timezone)}</time>}
+            {c.start_date && <time dateTime={c.start_date}>{formatDateFromISO(c.start_date, dateFormat, timezone)}</time>}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{c.contract_title || 'Untitled contract'}</p>
           {c.related_proposal && (

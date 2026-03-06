@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     if (contractId) {
       query = query.eq('id', contractId);
     } else {
-      query = query.order('effective_date', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+      query = query.order('start_date', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
     }
 
     const { data, error } = await query;

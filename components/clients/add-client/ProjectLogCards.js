@@ -3,11 +3,12 @@ import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
 const STATUS_LABELS = {
-  planning: 'Planning',
+  draft: 'Draft',
   active: 'Active',
+  inactive: 'Inactive',
   on_hold: 'On hold',
   completed: 'Completed',
-  cancelled: 'Cancelled',
+  abandoned: 'Abandoned',
 };
 
 function clipText(text, maxLines) {
@@ -66,8 +67,8 @@ export default function ProjectLogCards({ projects, onSelect, onDelete, borderCl
             )}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.project_name || 'Untitled project'}</p>
-          {p.description && (
-            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(p.description, 3)}</p>
+          {(p.scope_summary ?? p.description) && (
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(p.scope_summary ?? p.description, 3)}</p>
           )}
         </div>
       ))}

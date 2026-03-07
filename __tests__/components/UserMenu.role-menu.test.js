@@ -68,7 +68,7 @@ describe('UserMenu role-based menu items', () => {
     expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('href', '/dashboard/settings');
     expect(screen.queryByRole('link', { name: /developer/i })).not.toBeInTheDocument();
 
-    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/subscriptions', '/dashboard/settings']);
+    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/subscriptions', '/dashboard/settings', '/dashboard/backups']);
   });
 
   it('superadmin in development: exactly Super Admin badge, My Account, Subscriptions, Settings, Developer, Logout', () => {
@@ -95,6 +95,7 @@ describe('UserMenu role-based menu items', () => {
         '/dashboard/subscriptions',
         '/dashboard/settings',
         '/dashboard/developer',
+        '/dashboard/backups',
       ]);
     } finally {
       process.env.NODE_ENV = originalNodeEnv;
@@ -116,7 +117,7 @@ describe('UserMenu role-based menu items', () => {
     expect(screen.queryByRole('link', { name: /developer/i })).not.toBeInTheDocument();
     expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
 
-    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings']);
+    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings', '/dashboard/backups']);
   });
 
   it('developer role: exactly Admin badge, My Account, Settings, Logout (same as admin)', () => {
@@ -132,7 +133,7 @@ describe('UserMenu role-based menu items', () => {
     expect(screen.queryByRole('link', { name: /subscriptions/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /developer/i })).not.toBeInTheDocument();
 
-    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings']);
+    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings', '/dashboard/backups']);
   });
 
   it('member: exactly My Account, Settings, Logout (no badge, no Subscriptions, no Developer)', () => {

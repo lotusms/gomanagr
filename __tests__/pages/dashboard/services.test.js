@@ -223,97 +223,37 @@ describe('Services page', () => {
     });
   });
 
-  describe('Add Service button and drawer', () => {
-    it('Add service button opens drawer with Add Service title and form (name, description, assign members)', async () => {
-      render(<ServicesPage />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /add service/i })).toBeInTheDocument();
-      });
-
-      await act(async () => {
-        screen.getByRole('button', { name: /add service/i }).click();
-      });
-
-      await waitFor(() => {
-        const dialog = screen.getByRole('dialog');
-        expect(within(dialog).getByRole('heading', { name: /add service/i })).toBeInTheDocument();
-      });
-
-      const dialog = screen.getByRole('dialog');
-      expect(within(dialog).getByLabelText(/service name/i)).toBeInTheDocument();
-      expect(within(dialog).getByLabelText(/description/i)).toBeInTheDocument();
-      expect(within(dialog).getByRole('button', { name: /add service/i })).toBeInTheDocument();
-      expect(within(dialog).getByRole('button', { name: /cancel/i })).toBeInTheDocument();
-    });
-
-    it('Add service drawer works like team member drawer: submit creates service with name, description, assigned members', async () => {
-      render(<ServicesPage />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /add service/i })).toBeInTheDocument();
-      });
-
-      await act(async () => {
-        screen.getByRole('button', { name: /add service/i }).click();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-      });
-
-      const dialog = screen.getByRole('dialog');
-      fireEvent.change(within(dialog).getByLabelText(/service name/i), {
-        target: { value: 'New Service' },
-      });
-      fireEvent.change(within(dialog).getByLabelText(/description/i), {
-        target: { value: 'New description.' },
-      });
-      await act(async () => {
-        fireEvent.click(within(dialog).getByRole('button', { name: /alice/i }));
-      });
-      await act(async () => {
-        fireEvent.click(within(dialog).getByRole('button', { name: /add service/i }));
-      });
-
-      await waitFor(() => {
-        expect(mockUpdateServices).toHaveBeenCalledWith(
-          'user-1',
-          expect.arrayContaining([
-            expect.objectContaining({
-              name: 'New Service',
-              description: 'New description.',
-              assignedTeamMemberIds: expect.arrayContaining(['tm1']),
-            }),
-          ])
-        );
-      });
-    });
-  });
-
-  describe('Edit service', () => {
-    it('Edit (pencil) icon opens drawer with service info pre-populated', async () => {
+  describe('Add Service', () => {
+    it('Add service link goes to new service page', async () => {
       render(<ServicesPage />);
 
       await waitFor(() => {
         expect(screen.getByText('Haircut')).toBeInTheDocument();
       });
 
-      const editButtons = screen.getAllByRole('button', { name: /edit service/i });
-      expect(editButtons.length).toBeGreaterThanOrEqual(1);
-      await act(async () => {
-        editButtons[0].click();
-      });
+      const addLink = screen.getByRole('link', { name: /add service/i });
+      expect(addLink).toBeInTheDocument();
+      expect(addLink).toHaveAttribute('href', '/dashboard/services/new');
+    });
+  });
+
+  describe('Edit service', () => {
+    it('Edit (pencil) link navigates to service edit page', async () => {
+      render(<ServicesPage />);
 
       await waitFor(() => {
-        const dialog = screen.getByRole('dialog');
-        expect(within(dialog).getByRole('heading', { name: /edit service/i })).toBeInTheDocument();
+        expect(screen.getByText('Haircut')).toBeInTheDocument();
       });
 
-      const dialog = screen.getByRole('dialog');
-      expect(within(dialog).getByLabelText(/service name/i)).toHaveValue('Haircut');
-      expect(within(dialog).getByLabelText(/description/i)).toHaveValue('Full haircut and styling.');
-      expect(within(dialog).getByRole('button', { name: /update service/i })).toBeInTheDocument();
+      const editLinks = screen.getAllByRole('link', { name: /edit service/i });
+      expect(editLinks.length).toBeGreaterThanOrEqual(1);
+      expect(editLinks[0]).toHaveAttribute('href', '/dashboard/services/svc-1/edit');
+
+      await act(async () => {
+        editLinks[0].click();
+      });
+
+      // Link navigates to edit page (href is correct; in test env navigation may not call router.push)
     });
   });
 
@@ -388,17 +328,12 @@ describe('Services page', () => {
       render(<ServicesPage />);
 
       await waitFor(() => {
+        expect(screen.getByText(/no services yet/i)).toBeInTheDocument();
         expect(screen.getByText(/add your first service/i)).toBeInTheDocument();
       });
 
-      await act(async () => {
-        screen.getByRole('button', { name: /add your first service/i }).click();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(within(screen.getByRole('dialog')).getByRole('heading', { name: /add service/i })).toBeInTheDocument();
-      });
-    }, 10000);
+      const addLink = screen.getByRole('link', { name: /add your first service/i });
+      expect(addLink).toHaveAttribute('href', '/dashboard/services/new');
+    });
   });
 });

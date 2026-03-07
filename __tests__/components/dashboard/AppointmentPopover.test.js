@@ -67,7 +67,7 @@ describe('AppointmentPopover', () => {
     expect(screen.queryByText('Team standup')).not.toBeInTheDocument();
   });
 
-  it('calls onOpenEdit with appointment when trigger is clicked', () => {
+  it('trigger click opens popover; Click to edit calls onOpenEdit', async () => {
     const onOpenEdit = jest.fn();
     render(
       <AppointmentPopover
@@ -78,7 +78,11 @@ describe('AppointmentPopover', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Team standup'));
+    fireEvent.click(screen.getByText('Team standup').closest('div'));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: /appointment details/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /click to edit/i }));
     expect(onOpenEdit).toHaveBeenCalledTimes(1);
     expect(onOpenEdit).toHaveBeenCalledWith(defaultAppointment);
   });
@@ -124,7 +128,7 @@ describe('AppointmentPopover', () => {
     expect(within(dialog).getByText(/Click to edit/)).toBeInTheDocument();
   });
 
-  it('calls onOpenEdit when popover is clicked', async () => {
+  it('calls onOpenEdit when Click to edit is clicked in popover', async () => {
     const onOpenEdit = jest.fn();
     render(
       <AppointmentPopover
@@ -142,7 +146,7 @@ describe('AppointmentPopover', () => {
       expect(screen.getByRole('dialog', { name: /appointment details/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('dialog', { name: /appointment details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /click to edit/i }));
     expect(onOpenEdit).toHaveBeenCalledWith(defaultAppointment);
   });
 

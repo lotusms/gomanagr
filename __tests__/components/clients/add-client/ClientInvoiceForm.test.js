@@ -19,6 +19,10 @@ jest.mock('@/lib/supabase', () => ({
   supabase: {},
 }));
 
+jest.mock('@/services/userService', () => ({
+  getUserAccount: () => Promise.resolve({ services: [], teamMembers: [] }),
+}));
+
 describe('ClientInvoiceForm', () => {
   const defaultProps = {
     clientId: 'c1',

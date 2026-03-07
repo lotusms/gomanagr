@@ -40,29 +40,29 @@ describe('ClientContractForm', () => {
     global.fetch.mockRestore?.();
   });
 
-  it('shows Contract Value label with USD when defaultCurrency is USD', async () => {
+  it('shows Contract value label with USD when defaultCurrency is USD', async () => {
     render(<ClientContractForm {...defaultProps} defaultCurrency="USD" />);
-    expect(await screen.findByText('Contract Value (USD)')).toBeInTheDocument();
+    expect(await screen.findByText('Contract value (USD)')).toBeInTheDocument();
   });
 
-  it('shows Contract Value label with EUR when defaultCurrency is EUR', async () => {
+  it('shows Contract value label with EUR when defaultCurrency is EUR', async () => {
     render(<ClientContractForm {...defaultProps} defaultCurrency="EUR" />);
-    expect(await screen.findByText('Contract Value (EUR)')).toBeInTheDocument();
+    expect(await screen.findByText('Contract value (EUR)')).toBeInTheDocument();
   });
 
-  it('shows Contract Value label with GBP when defaultCurrency is GBP', async () => {
+  it('shows Contract value label with GBP when defaultCurrency is GBP', async () => {
     render(<ClientContractForm {...defaultProps} defaultCurrency="GBP" />);
-    expect(await screen.findByText('Contract Value (GBP)')).toBeInTheDocument();
+    expect(await screen.findByText('Contract value (GBP)')).toBeInTheDocument();
   });
 
   it('defaults to USD when defaultCurrency is not passed', async () => {
     render(<ClientContractForm {...defaultProps} />);
-    expect(await screen.findByText('Contract Value (USD)')).toBeInTheDocument();
+    expect(await screen.findByText('Contract value (USD)')).toBeInTheDocument();
   });
 
   it('renders contract value input with id contract-value', async () => {
     render(<ClientContractForm {...defaultProps} defaultCurrency="USD" />);
-    const input = await screen.findByLabelText(/Contract Value \(USD\)/);
+    const input = await screen.findByLabelText(/Contract value \(USD\)/);
     expect(input).toBeInTheDocument();
     expect(input).toHaveAttribute('id', 'contract-value');
   });

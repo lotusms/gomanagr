@@ -18,7 +18,8 @@ export default function NewProjectPage() {
   const [userAccount, setUserAccount] = useState(null);
   const [ready, setReady] = useState(false);
 
-  const projectTermPlural = getProjectTermForIndustry(userAccount?.industry);
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const projectTermPlural = getProjectTermForIndustry(accountIndustry);
   const projectTermSingular = getProjectTermSingular(projectTermPlural);
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
 
@@ -64,6 +65,7 @@ export default function NewProjectPage() {
           <ClientProjectForm
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
+            industry={accountIndustry}
             showClientDropdown={true}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}

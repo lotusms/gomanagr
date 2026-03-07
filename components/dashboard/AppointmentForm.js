@@ -10,11 +10,13 @@ import AppointmentRecurrence, { defaultRecurrence } from '@/components/dashboard
 import ServiceSelector from '@/components/dashboard/ServiceSelector';
 import ClientSelector from '@/components/dashboard/ClientSelector';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 /**
  * Appointment Form Component
  * @param {Object} props
  * @param {Array} props.teamMembers - Array of team members
+ * @param {string} [props.industry] - Organization industry for dynamic labels (e.g. "Staff Member(s)" for Healthcare)
  * @param {string} props.businessHoursStart - Business hours start (e.g., '08:00')
  * @param {string} props.businessHoursEnd - Business hours end (e.g., '18:00')
  * @param {string} props.timeFormat - '12h' or '24h'
@@ -54,7 +56,11 @@ export default function AppointmentForm({
   onNestedDrawerChange,
   saving = false,
   staffRestrictedToId = null,
+  industry = null,
 }) {
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm);
+  const teamMemberSingularLower = teamMemberSingular.toLowerCase();
   const startHour = parseHour(businessHoursStart);
   const endHour = parseHour(businessHoursEnd);
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
@@ -343,7 +349,7 @@ export default function AppointmentForm({
   const validate = () => {
     const newErrors = {};
     if (effectiveStaffIds.length === 0) {
-      newErrors.staffId = 'Please select at least one team member';
+      newErrors.staffId = `Please select at least one ${teamMemberSingularLower}`;
     }
 
     const trimmedTitle = (title || '').trim();
@@ -451,7 +457,7 @@ export default function AppointmentForm({
   return (
     <form onSubmit={handleSubmit} onInput={markDirty} className="space-y-6 p-6">
 
-      {/* Row 1: Title + Team Member (super admins and admins only) + Date in 3 columns */}
+      {/* Row 1: Title + Staff/Team Member (super admins and admins only) + Date in 3 columns */}
       <div className={isTeamMemberView ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4'}>
         <div>
           <InputField
@@ -482,7 +488,7 @@ export default function AppointmentForm({
               return (
                 <SearchableMultiselect
                   id="staffIds"
-                  label="Team Member(s)"
+                  label={teamMembers.length > 1 ? `${teamMemberTerm}` : teamMemberSingular}
                   options={teamMemberOptions}
                   value={teamMemberSelectValue}
                   onChange={(ids) => {
@@ -502,7 +508,7 @@ export default function AppointmentForm({
                     }
                     setErrors((prev) => ({ ...prev, staffId: '' }));
                   }}
-                  placeholder="Select team member(s)..."
+                  placeholder={`Select ${teamMemberSingularLower}(s)...`}
                   required
                   error={errors.staffId}
                 />
@@ -608,6 +614,7 @@ export default function AppointmentForm({
             onServiceCreated={onServiceCreated}
             onNestedDrawerChange={onNestedDrawerChange}
             teamMembers={teamMembers}
+            industry={industry}
             multiple={false}
             preselectedTeamMemberIds={effectiveStaffIds}
             label="Service"

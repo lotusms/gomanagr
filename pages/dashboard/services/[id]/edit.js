@@ -23,6 +23,7 @@ export default function EditServicePage() {
   const [ready, setReady] = useState(false);
 
   const service = serviceId ? services.find((s) => s.id === serviceId) : null;
+  const industry = organization?.industry ?? null;
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -161,6 +162,7 @@ export default function EditServicePage() {
             teamMembers={teamMembers}
             existingServices={services}
             initialService={service || null}
+            industry={industry}
             onSubmit={handleSubmit}
             onCancel={() => router.push(backUrl)}
             saving={saving}

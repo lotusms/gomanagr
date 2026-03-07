@@ -4,9 +4,13 @@ import Switch from '@/components/ui/Switch';
 import { PrimaryButton } from '@/components/ui/buttons';
 import {
   TEAM_MEMBER_SECTION_KEYS,
-  TEAM_MEMBER_SECTION_LABELS,
+  getTeamMemberSectionLabels,
   DEFAULT_TEAM_MEMBER_SECTIONS,
 } from '@/config/teamMemberAccess';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getUserAccount } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
+
 export default function TeamAccessSettings() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -14,25 +18,32 @@ export default function TeamAccessSettings() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
   const [sections, setSections] = useState({ ...DEFAULT_TEAM_MEMBER_SECTIONS });
+  const [industry, setIndustry] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     setLoading(true);
     setError(null);
-    fetch('/api/get-org-member-access', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.uid }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.teamMemberSections && typeof data.teamMemberSections === 'object') {
-          setSections({ ...DEFAULT_TEAM_MEMBER_SECTIONS, ...data.teamMemberSections });
-        }
-      })
-      .catch(() => setError('Failed to load team access settings'))
+    Promise.all([
+      fetch('/api/get-org-member-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json()),
+      getUserOrganization(currentUser.uid).catch(() => null),
+      getUserAccount(currentUser.uid).catch(() => null),
+    ]).then(([data, org, account]) => {
+      if (data.teamMemberSections && typeof data.teamMemberSections === 'object') {
+        setSections({ ...DEFAULT_TEAM_MEMBER_SECTIONS, ...data.teamMemberSections });
+      }
+      setIndustry(org?.industry ?? account?.industry ?? null);
+    }).catch(() => setError('Failed to load team access settings'))
       .finally(() => setLoading(false));
   }, [currentUser?.uid]);
+
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberTermLower = teamMemberTerm.toLowerCase();
+  const sectionLabels = getTeamMemberSectionLabels(industry);
 
   const setSection = (key, enabled) => {
     setSections((prev) => ({ ...prev, [key]: !!enabled }));
@@ -77,9 +88,9 @@ export default function TeamAccessSettings() {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">Team member access</h2>
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">{teamMemberTerm} access</h2>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Choose which sections all team members can see. When enabled, they can only view and change their own data (e.g. their own appointments), not yours or other members&apos;.
+        Choose which sections all {teamMemberTermLower} can see. When enabled, they can only view and change their own data (e.g. their own appointments), not yours or other members&apos;.
       </p>
 
       {error && (
@@ -89,7 +100,7 @@ export default function TeamAccessSettings() {
       )}
       {success && (
         <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3 text-sm text-green-700 dark:text-green-300 mb-4">
-          Saved. Team members will see the updated access on their next load.
+          Saved. {teamMemberTerm} will see the updated access on their next load.
         </div>
       )}
 
@@ -103,7 +114,7 @@ export default function TeamAccessSettings() {
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 dark:text-white capitalize">{key}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  {TEAM_MEMBER_SECTION_LABELS[key] || `Allow team members to access ${key}`}
+                  {sectionLabels[key] || `Allow ${teamMemberTermLower} to access ${key}`}
                 </p>
               </div>
               <Switch
@@ -118,7 +129,7 @@ export default function TeamAccessSettings() {
 
         <div className="flex items-center justify-end gap-3">
           <PrimaryButton type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save team member access'}
+            {saving ? 'Saving…' : `Save ${teamMemberTermLower} access`}
           </PrimaryButton>
         </div>
       </form>

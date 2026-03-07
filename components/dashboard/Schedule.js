@@ -87,6 +87,7 @@ export default function Schedule({
   onAppointmentDelete,
   isTeamMember = false,
   currentUserStaffId = null,
+  industry = null,
 }) {
   const today = new Date();
   const todayKey = toDateKey(today);
@@ -224,6 +225,7 @@ export default function Schedule({
                             onDelete={onAppointmentDelete}
                             canEdit={canEdit}
                             canDelete={canDelete}
+                            industry={industry}
                           >
                             <span className="text-xs font-medium truncate block">{displayTitle}</span>
                             <span className="text-xs text-gray-600 dark:text-primary-300 truncate block mt-0.5">

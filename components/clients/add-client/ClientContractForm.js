@@ -8,6 +8,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { useCancelWithConfirm } from '@/components/ui';
 import { unformatCurrency } from '@/utils/formatCurrency';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function toDateLocal(iso) {
   if (!iso) return '';
@@ -44,6 +45,7 @@ export default function ClientContractForm({
   showClientDropdown = false,
   defaultCurrency = 'USD',
   linkedAttachments = [],
+  industry,
   onSuccess,
   onCancel,
 }) {
@@ -89,6 +91,14 @@ export default function ClientContractForm({
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
   const effectiveClientId = (clientId && String(clientId).trim()) || null;
+
+  const projectTermPlural = getTermForIndustry(industry, 'project');
+  const projectTermSingular = getTermSingular(projectTermPlural);
+  const linkedProjectLabel = `Linked ${(projectTermSingular || 'project').toLowerCase()}`;
+  const unnamedProjectLabel = `Unnamed ${(projectTermSingular || 'project').toLowerCase()}`;
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm);
+  const teamMemberSingularLower = (teamMemberSingular || 'team member').toLowerCase();
 
   // Auto-suggest next Contract ID when creating (same logic as proposal/invoice); field stays editable for legacy IDs.
   useEffect(() => {
@@ -400,14 +410,14 @@ export default function ClientContractForm({
         <Dropdown
           id="related-project"
           name="related-project"
-          label="Linked project"
+          label={linkedProjectLabel}
           value={relatedProjectId}
           onChange={(e) => { markDirty(); setRelatedProjectId(e.target.value ?? ''); }}
           options={[
             { value: '', label: 'None' },
             ...projects.map((pr) => ({
               value: pr.id,
-              label: (pr.project_name || pr.project_number || 'Unnamed project').trim() || 'Unnamed project',
+              label: (pr.project_name || pr.project_number || unnamedProjectLabel).trim() || unnamedProjectLabel,
             })),
           ]}
           placeholder={projectsLoading ? 'Loading…' : 'None'}
@@ -416,7 +426,7 @@ export default function ClientContractForm({
         <Dropdown
           id="signed-by"
           name="signed-by"
-          label="Signed by (team member)"
+          label={`Signed by (${teamMemberSingularLower})`}
           value={signedBy}
           onChange={(e) => { markDirty(); setSignedBy(e.target.value ?? ''); }}
           options={[
@@ -430,7 +440,7 @@ export default function ClientContractForm({
               ? [{ value: signedBy, label: signedBy }]
               : []),
           ]}
-          placeholder={teamMembersLoading ? 'Loading…' : 'Select team member'}
+          placeholder={teamMembersLoading ? 'Loading…' : `Select ${teamMemberSingularLower}`}
           searchable={teamMembers.length > 8}
         />
         <DateField id="signed-date" label="Signed date" value={signedDate} onChange={(e) => { markDirty(); setSignedDate(e.target.value); }} variant="light" />

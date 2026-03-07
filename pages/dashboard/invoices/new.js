@@ -82,6 +82,7 @@ export default function NewInvoicePage() {
           <ClientInvoiceForm
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
+            industry={organization?.industry ?? null}
             defaultCurrency={defaultCurrency}
             showClientDropdown={true}
             onSuccess={() => router.push(backUrl)}

@@ -59,6 +59,7 @@ export default function ServiceSelector({
   onNestedDrawerChange,
   /** When multiple: optional label shown above the chips (e.g. "Assigned to this member") */
   chipsSectionLabel,
+  industry = null,
 }) {
   const [showServiceDrawer, setShowServiceDrawer] = useState(false);
   const [savingService, setSavingService] = useState(false);
@@ -259,6 +260,7 @@ export default function ServiceSelector({
             mode="drawer"
             teamMembers={teamMembers}
             existingServices={services || []}
+            industry={industry}
             onSubmit={async (data) => {
               try {
                 await handleCreateService(data);

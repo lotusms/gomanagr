@@ -102,7 +102,7 @@ describe('Team page – Deactivate / Delete member dialog', () => {
     });
 
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Deactivate member')).toBeInTheDocument();
+    expect(within(dialog).getByText(/deactivate\s+(team\s+|staff\s+)?member/i)).toBeInTheDocument();
     expect(within(dialog).getByText(/Jane Doe will be deactivated/)).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/type confirm to enable/i)).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /delete forever/i })).toBeInTheDocument();

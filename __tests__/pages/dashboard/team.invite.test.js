@@ -180,10 +180,10 @@ describe('Team page – Add member', () => {
     render(<TeamPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: /add member/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /add\s+(your\s+first\s+)?(team\s+|staff\s+)?member/i })).toBeInTheDocument();
     });
 
-    const addMemberLink = screen.getByRole('link', { name: /add member/i });
+    const addMemberLink = screen.getByRole('link', { name: /add\s+(your\s+first\s+)?(team\s+|staff\s+)?member/i });
     expect(addMemberLink).toHaveAttribute('href', '/dashboard/team/new');
   });
 });
@@ -320,7 +320,7 @@ describe('Team page – Deactivate from card', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText(/deactivate member/i)).toBeInTheDocument();
+      expect(screen.getByText(/deactivate\s+(team\s+|staff\s+)?member/i)).toBeInTheDocument();
     });
 
     const dialog = screen.getByRole('dialog');
@@ -601,7 +601,7 @@ describe('Team page – Deactivated members', () => {
     mockGetUserAccount.mockResolvedValue({ teamMembers: [], firstName: 'User' });
     render(<TeamPage />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /add member/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add\s+(your\s+first\s+)?(team\s+|staff\s+)?member/i })).toBeInTheDocument();
     });
     expect(screen.queryByTestId('deactivated-members-button')).not.toBeInTheDocument();
   });
@@ -617,7 +617,7 @@ describe('Team page – Deactivated members', () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId('deactivated-members-panel')).toBeInTheDocument();
-      expect(screen.getByTestId('deactivated-members-empty')).toHaveTextContent('No deactivated members.');
+      expect(screen.getByTestId('deactivated-members-empty')).toHaveTextContent(/no deactivated\s+(team\s+|staff\s+)?members?\./i);
     });
   });
 
@@ -644,7 +644,7 @@ describe('Team page – Deactivated members', () => {
     });
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText(/reactivate member/i)).toBeInTheDocument();
+      expect(screen.getByText(/reactivate\s+(team\s+|staff\s+)?member/i)).toBeInTheDocument();
       expect(screen.getByText(/will be reactivated/i)).toBeInTheDocument();
     });
     const dialog = screen.getByRole('dialog');
@@ -683,7 +683,7 @@ describe('Team page – Deactivated members', () => {
     });
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText(/permanently delete member/i)).toBeInTheDocument();
+      expect(screen.getByText(/permanently\s+delete\s+(team\s+|staff\s+)?member/i)).toBeInTheDocument();
     });
     const dialog = screen.getByRole('dialog');
     const input = within(dialog).getByLabelText(/type delete to confirm/i);

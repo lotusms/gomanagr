@@ -26,6 +26,7 @@ export default function ProjectsDetailsSection({
   userId,
   organizationId,
   companyIndustry,
+  industry: accountIndustry,
 }) {
   const router = useRouter();
   const [projects, setProjects] = useState([]);
@@ -33,7 +34,10 @@ export default function ProjectsDetailsSection({
   const [selectedKey, setSelectedKey] = useState('active');
   const [projectToDelete, setProjectToDelete] = useState(null);
 
-  const projectTermPlural = useMemo(() => getProjectTermForIndustry(companyIndustry), [companyIndustry]);
+  const projectTermPlural = useMemo(
+    () => getProjectTermForIndustry(accountIndustry ?? companyIndustry),
+    [accountIndustry, companyIndustry]
+  );
   const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
   const projectTermLower = projectTerm.toLowerCase();
   const projectTermPluralLower = projectTermPlural.toLowerCase();
@@ -176,6 +180,7 @@ export default function ProjectsDetailsSection({
         onSelect={handleEditProject}
         onDelete={setProjectToDelete}
         borderClass={selectedType?.borderClass ?? ACTIVE_BORDER}
+        projectTermSingular={projectTerm}
       />
     );
   };
@@ -184,7 +189,7 @@ export default function ProjectsDetailsSection({
     <>
       <SideNavViewerLayout
         introText={`Track active and completed ${projectTermPluralLower} for this client.`}
-        navAriaLabel="Project sections"
+        navAriaLabel={`${projectTermPlural} sections`}
         navItems={navItems}
         selectedKey={selectedKey}
         onSelectKey={setSelectedKey}

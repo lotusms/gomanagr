@@ -207,6 +207,7 @@ export default function TeamMemberPage() {
                 onAppointmentDelete={handleAppointmentDelete}
                 isTeamMember={!showAllAppointments}
                 currentUserStaffId={currentUserStaffId}
+                industry={organization?.industry ?? userAccount?.industry}
               />
               <ConfirmationDialog
                 isOpen={deleteDialogOpen}

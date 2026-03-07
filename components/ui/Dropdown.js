@@ -57,6 +57,8 @@ export default function Dropdown({
 
   const BOTTOM_GAP_PX = 10;
   const MIN_SPACE_BELOW_TO_OPEN_DOWN_PX = 250;
+  /** Max height of the options list so it scrolls when there are many options */
+  const OPTIONS_LIST_MAX_HEIGHT_PX = 280;
 
   const showSearch = searchable !== undefined ? searchable : options.length > searchThreshold;
 
@@ -227,9 +229,13 @@ export default function Dropdown({
         className={
           listGrowsWithContent
             ? ''
-            : 'min-h-0 flex-1 overflow-y-auto'
+            : 'min-h-0 flex-1 overflow-y-auto overscroll-contain'
         }
-        style={listGrowsWithContent ? undefined : { maxHeight: '100%', paddingBottom: BOTTOM_GAP_PX }}
+        style={
+          listGrowsWithContent
+            ? undefined
+            : { maxHeight: OPTIONS_LIST_MAX_HEIGHT_PX, paddingBottom: BOTTOM_GAP_PX }
+        }
       >
         {filteredOptions.length === 0 ? (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 text-center">

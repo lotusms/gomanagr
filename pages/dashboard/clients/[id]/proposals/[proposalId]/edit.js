@@ -19,6 +19,7 @@ export default function EditClientProposalPage() {
   const [proposal, setProposal] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [clientEmail, setClientEmail] = useState('');
+  const [industry, setIndustry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -155,6 +156,7 @@ export default function EditClientProposalPage() {
             proposalId={proposalId}
             defaultCurrency={defaultCurrency}
             clientEmail={clientEmail}
+            industry={industry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

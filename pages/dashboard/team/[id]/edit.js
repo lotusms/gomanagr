@@ -12,6 +12,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
 import { isOwnerRole, isAdminRole, ORG_ROLE } from '@/config/rolePermissions';
 import { getInviteAvailability } from '@/lib/teamInviteUtils';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 
@@ -114,6 +115,12 @@ export default function EditTeamMemberPage() {
 
   const team = ownerUserId ? ownerTeamMembers : (userAccount?.teamMembers ?? []);
   const member = useMemo(() => (id ? team.find((m) => m.id === id) : null), [id, team]);
+  const industry = organization?.industry ?? userAccount?.industry;
+  const teamTerm = getTermForIndustry(industry, 'team');
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm);
+  const teamMemberSingularLower = teamMemberSingular.toLowerCase();
+  const teamTermLower = teamTerm.toLowerCase();
 
   const memberEmailToUserId = useMemo(() => {
     const map = {};
@@ -176,7 +183,7 @@ export default function EditTeamMemberPage() {
   const handleInviteToLogin = async (memberToInvite) => {
     const email = (memberToInvite?.email || '').trim();
     if (!email) {
-      toast.warning('This team member has no email. Add an email in the form and save, then invite.');
+      toast.warning(`This ${teamMemberSingularLower} has no email. Add an email in the form and save, then invite.`);
       return;
     }
     if (!organization?.id || !currentUser?.uid) {
@@ -268,7 +275,7 @@ export default function EditTeamMemberPage() {
     if (!memberToRevoke?.member || !organization?.id || !currentUser?.uid) return;
     const email = (memberToRevoke.member.email || '').trim();
     if (!email) {
-      toast.error('This team member has no email; cannot revoke.');
+      toast.error(`This ${teamMemberSingularLower} has no email; cannot revoke.`);
       return;
     }
     setSaving(true);
@@ -478,14 +485,19 @@ export default function EditTeamMemberPage() {
       }).catch((err) => console.error('Failed to sync team member profile:', err));
     }
 
-    if (data.isAdmin !== undefined && organization?.id && currentUser?.uid && finalMember.userId) {
+    if (
+      data.isAdmin !== undefined &&
+      organization?.id &&
+      currentUser?.uid &&
+      (finalMember.userId || (finalMember.email && finalMember.email.trim()))
+    ) {
       fetch('/api/update-org-member-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId: organization.id,
           callerUserId: currentUser.uid,
-          targetUserId: finalMember.userId,
+          ...(finalMember.userId ? { targetUserId: finalMember.userId } : { targetEmail: finalMember.email.trim() }),
           role: finalMember.isAdmin ? 'admin' : 'member',
         }),
       }).catch((err) => console.error('Failed to sync org role:', err));
@@ -527,10 +539,10 @@ export default function EditTeamMemberPage() {
   if (router.isReady && id && dataReady && !member) {
     return (
       <>
-        <Head><title>Team member not found - GoManagr</title></Head>
-        <p className="text-gray-500">Team member not found.</p>
+        <Head><title>{teamMemberSingular} not found - GoManagr</title></Head>
+        <p className="text-gray-500">{teamMemberSingular} not found.</p>
         <Link href="/dashboard/team">
-          <SecondaryButton type="button" className="mt-4">Back to team</SecondaryButton>
+          <SecondaryButton type="button" className="mt-4">Back to {teamTermLower}</SecondaryButton>
         </Link>
       </>
     );
@@ -539,7 +551,7 @@ export default function EditTeamMemberPage() {
   if (!dataReady || !member) {
     return (
       <>
-        <Head><title>Edit team member - GoManagr</title></Head>
+        <Head><title>Edit {teamMemberSingularLower} - GoManagr</title></Head>
         <p className="text-gray-500">Loading…</p>
       </>
     );
@@ -554,12 +566,12 @@ export default function EditTeamMemberPage() {
       <div className="space-y-6">
         <PageHeader
           title={`Edit ${member.name}`}
-          description="Update this team member's details."
+          description={`Update this ${teamMemberSingularLower}'s details.`}
           actions={
             <Link href="/dashboard/team">
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to team
+                Back to {teamTermLower}
               </SecondaryButton>
             </Link>
           }
@@ -570,6 +582,7 @@ export default function EditTeamMemberPage() {
             onSubmit={handleSaveMember}
             onCancel={handleCancel}
             saving={saving}
+            industry={industry}
             locations={userAccount?.locations || []}
             organizationCountry={userAccount?.organizationCountry || ''}
             services={userAccount?.services || []}

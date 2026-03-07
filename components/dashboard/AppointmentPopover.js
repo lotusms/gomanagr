@@ -18,6 +18,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { formatTime } from '@/utils/dateTimeFormatters';
 import { HiTrash } from 'react-icons/hi';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const POPOVER_OFFSET = 8;
 const NOTES_LINE_CLAMP = 3;
@@ -32,8 +33,10 @@ export default function AppointmentPopover({
   onDelete,
   canEdit = true,
   canDelete = true,
+  industry = null,
   children,
 }) {
+  const teamMemberLabel = getTermSingular(getTermForIndustry(industry, 'teamMember'));
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
@@ -156,7 +159,7 @@ export default function AppointmentPopover({
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-gray-600 dark:text-gray-300">
             <span className="text-gray-500 dark:text-gray-400">Time</span>
             <span>{timeRange}</span>
-            <span className="text-gray-500 dark:text-gray-400">Team member</span>
+            <span className="text-gray-500 dark:text-gray-400">{teamMemberLabel}</span>
             <span>{teamMemberName}</span>
             <span className="text-gray-500 dark:text-gray-400">Service</span>
             <span className="truncate">{serviceLabel}</span>

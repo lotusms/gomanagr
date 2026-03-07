@@ -19,31 +19,41 @@ import {
   MEMBER_HIDDEN_SETTINGS,
   ADMIN_NON_OWNER_HIDDEN_SETTINGS,
 } from '@/config/rolePermissions';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 function SettingsContent() {
   const { currentUser } = useAuth();
   const [activeSection, setActiveSection] = useState('general');
   const [memberRole, setMemberRole] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid)
-      .then((org) => setMemberRole(org?.membership?.role || null))
-      .catch(() => setMemberRole(null));
+      .then((org) => {
+        setOrganization(org || null);
+        setMemberRole(org?.membership?.role || null);
+      })
+      .catch(() => {
+        setOrganization(null);
+        setMemberRole(null);
+      });
   }, [currentUser?.uid]);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
-    getUserAccount(currentUser.uid)
-      .then((data) => {
-        const team = data?.teamMembers || [];
-        setIsOwner(
-          isOwnerRole(memberRole) || team.some((m) => m.id === `owner-${currentUser.uid}`)
-        );
-      })
-      .catch(() => setIsOwner(false));
-  }, [currentUser?.uid, memberRole]);
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !userAccount) return;
+    const team = userAccount?.teamMembers || [];
+    setIsOwner(
+      isOwnerRole(memberRole) || team.some((m) => m.id === `owner-${currentUser.uid}`)
+    );
+  }, [currentUser?.uid, memberRole, userAccount]);
 
   const isTeamMember = isMemberRole(memberRole);
   const isAdminNonOwner = isAdminRole(memberRole) && !isOwner;
@@ -98,6 +108,9 @@ function SettingsContent() {
             activeSection={activeSection}
             onSectionChange={setActiveSection}
             hiddenSections={hiddenSections}
+            sectionLabelOverrides={{
+              'team-access': `${getTermForIndustry(organization?.industry ?? userAccount?.industry, 'team')} Access`,
+            }}
           />
           <div className="flex-1 min-w-0">
             {renderActiveSection()}

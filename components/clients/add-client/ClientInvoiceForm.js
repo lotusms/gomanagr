@@ -7,6 +7,7 @@ import TextareaField from '@/components/ui/TextareaField';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import { ItemizedLineItems, DocumentFormHeader, FormStepNav, FormStepFooter, FormStepContent, FormStepSection } from '@/components/ui';
 import { unformatCurrency } from '@/utils/formatCurrency';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { getOrgServices, updateOrgServices, getUserAccount, updateServices } from '@/services/userService';
 // Invoice fields aligned with API and Supabase: see lib/invoiceSchema.js
 
@@ -78,9 +79,15 @@ export default function ClientInvoiceForm({
   invoiceId,
   defaultCurrency = 'USD',
   showClientDropdown = false,
+  industry = null,
   onSuccess,
   onCancel,
 }) {
+  const projectTermPlural = getTermForIndustry(industry, 'project');
+  const projectTermSingular = getTermSingular(projectTermPlural) || 'project';
+  const projectTermSingularLower = projectTermSingular.toLowerCase();
+  const linkedProjectLabel = `Linked ${projectTermSingularLower}`;
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(
@@ -652,11 +659,11 @@ export default function ClientInvoiceForm({
               <Dropdown
                 id="linked-project"
                 name="linked-project"
-                label="Linked project"
+                label={linkedProjectLabel}
                 value={linkedProject}
                 onChange={(e) => { markDirty(); setLinkedProject(e.target.value ?? ''); }}
                 options={projectOptions}
-                placeholder={projectsLoading ? 'Loading…' : projectOptions.length > 10 ? 'Select project' : 'No project'}
+                placeholder={projectsLoading ? 'Loading…' : projectOptions.length > 10 ? `Select ${projectTermSingularLower}` : `No ${projectTermSingularLower}`}
                 searchable={projectOptions.length > 10}
               />
               <Dropdown

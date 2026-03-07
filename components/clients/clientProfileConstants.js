@@ -43,6 +43,18 @@ export const INDUSTRIES = [
   'Transportation',
   'Energy',
   'Agriculture',
+  'Home Services',
+  'Automotive',
+  'Nonprofit',
+  'Government',
+  'Entertainment',
+  'Media',
+  'Telecommunications',
+  'Utilities',
+  'Beauty & Spa',
+  'Food & Drink',
+  'Health & Wellness',
+  'Travel & Tourism',
   'Other',
 ];
 
@@ -82,22 +94,21 @@ export const CURRENCIES = [
 ];
 
 /**
- * Maps industry to the appropriate term for "projects" (plural form)
- * @param {string} industry - The industry name
- * @returns {string} - The appropriate term in plural form (e.g., "Projects", "Cases", "Engagements")
+ * Industry-specific terminology. Each concept has a default label and optional
+ * per-industry overrides. Add new concepts (e.g. client, service, proposal) here.
+ * Keys must match INDUSTRIES; use same spelling (e.g. "Beauty & Spa").
  */
-export function getProjectTermForIndustry(industry) {
-  if (!industry) return 'Projects';
-  
-  const industryMap = {
+const TERMS_BY_CONCEPT = {
+  project: {
+    default: 'Projects',
     'Technology': 'Projects',
-    'Healthcare': 'Patients',
+    'Healthcare': 'Cases',
     'Finance': 'Accounts',
     'Real Estate': 'Properties',
     'Retail': 'Orders',
     'Manufacturing': 'Jobs',
     'Construction': 'Projects',
-    'Education': 'Students',
+    'Education': 'Programs',
     'Legal': 'Cases',
     'Consulting': 'Engagements',
     'Marketing': 'Campaigns',
@@ -105,28 +116,75 @@ export function getProjectTermForIndustry(industry) {
     'Transportation': 'Shipments',
     'Energy': 'Assets',
     'Agriculture': 'Fields',
+    'Home Services': 'Jobs',
+    'Automotive': 'Work Orders',
+    'Nonprofit': 'Programs',
+    'Government': 'Requests',
+    'Entertainment': 'Events',
+    'Media': 'Projects',
+    'Telecommunications': 'Projects',
+    'Utilities': 'Projects',
+    'Beauty & Spa': 'Appointments',
+    'Food & Drink': 'Orders',
+    'Health & Wellness': 'Cases',
+    'Travel & Tourism': 'Reservations',
     'Other': 'Projects',
-  };
-  
-  return industryMap[industry] || 'Projects';
+  },
+  team: {
+    default: 'Team',
+    'Beauty & Spa': 'Staff',
+    'Hospitality': 'Staff',
+    'Food & Drink': 'Staff',
+    'Healthcare': 'Staff',
+    'Other': 'Team',
+  },
+  teamMember: {
+    default: 'Team Members',
+    'Beauty & Spa': 'Staff Members',
+    'Hospitality': 'Staff Members',
+    'Food & Drink': 'Staff Members',
+    'Healthcare': 'Staff Members',
+    'Other': 'Team Members',
+  },
+  // Future: client: { default: 'Clients', ... }, service: { default: 'Services', ... }, proposal: { default: 'Proposals', ... },
+};
+
+/**
+ * Returns the display term for a concept in the given industry.
+ * Use this for nav labels, page titles, empty states, etc. Functionality is unchanged; only the label varies.
+ * @param {string} industry - The account/organization industry (e.g. "Legal", "Beauty & Spa")
+ * @param {string} concept - One of: 'project' | 'team' | 'teamMember' (extend TERMS_BY_CONCEPT for more)
+ * @returns {string} - The term for that concept (e.g. "Team", "Staff", "Cases")
+ */
+export function getTermForIndustry(industry, concept) {
+  const key = typeof industry === 'string' ? industry.trim() : '';
+  const config = TERMS_BY_CONCEPT[concept];
+  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : 'Projects';
+  if (!key) return config.default;
+  return config[key] ?? config.default;
 }
 
 /**
- * Converts plural project term to singular form
- * @param {string} pluralTerm - The plural term (e.g., "Projects", "Cases", "Patients")
- * @returns {string} - The singular form (e.g., "Project", "Case", "Patient")
+ * @deprecated Use getTermForIndustry(industry, 'project') instead.
  */
-export function getProjectTermSingular(pluralTerm) {
-  if (!pluralTerm) return 'Project';
-  
+export function getProjectTermForIndustry(industry) {
+  return getTermForIndustry(industry, 'project');
+}
+
+/**
+ * Converts a plural term to its singular form (for any concept: project, team member, etc.).
+ * @param {string} pluralTerm - The plural term (e.g., "Projects", "Team Members", "Staff Members")
+ * @returns {string} - The singular form (e.g., "Project", "Team Member", "Staff Member")
+ */
+export function getTermSingular(pluralTerm) {
+  if (!pluralTerm) return '';
+
   const singularMap = {
     'Projects': 'Project',
-    'Patients': 'Patient',
     'Accounts': 'Account',
     'Properties': 'Property',
     'Orders': 'Order',
     'Jobs': 'Job',
-    'Students': 'Student',
     'Cases': 'Case',
     'Engagements': 'Engagement',
     'Campaigns': 'Campaign',
@@ -134,28 +192,40 @@ export function getProjectTermSingular(pluralTerm) {
     'Shipments': 'Shipment',
     'Assets': 'Asset',
     'Fields': 'Field',
+    'Work Orders': 'Work Order',
+    'Programs': 'Program',
+    'Requests': 'Request',
+    'Events': 'Event',
+    'Appointments': 'Appointment',
+    'Team Members': 'Team Member',
+    'Staff Members': 'Staff Member',
   };
-  
+
   return singularMap[pluralTerm] || pluralTerm.replace(/s$/, '');
+}
+
+/**
+ * @deprecated Use getTermSingular(pluralTerm) instead.
+ */
+export function getProjectTermSingular(pluralTerm) {
+  return getTermSingular(pluralTerm) || 'Project';
 }
 
 /**
  * Determines if company details and financial information sections should be shown
  * for client creation based on the account's industry.
- * Some industries (like Healthcare, Education) typically work with individuals
- * rather than companies, so these sections may not be needed.
+ * Some industries (e.g. Healthcare, Education) often work with individuals
+ * rather than companies, so these sections are hidden by default.
  * @param {string} industry - The account industry
  * @returns {boolean} - True if company/financial sections should be shown
  */
 export function shouldShowCompanyFinancialSections(industry) {
-  if (!industry) return true; // Default to showing sections
-  
-  const hideSectionsFor = [
-    'Healthcare', // Patients are individuals
-    'Education',  // Students are individuals
-  ];
-  
-  return !hideSectionsFor.includes(industry);
+  const key = typeof industry === 'string' ? industry.trim() : '';
+  if (!key) return true;
+
+  const hideSectionsFor = ['Healthcare', 'Education'];
+
+  return !hideSectionsFor.includes(key);
 }
 
 /**

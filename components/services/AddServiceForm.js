@@ -5,6 +5,7 @@ import { ChipsMulti } from '@/components/ui/Chips';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import Avatar from '@/components/ui/Avatar';
 import { unformatCurrency } from '@/utils/formatCurrency';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 /**
  * Normalize a service name for comparison (remove spaces, lowercase, trim)
@@ -78,6 +79,7 @@ export default function AddServiceForm({
   onSubmit,
   onCancel,
   saving = false,
+  industry = null,
   preselectedTeamMemberIds = [],
   mode = 'drawer',
   userId,
@@ -86,6 +88,8 @@ export default function AddServiceForm({
 }) {
   const isPageMode = mode === 'page';
   const assignReadOnly = !isPageMode;
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const assignToLabel = `Assign to ${teamMemberTerm}`;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -305,7 +309,7 @@ export default function AddServiceForm({
           {assignReadOnly ? (
             <>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Assign to team members
+                {assignToLabel}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                 Assignments can only be changed from the Services page.
@@ -336,7 +340,7 @@ export default function AddServiceForm({
           ) : (
             <ChipsMulti
               id="assignedTeamMembers"
-              label="Assign to team members"
+              label={assignToLabel}
               options={teamMemberOptions}
               value={Array.isArray(assignedTeamMemberIds) ? assignedTeamMemberIds : []}
               onValueChange={(selectedIds) => {

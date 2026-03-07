@@ -401,6 +401,10 @@ export default function OrganizationSettings() {
         throw new Error(errData.error || orgRes.statusText || 'Failed to update organization');
       }
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('organization-updated'));
+      }
+
       const hqAddress = dataToSave.organizationAddress || '';
       let locations = dataToSave.locations || [];
       

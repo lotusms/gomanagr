@@ -20,6 +20,7 @@ export default function NewServicePage() {
   const [ownerUserId, setOwnerUserId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
+  const industry = organization?.industry ?? null;
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -115,6 +116,7 @@ export default function NewServicePage() {
             mode="page"
             teamMembers={teamMembers}
             existingServices={services}
+            industry={industry}
             onSubmit={handleSubmit}
             onCancel={() => router.push(backUrl)}
             saving={saving}

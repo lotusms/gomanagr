@@ -22,7 +22,8 @@ export default function EditProjectPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const projectTermPlural = getProjectTermForIndustry(userAccount?.industry);
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const projectTermPlural = getProjectTermForIndustry(accountIndustry);
   const projectTermSingular = getProjectTermSingular(projectTermPlural);
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
 
@@ -154,6 +155,7 @@ export default function EditProjectPage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             projectId={projectId}
+            industry={accountIndustry}
             showClientDropdown={false}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}

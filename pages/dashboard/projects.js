@@ -40,7 +40,8 @@ function ProjectsContent() {
     setCurrentPage(1);
   };
 
-  const projectTermPlural = useMemo(() => getProjectTermForIndustry(userAccount?.industry), [userAccount?.industry]);
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const projectTermPlural = useMemo(() => getProjectTermForIndustry(accountIndustry), [accountIndustry]);
   const projectTermSingular = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
   const projectTermPluralLower = (projectTermPlural || 'Projects').toLowerCase();
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();

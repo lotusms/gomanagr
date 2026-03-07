@@ -15,6 +15,7 @@ export default function NewContractPage() {
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function NewContractPage() {
       .then((account) => {
         const currency = account?.clientSettings?.defaultCurrency || 'USD';
         setDefaultCurrency(currency);
+        if (account?.industry) setIndustry(account.industry);
       })
       .catch(() => setDefaultCurrency('USD'));
   }, [currentUser?.uid]);
@@ -37,6 +39,7 @@ export default function NewContractPage() {
   }, [router.isReady]);
 
   const backUrl = '/dashboard/contracts';
+  const accountIndustry = organization?.industry ?? industry;
 
   if (!ready || !currentUser?.uid) return null;
 
@@ -65,6 +68,7 @@ export default function NewContractPage() {
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
             showClientDropdown={true}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

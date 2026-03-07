@@ -600,6 +600,7 @@ export default function ClientProfile({
               userId={currentUser?.uid}
               organizationId={organization?.id}
               companyIndustry={companyIndustry}
+              industry={userAccount?.industry}
             />
           ),
         }] 
@@ -746,6 +747,7 @@ export default function ClientProfile({
         >
           <AppointmentForm
             teamMembers={userAccount?.teamMembers || []}
+            industry={userAccount?.industry}
             businessHoursStart={userAccount?.businessHoursStart ?? '08:00'}
             businessHoursEnd={userAccount?.businessHoursEnd ?? '18:00'}
             timeFormat={userAccount?.timeFormat ?? '24h'}

@@ -3,7 +3,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { EmptyState } from '@/components/ui';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import { HiDocumentText } from 'react-icons/hi';
-import { PAYMENT_TERMS, PRICING_TIERS, CURRENCIES } from '../clientProfileConstants';
+import { PAYMENT_TERMS, PRICING_TIERS, CURRENCIES, getTermForIndustry, getTermSingular } from '../clientProfileConstants';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 
@@ -21,6 +21,8 @@ export default function FinancialInformationSection({
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
+  const projectTermSingular = getTermSingular(getTermForIndustry(account?.industry, 'project'));
+  const projectNameColumnLabel = `${projectTermSingular || 'Project'} Name`;
 
   return (
     <div className="space-y-4">
@@ -84,7 +86,7 @@ export default function FinancialInformationSection({
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Project Name
+                    {projectNameColumnLabel}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Invoice #

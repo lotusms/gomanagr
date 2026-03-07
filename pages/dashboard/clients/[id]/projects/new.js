@@ -22,7 +22,8 @@ export default function NewClientProjectPage() {
   const initialStatus =
     statusQuery === 'completed' ? 'completed' : statusQuery === 'active' ? 'active' : 'planning';
 
-  const projectTermPlural = getProjectTermForIndustry(userAccount?.industry);
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const projectTermPlural = getProjectTermForIndustry(accountIndustry);
   const projectTermSingular = getProjectTermSingular(projectTermPlural);
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
 
@@ -69,6 +70,7 @@ export default function NewClientProjectPage() {
             clientId={clientId}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
+            industry={accountIndustry}
             showClientDropdown={false}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}

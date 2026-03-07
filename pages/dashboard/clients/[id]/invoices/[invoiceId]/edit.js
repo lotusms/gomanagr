@@ -212,6 +212,7 @@ export default function EditClientInvoicePage() {
               userId={currentUser.uid}
               organizationId={organization?.id ?? null}
               invoiceId={invoiceId}
+              industry={organization?.industry ?? null}
               defaultCurrency={defaultCurrency}
               onSuccess={() => router.push(backUrl)}
               onCancel={() => router.push(backUrl)}

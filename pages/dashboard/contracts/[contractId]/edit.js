@@ -19,6 +19,7 @@ export default function EditContractPage() {
   const [contract, setContract] = useState(null);
   const [linkedAttachments, setLinkedAttachments] = useState([]);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [industry, setIndustry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -40,6 +41,7 @@ export default function EditContractPage() {
           account?.clientSettings?.defaultCurrency ||
           'USD';
         setDefaultCurrency(currency);
+        if (account?.industry) setIndustry(account.industry);
       })
       .catch(() => setDefaultCurrency('USD'));
   }, [currentUser?.uid, contract?.client_id]);
@@ -92,6 +94,7 @@ export default function EditContractPage() {
   }, [currentUser?.uid, contract?.client_id, contractId, organization?.id, notFound]);
 
   const backUrl = '/dashboard/contracts';
+  const accountIndustry = organization?.industry ?? industry;
 
   if (!currentUser?.uid || !contractId) return null;
 
@@ -179,6 +182,7 @@ export default function EditContractPage() {
             defaultCurrency={defaultCurrency}
             linkedAttachments={linkedAttachments}
             showClientDropdown={false}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

@@ -8,6 +8,7 @@ import CurrencyInput from '@/components/ui/CurrencyInput';
 import { ItemizedLineItems, DocumentFormHeader, FormStepNav, FormStepFooter, FormStepContent, FormStepSection, useToast } from '@/components/ui';
 import { unformatCurrency } from '@/utils/formatCurrency';
 import { getOrgServices, updateOrgServices, getUserAccount, updateServices } from '@/services/userService';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function defaultLineItem() {
   return {
@@ -59,6 +60,7 @@ export default function ClientProposalForm({
   defaultCurrency = 'USD',
   showClientDropdown = false,
   clientEmail: clientEmailProp,
+  industry,
   onSuccess,
   onCancel,
 }) {
@@ -98,6 +100,10 @@ export default function ClientProposalForm({
   const [proposalIdSuggested, setProposalIdSuggested] = useState(false);
   const [step, setStep] = useState(1);
   const [services, setServices] = useState([]);
+
+  const projectTermSingular = getTermSingular(getTermForIndustry(industry, 'project'));
+  const linkedProjectLabel = `Linked ${(projectTermSingular || 'project').toLowerCase()}`;
+  const selectProjectPlaceholder = `Select ${(projectTermSingular || 'project').toLowerCase()}`;
   const [teamMembers, setTeamMembers] = useState([]);
   const [hasUserEdited, setHasUserEdited] = useState(false);
   const toast = useToast();
@@ -424,11 +430,11 @@ export default function ClientProposalForm({
               <Dropdown
                 id="linked-project"
                 name="linked-project"
-                label="Linked project"
+                label={linkedProjectLabel}
                 value={linkedProject}
                 onChange={(e) => { markDirty(); setLinkedProject(e.target.value ?? ''); }}
                 options={projectOptions}
-                placeholder="Select project"
+                placeholder={selectProjectPlaceholder}
                 searchable={false}
               />
               <Dropdown

@@ -204,6 +204,7 @@ export default function EditInvoicePage() {
               userId={currentUser.uid}
               organizationId={organization?.id ?? null}
               invoiceId={invoiceId}
+              industry={organization?.industry ?? null}
               defaultCurrency={defaultCurrency}
               showClientDropdown={false}
               onSuccess={() => router.push(backUrl)}

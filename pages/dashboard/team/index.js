@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { HiExclamationCircle, HiPlus, HiRefresh, HiTrash, HiX } from 'react-icons/hi';
 import { isOwnerRole, isAdminRole, ORG_ROLE } from '@/config/rolePermissions';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { sortTeamMembersPinned } from '@/lib/teamMemberSort';
 import { getInviteAvailability } from '@/lib/teamInviteUtils';
 
@@ -299,7 +300,7 @@ function TeamContent() {
     if (shouldRevokeFirst) {
       const email = (memberToDelete.email || '').trim();
       if (!email) {
-        toast.error('This team member has no email; cannot revoke access. Add an email first or revoke from the member edit screen.');
+        toast.error(`This ${teamMemberSingularLower} has no email; cannot revoke access. Add an email first or revoke from the member edit screen.`);
         return;
       }
       if (!organization?.id) {
@@ -367,7 +368,7 @@ function TeamContent() {
       toast.success(shouldRevokeFirst ? 'Member deactivated. They no longer have access to your org.' : 'Member deactivated.', 5000);
     } catch (err) {
       console.error('Failed to deactivate team member:', err);
-      toast.error('Failed to deactivate team member. Please try again.');
+      toast.error(`Failed to deactivate ${teamMemberSingularLower}. Please try again.`);
     } finally {
       setSaving(false);
     }
@@ -475,7 +476,7 @@ function TeamContent() {
     if (!memberToRevoke?.member || !organization?.id || !currentUser?.uid) return;
     const email = (memberToRevoke.member.email || '').trim();
     if (!email) {
-      toast.error('This team member has no email; cannot revoke.');
+      toast.error(`This ${teamMemberSingularLower} has no email; cannot revoke.`);
       return;
     }
     setSaving(true);
@@ -541,7 +542,7 @@ function TeamContent() {
   const handleInviteToLogin = async (member) => {
     const email = (member?.email || '').trim();
     if (!email) {
-      toast.warning('This team member has no email. Add an email in the form and save, then invite.');
+      toast.warning(`This ${teamMemberSingularLower} has no email. Add an email in the form and save, then invite.`);
       return;
     }
     if (!organization?.id || !currentUser?.uid) {
@@ -605,7 +606,7 @@ function TeamContent() {
       } else if (emailData.inviteLink) {
         try {
           await navigator.clipboard.writeText(emailData.inviteLink);
-          toast.info('Invite link copied to clipboard. Paste it into an email or message and send it to the team member.');
+          toast.info(`Invite link copied to clipboard. Paste it into an email or message and send it to the ${teamMemberSingularLower}.`);
         } catch {
           toast.info(`No email was sent. Copy this link and send it to ${email}: ${emailData.inviteLink}`);
         }
@@ -745,17 +746,24 @@ function TeamContent() {
     });
   }, [team, filters, userAccount?.services]);
 
+  const industry = organization?.industry ?? userAccount?.industry;
+  const teamTerm = getTermForIndustry(industry, 'team');
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm);
+  const teamMemberTermLower = teamMemberTerm.toLowerCase();
+  const teamMemberSingularLower = teamMemberSingular.toLowerCase();
+
   return (
     <>
       <Head>
-        <title>Team - GoManagr</title>
-        <meta name="description" content="Manage your team" />
+        <title>{teamTerm} - GoManagr</title>
+        <meta name="description" content={`Manage your ${teamMemberTermLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title="Team"
-          description="Manage your team members. Changes sync to Today's appointments."
+          title={teamTerm}
+          description={`Manage your ${teamMemberTermLower}.`}
           actions={
             <>
               {currentUserIsOrgAdmin && (
@@ -766,7 +774,7 @@ function TeamContent() {
                   aria-expanded={deactivatedPanelOpen}
                   data-testid="deactivated-members-button"
                 >
-                  Deactivated Members
+                  Deactivated {teamMemberTerm}
                   {deactivatedMembers.length > 0 && (
                     <span className="ml-1 px-2 py-0.5 bg-gray-200 dark:bg-gray-600 text-xs font-medium rounded-full">
                       {deactivatedMembers.length}
@@ -777,7 +785,7 @@ function TeamContent() {
               <Link href="/dashboard/team/new">
                 <PrimaryButton type="button" className="gap-2">
                   <HiPlus className="w-5 h-5" />
-                  Add member
+                  Add {teamMemberSingularLower}
                 </PrimaryButton>
               </Link>
               {saving && <span className="text-sm text-gray-500">Saving…</span>}
@@ -792,7 +800,7 @@ function TeamContent() {
             {deactivatedPanelOpen && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" data-testid="deactivated-members-panel">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deactivated members</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deactivated {teamMemberTermLower}</h2>
                   <button
                     type="button"
                     onClick={() => setDeactivatedPanelOpen(false)}
@@ -804,10 +812,10 @@ function TeamContent() {
                 </div>
                 <div className="overflow-x-auto">
                   {deactivatedMembers.length === 0 ? (
-                    <p className="px-4 py-8 text-gray-500 dark:text-gray-400 text-center" data-testid="deactivated-members-empty">No deactivated members.</p>
+                    <p className="px-4 py-8 text-gray-500 dark:text-gray-400 text-center" data-testid="deactivated-members-empty">No deactivated {teamMemberTermLower}.</p>
                   ) : (
                     <Table
-                      ariaLabel="Deactivated members"
+                      ariaLabel={`Deactivated ${teamMemberTerm}`}
                       data-testid="deactivated-members-table"
                       columns={[
                         { key: 'name', label: 'Name' },
@@ -854,10 +862,10 @@ function TeamContent() {
               isOpen={!!memberToReactivate}
               onClose={() => setMemberToReactivate(null)}
               onConfirm={handleReactivateConfirm}
-              title="Reactivate member"
+              title={`Reactivate ${teamMemberSingularLower}`}
               message={
                 memberToReactivate
-                  ? `${memberToReactivate.name} will be reactivated. They will appear back on the team page and can be invited to join again.`
+                  ? `${memberToReactivate.name} will be reactivated. They will appear back on the ${teamTerm.toLowerCase()} page and can be invited to join again.`
                   : ''
               }
               confirmText="Reactivate"
@@ -870,10 +878,10 @@ function TeamContent() {
               isOpen={!!memberToPermanentlyDelete}
               onClose={() => setMemberToPermanentlyDelete(null)}
               onConfirm={handlePermanentlyDeleteConfirm}
-              title="Permanently delete member"
+              title={`Permanently delete ${teamMemberSingularLower}`}
               message={
                 memberToPermanentlyDelete
-                  ? `This member will be fully deleted forever. This cannot be undone. Their record will be removed from the team.`
+                  ? `This ${teamMemberSingularLower} will be fully deleted forever. This cannot be undone. Their record will be removed from the ${teamTerm}.`
                   : ''
               }
               confirmText="Delete forever"
@@ -894,7 +902,7 @@ function TeamContent() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <Dialog.Title className="text-2xl font-bold leading-tight text-amber-800 dark:text-amber-200">
-                          Deactivate member
+                          Deactivate {teamMemberSingularLower}
                         </Dialog.Title>
                       </div>
                       <Dialog.Close asChild>
@@ -907,7 +915,7 @@ function TeamContent() {
                   <div className="px-6 py-6 bg-white dark:bg-gray-800">
                     <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                     {memberToDelete
-                      ? `${memberToDelete.name} will be deactivated. They will be hidden from the team page. You can reactivate or permanently delete them later from Deactivated Members.`
+                      ? `${memberToDelete.name} will be deactivated. They will be hidden from the ${teamTerm.toLowerCase()} page. You can reactivate or permanently delete them later from Deactivated ${teamMemberTerm}.`
                       : ''}
                   </Dialog.Description>
                   <div className="mb-6">
@@ -1012,11 +1020,14 @@ function TeamContent() {
             {team.length === 0 ? (
               <EmptyState
                 type="team"
+                industry={industry}
+                title={`No ${teamMemberTermLower} yet`}
+                description={`Add ${teamMemberTermLower} to start scheduling appointments and assigning services.`}
                 action={
                   <Link href="/dashboard/team/new">
                     <PrimaryButton type="button" className="gap-2">
                       <HiPlus className="w-5 h-5" />
-                      Add your first team member
+                      Add your first {teamMemberSingularLower}
                     </PrimaryButton>
                   </Link>
                 }
@@ -1024,7 +1035,7 @@ function TeamContent() {
             ) : filteredTeam.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="flex flex-col items-center justify-center py-12 px-6">
-                  <p className="text-gray-500 text-lg">No team members match the selected filters</p>
+                  <p className="text-gray-500 text-lg">No {teamMemberTermLower} match the selected filters</p>
                   <p className="text-gray-400 text-sm mt-2">Try adjusting your filter criteria</p>
                 </div>
               </div>

@@ -31,6 +31,7 @@ export default function ServiceCombobox({
   className = '',
   addButtonLabel = 'Add',
   drawerTitle = 'Add service',
+  industry = null,
 }) {
   const [showDrawer, setShowDrawer] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,6 +110,7 @@ export default function ServiceCombobox({
             mode="drawer"
             teamMembers={teamMembers}
             existingServices={services || []}
+            industry={industry}
             onSubmit={handleCreateService}
             onCancel={() => setShowDrawer(false)}
             saving={saving}

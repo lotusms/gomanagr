@@ -15,6 +15,7 @@ import { formatPhone, unformatPhone } from '@/utils/formatPhone';
 import PhoneNumberInput from '@/components/ui/PhoneNumberInput';
 import { COUNTRIES } from '@/utils/countries';
 import { State } from 'country-state-city';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function normalizeCountryValue(value) {
   if (!value) return '';
@@ -70,7 +71,12 @@ export default function AddTeamMemberForm({
   showInviteInDrawer = false,
   showRevokeInDrawer = false,
   onRevokeAccess,
+  industry = null,
 }) {
+  const teamTerm = getTermForIndustry(industry, 'team');
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm);
+  const teamMemberSingularLower = teamMemberSingular.toLowerCase();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('');
@@ -384,7 +390,7 @@ export default function AddTeamMemberForm({
           <FileInput
             key={fileInputKey}
             id="team-member-picture"
-            label="Team picture"
+            label={`${teamTerm} picture`}
             value={picturePreviewUrl}
             onChange={handlePictureChange}
             disabled={saving}
@@ -433,7 +439,7 @@ export default function AddTeamMemberForm({
           {canPromoteToAdmin && (
             <Checkbox
               id="team-member-is-admin"
-              label="Team member is admin"
+              label={`${teamMemberSingular} is admin`}
               checked={isAdminCheckbox}
               onCheckedChange={setIsAdminCheckbox}
               disabled={saving}
@@ -559,7 +565,7 @@ export default function AddTeamMemberForm({
           {!isEdit && (
             <Checkbox
               id="send-invite"
-              label="Send invite to log in (they'll get an email with a link to set their password and join as a team member)"
+              label={`Send invite to log in (they'll get an email with a link to set their password and join as a ${teamMemberSingularLower})`}
               checked={sendInviteToLogin}
               onCheckedChange={setSendInviteToLogin}
               disabled={saving || !email.trim()}
@@ -626,6 +632,7 @@ export default function AddTeamMemberForm({
             }}
             onNestedDrawerChange={onNestedDrawerChange}
             teamMembers={teamMembers}
+            industry={industry}
             multiple
             preselectedTeamMemberIds={initialMember?.id ? [initialMember.id] : []}
             label="Services offered"

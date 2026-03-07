@@ -95,6 +95,15 @@ export default function DashboardLayout({ children }) {
   }, [currentUser?.uid]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !currentUser?.uid) return;
+    const onOrgUpdated = () => {
+      getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null));
+    };
+    window.addEventListener('organization-updated', onOrgUpdated);
+    return () => window.removeEventListener('organization-updated', onOrgUpdated);
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
     if (!orgLoaded || orgFetchFailed || !currentUser?.uid || organization !== null) return;
     (async () => {
       await logout();
@@ -133,6 +142,8 @@ export default function DashboardLayout({ children }) {
         if (org == null) {
           await logout();
           if (typeof window !== 'undefined') window.location.href = '/login?revoked=1';
+        } else {
+          setOrganization(org);
         }
       } catch (_) {}
     }, 8 * 1000);
@@ -234,7 +245,7 @@ export default function DashboardLayout({ children }) {
       </div>
 
       {/* Top Navigation Bar */}
-      <header className="relative z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 flex-shrink-0">
+      <header className="z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 flex-shrink-0">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
           <div className="flex items-center space-x-3">
             <Logo href="/" inlineClassName="h-16" />
@@ -261,7 +272,7 @@ export default function DashboardLayout({ children }) {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0 overflow-hidden">
-        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} memberRole={memberRole} memberAccess={memberAccess} isOwner={isOwner} orgLoaded={orgLoaded} />
+        <DashboardSidebar open={sidebarOpen} onToggle={setSidebarOpen} userAccount={previewAccount || userAccount} organization={organization} memberRole={memberRole} memberAccess={memberAccess} isOwner={isOwner} orgLoaded={orgLoaded} />
 
         {/* Main Content */}
         <main

@@ -48,6 +48,7 @@ export default function TodaysAppointments({
   teamMembers: teamMembersProp,
   onAppointmentClick,
   onAppointmentDelete,
+  industry = null,
   isTeamMember = false,
   currentUserStaffId = null,
 }) {
@@ -173,6 +174,7 @@ export default function TodaysAppointments({
                                 onDelete={onAppointmentDelete}
                                 canEdit={canEdit}
                                 canDelete={canDelete}
+                                industry={industry}
                               >
                                 <div className="block rounded px-1.5 py-1 font-medium min-w-0 overflow-hidden leading-tight bg-primary-100 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 text-primary-800 dark:text-primary-200 hover:bg-primary-200 dark:hover:bg-primary-800/50 cursor-pointer transition-colors">
                                   <span className="truncate block">{displayText}</span>

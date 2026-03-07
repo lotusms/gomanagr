@@ -150,6 +150,7 @@ export default function NewAppointmentPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible">
           <AppointmentForm
             teamMembers={teamMembers}
+            industry={organization?.industry ?? userAccount?.industry}
             businessHoursStart={businessHoursStart}
             businessHoursEnd={businessHoursEnd}
             timeFormat={timeFormat}

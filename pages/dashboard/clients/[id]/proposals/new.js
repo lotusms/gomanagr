@@ -17,6 +17,7 @@ export default function NewClientProposalPage() {
   const [organization, setOrganization] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [clientEmail, setClientEmail] = useState('');
+  const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export default function NewClientProposalPage() {
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
             clientEmail={clientEmail}
+            industry={industry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

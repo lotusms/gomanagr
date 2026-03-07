@@ -379,6 +379,7 @@ function DashboardContent() {
 
         <StatsGrid
           userAccount={userAccount}
+          organization={organization}
           teamMemberCount={teamMemberCount}
           apiCounts={statsCounts}
         />
@@ -452,6 +453,7 @@ function DashboardContent() {
           onAppointmentDelete={handleAppointmentDelete}
           isTeamMember={false}
           currentUserStaffId={null}
+          industry={organization?.industry ?? userAccount?.industry}
         />
         <ConfirmationDialog
           isOpen={deleteDialogOpen}

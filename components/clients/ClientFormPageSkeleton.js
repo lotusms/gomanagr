@@ -1,8 +1,10 @@
 /**
  * Skeleton loading state for Add client and Edit client pages.
  * Matches the layout: PageHeader, "This client is a company" toggle, tabbed card (Basic Information style), action buttons.
+ * @param {string} [projectTermPlural] - Optional industry-based label for the projects tab (e.g. "Cases" for Healthcare).
  */
-export default function ClientFormPageSkeleton() {
+export default function ClientFormPageSkeleton({ projectTermPlural }) {
+  const tabLabels = ['Basic Information', 'Financial', projectTermPlural || 'Projects', 'Communication', 'Documents', 'Schedule'];
   return (
     <div className="space-y-6" data-testid="client-form-page-skeleton">
       {/* Header: title, description, Back button */}
@@ -28,7 +30,7 @@ export default function ClientFormPageSkeleton() {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Tab bar */}
         <div className="flex gap-1 px-4 border-b border-gray-200 dark:border-gray-700">
-          {['Basic Information', 'Financial', 'Projects', 'Communication', 'Documents', 'Schedule'].map((_, i) => (
+          {tabLabels.map((label, i) => (
             <div
               key={i}
               className="h-12 flex-1 min-w-0 max-w-[120px] rounded-t bg-gray-200 dark:bg-gray-700 animate-pulse mt-px"

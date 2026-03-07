@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect, useState } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
+import { getUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
@@ -122,6 +123,7 @@ export default function EditClientAttachmentPage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             attachmentId={attachmentId}
+            industry={industry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

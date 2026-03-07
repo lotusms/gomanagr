@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { useEffect, useState } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
+import { getUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
@@ -14,11 +15,19 @@ export default function NewClientEmailPage() {
   const { id: clientId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid)
+      .then((account) => { if (account?.industry) setIndustry(account.industry); })
+      .catch(() => {});
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -57,6 +66,7 @@ export default function NewClientEmailPage() {
             clientId={clientId}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
+            industry={industry}
             onSuccess={onSuccess}
             onCancel={onCancel}
           />

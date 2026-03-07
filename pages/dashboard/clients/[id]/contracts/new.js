@@ -70,6 +70,7 @@ export default function NewClientContractPage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
+            industry={organization?.industry ?? null}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

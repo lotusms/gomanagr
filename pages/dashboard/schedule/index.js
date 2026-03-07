@@ -202,6 +202,7 @@ export default function ScheduleIndexPage() {
               onAppointmentDelete={handleDeleteClick}
               isTeamMember={isTeamMember}
               currentUserStaffId={myStaffId ?? null}
+              industry={organization?.industry ?? userAccount?.industry}
             />
             <Dialog.Root
               open={deleteRecurrenceChoiceOpen}

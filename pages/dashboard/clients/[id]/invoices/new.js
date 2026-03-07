@@ -69,6 +69,7 @@ export default function NewClientInvoicePage() {
             clientId={clientId}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
+            industry={organization?.industry ?? null}
             defaultCurrency={defaultCurrency}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}

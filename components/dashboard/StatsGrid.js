@@ -5,7 +5,7 @@ import {
   HiCurrencyDollar,
   HiUserGroup,
 } from 'react-icons/hi';
-import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getProjectTermForIndustry, getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 function countTotalProjectsFromClients(clients) {
   if (!Array.isArray(clients) || clients.length === 0) return 0;
@@ -16,9 +16,11 @@ function countTotalProjectsFromClients(clients) {
   }, 0);
 }
 
-function getStats(userAccount, teamMemberCount, apiCounts) {
+function getStats(userAccount, organization, teamMemberCount, apiCounts) {
   const counts = apiCounts && typeof apiCounts === 'object' ? apiCounts : {};
-  const projectTerm = getProjectTermForIndustry(userAccount?.industry);
+  const industry = organization?.industry ?? userAccount?.industry;
+  const projectTerm = getProjectTermForIndustry(industry);
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
   const clients = userAccount?.clients ?? [];
   const totalProjects =
     counts.projectCount !== undefined && counts.projectCount !== null
@@ -37,7 +39,7 @@ function getStats(userAccount, teamMemberCount, apiCounts) {
   return [
     { title: `Total ${projectTerm}`, value: String(totalProjects), accent: 'blue', Icon: HiFolder },
     { title: 'Clients', value: String(totalClients), accent: 'emerald', Icon: HiUserGroup },
-    { title: 'Team Members', value: String(teamCount), accent: 'primary', Icon: HiUsers },
+    { title: teamMemberTerm, value: String(teamCount), accent: 'primary', Icon: HiUsers },
     { title: 'Total Invoices', value: String(invoiceCount), accent: 'amber', Icon: HiCurrencyDollar },
   ];
 }
@@ -119,10 +121,10 @@ const StatCard = ({ title, value, sub, accent, Icon }) => {
  * @param {number} [props.teamMemberCount] - Organization member count (when using org-based team)
  * @param {Object} [props.apiCounts] - Optional counts from APIs: { clientCount, projectCount, invoiceCount }
  */
-export default function StatsGrid({ userAccount, teamMemberCount, apiCounts }) {
+export default function StatsGrid({ userAccount, organization, teamMemberCount, apiCounts }) {
   const stats = useMemo(
-    () => getStats(userAccount ?? {}, teamMemberCount, apiCounts),
-    [userAccount, teamMemberCount, apiCounts]
+    () => getStats(userAccount ?? {}, organization ?? null, teamMemberCount, apiCounts),
+    [userAccount, organization, teamMemberCount, apiCounts]
   );
 
   return (

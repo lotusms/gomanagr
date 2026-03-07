@@ -6,6 +6,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
 import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function toDateLocal(iso) {
   if (!iso) return '';
@@ -55,6 +56,7 @@ export default function ClientAttachmentForm({
   userId,
   organizationId,
   attachmentId,
+  industry,
   onSuccess,
   onCancel,
 }) {
@@ -70,7 +72,10 @@ export default function ClientAttachmentForm({
   const [fileUrl, setFileUrl] = useState(initial.file_url ?? '');
   const [contracts, setContracts] = useState([]);
   const [contractsLoading, setContractsLoading] = useState(false);
-  const projectOptions = [{ value: '', label: 'No project' }];
+  const projectTermSingular = getTermSingular(getTermForIndustry(industry, 'project'));
+  const noProjectLabel = `No ${(projectTermSingular || 'project').toLowerCase()}`;
+  const projectOptions = [{ value: '', label: noProjectLabel }];
+  const linkedProjectLabel = `Linked ${(projectTermSingular || 'project').toLowerCase()}`;
   const [hasChanges, setHasChanges] = useState(false);
   const markDirty = useCallback(() => setHasChanges(true), []);
   const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
@@ -219,11 +224,11 @@ export default function ClientAttachmentForm({
         <Dropdown
           id="linked-project"
           name="linked-project"
-          label="Linked project"
+          label={linkedProjectLabel}
           value={linkedProject}
           onChange={(e) => setLinkedProject(e.target.value ?? '')}
           options={projectOptions}
-          placeholder="No project"
+          placeholder={noProjectLabel}
           searchable={false}
         />
 

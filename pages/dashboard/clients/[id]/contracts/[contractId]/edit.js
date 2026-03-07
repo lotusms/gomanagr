@@ -160,6 +160,7 @@ export default function EditClientContractPage() {
             contractId={contractId}
             defaultCurrency={defaultCurrency}
             linkedAttachments={linkedAttachments}
+            industry={organization?.industry ?? null}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

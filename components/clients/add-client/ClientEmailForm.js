@@ -8,6 +8,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const DIRECTION_OPTIONS = [
   { value: 'sent', label: 'Sent' },
@@ -206,11 +207,11 @@ export default function ClientEmailForm({
         />
         <InputField
           id="email-related"
-          label="Related project / case (optional)"
+          label={relatedLabel}
           value={relatedProjectCase}
           onChange={(e) => setRelatedProjectCase(e.target.value)}
           variant="light"
-          placeholder="Project or case reference"
+          placeholder={relatedPlaceholder}
         /> 
       </div>  
 

@@ -1,6 +1,7 @@
 import { HiFolder, HiTrash } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
+import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -24,6 +25,9 @@ export default function ProjectCardServiceStyle({
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
+  const projectTermPlural = getProjectTermForIndustry(account?.industry);
+  const projectTermSingular = getProjectTermSingular(projectTermPlural);
+  const untitledLabel = (projectTermSingular || 'project').toLowerCase();
 
   const clientName = project.client_id && clientNameByClientId[project.client_id];
   const statusLabel = project.status ? (STATUS_LABELS[project.status] || project.status) : null;
@@ -49,7 +53,7 @@ export default function ProjectCardServiceStyle({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-bold text-white line-clamp-2">
-                {project.project_name || 'Untitled project'}
+                {project.project_name || `Untitled ${untitledLabel}`}
               </h3>
             </div>
           </div>
@@ -62,7 +66,7 @@ export default function ProjectCardServiceStyle({
                 onDelete(project.id);
               }}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-              title="Delete project"
+              title={`Delete ${untitledLabel}`}
             >
               <HiTrash className="size-5" />
             </button>

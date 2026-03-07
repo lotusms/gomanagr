@@ -16,6 +16,7 @@ export default function NewProposalPage() {
   const [organization, setOrganization] = useState(null);
   const [orgResolved, setOrgResolved] = useState(false);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function NewProposalPage() {
       .then((account) => {
         const currency = account?.clientSettings?.defaultCurrency || 'USD';
         setDefaultCurrency(currency);
+        if (account?.industry) setIndustry(account.industry);
       })
       .catch(() => setDefaultCurrency('USD'));
   }, [currentUser?.uid]);
@@ -84,6 +86,7 @@ export default function NewProposalPage() {
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
             showClientDropdown={true}
+            industry={industry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

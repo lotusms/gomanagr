@@ -336,6 +336,7 @@ function ServicesContent() {
             {services.length === 0 && (
               <EmptyState
                 type="services"
+                industry={organization?.industry ?? userAccount?.industry}
                 action={
                   <Link href="/dashboard/services/new">
                     <PrimaryButton type="button" className="gap-2">

@@ -19,14 +19,15 @@ import {
   HiTag,
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
-import { getProjectTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getProjectTermForIndustry, getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import { isOwnerRole, isAdminRole, isMemberRole, ORG_ROLE } from '@/config/rolePermissions';
 
 function getOwnerNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
+  const teamTerm = getTermForIndustry(accountIndustry, 'team');
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
-    { name: 'Team', href: '/dashboard/team', icon: HiUsers },
+    { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
@@ -45,10 +46,11 @@ function getOwnerNavItems(accountIndustry) {
 
 function getAdminNavItems(accountIndustry, memberRole) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
+  const teamTerm = getTermForIndustry(accountIndustry, 'team');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
-    { name: 'Team', href: '/dashboard/team', icon: HiUsers },
+    { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
@@ -108,18 +110,19 @@ function getMemberNavItems(memberAccess, accountIndustry) {
  * @param {boolean} [props.isOwner] - True for org creator (isOwner=true); controls owner vs admin nav
  * @param {boolean} [props.orgLoaded] - True once org (and thus memberRole) has been loaded; when false, show minimal placeholder nav to avoid flash
  */
-export default function DashboardSidebar({ open, onToggle, userAccount, memberRole, memberAccess, isOwner, orgLoaded }) {
+export default function DashboardSidebar({ open, onToggle, userAccount, organization, memberRole, memberAccess, isOwner, orgLoaded }) {
   const router = useRouter();
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
 
   const placeholderNav = useMemo(() => [{ name: 'Home', href: '/dashboard/team-member', icon: HiHome }], []);
 
   const navigationItems = useMemo(() => {
     if (!orgLoaded) return placeholderNav;
-    if (isMemberRole(memberRole)) return getMemberNavItems(memberAccess, userAccount?.industry);
-    if (isOwnerRole(memberRole)) return getOwnerNavItems(userAccount?.industry);
-    if (isAdminRole(memberRole)) return getAdminNavItems(userAccount?.industry, memberRole);
-    return getAdminNavItems(userAccount?.industry, memberRole);
-  }, [orgLoaded, memberRole, memberAccess, userAccount?.industry, placeholderNav]);
+    if (isMemberRole(memberRole)) return getMemberNavItems(memberAccess, accountIndustry);
+    if (isOwnerRole(memberRole)) return getOwnerNavItems(accountIndustry);
+    if (isAdminRole(memberRole)) return getAdminNavItems(accountIndustry, memberRole);
+    return getAdminNavItems(accountIndustry, memberRole);
+  }, [orgLoaded, memberRole, memberAccess, accountIndustry, placeholderNav]);
 
   const handleNavClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < MD_BREAKPOINT) {

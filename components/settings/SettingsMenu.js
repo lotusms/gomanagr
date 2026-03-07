@@ -10,7 +10,7 @@ const SETTINGS_SECTIONS = [
   { id: 'billing', label: 'Billing', icon: HiCreditCard },
 ];
 
-export default function SettingsMenu({ activeSection, onSectionChange, hiddenSections = [] }) {
+export default function SettingsMenu({ activeSection, onSectionChange, hiddenSections = [], sectionLabelOverrides = {} }) {
   const visibleSections = SETTINGS_SECTIONS.filter((s) => !hiddenSections.includes(s.id));
   return (
     <nav className="flex-shrink-0 w-full lg:w-56">
@@ -27,7 +27,7 @@ export default function SettingsMenu({ activeSection, onSectionChange, hiddenSec
               }`}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
-              {label}
+              {sectionLabelOverrides[id] ?? label}
             </button>
           </li>
         ))}

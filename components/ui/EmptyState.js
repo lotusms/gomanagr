@@ -1,10 +1,12 @@
 import { HiClipboardList, HiUsers, HiUserGroup, HiFolder, HiInbox, HiBriefcase, HiDocumentText, HiCalendar, HiTag } from 'react-icons/hi';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 /**
  * EmptyState Component - Reusable empty state display
  * 
  * @param {Object} props
  * @param {string} props.type - Type of empty state: 'services', 'clients', 'team', 'projects', 'requests', 'proposals', 'jobs', 'invoices', 'appointments', or 'custom'
+ * @param {string} [props.industry] - Organization industry (for type 'projects': shows e.g. "Cases" for Healthcare)
  * @param {string} props.title - Custom title (optional, uses default based on type)
  * @param {string} props.description - Custom description (optional, uses default based on type)
  * @param {React.ReactNode} props.action - Optional action button/element to display
@@ -13,17 +15,25 @@ import { HiClipboardList, HiUsers, HiUserGroup, HiFolder, HiInbox, HiBriefcase, 
  */
 export default function EmptyState({
   type = 'custom',
+  industry,
   title,
   description,
   action,
   icon: CustomIcon,
   className = '',
 }) {
+  const projectTermPlural = type === 'projects' && industry ? getTermForIndustry(industry, 'project') : null;
+  const projectTermSingular = projectTermPlural ? getTermSingular(projectTermPlural) : null;
+  const projectTermPluralLower = (projectTermPlural || 'projects').toLowerCase();
+  const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
+  const teamMemberTerm = industry ? getTermForIndustry(industry, 'teamMember') : 'Team members';
+  const teamMemberTermLower = teamMemberTerm.toLowerCase();
+
   const configs = {
     services: {
       icon: HiTag,
       title: 'No services yet',
-      description: 'Create your first service to start assigning them to team members and appointments.',
+      description: `Create your first service to start assigning them to ${teamMemberTermLower} and appointments.`,
     },
     clients: {
       icon: HiUserGroup,
@@ -32,23 +42,25 @@ export default function EmptyState({
     },
     team: {
       icon: HiUsers,
-      title: 'No team members yet',
-      description: 'Add team members to start scheduling appointments and assigning services.',
+      title: `No ${teamMemberTermLower} yet`,
+      description: `Add ${teamMemberTermLower} to start scheduling appointments and assigning services.`,
     },
     projects: {
       icon: HiFolder,
-      title: 'No projects yet',
-      description: 'Create your first project to start organizing work and tracking progress.',
+      title: projectTermPlural ? `No ${projectTermPluralLower} yet` : 'No projects yet',
+      description: projectTermSingular
+        ? `Create your first ${projectTermSingularLower} to start organizing work and tracking progress.`
+        : 'Create your first project to start organizing work and tracking progress.',
     },
     requests: {
       icon: HiInbox,
       title: 'No requests yet',
-      description: 'Requests from clients and team members will appear here.',
+      description: `Requests from clients and ${teamMemberTermLower} will appear here.`,
     },
     proposals: {
       icon: HiDocumentText,
       title: 'No proposals yet',
-      description: 'Proposals from clients and team members will appear here.',
+      description: `Proposals from clients and ${teamMemberTermLower} will appear here.`,
     },
     jobs: {
       icon: HiBriefcase,

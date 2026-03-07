@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
 import { isOwnerRole, isAdminRole } from '@/config/rolePermissions';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 
@@ -76,6 +77,12 @@ export default function NewTeamMemberPage() {
   }, [organization?.id, currentUser?.uid, isAdminNonOwner]);
 
   const team = ownerUserId ? ownerTeamMembers : (userAccount?.teamMembers ?? []);
+  const industry = organization?.industry ?? userAccount?.industry;
+  const teamTerm = getTermForIndustry(industry, 'team');
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm);
+  const teamMemberSingularLower = teamMemberSingular.toLowerCase();
+  const teamTermLower = teamTerm.toLowerCase();
   const currentUserIsOwner = useMemo(
     () => isOwnerRole(organization?.membership?.role) || team.some((m) => m.id === `owner-${currentUser?.uid}`),
     [organization?.membership?.role, team, currentUser?.uid]
@@ -196,7 +203,7 @@ export default function NewTeamMemberPage() {
           } else if (emailData.inviteLink) {
             try {
               await navigator.clipboard.writeText(emailData.inviteLink);
-              toast.info('Invite link copied to clipboard. Paste it into an email or message and send it to the team member.');
+              toast.info(`Invite link copied to clipboard. Paste it into an email or message and send it to the ${teamMemberSingularLower}.`);
             } catch {
               toast.info(`No email was sent. Copy this link and send it to ${(data.email || '').trim()}: ${emailData.inviteLink}`);
             }
@@ -247,14 +254,19 @@ export default function NewTeamMemberPage() {
       }).catch((err) => console.error('Failed to sync team member profile:', err));
     }
 
-    if (data.isAdmin !== undefined && organization?.id && currentUser?.uid && finalMember.userId) {
+    if (
+      data.isAdmin !== undefined &&
+      organization?.id &&
+      currentUser?.uid &&
+      (finalMember.userId || (finalMember.email && finalMember.email.trim()))
+    ) {
       fetch('/api/update-org-member-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizationId: organization.id,
           callerUserId: currentUser.uid,
-          targetUserId: finalMember.userId,
+          ...(finalMember.userId ? { targetUserId: finalMember.userId } : { targetEmail: finalMember.email.trim() }),
           role: finalMember.isAdmin ? 'admin' : 'member',
         }),
       }).catch((err) => console.error('Failed to sync org role:', err));
@@ -280,7 +292,7 @@ export default function NewTeamMemberPage() {
       setAccount((prev) => (prev ? { ...prev, services: updatedServices } : null));
     }
 
-    toast.success('Team member added.');
+    toast.success(`${teamMemberSingular} added.`);
     router.push('/dashboard/team');
   };
 
@@ -293,7 +305,7 @@ export default function NewTeamMemberPage() {
   if (!dataReady) {
     return (
       <>
-        <Head><title>Add team member - GoManagr</title></Head>
+        <Head><title>Add {teamMemberSingularLower} - GoManagr</title></Head>
         <p className="text-gray-500">Loading…</p>
       </>
     );
@@ -302,18 +314,18 @@ export default function NewTeamMemberPage() {
   return (
     <>
       <Head>
-        <title>Add team member - GoManagr</title>
-        <meta name="description" content="Add a new team member" />
+        <title>Add {teamMemberSingularLower} - GoManagr</title>
+        <meta name="description" content={`Add a new ${teamMemberSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Add team member"
-          description="Add a new member to your team."
+          title={`Add ${teamMemberSingularLower}`}
+          description={`Add a new ${teamMemberSingularLower} to your ${teamTermLower}.`}
           actions={
             <Link href="/dashboard/team">
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to team
+                Back to {teamTermLower}
               </SecondaryButton>
             </Link>
           }
@@ -324,6 +336,7 @@ export default function NewTeamMemberPage() {
             onSubmit={handleSaveMember}
             onCancel={handleCancel}
             saving={saving}
+            industry={industry}
             locations={userAccount?.locations || []}
             organizationCountry={userAccount?.organizationCountry || ''}
             services={userAccount?.services || []}

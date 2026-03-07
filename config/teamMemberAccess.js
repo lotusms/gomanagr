@@ -12,6 +12,19 @@ export const TEAM_MEMBER_SECTION_LABELS = {
   projects: 'Projects (view projects; actions only affect their own context where applicable)',
 };
 
+/**
+ * Returns section labels with industry-based terminology (e.g. "Cases" for Healthcare).
+ * Use when displaying labels in the UI; section keys and logic stay unchanged.
+ */
+export function getTeamMemberSectionLabels(industry) {
+  const { getTermForIndustry } = require('@/components/clients/clientProfileConstants');
+  const projectTerm = getTermForIndustry(industry, 'project');
+  return {
+    ...TEAM_MEMBER_SECTION_LABELS,
+    projects: `${projectTerm} (view ${projectTerm.toLowerCase()}; actions only affect their own context where applicable)`,
+  };
+}
+
 export const DEFAULT_TEAM_MEMBER_SECTIONS = Object.fromEntries(
   TEAM_MEMBER_SECTION_KEYS.map((key) => [key, false])
 );

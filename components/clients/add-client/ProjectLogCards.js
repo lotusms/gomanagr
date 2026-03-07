@@ -19,8 +19,9 @@ function clipText(text, maxLines) {
   return lines.length > maxLines ? clipped + '\n…' : clipped;
 }
 
-export default function ProjectLogCards({ projects, onSelect, onDelete, borderClass }) {
+export default function ProjectLogCards({ projects, onSelect, onDelete, borderClass, projectTermSingular }) {
   const account = useOptionalUserAccount();
+  const termLower = (projectTermSingular || 'project').toLowerCase();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
 
@@ -66,7 +67,7 @@ export default function ProjectLogCards({ projects, onSelect, onDelete, borderCl
               </>
             )}
           </div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.project_name || 'Untitled project'}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.project_name || `Untitled ${termLower}`}</p>
           {(p.scope_summary ?? p.description) && (
             <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(p.scope_summary ?? p.description, 3)}</p>
           )}

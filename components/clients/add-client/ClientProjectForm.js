@@ -6,6 +6,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import FileUploadList from '@/components/ui/FileUploadList';
 import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function toDateLocal(iso) {
   if (!iso) return '';
@@ -33,9 +34,20 @@ export default function ClientProjectForm({
   projectId,
   showClientDropdown = false,
   linkedAttachments = [],
+  industry = null,
   onSuccess,
   onCancel,
 }) {
+  const projectTermPlural = getTermForIndustry(industry, 'project');
+  const projectTermSingular = getTermSingular(projectTermPlural) || 'Project';
+  const projectTitleLabel = `${projectTermSingular} title`;
+  const projectIdLabel = `${projectTermSingular} ID`;
+  const projectOwnerLabel = `${projectTermSingular} owner`;
+  const projectTitleRequiredError = `${projectTermSingular} title is required`;
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm) || 'Team Member';
+  const selectTeamMemberPlaceholder = `Select ${teamMemberSingular.toLowerCase()}`;
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(
@@ -208,7 +220,7 @@ export default function ClientProjectForm({
     e.preventDefault();
     setError('');
     if (!projectName.trim()) {
-      setError('Project title is required');
+      setError(projectTitleRequiredError);
       return;
     }
     setSaving(true);
@@ -288,7 +300,7 @@ export default function ClientProjectForm({
         )}
         <InputField
           id="project-title"
-          label="Project title"
+          label={projectTitleLabel}
           value={projectName}
           onChange={(e) => { markDirty(); setProjectName(e.target.value); }}
           variant="light"
@@ -297,7 +309,7 @@ export default function ClientProjectForm({
         />
         <InputField
           id="project-number"
-          label="Project ID"
+          label={projectIdLabel}
           value={projectNumber}
           onChange={(e) => setProjectNumber(e.target.value)}
           variant="light"
@@ -330,7 +342,7 @@ export default function ClientProjectForm({
         <Dropdown
           id="project-owner"
           name="project-owner"
-          label="Project owner"
+          label={projectOwnerLabel}
           value={projectOwner}
           onChange={(e) => { markDirty(); setProjectOwner(e.target.value ?? ''); }}
           options={[
@@ -344,7 +356,7 @@ export default function ClientProjectForm({
               ? [{ value: projectOwner, label: projectOwner }]
               : []),
           ]}
-          placeholder={teamMembersLoading ? 'Loading…' : 'Select team member'}
+          placeholder={teamMembersLoading ? 'Loading…' : selectTeamMemberPlaceholder}
           searchable={teamMembers.length > 8}
         />
         <Dropdown

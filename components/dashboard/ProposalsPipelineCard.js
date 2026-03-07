@@ -60,7 +60,7 @@ export default function ProposalsPipelineCard({ counts = {} }) {
               <BarChart
                 data={chartData}
                 layout="vertical"
-                margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
+                margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -79,7 +79,7 @@ export default function ProposalsPipelineCard({ counts = {} }) {
                 <YAxis
                   type="category"
                   dataKey="name"
-                  width={52}
+                  width={80}
                   tick={{ fontSize: 11, fill: '#374151' }}
                   axisLine={false}
                   tickLine={false}

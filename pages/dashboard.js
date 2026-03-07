@@ -16,9 +16,19 @@ import {
 import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
 import StatsGrid from '@/components/dashboard/StatsGrid';
+import FollowUpsDueCard from '@/components/dashboard/FollowUpsDueCard';
+import InvoicesNeedingAttentionCard from '@/components/dashboard/InvoicesNeedingAttentionCard';
+import ProposalsPipelineCard from '@/components/dashboard/ProposalsPipelineCard';
+import RecentlyUpdatedCard from '@/components/dashboard/RecentlyUpdatedCard';
 import WebsiteConsultationDialog from '@/components/dashboard/WebsiteConsultationDialog';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import { isAdminRole, isOwnerRole } from '@/config/rolePermissions';
+import {
+  buildFollowUps,
+  getInvoicesSummary,
+  getProposalsPipeline,
+  buildRecentlyUpdated,
+} from '@/lib/dashboardActionUtils';
 
 function getWelcomeName(account, email = '') {
   const first = (account?.firstName ?? '').trim();
@@ -96,6 +106,11 @@ function DashboardContent() {
   const [accountLoaded, setAccountLoaded] = useState(false);
   const [orgSchedule, setOrgSchedule] = useState(null);
   const [statsCounts, setStatsCounts] = useState(null);
+  const [dashboardActionData, setDashboardActionData] = useState({
+    invoices: [],
+    proposals: [],
+    clients: [],
+  });
 
   useEffect(() => {
     const role = organization?.membership?.role;
@@ -162,6 +177,34 @@ function DashboardContent() {
       })
       .catch(() => setStatsCounts(null));
   }, [currentUser?.uid, organization?.id]);
+
+  const orgId = organization?.id ?? undefined;
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    const oid = orgId;
+    Promise.all([
+      fetch('/api/get-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: oid }),
+      }).then((r) => r.json().then((d) => d.invoices || [])),
+      fetch('/api/get-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: oid }),
+      }).then((r) => r.json().then((d) => d.proposals || [])),
+      fetch('/api/get-org-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json().then((d) => d.clients || [])),
+    ])
+      .then(([invoices, proposals, clients]) => {
+        setDashboardActionData({ invoices, proposals, clients });
+      })
+      .catch(() => setDashboardActionData({ invoices: [], proposals: [], clients: [] }));
+  }, [currentUser?.uid, orgId]);
+
 
   const canSeeFullSchedule = isAdminRole(organization?.membership?.role);
   useEffect(() => {
@@ -326,6 +369,46 @@ function DashboardContent() {
           teamMemberCount={teamMemberCount}
           apiCounts={statsCounts}
         />
+
+        {/* Action-focused cards */}
+        {(() => {
+          const { invoices, proposals, clients } = dashboardActionData;
+          const clientNameById = {};
+          (clients || []).forEach((c) => {
+            if (c?.id) clientNameById[c.id] = (c.name || c.company || 'Unknown').trim() || 'Unknown';
+          });
+          const data = { invoices, proposals };
+          const followUps = buildFollowUps(data, clientNameById);
+          const invoicesSummary = getInvoicesSummary(data);
+          const proposalsPipeline = getProposalsPipeline(data);
+          const recentlyUpdated = buildRecentlyUpdated(data, clientNameById, 20);
+          const dateFormat = userAccount?.dateFormat ?? 'MM/DD/YYYY';
+          const timezone = userAccount?.timezone ?? 'UTC';
+          const currency = userAccount?.defaultCurrency ?? 'USD';
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <FollowUpsDueCard
+                items={followUps}
+                dateFormat={dateFormat}
+                timezone={timezone}
+              />
+              <InvoicesNeedingAttentionCard
+                overdueCount={invoicesSummary.overdueCount}
+                overdueTotal={invoicesSummary.overdueTotal}
+                dueIn7DaysCount={invoicesSummary.dueIn7DaysCount}
+                dueIn14DaysCount={invoicesSummary.dueIn14DaysCount}
+                dueIn30DaysCount={invoicesSummary.dueIn30DaysCount}
+                currency={currency}
+              />
+              <ProposalsPipelineCard counts={proposalsPipeline} />
+              <RecentlyUpdatedCard
+                items={recentlyUpdated}
+                dateFormat={dateFormat}
+                timezone={timezone}
+              />
+            </div>
+          );
+        })()}
 
         <DashboardTodos
           items={todoItems}

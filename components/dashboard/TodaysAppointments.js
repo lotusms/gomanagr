@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
 import { formatDate } from '@/utils/dateTimeFormatters';
 import Tooltip from '@/components/ui/Tooltip';
@@ -7,26 +8,23 @@ import AppointmentPopover from '@/components/dashboard/AppointmentPopover';
 
 /**
  * @param {Array} appointments - Array of appointment objects
- * @param {string} todayKey - Date key in format YYYY-MM-DD
+ * @param {string} todayKey - Date key in format YYYY-MM-DD (in same timezone as appointmentKey)
  * @param {number} startHour - Business hours start hour
+ * @param {string} timezone - IANA timezone for resolving appointment date (e.g. 'America/Los_Angeles')
  * @returns {Array} Appointments for today with startSlot and endSlot
  */
-function getAppointmentsForToday(appointments, todayKey, startHour) {
+function getAppointmentsForToday(appointments, todayKey, startHour, timezone = 'UTC') {
   if (!appointments || !Array.isArray(appointments)) return [];
 
   return appointments
     .filter((apt) => {
       let appointmentKey;
       if (typeof apt.date === 'string' && apt.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        appointmentKey = apt.date;
+        const d = new Date(apt.date + 'T12:00:00');
+        appointmentKey = d.toLocaleDateString('en-CA', { timeZone: timezone });
       } else {
-        const appointmentDate = new Date(apt.date);
-        appointmentKey = 
-          appointmentDate.getFullYear() +
-          '-' +
-          String(appointmentDate.getMonth() + 1).padStart(2, '0') +
-          '-' +
-          String(appointmentDate.getDate()).padStart(2, '0');
+        const d = new Date(apt.date);
+        appointmentKey = d.toLocaleDateString('en-CA', { timeZone: timezone });
       }
       return appointmentKey === todayKey;
     })
@@ -57,10 +55,25 @@ export default function TodaysAppointments({
   const teamMembers = teamMembersProp ?? staff;
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
-  const todayInTimezone = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
-  const todayKey = todayInTimezone;
-  const appointmentsForToday = getAppointmentsForToday(appointments, todayKey, startHour);
-  const todayLabel = formatDate(todayInTimezone, dateFormat, timezone);
+
+  // When timezone is UTC (default before prefs load), use browser's local date so we don't show "tomorrow"
+  const localTz = typeof Intl !== 'undefined' && Intl.DateTimeFormat?.().resolvedOptions?.().timeZone ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
+  const effectiveTimezone = timezone && timezone !== 'UTC' ? timezone : localTz;
+  const getTodayKey = () =>
+    new Date().toLocaleDateString('en-CA', { timeZone: effectiveTimezone });
+
+  const [todayResolved, setTodayResolved] = useState(null);
+  useEffect(() => {
+    const todayInTimezone = getTodayKey();
+    setTodayResolved({
+      todayKey: todayInTimezone,
+      todayLabel: formatDate(todayInTimezone, dateFormat, effectiveTimezone),
+    });
+  }, [timezone, dateFormat]);
+
+  const todayKey = todayResolved?.todayKey ?? getTodayKey();
+  const todayLabel = todayResolved?.todayLabel ?? '';
+  const appointmentsForToday = getAppointmentsForToday(appointments, todayKey, startHour, effectiveTimezone);
   const appointmentMatchesStaff = (apt, staffId) =>
     (Array.isArray(apt.staffIds) && apt.staffIds.some((id) => String(id) === String(staffId))) ||
     String(apt.staffId) === String(staffId);

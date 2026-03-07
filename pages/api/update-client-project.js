@@ -32,7 +32,12 @@ function parseBody(body, existing) {
         ? String(body.status).toLowerCase()
         : (existing?.status ?? 'draft')
       : (existing?.status ?? 'draft');
+  const clientIdProvided = body.clientId !== undefined && body.clientId !== null;
+  const client_id = clientIdProvided && String(body.clientId ?? '').trim()
+    ? String(body.clientId).trim()
+    : (existing?.client_id ?? '');
   return {
+    client_id,
     project_name: String(body.project_name ?? existing?.project_name ?? '').trim() || '',
     project_number: body.project_number !== undefined ? String(body.project_number ?? '').trim() : (existing?.project_number ?? ''),
     status,
@@ -87,8 +92,9 @@ export default async function handler(req, res) {
     }
     const fileUrls = Array.isArray(updates.file_urls) ? updates.file_urls : [];
     if (fileUrls.length > 0) {
+      const effectiveClientId = updates.client_id ?? existing.client_id;
       await ensureAttachmentsFromFiles(supabaseAdmin, {
-        clientId: existing.client_id,
+        clientId: effectiveClientId,
         userId: existing.user_id,
         organizationId: existing.organization_id,
         fileUrls,

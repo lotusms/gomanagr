@@ -156,7 +156,7 @@ export default function EditProjectPage() {
             organizationId={organization?.id ?? null}
             projectId={projectId}
             industry={accountIndustry}
-            showClientDropdown={false}
+            showClientDropdown={true}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

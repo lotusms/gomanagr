@@ -26,7 +26,9 @@ export default function ScheduleIndexPage() {
 
   const {
     currentUser,
+    userAccount,
     setUserAccount,
+    organization,
     setOrgSchedule,
     appointments,
     teamMembers,

@@ -433,8 +433,9 @@ export default function ClientProfile({
     }
   };
   
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
   const sections = useMemo(() => {
-    const projectTermPlural = getProjectTermForIndustry(userAccount?.industry);
+    const projectTermPlural = getProjectTermForIndustry(accountIndustry);
     const clientSettings = userAccount?.clientSettings || {};
     
     let visibleTabs;
@@ -586,6 +587,7 @@ export default function ClientProfile({
               onPricingTierChange={(e) => setPricingTier(e.target.value)}
               onDefaultCurrencyChange={(e) => setDefaultCurrency(e.target.value)}
               onActiveRetainersBalanceChange={(e) => setActiveRetainersBalance(e.target.value)}
+              industry={accountIndustry}
             />
           ),
         }] 
@@ -596,11 +598,12 @@ export default function ClientProfile({
           label: `${projectTermPlural} Details`,
           content: (
             <ProjectsDetailsSection
+              key={`projects-details-${initialClient?.id || clientId}-${organization?.id ?? 'personal'}`}
               clientId={initialClient?.id || clientId}
               userId={currentUser?.uid}
-              organizationId={organization?.id}
+              organizationId={organization?.id ?? undefined}
               companyIndustry={companyIndustry}
-              industry={userAccount?.industry}
+              industry={accountIndustry}
             />
           ),
         }] 
@@ -624,6 +627,7 @@ export default function ClientProfile({
               onCallsChange={setCalls}
               onMeetingNotesChange={setMeetingNotes}
               onInternalNotesChange={(e) => setInternalNotes(e.target.value)}
+              industry={accountIndustry}
               initialSection={(() => {
                 const s = typeof router.query.section === 'string' ? router.query.section : Array.isArray(router.query.section) ? router.query.section[0] : undefined;
                 return s === 'sharedAssets' ? 'onlineResources' : s;
@@ -696,6 +700,10 @@ export default function ClientProfile({
     clientAppointments, userAccount, handleCompanyNameChange, saving,
     sortedCountries, companyAvailableStates, billingAvailableStates,
     userAccount?.clientSettings?.visibleTabs,
+    organization,
+    initialClient?.id,
+    accountIndustry,
+    currentUser?.uid,
   ]);
   
   return (

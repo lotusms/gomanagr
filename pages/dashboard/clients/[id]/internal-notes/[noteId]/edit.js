@@ -122,6 +122,7 @@ export default function EditClientInternalNotePage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             noteId={noteId}
+            industry={organization?.industry ?? null}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

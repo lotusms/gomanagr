@@ -187,6 +187,7 @@ function ProjectsContent() {
                   onSelect={(id) => router.push(`/dashboard/projects/${id}/edit`)}
                   onDelete={setProjectToDelete}
                   clientNameByClientId={clientNameByClientId}
+                  industry={accountIndustry}
                 />
               ))}
             </div>

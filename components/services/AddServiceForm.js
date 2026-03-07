@@ -89,7 +89,9 @@ export default function AddServiceForm({
   const isPageMode = mode === 'page';
   const assignReadOnly = !isPageMode;
   const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamTerm = getTermForIndustry(industry, 'team');
   const assignToLabel = `Assign to ${teamMemberTerm}`;
+  const emptyAssignCopy = `Add ${teamMemberTerm.toLowerCase()} in the ${teamTerm} section to assign services.`;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -369,7 +371,7 @@ export default function AddServiceForm({
         </div>
       ) : (
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          Add team members in the Team section to assign services.
+          {emptyAssignCopy}
         </div>
       )}
 

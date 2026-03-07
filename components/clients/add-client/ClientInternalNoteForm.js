@@ -6,6 +6,7 @@ import { useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import * as Label from '@radix-ui/react-label';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const TAG_OPTIONS = [
   { value: '', label: 'None' },
@@ -24,7 +25,9 @@ export default function ClientInternalNoteForm({
   noteId,
   onSuccess,
   onCancel,
+  industry = null,
 }) {
+  const teamMemberSingular = getTermSingular(getTermForIndustry(industry, 'teamMember')) || 'Team member';
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [content, setContent] = useState(initial.content ?? '');
@@ -35,7 +38,7 @@ export default function ClientInternalNoteForm({
   const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
 
   const createdByLabel = noteId
-    ? (initial.user_id === userId ? 'You' : 'Team member')
+    ? (initial.user_id === userId ? 'You' : teamMemberSingular)
     : 'You';
 
   const handleSubmit = async (e) => {

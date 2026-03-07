@@ -44,6 +44,10 @@ export default function ClientProjectForm({
   const projectIdLabel = `${projectTermSingular} ID`;
   const projectOwnerLabel = `${projectTermSingular} owner`;
   const projectTitleRequiredError = `${projectTermSingular} title is required`;
+  const projectFilesLabel = `${projectTermSingular} files`;
+  const projectTermSingularLower = projectTermSingular.toLowerCase();
+  const updateProjectLabel = `Update ${projectTermSingularLower}`;
+  const addProjectLabel = `Add ${projectTermSingularLower}`;
   const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
   const teamMemberSingular = getTermSingular(teamMemberTerm) || 'Team Member';
   const selectTeamMemberPlaceholder = `Select ${teamMemberSingular.toLowerCase()}`;
@@ -395,7 +399,7 @@ export default function ClientProjectForm({
 
       <FileUploadList
         id="project-files"
-        label="Project files"
+        label={projectFilesLabel}
         value={fileUrls}
         onChange={(urls) => { markDirty(); setFileUrls(Array.isArray(urls) ? urls : []); }}
         onUpload={uploadFile}
@@ -433,7 +437,7 @@ export default function ClientProjectForm({
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId) || !projectName.trim()}>
-          {saving ? 'Saving...' : projectId ? 'Update project' : 'Add project'}
+          {saving ? 'Saving...' : projectId ? updateProjectLabel : addProjectLabel}
         </PrimaryButton>
       </div>
       {discardDialog}

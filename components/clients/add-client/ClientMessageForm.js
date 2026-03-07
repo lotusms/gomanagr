@@ -7,6 +7,7 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import * as Label from '@radix-ui/react-label';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const CHANNEL_OPTIONS = [
   { value: 'sms', label: 'SMS' },
@@ -43,7 +44,9 @@ export default function ClientMessageForm({
   messageId,
   onSuccess,
   onCancel,
+  industry = null,
 }) {
+  const teamMemberSingularLower = (getTermSingular(getTermForIndustry(industry, 'teamMember')) || 'team member').toLowerCase();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [channel, setChannel] = useState(
@@ -163,7 +166,7 @@ export default function ClientMessageForm({
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
           variant="light"
-          placeholder={direction === 'sent' ? 'Team member who sent (e.g. L. Silva)' : 'Client name (e.g. Mark Peck)'}
+          placeholder={direction === 'sent' ? `${teamMemberSingularLower.charAt(0).toUpperCase() + teamMemberSingularLower.slice(1)} who sent (e.g. L. Silva)` : 'Client name (e.g. Mark Peck)'}
         />
         <DateTimeField
           id="message-sent-at"

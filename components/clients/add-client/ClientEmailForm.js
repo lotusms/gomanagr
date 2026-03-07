@@ -39,7 +39,13 @@ export default function ClientEmailForm({
   emailId,
   onSuccess,
   onCancel,
+  industry = null,
 }) {
+  const projectTermSingular = getTermSingular(getTermForIndustry(industry, 'project')) || 'project';
+  const projectTermSingularLower = projectTermSingular.toLowerCase();
+  const relatedLabel = `Related ${projectTermSingularLower}`;
+  const relatedPlaceholder = `e.g. ${projectTermSingular} name or ID`;
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [subject, setSubject] = useState(initial.subject ?? '');

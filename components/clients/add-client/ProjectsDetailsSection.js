@@ -1,25 +1,26 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { HiPlus, HiFolder, HiCheckCircle } from 'react-icons/hi';
+import { HiPlus, HiDocumentText, HiFolder, HiPause, HiStop, HiCheckCircle, HiBan } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
 import EmptyStateCard from './EmptyStateCard';
 import ProjectLogCards from './ProjectLogCards';
 import { ConfirmationDialog } from '@/components/ui';
 import SideNavViewerLayout from './SideNavViewerLayout';
-import { getProjectTermForIndustry, getProjectTermSingular } from '../clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '../clientProfileConstants';
 
-const ACTIVE_STATUSES = ['planning', 'active', 'on_hold'];
-const COMPLETED_STATUSES = ['completed', 'cancelled'];
-
-const ACTIVE_BORDER = 'border-l-blue-500 dark:border-l-blue-400';
-const COMPLETED_BORDER = 'border-l-green-500 dark:border-l-green-400';
-
-const ACTIVE_BADGE = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200';
-const COMPLETED_BADGE = 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200';
+/** All project statuses; each maps to one tab. Draft first per request. */
+const PROJECT_STATUS_TABS = [
+  { key: 'draft', statuses: ['draft'], label: 'Draft', icon: HiDocumentText, borderClass: 'border-l-slate-500 dark:border-l-slate-400', badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-200' },
+  { key: 'active', statuses: ['active'], label: 'Active', icon: HiFolder, borderClass: 'border-l-blue-500 dark:border-l-blue-400', badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' },
+  { key: 'on_hold', statuses: ['on_hold'], label: 'On hold', icon: HiPause, borderClass: 'border-l-amber-500 dark:border-l-amber-400', badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
+  { key: 'inactive', statuses: ['inactive'], label: 'Inactive', icon: HiStop, borderClass: 'border-l-gray-500 dark:border-l-gray-400', badgeClass: 'bg-gray-100 text-gray-800 dark:bg-gray-900/40 dark:text-gray-200' },
+  { key: 'completed', statuses: ['completed'], label: 'Completed', icon: HiCheckCircle, borderClass: 'border-l-green-500 dark:border-l-green-400', badgeClass: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' },
+  { key: 'abandoned', statuses: ['abandoned'], label: 'Abandoned', icon: HiBan, borderClass: 'border-l-red-500 dark:border-l-red-400', badgeClass: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200' },
+];
 
 /**
  * Projects Details tab: same layout as Communication Log and Documents & Files.
- * Left nav (Active / Completed), right viewer with header, "+ Add", and card grid.
+ * Left nav (Draft, Active, On hold, Inactive, Completed, Abandoned), right viewer with header, "+ Add", and card grid.
  */
 export default function ProjectsDetailsSection({
   clientId,
@@ -31,36 +32,28 @@ export default function ProjectsDetailsSection({
   const router = useRouter();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedKey, setSelectedKey] = useState('active');
+  const [selectedKey, setSelectedKey] = useState('draft');
   const [projectToDelete, setProjectToDelete] = useState(null);
 
   const projectTermPlural = useMemo(
-    () => getProjectTermForIndustry(accountIndustry ?? companyIndustry),
+    () => getTermForIndustry(accountIndustry ?? companyIndustry, 'project'),
     [accountIndustry, companyIndustry]
   );
-  const projectTerm = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
+  const projectTerm = useMemo(() => getTermSingular(projectTermPlural) || 'Project', [projectTermPlural]);
   const projectTermLower = projectTerm.toLowerCase();
   const projectTermPluralLower = projectTermPlural.toLowerCase();
 
   const projectTypes = useMemo(
-    () => [
-      {
-        key: 'active',
-        label: `Active ${projectTermPlural}`,
-        description: `Current ${projectTermPluralLower} in progress`,
-        icon: HiFolder,
-        borderClass: ACTIVE_BORDER,
-        badgeClass: ACTIVE_BADGE,
-      },
-      {
-        key: 'completed',
-        label: `Completed ${projectTermPlural}`,
-        description: `Previously completed ${projectTermPluralLower}`,
-        icon: HiCheckCircle,
-        borderClass: COMPLETED_BORDER,
-        badgeClass: COMPLETED_BADGE,
-      },
-    ],
+    () =>
+      PROJECT_STATUS_TABS.map((tab) => ({
+        key: tab.key,
+        label: tab.key === 'draft' ? `Draft ${projectTermPlural}` : tab.key === 'active' ? `Active ${projectTermPlural}` : tab.key === 'completed' ? `Completed ${projectTermPlural}` : tab.key === 'abandoned' ? `Abandoned ${projectTermPlural}` : `${tab.label} ${projectTermPlural}`,
+        description: tab.key === 'draft' ? `${projectTermPlural} not yet started` : tab.key === 'active' ? `Current ${projectTermPluralLower} in progress` : tab.key === 'completed' ? `Finished ${projectTermPluralLower}` : tab.key === 'abandoned' ? `Cancelled or abandoned ${projectTermPluralLower}` : `${tab.label.toLowerCase()} ${projectTermPluralLower}`,
+        icon: tab.icon,
+        borderClass: tab.borderClass,
+        badgeClass: tab.badgeClass,
+        statuses: tab.statuses,
+      })),
     [projectTermPlural, projectTermPluralLower]
   );
 
@@ -94,14 +87,13 @@ export default function ProjectsDetailsSection({
       .finally(() => setLoading(false));
   }, [userId, clientId, organizationId]);
 
-  const activeProjects = useMemo(
-    () => projects.filter((p) => ACTIVE_STATUSES.includes(p.status)),
-    [projects]
-  );
-  const completedProjects = useMemo(
-    () => projects.filter((p) => COMPLETED_STATUSES.includes(p.status)),
-    [projects]
-  );
+  const projectsByKey = useMemo(() => {
+    const map = {};
+    projectTypes.forEach((t) => {
+      map[t.key] = projects.filter((p) => t.statuses.includes(p.status));
+    });
+    return map;
+  }, [projects, projectTypes]);
 
   const selectedType = projectTypes.find((t) => t.key === selectedKey);
   const viewerHeader = selectedType
@@ -113,7 +105,7 @@ export default function ProjectsDetailsSection({
       }
     : null;
 
-  const filteredProjects = selectedKey === 'active' ? activeProjects : completedProjects;
+  const filteredProjects = projectsByKey[selectedKey] ?? [];
   const hasEntriesInSelectedSection = filteredProjects.length > 0;
 
   const newProjectUrl = `/dashboard/clients/${clientId}/projects/new?status=${selectedKey}`;
@@ -155,20 +147,18 @@ export default function ProjectsDetailsSection({
 
   const renderViewerContent = () => {
     if (loading && projects.length === 0) {
-      return <EmptyStateCard message="Loading projects…" />;
+      return <EmptyStateCard message={`Loading ${projectTermPluralLower}…`} />;
     }
     if (filteredProjects.length === 0) {
-      const emptyLabel =
-        selectedKey === 'active'
-          ? `No active ${projectTermPluralLower}`
-          : `No completed ${projectTermPluralLower}`;
+      const statusLabel = selectedType?.label?.replace(projectTermPlural, '').trim() || selectedKey;
+      const emptyLabel = `No ${statusLabel.toLowerCase()} ${projectTermPluralLower}`;
       return (
         <EmptyStateCard
           message={emptyLabel}
           action={
             <PrimaryButton type="button" onClick={handleAddInHeader} className="gap-2">
               <HiPlus className="w-5 h-5" />
-              Add {selectedKey === 'active' ? 'active' : 'completed'} {projectTermLower}
+              Add {statusLabel.toLowerCase()} {projectTermLower}
             </PrimaryButton>
           }
         />
@@ -179,7 +169,7 @@ export default function ProjectsDetailsSection({
         projects={filteredProjects}
         onSelect={handleEditProject}
         onDelete={setProjectToDelete}
-        borderClass={selectedType?.borderClass ?? ACTIVE_BORDER}
+        borderClass={selectedType?.borderClass ?? 'border-l-slate-500 dark:border-l-slate-400'}
         projectTermSingular={projectTerm}
       />
     );
@@ -188,7 +178,7 @@ export default function ProjectsDetailsSection({
   return (
     <>
       <SideNavViewerLayout
-        introText={`Track active and completed ${projectTermPluralLower} for this client.`}
+        introText={`Track ${projectTermPluralLower} by status for this client.`}
         navAriaLabel={`${projectTermPlural} sections`}
         navItems={navItems}
         selectedKey={selectedKey}

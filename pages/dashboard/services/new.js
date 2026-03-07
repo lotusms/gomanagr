@@ -10,6 +10,7 @@ import AddServiceForm from '@/components/services/AddServiceForm';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 export default function NewServicePage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function NewServicePage() {
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const industry = organization?.industry ?? null;
+  const teamMemberTermLower = (getTermForIndustry(industry, 'teamMember') || 'team members').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -101,7 +103,7 @@ export default function NewServicePage() {
       <div className="space-y-6">
         <PageHeader
           title="Add service"
-          description="Create a new service and assign it to team members."
+          description={`Create a new service and assign it to ${teamMemberTermLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

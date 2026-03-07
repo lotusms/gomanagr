@@ -53,6 +53,7 @@ export default function NewClientInternalNotePage() {
             clientId={clientId}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
+            industry={organization?.industry ?? null}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

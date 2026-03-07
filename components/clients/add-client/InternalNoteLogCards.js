@@ -1,5 +1,6 @@
 import { HiBookmark } from 'react-icons/hi';
 import CardDeleteButton from './CardDeleteButton';
+import { getTermForIndustry, getTermSingular } from '../clientProfileConstants';
 
 function clipText(text, maxLines) {
   if (maxLines === undefined) maxLines = 3;
@@ -11,9 +12,10 @@ function clipText(text, maxLines) {
 
 const TAG_LABELS = { reminder: 'Reminder', warning: 'Warning', preference: 'Preference', billing: 'Billing', issue: 'Issue' };
 
-export default function InternalNoteLogCards({ notes, onSelect, onDelete, borderClass, currentUserId }) {
+export default function InternalNoteLogCards({ notes, onSelect, onDelete, borderClass, currentUserId, industry }) {
   const baseClass = 'relative w-full text-left group rounded-xl border border-gray-100 dark:border-gray-600/80 border-l-4 bg-gray-50/80 dark:bg-gray-800/40 shadow-sm transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-800/60 hover:shadow-md hover:-translate-y-0.5 cursor-pointer pl-4 pr-11 py-3 min-h-[56px]';
   const cardClass = borderClass ? baseClass + ' ' + borderClass : baseClass;
+  const teamMemberLabel = (getTermSingular(getTermForIndustry(industry, 'teamMember')) || 'team member').toLowerCase();
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -46,7 +48,7 @@ export default function InternalNoteLogCards({ notes, onSelect, onDelete, border
               </span>
             )}
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Created by {currentUserId && note.user_id === currentUserId ? 'you' : 'team'}
+              Created by {currentUserId && note.user_id === currentUserId ? 'you' : teamMemberLabel}
             </span>
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(note.content, 3)}</p>

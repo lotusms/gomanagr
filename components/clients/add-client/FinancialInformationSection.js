@@ -17,11 +17,13 @@ export default function FinancialInformationSection({
   onPricingTierChange,
   onDefaultCurrencyChange,
   onActiveRetainersBalanceChange,
+  industry: industryProp,
 }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
-  const projectTermSingular = getTermSingular(getTermForIndustry(account?.industry, 'project'));
+  const industry = industryProp ?? account?.industry;
+  const projectTermSingular = getTermSingular(getTermForIndustry(industry, 'project'));
   const projectNameColumnLabel = `${projectTermSingular || 'Project'} Name`;
 
   return (

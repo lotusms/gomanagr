@@ -141,8 +141,8 @@ describe('Services page', () => {
       expect(screen.getAllByText('Bob').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText(/No team members assigned/i)).toBeInTheDocument();
 
-      expect(screen.getByText(/Assigned to 1 member/)).toBeInTheDocument();
-      expect(screen.getByText(/Assigned to 2 members/)).toBeInTheDocument();
+      expect(screen.getByText(/Assigned to 1 team member/i)).toBeInTheDocument();
+      expect(screen.getByText(/Assigned to 2 team members/i)).toBeInTheDocument();
     });
 
     it('description is present and can be long (clipped in UI via line-clamp)', async () => {

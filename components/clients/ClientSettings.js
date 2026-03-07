@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/Toast';
 import InputField from '@/components/ui/InputField';
 import Dropdown from '@/components/ui/Dropdown';
 import { PrimaryButton } from '@/components/ui/buttons';
-import { CURRENCIES } from './clientProfileConstants';
+import { CURRENCIES, getTermForIndustry } from './clientProfileConstants';
 import { ChipsMulti } from '@/components/ui';
 
 export default function ClientSettings() {
@@ -15,10 +15,11 @@ export default function ClientSettings() {
   const [saving, setSaving] = useState(false);
   const [accountIndustry, setAccountIndustry] = useState('');
   
+  const projectTermPlural = getTermForIndustry(accountIndustry, 'project') || 'Projects';
   const availableTabs = [
     { value: 'company', label: 'Company Details' },
     { value: 'financial', label: 'Financial Information' },
-    { value: 'projects', label: 'Projects Details' },
+    { value: 'projects', label: `${projectTermPlural} Details` },
     { value: 'communication', label: 'Communication Log' },
     { value: 'documents', label: 'Documents & Files' },
     { value: 'scheduling', label: 'Appointments & Schedule' },

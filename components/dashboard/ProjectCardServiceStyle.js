@@ -1,7 +1,7 @@
 import { HiFolder, HiTrash } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
-import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -21,12 +21,14 @@ export default function ProjectCardServiceStyle({
   onSelect,
   onDelete,
   clientNameByClientId = {},
+  industry: industryProp = null,
 }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
-  const projectTermPlural = getProjectTermForIndustry(account?.industry);
-  const projectTermSingular = getProjectTermSingular(projectTermPlural);
+  const effectiveIndustry = industryProp ?? account?.industry ?? null;
+  const projectTermPlural = getTermForIndustry(effectiveIndustry, 'project');
+  const projectTermSingular = getTermSingular(projectTermPlural) || 'Project';
   const untitledLabel = (projectTermSingular || 'project').toLowerCase();
 
   const clientName = project.client_id && clientNameByClientId[project.client_id];

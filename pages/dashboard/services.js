@@ -9,6 +9,7 @@ import { PageHeader, EmptyState, ConfirmationDialog, Paginator } from '@/compone
 import ServicesPageSkeleton from '@/components/dashboard/ServicesPageSkeleton';
 import { HiPlus, HiPencil, HiTrash, HiTag, HiUserGroup } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function ServicesContent() {
   const { currentUser } = useAuth();
@@ -24,6 +25,11 @@ function ServicesContent() {
   const [itemsPerPage, setItemsPerPage] = useState(12);
 
   const teamMembers = userAccount?.teamMembers || [];
+  const industry = organization?.industry ?? userAccount?.industry ?? null;
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
+  const teamMemberSingular = getTermSingular(teamMemberTerm) || 'Team Member';
+  const teamMemberTermLower = teamMemberTerm.toLowerCase();
+  const teamMemberSingularLower = teamMemberSingular.toLowerCase();
 
   const paginatedServices = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -179,7 +185,7 @@ function ServicesContent() {
           <>
             <PageHeader
               title="Services"
-              description="Manage your services and assign them to team members. Services can be selected when creating appointments."
+              description={`Manage your services and assign them to ${teamMemberTermLower}. Services can be selected when creating appointments.`}
               actions={
                 <>
                   <Link href="/dashboard/services/new">
@@ -197,7 +203,7 @@ function ServicesContent() {
               onClose={handleRemoveCancel}
               onConfirm={handleRemoveConfirm}
               title="Delete Service"
-              message={`Are you sure you want to delete "${serviceToDelete?.name || 'this service'}"? This action cannot be undone and will remove all assignments to team members.`}
+              message={`Are you sure you want to delete "${serviceToDelete?.name || 'this service'}"? This action cannot be undone and will remove all assignments to ${teamMemberTermLower}.`}
               confirmText="Delete"
               cancelText="Cancel"
               confirmationWord="delete"
@@ -286,7 +292,7 @@ function ServicesContent() {
                           <div className="flex items-center gap-2 mb-2">
                             <HiUserGroup className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                              Assigned to {assignedMembers.length} {assignedMembers.length === 1 ? 'member' : 'members'}
+                              Assigned to {assignedMembers.length} {assignedMembers.length === 1 ? teamMemberSingularLower : teamMemberTermLower}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-1.5">
@@ -307,7 +313,7 @@ function ServicesContent() {
                         </div>
                       ) : (
                         <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
-                          <p className="text-xs text-gray-400 dark:text-gray-500 italic">No team members assigned</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 italic">No {teamMemberTermLower} assigned</p>
                         </div>
                       )}
                     </div>

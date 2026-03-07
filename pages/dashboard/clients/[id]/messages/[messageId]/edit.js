@@ -122,6 +122,7 @@ export default function EditClientMessagePage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             messageId={messageId}
+            industry={organization?.industry ?? null}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

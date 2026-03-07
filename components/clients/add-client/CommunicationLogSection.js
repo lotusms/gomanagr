@@ -436,7 +436,7 @@ function MeetingNotesBlock({ clientId, userId, organizationId, onHasEntries }) {
   );
 }
 
-function InternalNotesBlock({ clientId, userId, organizationId, onHasEntries }) {
+function InternalNotesBlock({ clientId, userId, organizationId, onHasEntries, industry }) {
   const router = useRouter();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -515,6 +515,7 @@ function InternalNotesBlock({ clientId, userId, organizationId, onHasEntries }) 
         onDelete={setNoteToDelete}
         borderClass={type.borderClass}
         currentUserId={userId}
+        industry={industry}
       />
       <ConfirmationDialog
         isOpen={!!noteToDelete}
@@ -580,6 +581,7 @@ export default function CommunicationLogSection({
   onMeetingNotesChange,
   onInternalNotesChange,
   initialSection,
+  industry,
 }) {
   const router = useRouter();
   const useEmailsFromApi = Boolean(clientId && userId);
@@ -736,6 +738,7 @@ export default function CommunicationLogSection({
             userId={userId}
             organizationId={organizationId}
             onHasEntries={setHasInternalNoteEntries}
+            industry={industry}
           />
         );
       }

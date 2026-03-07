@@ -7,6 +7,7 @@ import { getUserOrganization } from '@/services/organizationService';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import ClientProfile from '@/components/clients/ClientProfile';
 import ClientFormPageSkeleton from '@/components/clients/ClientFormPageSkeleton';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
@@ -74,13 +75,14 @@ export default function EditClientPage() {
   const client = useMemo(() => clientData, [clientData, refreshKey]);
 
   if (!loaded) {
+    const projectTermPlural = getTermForIndustry(organization?.industry ?? userAccount?.industry, 'project');
     return (
       <>
         <Head>
           <title>Edit Client - GoManagr</title>
           <meta name="description" content="Loading client..." />
         </Head>
-        <ClientFormPageSkeleton />
+        <ClientFormPageSkeleton projectTermPlural={projectTermPlural} />
       </>
     );
   }

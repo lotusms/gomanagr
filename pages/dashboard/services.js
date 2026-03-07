@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateServices, updateTeamMembers, getOrgServices, updateOrgServices } from '@/services/userService';
@@ -7,11 +8,12 @@ import { getUserOrganization } from '@/services/organizationService';
 import { isOwnerRole } from '@/config/rolePermissions';
 import { PageHeader, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
 import ServicesPageSkeleton from '@/components/dashboard/ServicesPageSkeleton';
-import { HiPlus, HiPencil, HiTrash, HiTag, HiUserGroup } from 'react-icons/hi';
+import { HiPlus, HiTrash, HiTag, HiUserGroup } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function ServicesContent() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const [userAccount, setUserAccount] = useState(null);
   const [organization, setOrganization] = useState(null);
@@ -222,7 +224,16 @@ function ServicesContent() {
                 return (
                   <div
                     key={service.id}
-                    className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/dashboard/services/${service.id}/edit`);
+                      }
+                    }}
+                    className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col cursor-pointer"
                   >
                     {/* Header with gradient background */}
                     <div className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 px-5 py-4">
@@ -236,18 +247,11 @@ function ServicesContent() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <Link
-                            href={`/dashboard/services/${service.id}/edit`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors inline-flex"
-                            title="Edit service"
-                          >
-                            <HiPencil className="size-5" />
-                          </Link>
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              e.preventDefault();
                               handleRemoveClick(service);
                             }}
                             className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"

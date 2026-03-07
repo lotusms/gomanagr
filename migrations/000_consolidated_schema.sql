@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.organizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   logo_url TEXT,
+  alt_logo_url TEXT,
   industry TEXT,
   company_size TEXT,
   company_locations TEXT,

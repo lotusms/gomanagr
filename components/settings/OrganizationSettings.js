@@ -22,12 +22,15 @@ export default function OrganizationSettings() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [logoPreview, setLogoPreview] = useState(null);
+  const [altLogoPreview, setAltLogoPreview] = useState(null);
   const [newLocationValue, setNewLocationValue] = useState('');
   
   const [formData, setFormData] = useState({
     companyName: '',
     companyLogo: '',
     logoFile: null,
+    companyAltLogo: '',
+    altLogoFile: null,
     industry: '',
     organizationCountry: '',
     organizationAddress: '',
@@ -88,10 +91,16 @@ export default function OrganizationSettings() {
         ? orgData.locations
         : userLocations;
 
+      const orgAltLogo = orgData?.alt_logo_url || '';
       if (orgLogo && orgLogo.trim() !== '') {
         setLogoPreview(orgLogo);
       } else {
         setLogoPreview(null);
+      }
+      if (orgAltLogo && orgAltLogo.trim() !== '') {
+        setAltLogoPreview(orgAltLogo);
+      } else {
+        setAltLogoPreview(null);
       }
 
       const hqAddress = orgAddress || userData?.organizationAddress || '';
@@ -139,6 +148,8 @@ export default function OrganizationSettings() {
         companyName: orgName,
         companyLogo: orgLogo,
         logoFile: null,
+        companyAltLogo: orgAltLogo || '',
+        altLogoFile: null,
         industry: orgIndustry,
         organizationCountry: orgCountry || '',
         organizationAddress: orgAddress || '',
@@ -259,6 +270,46 @@ export default function OrganizationSettings() {
     }
   };
 
+  const handleAltLogoChange = (e) => {
+    const file = e.target?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAltLogoPreview(reader.result);
+      reader.readAsDataURL(file);
+      setFormData((prev) => ({ ...prev, altLogoFile: file }));
+      setError(null);
+    }
+  };
+
+  const removeAltLogo = async () => {
+    if (!currentUser) return;
+    try {
+      const orgData = await getUserOrganization(currentUser.uid);
+      if (!orgData?.id) throw new Error('Organization not found');
+      const orgRes = await fetch('/api/update-organization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: orgData.id,
+          userId: currentUser.uid,
+          updates: { alt_logo_url: '' },
+        }),
+      });
+      if (!orgRes.ok) {
+        const errData = await orgRes.json().catch(() => ({}));
+        throw new Error(errData.error || orgRes.statusText || 'Failed to remove alt logo');
+      }
+      setAltLogoPreview(null);
+      setFormData((prev) => ({ ...prev, companyAltLogo: '', altLogoFile: null }));
+      const fileInput = document.getElementById('alt-logo');
+      if (fileInput) fileInput.value = '';
+      await loadUserData();
+    } catch (err) {
+      console.error('Error removing alt logo:', err);
+      setError('Failed to remove alt logo: ' + err.message);
+    }
+  };
+
   const removeLogo = async () => {
     if (!currentUser) return;
     
@@ -334,7 +385,7 @@ export default function OrganizationSettings() {
         throw new Error('Organization not found. Please contact support.');
       }
 
-      const { logoFile, ...dataToSave } = formData;
+      const { logoFile, altLogoFile, ...dataToSave } = formData;
       
       let logoUrl = formData.companyLogo || '';
       if (logoFile) {
@@ -345,29 +396,48 @@ export default function OrganizationSettings() {
             reader.onerror = reject;
             reader.readAsDataURL(logoFile);
           });
-          
           const uploadResponse = await fetch('/api/upload-organization-logo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               organizationId: orgData.id,
-              logoData: {
-                base64,
-                filename: logoFile.name,
-                contentType: logoFile.type || 'image/png'
-              }
+              logoData: { base64, filename: logoFile.name, contentType: logoFile.type || 'image/png' },
             }),
           });
-
-          if (!uploadResponse.ok) {
-            throw new Error('Failed to upload logo');
-          }
-
+          if (!uploadResponse.ok) throw new Error('Failed to upload logo');
           const uploadResult = await uploadResponse.json();
           logoUrl = uploadResult.logoUrl || logoUrl;
         } catch (logoErr) {
           console.error('Error uploading logo:', logoErr);
           setError('Failed to upload logo. Please try again.');
+          return;
+        }
+      }
+
+      let altLogoUrl = formData.companyAltLogo || '';
+      if (altLogoFile) {
+        try {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(altLogoFile);
+          });
+          const uploadResponse = await fetch('/api/upload-organization-logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              organizationId: orgData.id,
+              isAltLogo: true,
+              logoData: { base64, filename: altLogoFile.name, contentType: altLogoFile.type || 'image/png' },
+            }),
+          });
+          if (!uploadResponse.ok) throw new Error('Failed to upload alt logo');
+          const uploadResult = await uploadResponse.json();
+          altLogoUrl = uploadResult.altLogoUrl || uploadResult.logoUrl || altLogoUrl;
+        } catch (altErr) {
+          console.error('Error uploading alt logo:', altErr);
+          setError('Failed to upload alt logo. Please try again.');
           return;
         }
       }
@@ -381,6 +451,7 @@ export default function OrganizationSettings() {
           updates: {
             name: dataToSave.companyName || '',
             logo_url: logoUrl,
+            alt_logo_url: altLogoUrl || '',
             industry: dataToSave.industry || '',
             address_line_1: (dataToSave.organizationAddress || '').trim() || null,
             address_line_2: (dataToSave.organizationAddress2 || '').trim() || null,
@@ -431,6 +502,10 @@ export default function OrganizationSettings() {
       if (logoUrl && logoUrl.trim() !== '') {
         setLogoPreview(logoUrl);
         setFormData((prev) => ({ ...prev, companyLogo: logoUrl, logoFile: null }));
+      }
+      if (altLogoUrl && altLogoUrl.trim() !== '') {
+        setAltLogoPreview(altLogoUrl);
+        setFormData((prev) => ({ ...prev, companyAltLogo: altLogoUrl, altLogoFile: null }));
       }
       
       if (typeof window !== 'undefined' && savedUserData) {
@@ -497,69 +572,95 @@ export default function OrganizationSettings() {
           />
         </div>
 
-        {/* Logo / Branding */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-            Logo / Branding
-          </label>
-          <div className="flex items-start gap-4">
-            {logoPreview && (
-              <div className="relative group">
-                <label
-                  htmlFor="logo"
-                  className="cursor-pointer block"
-                  title="Click to replace logo"
-                >
-                  <img
-                    src={logoPreview}
-                    alt="Organization logo"
-                    className="w-24 h-24 object-contain border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 group-hover:opacity-80 transition-opacity"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={removeLogo}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                  title="Remove logo"
-                >
-                  <HiX className="w-4 h-4" />
-                </button>
-                <input
-                  type="file"
-                  id="logo"
-                  name="logo"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="hidden"
-                />
-              </div>
-            )}
-            <div className="flex-1">
-              {!logoPreview && (
-                <>
-                  <label
-                    htmlFor="logo"
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors w-fit"
-                  >
-                    <HiCloudUpload className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Upload Logo
-                    </span>
-                    <input
-                      type="file"
-                      id="logo"
-                      name="logo"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
+        {/* Logo / Branding and Alt Logo - 2 columns on XL */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Logo / Branding */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              Logo / Branding
+            </label>
+            <div className="flex items-start gap-4">
+              {logoPreview && (
+                <div className="relative group">
+                  <label htmlFor="logo" className="cursor-pointer block" title="Click to replace logo">
+                    <img
+                      src={logoPreview}
+                      alt="Organization logo"
+                      className="w-24 h-24 object-contain border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 group-hover:opacity-80 transition-opacity"
                     />
                   </label>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PNG, JPG up to 5MB</p>
-                </>
+                  <button
+                    type="button"
+                    onClick={removeLogo}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                    title="Remove logo"
+                  >
+                    <HiX className="w-4 h-4" />
+                  </button>
+                  <input type="file" id="logo" name="logo" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                </div>
               )}
-              {logoPreview && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Click the logo to replace it</p>
+              <div className="flex-1">
+                {!logoPreview && (
+                  <>
+                    <label
+                      htmlFor="logo"
+                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors w-fit"
+                    >
+                      <HiCloudUpload className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Logo</span>
+                      <input type="file" id="logo" name="logo" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                  </>
+                )}
+                {logoPreview && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Click the logo to replace it</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Alt Logo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              Alt Logo
+            </label>
+            <div className="flex items-start gap-4">
+              {altLogoPreview && (
+                <div className="relative group">
+                  <label htmlFor="alt-logo" className="cursor-pointer block" title="Click to replace alt logo">
+                    <img
+                      src={altLogoPreview}
+                      alt="Organization alt logo"
+                      className="w-24 h-24 object-contain border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 group-hover:opacity-80 transition-opacity"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={removeAltLogo}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                    title="Remove alt logo"
+                  >
+                    <HiX className="w-4 h-4" />
+                  </button>
+                  <input type="file" id="alt-logo" name="alt-logo" accept="image/*" onChange={handleAltLogoChange} className="hidden" />
+                </div>
               )}
+              <div className="flex-1">
+                {!altLogoPreview && (
+                  <>
+                    <label
+                      htmlFor="alt-logo"
+                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors w-fit"
+                    >
+                      <HiCloudUpload className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Alt Logo</span>
+                      <input type="file" id="alt-logo" name="alt-logo" accept="image/*" onChange={handleAltLogoChange} className="hidden" />
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Optional alternate logo (e.g. dark mode)</p>
+                  </>
+                )}
+                {altLogoPreview && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Click the logo to replace it</p>}
+              </div>
             </div>
           </div>
         </div>

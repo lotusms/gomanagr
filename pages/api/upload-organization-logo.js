@@ -36,18 +36,21 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Service unavailable' });
   }
 
-  const { organizationId, logoData } = req.body;
+  const { organizationId, logoData, isAltLogo } = req.body;
 
   if (!organizationId || !logoData || !logoData.base64) {
     return res.status(400).json({ error: 'Missing organizationId or logoData' });
   }
+
+  const useAltLogo = !!isAltLogo;
 
   try {
     const base64Data = logoData.base64.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
     
     const filename = logoData.filename || `logo-${Date.now()}.png`;
-    const logoPath = `${organizationId}/logo/${filename}`;
+    const subdir = useAltLogo ? 'alt-logo' : 'logo';
+    const logoPath = `${organizationId}/${subdir}/${filename}`;
     
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
       .from('company-logos')
@@ -65,12 +68,13 @@ export default async function handler(req, res) {
       .from('company-logos')
       .getPublicUrl(uploadData.path);
     
+    const updatePayload = useAltLogo
+      ? { alt_logo_url: urlData.publicUrl, updated_at: new Date().toISOString() }
+      : { logo_url: urlData.publicUrl, updated_at: new Date().toISOString() };
+
     const { error: updateError } = await supabaseAdmin
       .from('organizations')
-      .update({ 
-        logo_url: urlData.publicUrl,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', organizationId);
     
     if (updateError) {
@@ -81,7 +85,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ 
       success: true,
       logoUrl: urlData.publicUrl,
-      logoPath 
+      logoPath,
+      ...(useAltLogo ? { altLogoUrl: urlData.publicUrl } : {}),
     });
   } catch (error) {
     console.error('[API] Error in upload-organization-logo:', error);

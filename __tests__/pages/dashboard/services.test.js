@@ -11,9 +11,10 @@ import React from 'react';
 import { render, screen, waitFor, within, act, fireEvent } from '@testing-library/react';
 import ServicesPage from '@/pages/dashboard/services';
 
+const mockRouterPush = jest.fn();
 jest.mock('next/router', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockRouterPush,
     replace: jest.fn(),
     pathname: '/dashboard/services',
     query: {},
@@ -238,22 +239,20 @@ describe('Services page', () => {
   });
 
   describe('Edit service', () => {
-    it('Edit (pencil) link navigates to service edit page', async () => {
+    it('Clicking the service card navigates to service edit page', async () => {
       render(<ServicesPage />);
 
       await waitFor(() => {
         expect(screen.getByText('Haircut')).toBeInTheDocument();
       });
 
-      const editLinks = screen.getAllByRole('link', { name: /edit service/i });
-      expect(editLinks.length).toBeGreaterThanOrEqual(1);
-      expect(editLinks[0]).toHaveAttribute('href', '/dashboard/services/svc-1/edit');
-
+      // Card is clickable (role="button"); its accessible name comes from the heading (service name)
+      const haircutCard = screen.getByRole('button', { name: /haircut/i });
       await act(async () => {
-        editLinks[0].click();
+        haircutCard.click();
       });
 
-      // Link navigates to edit page (href is correct; in test env navigation may not call router.push)
+      expect(mockRouterPush).toHaveBeenCalledWith('/dashboard/services/svc-1/edit');
     });
   });
 

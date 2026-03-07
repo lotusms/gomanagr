@@ -23,7 +23,7 @@ try {
 }
 
 const ALLOWED_KEYS = new Set([
-  'name', 'logo_url', 'industry', 'company_size', 'company_locations', 'team_size',
+  'name', 'logo_url', 'alt_logo_url', 'industry', 'company_size', 'company_locations', 'team_size',
   'sections_to_track', 'selected_palette',
   'address_line_1', 'address_line_2', 'city', 'state', 'postal_code', 'country', 'phone', 'website',
   'business_hours_start', 'business_hours_end', 'locations',

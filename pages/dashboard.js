@@ -15,6 +15,7 @@ import {
 } from 'react-icons/hi';
 import TodaysAppointments from '@/components/dashboard/TodaysAppointments';
 import DashboardTodos from '@/components/dashboard/DashboardTodos';
+import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import StatsGrid from '@/components/dashboard/StatsGrid';
 import FollowUpsDueCard from '@/components/dashboard/FollowUpsDueCard';
 import InvoicesNeedingAttentionCard from '@/components/dashboard/InvoicesNeedingAttentionCard';
@@ -343,6 +344,18 @@ function DashboardContent() {
       <div className="min-h-[40vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" aria-hidden />
       </div>
+    );
+  }
+
+  if (currentUser?.uid && !accountLoaded) {
+    return (
+      <>
+        <Head>
+          <title>Dashboard - GoManagr</title>
+          <meta name="description" content="Your dashboard" />
+        </Head>
+        <DashboardSkeleton />
+      </>
     );
   }
 

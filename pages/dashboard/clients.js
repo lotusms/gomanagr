@@ -33,6 +33,7 @@ function ClientsContent() {
   const [deactivatedPanelOpen, setDeactivatedPanelOpen] = useState(false);
   const [clientToReactivate, setClientToReactivate] = useState(null);
   const [clientToPermanentlyDelete, setClientToPermanentlyDelete] = useState(null);
+  const [organizationResolved, setOrganizationResolved] = useState(false);
 
   const activeClients = useMemo(
     () => allClients.filter((c) => (c.status || 'active') !== 'inactive'),
@@ -45,13 +46,20 @@ function ClientsContent() {
 
   useEffect(() => {
     if (!currentUser?.uid) return;
+    setOrganizationResolved(false);
     getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
-    getUserOrganization(currentUser.uid).then((org) => setOrganization(org || null)).catch(() => setOrganization(null));
+    getUserOrganization(currentUser.uid)
+      .then((org) => setOrganization(org || null))
+      .catch(() => setOrganization(null))
+      .finally(() => setOrganizationResolved(true));
   }, [currentUser?.uid]);
 
   const organizationId = organization?.id ?? null;
   useEffect(() => {
-    if (!currentUser?.uid) return;
+    if (!currentUser?.uid || !organizationResolved) {
+      setLoaded(false);
+      return;
+    }
     setLoaded(false);
 
     const isInOrg = organization != null;
@@ -84,7 +92,7 @@ function ClientsContent() {
         .catch(() => setAllClients([]))
         .finally(done);
     }
-  }, [currentUser?.uid, organizationId]);
+  }, [currentUser?.uid, organizationId, organizationResolved]);
 
   const refetchOrgClients = () => {
     if (!currentUser?.uid || !useOrgClients) return;

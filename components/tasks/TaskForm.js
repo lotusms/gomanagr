@@ -50,6 +50,17 @@ export default function TaskForm({
   const [labels, setLabels] = useState(
     Array.isArray(initial.labels) ? initial.labels.join(', ') : ''
   );
+  const [subtasks, setSubtasks] = useState(() => {
+    const raw = initial.subtasks;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.map((s) => ({
+        id: s.id || `st-${Math.random().toString(36).slice(2, 9)}`,
+        title: typeof s.title === 'string' ? s.title : '',
+        completed: Boolean(s.completed),
+      }));
+    }
+    return [];
+  });
   const [taskNumber, setTaskNumber] = useState(initial.task_number ?? '');
   const [taskNumberSuggested, setTaskNumberSuggested] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -142,6 +153,7 @@ export default function TaskForm({
               .map((s) => s.trim())
               .filter(Boolean)
           : [],
+        subtasks: subtasks.map((s) => ({ id: s.id, title: (s.title || '').trim(), completed: s.completed })),
       };
       if (initial.id) {
         const res = await fetch('/api/update-task', {
@@ -219,6 +231,63 @@ export default function TaskForm({
               placeholder="Optional details"
               rows={3}
             />
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-600">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subtasks</label>
+              <ul className="space-y-2">
+                {subtasks.map((st) => (
+                  <li key={st.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={st.completed}
+                      onChange={() => {
+                        markDirty();
+                        setSubtasks((prev) =>
+                          prev.map((s) => (s.id === st.id ? { ...s, completed: !s.completed } : s))
+                        );
+                      }}
+                      className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                      aria-label={`Mark "${st.title || 'subtask'}" ${st.completed ? 'incomplete' : 'complete'}`}
+                    />
+                    <input
+                      type="text"
+                      value={st.title}
+                      onChange={(e) => {
+                        markDirty();
+                        setSubtasks((prev) =>
+                          prev.map((s) => (s.id === st.id ? { ...s, title: e.target.value } : s))
+                        );
+                      }}
+                      className="flex-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 text-sm"
+                      placeholder="Subtask title"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        markDirty();
+                        setSubtasks((prev) => prev.filter((s) => s.id !== st.id));
+                      }}
+                      className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm"
+                      aria-label="Remove subtask"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => {
+                  markDirty();
+                  setSubtasks((prev) => [
+                    ...prev,
+                    { id: `st-${Math.random().toString(36).slice(2, 9)}`, title: '', completed: false },
+                  ]);
+                }}
+                className="mt-2 text-sm text-primary-600 dark:text-primary-400 hover:underline"
+              >
+                + Add subtask
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-600">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Created by</label>

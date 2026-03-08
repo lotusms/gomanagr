@@ -1,8 +1,9 @@
 /**
  * Returns tasks for the org, or a single task by id.
- * POST body: { userId, organizationId, taskId?, assigneeId?, status?, projectId?, clientId?, myTasks? }
+ * POST body: { userId, organizationId, taskId?, assigneeId?, status?, projectId?, clientId?, priority?, dueDateFilter?, myTasks? }
  * When taskId is set, returns { task }. Otherwise returns { tasks }.
  * myTasks: true filters to assignee_id = userId.
+ * dueDateFilter: 'overdue' | 'today' | 'this_week' | null
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Service unavailable' });
   }
 
-  const { userId, organizationId, taskId, assigneeId, status, projectId, clientId, myTasks } = req.body || {};
+  const { userId, organizationId, taskId, assigneeId, status, projectId, clientId, priority, dueDateFilter, myTasks } = req.body || {};
   if (!userId) {
     return res.status(400).json({ error: 'Missing userId' });
   }
@@ -81,6 +82,27 @@ export default async function handler(req, res) {
     }
     if (clientId != null && clientId !== '') {
       query = query.or(`client_id.eq.${clientId},linked_client_id.eq.${clientId}`);
+    }
+    if (priority != null && priority !== '') {
+      query = query.eq('priority', priority);
+    }
+    if (dueDateFilter === 'overdue') {
+      query = query.lt('due_at', new Date().toISOString());
+    } else if (dueDateFilter === 'today') {
+      const start = new Date();
+      start.setUTCHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 1);
+      query = query.gte('due_at', start.toISOString()).lt('due_at', end.toISOString());
+    } else if (dueDateFilter === 'this_week') {
+      const start = new Date();
+      start.setUTCHours(0, 0, 0, 0);
+      const day = start.getUTCDay();
+      const diff = start.getUTCDate() - day + (day === 0 ? -6 : 1);
+      start.setUTCDate(diff);
+      const end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 7);
+      query = query.gte('due_at', start.toISOString()).lt('due_at', end.toISOString());
     }
 
     query = query

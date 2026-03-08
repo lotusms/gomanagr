@@ -68,6 +68,7 @@ function parseBody(body) {
     linked_appointment_id: body.linked_appointment_id ?? body.linkedAppointmentId ?? null,
     created_by: rawCreatedBy,
     task_number: body.task_number != null && String(body.task_number).trim() !== '' ? String(body.task_number).trim() : undefined,
+    subtasks: Array.isArray(body.subtasks) ? body.subtasks : [],
   };
 }
 
@@ -143,6 +144,13 @@ export default async function handler(req, res) {
       console.error('[create-task]', error);
       return res.status(500).json({ error: 'Failed to create task' });
     }
+    await supabaseAdmin.from('task_activity').insert({
+      task_id: data.id,
+      organization_id: organizationId,
+      kind: 'created',
+      new_value: data.title || null,
+      user_id: row.created_by,
+    }).then(() => {});
     return res.status(200).json({ task: data });
   } catch (err) {
     console.error('[create-task]', err);

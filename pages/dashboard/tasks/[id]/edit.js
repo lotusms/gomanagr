@@ -6,7 +6,7 @@ import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { PageHeader } from '@/components/ui';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
-import TaskForm from '@/components/tasks/TaskForm';
+import TaskDetailTrello from '@/components/tasks/TaskDetailTrello';
 
 export default function EditTaskPage() {
   const router = useRouter();
@@ -114,11 +114,11 @@ export default function EditTaskPage() {
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title={`Edit ${taskTermSingular}`}
-          description={task.title || 'Update task details.'}
+          title={task.title || taskTermSingular}
+          description={task.task_number ? `${taskTermSingular} · ${task.task_number}` : undefined}
         />
-        <TaskForm
-          initial={task}
+        <TaskDetailTrello
+          task={task}
           userId={currentUser?.uid}
           organizationId={orgId}
           industry={accountIndustry}

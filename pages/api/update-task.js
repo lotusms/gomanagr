@@ -59,6 +59,7 @@ function buildUpdate(body) {
   if (body.linked_appointment_id !== undefined) updates.linked_appointment_id = body.linked_appointment_id || null;
   if (body.labels !== undefined) updates.labels = Array.isArray(body.labels) ? body.labels : [];
   if (body.task_number !== undefined) updates.task_number = body.task_number != null && String(body.task_number).trim() !== '' ? String(body.task_number).trim() : null;
+  if (body.subtasks !== undefined) updates.subtasks = Array.isArray(body.subtasks) ? body.subtasks : [];
   return updates;
 }
 
@@ -75,6 +76,8 @@ export default async function handler(req, res) {
   if (!userId || !organizationId || !taskId) {
     return res.status(400).json({ error: 'Missing userId, organizationId, or taskId' });
   }
+
+  const actorId = toRawUuid(userId);
 
   try {
     const { data: membership } = await supabaseAdmin
@@ -100,6 +103,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ task: existing });
     }
 
+    const { data: existing } = await supabaseAdmin
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (!existing) return res.status(404).json({ error: 'Task not found' });
+
     const { data, error } = await supabaseAdmin
       .from('tasks')
       .update(updates)
@@ -115,6 +126,32 @@ export default async function handler(req, res) {
     if (!data) {
       return res.status(404).json({ error: 'Task not found' });
     }
+
+    if (actorId) {
+      const activityRows = [];
+      if (updates.status !== undefined && updates.status !== existing.status) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'status', old_value: existing.status, new_value: updates.status, user_id: actorId });
+      }
+      if (updates.assignee_id !== undefined && updates.assignee_id !== existing.assignee_id) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'assignee', old_value: existing.assignee_id, new_value: updates.assignee_id, user_id: actorId });
+      }
+      if (updates.due_at !== undefined && String(updates.due_at || '') !== String(existing.due_at || '')) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'due_at', old_value: existing.due_at, new_value: updates.due_at, user_id: actorId });
+      }
+      if (updates.title !== undefined && updates.title !== existing.title) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'title', old_value: existing.title, new_value: updates.title, user_id: actorId });
+      }
+      if (updates.priority !== undefined && updates.priority !== existing.priority) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'priority', old_value: existing.priority, new_value: updates.priority, user_id: actorId });
+      }
+      if ((updates.project_id !== undefined && updates.project_id !== existing.project_id) || (updates.client_id !== undefined && updates.client_id !== existing.client_id)) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'link', old_value: null, new_value: [updates.project_id, updates.client_id].filter(Boolean).join(','), user_id: actorId });
+      }
+      if (activityRows.length > 0) {
+        await supabaseAdmin.from('task_activity').insert(activityRows).then(() => {});
+      }
+    }
+
     return res.status(200).json({ task: data });
   } catch (err) {
     console.error('[update-task]', err);

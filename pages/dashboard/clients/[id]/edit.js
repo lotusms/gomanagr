@@ -78,6 +78,8 @@ export default function EditClientPage() {
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
   const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const taskTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'tasks')) || 'Task';
+  const taskTermSingularLower = (taskTermSingular || 'task').toLowerCase();
 
   if (!loaded) {
     const projectTermPlural = getTermForIndustry(accountIndustry, 'project');
@@ -124,12 +126,19 @@ export default function EditClientPage() {
           title={`Edit ${client.name || clientTermSingular}`}
           description={`Update this ${clientTermSingularLower}'s details.`}
           actions={
-            <Link href="/dashboard/clients">
-              <SecondaryButton type="button" className="gap-2">
-                <HiArrowLeft className="w-5 h-5" />
-                Back to {clientTermPlural}
-              </SecondaryButton>
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/dashboard/tasks/new?clientId=${client.id}`}>
+                <SecondaryButton type="button" className="gap-2">
+                  Add {taskTermSingularLower}
+                </SecondaryButton>
+              </Link>
+              <Link href="/dashboard/clients">
+                <SecondaryButton type="button" className="gap-2">
+                  <HiArrowLeft className="w-5 h-5" />
+                  Back to {clientTermPlural}
+                </SecondaryButton>
+              </Link>
+            </div>
           }
         />
         <ClientProfile

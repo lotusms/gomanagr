@@ -28,6 +28,8 @@ export default function EditClientProjectPage() {
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
   const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const taskTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'tasks')) || 'Task';
+  const taskTermSingularLower = (taskTermSingular || 'task').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -142,12 +144,19 @@ export default function EditClientProjectPage() {
           title={`Edit ${projectTermSingularLower}`}
           description={`Update the details of this ${projectTermSingularLower}.`}
           actions={
-            <Link href={backUrl}>
-              <SecondaryButton type="button" className="gap-2">
-                <HiArrowLeft className="w-5 h-5" />
-                Back to {clientTermSingular}
-              </SecondaryButton>
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/dashboard/tasks/new?clientId=${clientId}&projectId=${projectId}`}>
+                <SecondaryButton type="button" className="gap-2">
+                  Add {taskTermSingularLower}
+                </SecondaryButton>
+              </Link>
+              <Link href={backUrl}>
+                <SecondaryButton type="button" className="gap-2">
+                  <HiArrowLeft className="w-5 h-5" />
+                  Back to {clientTermSingular}
+                </SecondaryButton>
+              </Link>
+            </div>
           }
         />
         <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">

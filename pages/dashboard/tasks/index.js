@@ -7,9 +7,12 @@ import { getUserOrganization } from '@/services/organizationService';
 import { PageHeader, ConfirmationDialog, EmptyState } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
-import { HiPlus, HiViewGrid, HiViewList, HiCalendar, HiUser } from 'react-icons/hi';
+import { TASK_STATUSES, TASK_PRIORITIES } from '@/config/taskConstants';
+import { HiPlus, HiViewGrid, HiViewList, HiCalendar, HiUser, HiFilter } from 'react-icons/hi';
 import TaskBoard from '@/components/tasks/TaskBoard';
 import TaskList from '@/components/tasks/TaskList';
+import TaskCalendar from '@/components/tasks/TaskCalendar';
+import Dropdown from '@/components/ui/Dropdown';
 
 const VIEWS = [
   { id: 'board', label: 'Board', icon: HiViewGrid },
@@ -30,6 +33,13 @@ function TasksContent() {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [filterAssignee, setFilterAssignee] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterPriority, setFilterPriority] = useState('');
+  const [filterDueDate, setFilterDueDate] = useState('');
+  const [filterClient, setFilterClient] = useState('');
+  const [filterProject, setFilterProject] = useState('');
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const taskTermPlural = getTermForIndustry(accountIndustry, 'tasks');
@@ -61,6 +71,12 @@ function TasksContent() {
       userId: currentUser.uid,
       organizationId: orgId,
       myTasks: view === 'my',
+      assigneeId: filterAssignee || undefined,
+      status: filterStatus || undefined,
+      priority: filterPriority || undefined,
+      dueDateFilter: filterDueDate || undefined,
+      clientId: filterClient || undefined,
+      projectId: filterProject || undefined,
     };
     Promise.all([
       fetch('/api/get-tasks', {
@@ -78,15 +94,21 @@ function TasksContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUser.uid }),
       }).then((r) => r.json().then((d) => d.clients || [])),
+      fetch('/api/get-projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
+      }).then((r) => r.json().then((d) => d.projects || [])),
     ])
-      .then(([tasksList, membersList, clientsList]) => {
+      .then(([tasksList, membersList, clientsList, projectsList]) => {
         setTasks(tasksList);
         setTeamMembers(membersList);
         setClients(clientsList);
+        setProjects(projectsList);
       })
       .catch(() => setTasks([]))
       .finally(() => setLoading(false));
-  }, [currentUser?.uid, orgResolved, orgId, view]);
+  }, [currentUser?.uid, orgResolved, orgId, view, filterAssignee, filterStatus, filterPriority, filterDueDate, filterClient, filterProject]);
 
   const assigneeNameById = useMemo(() => {
     const map = {};
@@ -105,6 +127,51 @@ function TasksContent() {
     });
     return map;
   }, [clients]);
+
+  const assigneeFilterOptions = [
+    { value: '', label: 'All assignees' },
+    ...(teamMembers || []).map((m) => ({
+      value: m.id || m.user_id,
+      label: (m.name || m.displayName || m.email || 'Unknown').trim(),
+    })),
+  ].filter((o) => o.value != null);
+  const statusFilterOptions = [
+    { value: '', label: 'All statuses' },
+    ...TASK_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+  ];
+  const priorityFilterOptions = [
+    { value: '', label: 'All priorities' },
+    ...TASK_PRIORITIES.map((p) => ({ value: p.value, label: p.label })),
+  ];
+  const dueDateFilterOptions = [
+    { value: '', label: 'Any due date' },
+    { value: 'overdue', label: 'Overdue' },
+    { value: 'today', label: 'Today' },
+    { value: 'this_week', label: 'This week' },
+  ];
+  const clientFilterOptions = [
+    { value: '', label: 'All clients' },
+    ...(clients || []).map((c) => ({
+      value: c.id,
+      label: (c.name || c.companyName || 'Unnamed').trim(),
+    })),
+  ];
+  const projectFilterOptions = [
+    { value: '', label: 'All projects' },
+    ...(projects || []).map((p) => ({
+      value: p.id,
+      label: (p.project_name || 'Unnamed').trim(),
+    })),
+  ];
+  const hasActiveFilters = filterAssignee || filterStatus || filterPriority || filterDueDate || filterClient || filterProject;
+  const clearFilters = () => {
+    setFilterAssignee('');
+    setFilterStatus('');
+    setFilterPriority('');
+    setFilterDueDate('');
+    setFilterClient('');
+    setFilterProject('');
+  };
 
   const handleStatusChange = async (task, newStatus) => {
     if (!currentUser?.uid || !orgId) return;
@@ -194,7 +261,7 @@ function TasksContent() {
           }
         />
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 pb-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
           {VIEWS.map((v) => {
             const Icon = v.icon;
             return (
@@ -213,6 +280,73 @@ function TasksContent() {
               </button>
             );
           })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <HiFilter className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+          <Dropdown
+            id="filter-assignee"
+            name="filterAssignee"
+            value={filterAssignee}
+            onChange={(e) => setFilterAssignee(e.target.value)}
+            options={assigneeFilterOptions}
+            placeholder="Assignee"
+            searchable={assigneeFilterOptions.length > 8}
+          />
+          <Dropdown
+            id="filter-status"
+            name="filterStatus"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            options={statusFilterOptions}
+            placeholder="Status"
+            searchable={false}
+          />
+          <Dropdown
+            id="filter-priority"
+            name="filterPriority"
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            options={priorityFilterOptions}
+            placeholder="Priority"
+            searchable={false}
+          />
+          <Dropdown
+            id="filter-due"
+            name="filterDueDate"
+            value={filterDueDate}
+            onChange={(e) => setFilterDueDate(e.target.value)}
+            options={dueDateFilterOptions}
+            placeholder="Due date"
+            searchable={false}
+          />
+          <Dropdown
+            id="filter-client"
+            name="filterClient"
+            value={filterClient}
+            onChange={(e) => setFilterClient(e.target.value)}
+            options={clientFilterOptions}
+            placeholder="Client"
+            searchable={clientFilterOptions.length > 10}
+          />
+          <Dropdown
+            id="filter-project"
+            name="filterProject"
+            value={filterProject}
+            onChange={(e) => setFilterProject(e.target.value)}
+            options={projectFilterOptions}
+            placeholder="Project"
+            searchable={projectFilterOptions.length > 10}
+          />
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
         {tasks.length === 0 ? (
@@ -251,9 +385,7 @@ function TasksContent() {
               />
             )}
             {view === 'calendar' && (
-              <div className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 p-6 text-center text-gray-500 dark:text-gray-400">
-                Calendar view: tasks with due dates. (Coming soon.)
-              </div>
+              <TaskCalendar tasks={tasks} assigneeNameById={assigneeNameById} />
             )}
             {view === 'my' && (
               <TaskList

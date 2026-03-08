@@ -5,6 +5,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import Avatar from '@/components/ui/Avatar';
 import EmptyState from '@/components/ui/EmptyState';
 import AppointmentPopover from '@/components/dashboard/AppointmentPopover';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 /**
  * @param {Array} appointments - Array of appointment objects
@@ -54,6 +55,7 @@ export default function TodaysAppointments({
 }) {
   const staff = staffProp || [];
   const teamMembers = teamMembersProp ?? staff;
+  const teamOrStaffLabel = getTermForIndustry(industry, 'team') || 'Staff';
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
 
@@ -96,7 +98,7 @@ export default function TodaysAppointments({
               <thead>
                 <tr>
                   <th className="w-36 py-1.5 px-2 text-left font-medium uppercase tracking-wide border-b border-r border-gray-200 dark:border-gray-600 text-white bg-secondary-500">
-                    Staff
+                    {teamOrStaffLabel}
                   </th>
                   {timeSlots.map((slot) => (
                     <th

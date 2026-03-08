@@ -123,6 +123,7 @@ const TERMS_BY_CONCEPT = {
     'Health & Wellness': 'Cases',
     'Travel & Tourism': 'Reservations',
   },
+  /** Team/Staff: use getTermForIndustry(industry, 'team'). Do not hardcode "Team" or "Staff". */
   team: {
     default: 'Team',
     'Beauty & Spa': 'Staff',
@@ -131,6 +132,7 @@ const TERMS_BY_CONCEPT = {
     'Healthcare': 'Staff',
     'Nonprofit': 'Staff',
   },
+  /** Team Members/Staff Members: use getTermForIndustry(industry, 'teamMember'). Do not hardcode "Team Members" or "Staff Members". */
   teamMember: {
     default: 'Team Members',
     'Beauty & Spa': 'Staff Members',

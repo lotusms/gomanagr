@@ -1,6 +1,7 @@
 /**
  * Returns the org's team member access config (which sections are enabled for all team members).
- * Used by team members to know what they can access; used by admin to display current config.
+ * Config is stored in the org "config owner" profile: superadmin (owner) if any, else first admin.
+ * Used by team members to know what they can access; used by admin/superadmin to display and edit in Settings.
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -20,6 +21,24 @@ try {
   }
 } catch (e) {
   supabaseAdmin = null;
+}
+
+/** Resolve the user_id whose profile holds teamMemberSections for this org (superadmin first, else first admin). */
+async function getConfigOwnerUserId(supabase, orgId) {
+  const { data: ownerRows } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('organization_id', orgId)
+    .eq('role', 'superadmin')
+    .limit(1);
+  if (ownerRows?.length) return ownerRows[0].user_id;
+  const { data: adminRows } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('organization_id', orgId)
+    .eq('role', 'admin')
+    .limit(1);
+  return adminRows?.[0]?.user_id ?? null;
 }
 
 export default async function handler(req, res) {
@@ -49,22 +68,15 @@ export default async function handler(req, res) {
     }
 
     const orgId = membership.organization_id;
-    const { data: adminRows } = await supabaseAdmin
-      .from('org_members')
-      .select('user_id')
-      .eq('organization_id', orgId)
-      .eq('role', 'admin')
-      .limit(1);
-
-    if (!adminRows?.length) {
+    const configOwnerId = await getConfigOwnerUserId(supabaseAdmin, orgId);
+    if (!configOwnerId) {
       return res.status(200).json({ teamMemberSections: DEFAULT_TEAM_MEMBER_SECTIONS });
     }
 
-    const adminUserId = adminRows[0].user_id;
     const { data: profileRow, error: profileErr } = await supabaseAdmin
       .from('user_profiles')
       .select('profile')
-      .eq('id', adminUserId)
+      .eq('id', configOwnerId)
       .single();
 
     if (profileErr || !profileRow?.profile) {

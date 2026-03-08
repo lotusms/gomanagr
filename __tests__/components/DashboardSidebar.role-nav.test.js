@@ -40,16 +40,17 @@ describe('DashboardSidebar role-based navigation', () => {
 
     const items = getNavLinkNamesAndHrefs();
 
+    // Order must match DashboardSidebar getOwnerNavItems: Projects then Contracts then Proposals then Invoices
     const expected = [
       { name: 'Home', href: '/dashboard' },
       { name: 'Team', href: '/dashboard/team' },
-      { name: 'Projects', href: '/dashboard/projects' },
       { name: 'Schedule', href: '/dashboard/schedule' },
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
+      { name: 'Projects', href: '/dashboard/projects' },
+      { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
-      { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Marketing', href: '/dashboard/marketing' },
       { name: 'Insights', href: '/dashboard/insights' },
       { name: 'Timesheets', href: '/dashboard/timesheets' },
@@ -72,13 +73,13 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Home', href: '/dashboard/team-member' },
       { name: 'My Profile', href: '/dashboard/team-member/profile' },
       { name: 'Team', href: '/dashboard/team' },
-      { name: 'Projects', href: '/dashboard/projects' },
       { name: 'Schedule', href: '/dashboard/schedule' },
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
+      { name: 'Projects', href: '/dashboard/projects' },
+      { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
-      { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];
 
@@ -89,17 +90,28 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('developer role: shows admin nav without Proposals (superadmin and admin only)', () => {
+  it('developer role: shows same admin nav as admin (including Proposals)', () => {
     renderSidebar({ memberRole: 'developer', isOwner: false });
 
     const items = getNavLinkNamesAndHrefs();
-    const names = items.map((i) => i.name);
-
-    expect(items).toHaveLength(10);
-    expect(names).not.toContain('Proposals');
-    expect(items[0]).toEqual({ name: 'Home', href: '/dashboard/team-member' });
-    expect(items[1]).toEqual({ name: 'My Profile', href: '/dashboard/team-member/profile' });
-    expect(items[9]).toEqual({ name: 'Apps', href: '/dashboard/apps' });
+    const expected = [
+      { name: 'Home', href: '/dashboard/team-member' },
+      { name: 'My Profile', href: '/dashboard/team-member/profile' },
+      { name: 'Team', href: '/dashboard/team' },
+      { name: 'Schedule', href: '/dashboard/schedule' },
+      { name: 'Clients', href: '/dashboard/clients' },
+      { name: 'Services', href: '/dashboard/services' },
+      { name: 'Projects', href: '/dashboard/projects' },
+      { name: 'Contracts', href: '/dashboard/contracts' },
+      { name: 'Proposals', href: '/dashboard/proposals' },
+      { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Apps', href: '/dashboard/apps' },
+    ];
+    expect(items).toHaveLength(expected.length);
+    items.forEach((item, i) => {
+      expect(item.name).toBe(expected[i].name);
+      expect(item.href).toBe(expected[i].href);
+    });
   });
 
   it('member: shows exact member nav items (Home, My Profile, Projects, Schedule, Clients, Services, Contracts)', () => {
@@ -110,10 +122,10 @@ describe('DashboardSidebar role-based navigation', () => {
     const expected = [
       { name: 'Home', href: '/dashboard/team-member' },
       { name: 'My Profile', href: '/dashboard/team-member/profile' },
-      { name: 'Projects', href: '/dashboard/projects' },
       { name: 'Schedule', href: '/dashboard/schedule' },
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
+      { name: 'Projects', href: '/dashboard/projects' },
       { name: 'Contracts', href: '/dashboard/contracts' },
     ];
 

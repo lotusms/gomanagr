@@ -201,7 +201,7 @@ describe('Clients page', () => {
       });
 
       const dialog = screen.getByRole('dialog');
-      expect(within(dialog).getByText('Deactivate client')).toBeInTheDocument();
+      expect(within(dialog).getByRole('heading', { name: /deactivate\s+client/i })).toBeInTheDocument();
       expect(within(dialog).getByText(/Acme Corp will be deactivated/)).toBeInTheDocument();
       expect(within(dialog).getByLabelText(/type confirm to enable/i)).toBeInTheDocument();
       expect(within(dialog).getByRole('button', { name: /delete forever/i })).toBeInTheDocument();

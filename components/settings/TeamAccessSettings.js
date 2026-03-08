@@ -5,20 +5,22 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import {
   TEAM_MEMBER_SECTION_KEYS,
   getTeamMemberSectionLabels,
+  getSectionDisplayLabels,
   DEFAULT_TEAM_MEMBER_SECTIONS,
 } from '@/config/teamMemberAccess';
 import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 
-export default function TeamAccessSettings() {
+export default function TeamAccessSettings({ industry: industryProp = null }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
   const [sections, setSections] = useState({ ...DEFAULT_TEAM_MEMBER_SECTIONS });
-  const [industry, setIndustry] = useState(null);
+  const [industryState, setIndustryState] = useState(null);
+  const industry = industryProp ?? industryState;
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -36,14 +38,16 @@ export default function TeamAccessSettings() {
       if (data.teamMemberSections && typeof data.teamMemberSections === 'object') {
         setSections({ ...DEFAULT_TEAM_MEMBER_SECTIONS, ...data.teamMemberSections });
       }
-      setIndustry(org?.industry ?? account?.industry ?? null);
+      setIndustryState(org?.industry ?? account?.industry ?? null);
     }).catch(() => setError('Failed to load team access settings'))
       .finally(() => setLoading(false));
   }, [currentUser?.uid]);
 
+  const teamTerm = getTermForIndustry(industry, 'team');
   const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
-  const teamMemberTermLower = teamMemberTerm.toLowerCase();
+  const teamMemberTermLower = (teamMemberTerm || 'team members').toLowerCase();
   const sectionLabels = getTeamMemberSectionLabels(industry);
+  const sectionDisplayLabels = getSectionDisplayLabels(industry);
 
   const setSection = (key, enabled) => {
     setSections((prev) => ({ ...prev, [key]: !!enabled }));
@@ -88,7 +92,7 @@ export default function TeamAccessSettings() {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">{teamMemberTerm} access</h2>
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">{teamTerm} access</h2>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
         Choose which sections all {teamMemberTermLower} can see. When enabled, they can only view and change their own data (e.g. their own appointments), not yours or other members&apos;.
       </p>
@@ -112,7 +116,7 @@ export default function TeamAccessSettings() {
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-600 p-4"
             >
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white capitalize">{key}</p>
+                <p className="font-medium text-gray-900 dark:text-white">{sectionDisplayLabels[key] ?? key}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   {sectionLabels[key] || `Allow ${teamMemberTermLower} to access ${key}`}
                 </p>
@@ -129,7 +133,7 @@ export default function TeamAccessSettings() {
 
         <div className="flex items-center justify-end gap-3">
           <PrimaryButton type="submit" disabled={saving}>
-            {saving ? 'Saving…' : `Save ${teamMemberTermLower} access`}
+            {saving ? 'Saving…' : `Save ${(teamTerm || 'team').toLowerCase()} access`}
           </PrimaryButton>
         </div>
       </form>

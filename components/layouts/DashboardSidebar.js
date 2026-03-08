@@ -20,7 +20,8 @@ import {
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 import { getProjectTermForIndustry, getTermForIndustry } from '@/components/clients/clientProfileConstants';
-import { isOwnerRole, isAdminRole, isMemberRole, ORG_ROLE } from '@/config/rolePermissions';
+import { isOwnerRole, isAdminRole, isMemberRole } from '@/config/rolePermissions';
+import { PATH_TO_SECTION } from '@/config/teamMemberAccess';
 
 function getOwnerNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
@@ -37,9 +38,9 @@ function getOwnerNavItems(accountIndustry) {
     { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
     { name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText },
-    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { divider: true },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
@@ -49,30 +50,28 @@ function getOwnerNavItems(accountIndustry) {
   ];
 }
 
-function getAdminNavItems(accountIndustry, memberRole) {
+function getAdminNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const teamTerm = getTermForIndustry(accountIndustry, 'team');
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const servicesTerm = getTermForIndustry(accountIndustry, 'services');
   const proposalsTerm = getTermForIndustry(accountIndustry, 'proposal');
+  const invoicesTerm = getTermForIndustry(accountIndustry, 'invoice');
+  const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
     { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
+    { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
-    { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
+    { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
+    { name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText },
   ];
-  if (memberRole !== ORG_ROLE.DEVELOPER) {
-    items.push({ name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText });
-  }
-  const invoicesTerm = getTermForIndustry(accountIndustry, 'invoice');
-  const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
   items.push(
     { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
-    { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
     { divider: true },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid }
   );
@@ -100,16 +99,23 @@ function getMemberNavItems(memberAccess, accountIndustry) {
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const servicesTerm = getTermForIndustry(accountIndustry, 'services');
   const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
-  const items = [
+  const all = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
+    { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
-    { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
+    { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
   ];
-  return items;
+  if (memberAccess == null) return all;
+  return all.filter((item) => {
+    if (item.divider) return true;
+    const sectionKey = PATH_TO_SECTION[item.href];
+    if (!sectionKey) return true;
+    return !!memberAccess[sectionKey];
+  });
 }
 
 /**
@@ -133,8 +139,8 @@ export default function DashboardSidebar({ open, onToggle, userAccount, organiza
     if (!orgLoaded) return placeholderNav;
     if (isMemberRole(memberRole)) return getMemberNavItems(memberAccess, accountIndustry);
     if (isOwnerRole(memberRole)) return getOwnerNavItems(accountIndustry);
-    if (isAdminRole(memberRole)) return getAdminNavItems(accountIndustry, memberRole);
-    return getAdminNavItems(accountIndustry, memberRole);
+    if (isAdminRole(memberRole)) return getAdminNavItems(accountIndustry);
+    return getAdminNavItems(accountIndustry);
   }, [orgLoaded, memberRole, memberAccess, accountIndustry, placeholderNav]);
 
   const handleNavClick = () => {

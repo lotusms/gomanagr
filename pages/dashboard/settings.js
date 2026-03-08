@@ -75,7 +75,7 @@ function SettingsContent() {
       case 'organization':
         return <OrganizationSettings />;
       case 'team-access':
-        return <TeamAccessSettings />;
+        return <TeamAccessSettings industry={organization?.industry ?? userAccount?.industry} />;
       case 'theme':
         return <ThemeSettings />;
       case 'security':

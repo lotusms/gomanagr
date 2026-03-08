@@ -182,13 +182,7 @@ export default function DashboardLayout({ children }) {
     const baseAllowed =
       path === '/account' ||
       path.startsWith('/dashboard/team-member') ||
-      path === '/dashboard/settings' ||
-      path === '/dashboard/schedule' ||
-      path.startsWith('/dashboard/schedule/') ||
-      path === '/dashboard/clients' ||
-      path.startsWith('/dashboard/clients/') ||
-      path === '/dashboard/projects' ||
-      path.startsWith('/dashboard/projects/');
+      path === '/dashboard/settings';
     if (baseAllowed) return;
     if (memberAccess === null) return;
     if (path === '/dashboard/services' || path.startsWith('/dashboard/services/')) return;

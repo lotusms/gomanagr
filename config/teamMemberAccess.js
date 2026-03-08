@@ -4,24 +4,32 @@
  * When a section is enabled, team members can only affect their own data (e.g. own appointments, own profile).
  */
 
-export const TEAM_MEMBER_SECTION_KEYS = ['schedule', 'clients', 'projects'];
+const { getTermForIndustry } = require('@/components/clients/clientProfileConstants');
 
-export const TEAM_MEMBER_SECTION_LABELS = {
-  schedule: 'Schedule (view and manage their own appointments)',
-  clients: 'Clients (view clients; actions only affect their own context where applicable)',
-  projects: 'Projects (view projects; actions only affect their own context where applicable)',
-};
+export const TEAM_MEMBER_SECTION_KEYS = ['schedule', 'clients', 'projects', 'contracts'];
 
 /**
- * Returns section labels with industry-based terminology (e.g. "Cases" for Healthcare).
- * Use when displaying labels in the UI; section keys and logic stay unchanged.
+ * Returns the display label for each section key using industry terms from clientProfileConstants.
+ * Use for toggle row titles so they match sidebar/nav (e.g. "Agreements" when industry uses that for contracts).
  */
-export function getTeamMemberSectionLabels(industry) {
-  const { getTermForIndustry } = require('@/components/clients/clientProfileConstants');
-  const projectTerm = getTermForIndustry(industry, 'project');
+export function getSectionDisplayLabels(industry) {
   return {
-    ...TEAM_MEMBER_SECTION_LABELS,
-    projects: `${projectTerm} (view ${projectTerm.toLowerCase()}; actions only affect their own context where applicable)`,
+    schedule: 'Schedule',
+    clients: getTermForIndustry(industry, 'client') || 'Clients',
+    projects: getTermForIndustry(industry, 'project') || 'Projects',
+    contracts: getTermForIndustry(industry, 'contract') || 'Contracts',
+  };
+}
+
+export function getTeamMemberSectionLabels(industry) {
+  const clientTerm = getTermForIndustry(industry, 'client');
+  const projectTerm = getTermForIndustry(industry, 'project');
+  const contractsTerm = getTermForIndustry(industry, 'contract');
+  return {
+    schedule: 'Schedule (view and manage their own appointments)',
+    clients: `${clientTerm || 'Clients'} (view ${(clientTerm || 'clients').toLowerCase()}; actions only affect their own context where applicable)`,
+    projects: `${projectTerm || 'Projects'} (view ${(projectTerm || 'projects').toLowerCase()}; actions only affect their own context where applicable)`,
+    contracts: `${contractsTerm || 'Contracts'} (view ${(contractsTerm || 'contracts').toLowerCase()}; actions only affect their own context where applicable)`,
   };
 }
 
@@ -34,4 +42,5 @@ export const PATH_TO_SECTION = {
   '/dashboard/schedule': 'schedule',
   '/dashboard/clients': 'clients',
   '/dashboard/projects': 'projects',
+  '/dashboard/contracts': 'contracts',
 };

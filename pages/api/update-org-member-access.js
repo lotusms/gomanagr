@@ -1,6 +1,7 @@
 /**
  * Updates the org's team member access config (which sections are enabled for all team members).
- * Only the org admin can update this (their own profile.teamMemberSections).
+ * Superadmin (owner) and admin (and developer) can update. Config is stored in the org "config owner"
+ * profile: superadmin if any, else first admin (same as get-org-member-access).
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -23,6 +24,24 @@ try {
 }
 
 const VALID_KEYS = new Set(TEAM_MEMBER_SECTION_KEYS);
+
+/** Resolve the user_id whose profile holds teamMemberSections for this org (superadmin first, else first admin). */
+async function getConfigOwnerUserId(supabase, orgId) {
+  const { data: ownerRows } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('organization_id', orgId)
+    .eq('role', 'superadmin')
+    .limit(1);
+  if (ownerRows?.length) return ownerRows[0].user_id;
+  const { data: adminRows } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('organization_id', orgId)
+    .eq('role', 'admin')
+    .limit(1);
+  return adminRows?.[0]?.user_id ?? null;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -51,19 +70,13 @@ export default async function handler(req, res) {
     }
 
     if (!['superadmin', 'admin', 'developer'].includes(membership.role)) {
-      return res.status(403).json({ error: 'Only the organization admin can update team member access' });
+      return res.status(403).json({ error: 'Only the organization admin or owner can update team member access' });
     }
 
     const orgId = membership.organization_id;
-    const { data: adminRows } = await supabaseAdmin
-      .from('org_members')
-      .select('user_id')
-      .eq('organization_id', orgId)
-      .eq('role', 'admin')
-      .limit(1);
-
-    if (!adminRows?.length || adminRows[0].user_id !== userId) {
-      return res.status(403).json({ error: 'Only the organization admin can update team member access' });
+    const configOwnerId = await getConfigOwnerUserId(supabaseAdmin, orgId);
+    if (!configOwnerId) {
+      return res.status(500).json({ error: 'No org owner or admin found to store team member access' });
     }
 
     const sanitized = { ...DEFAULT_TEAM_MEMBER_SECTIONS };
@@ -76,7 +89,7 @@ export default async function handler(req, res) {
     const { data: profileRow, error: fetchErr } = await supabaseAdmin
       .from('user_profiles')
       .select('profile')
-      .eq('id', userId)
+      .eq('id', configOwnerId)
       .single();
 
     if (fetchErr || !profileRow) {
@@ -92,7 +105,7 @@ export default async function handler(req, res) {
         profile,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', userId);
+      .eq('id', configOwnerId);
 
     if (updateErr) {
       console.error('[update-org-member-access]', updateErr);

@@ -2,8 +2,7 @@
  * Organization role permissions (org_members.role).
  *
  * - superadmin: Org creator (isOwner). Full access: all sidebar, Subscriptions, Developer, all Settings.
- * - admin / developer: Promoted admin (not creator). Limited: Dashboard, Projects, My Profile, Team (no assign admins),
- *   Schedule, Clients, Services, Invoices, Apps. Proposals visible to superadmin and admin only (not developer).
+ * - admin / developer: Promoted admin (not creator). Same dashboard nav as admin (Projects, Proposals, Schedule, Clients, etc.).
  *   User menu: My Account, Settings (General, Theme), Logout.
  * - member: Team member. Access controlled by admin via Team Access (schedule, clients, projects, services).
  */

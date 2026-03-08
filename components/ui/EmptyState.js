@@ -30,7 +30,7 @@ export default function EmptyState({
   const clientTermSingular = clientTermPlural ? getTermSingular(clientTermPlural) : null;
   const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
   const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
-  const teamMemberTerm = industry ? getTermForIndustry(industry, 'teamMember') : 'Team members';
+  const teamMemberTerm = getTermForIndustry(industry, 'teamMember') || 'Team Members';
   const teamMemberTermLower = teamMemberTerm.toLowerCase();
 
   const configs = {

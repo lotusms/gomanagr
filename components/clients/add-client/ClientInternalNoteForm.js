@@ -27,7 +27,7 @@ export default function ClientInternalNoteForm({
   onCancel,
   industry = null,
 }) {
-  const teamMemberSingular = getTermSingular(getTermForIndustry(industry, 'teamMember')) || 'Team member';
+  const teamMemberSingular = getTermSingular(getTermForIndustry(industry, 'teamMember')) || 'Team Member';
   const clientTermSingularLower = (getTermSingular(getTermForIndustry(industry, 'client')) || 'Client').toLowerCase();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

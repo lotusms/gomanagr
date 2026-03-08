@@ -55,7 +55,7 @@ export default function TodaysAppointments({
 }) {
   const staff = staffProp || [];
   const teamMembers = teamMembersProp ?? staff;
-  const teamOrStaffLabel = getTermForIndustry(industry, 'team') || 'Staff';
+  const teamOrStaffLabel = getTermForIndustry(industry, 'team') || 'Team';
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
   const startHour = parseHour(businessHoursStart);
 

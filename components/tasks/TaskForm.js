@@ -47,9 +47,6 @@ export default function TaskForm({
   const [dueAt, setDueAt] = useState(toDateLocal(initial.due_at) || '');
   const [projectId, setProjectId] = useState(initial.project_id ?? defaultProjectId ?? '');
   const [clientId, setClientId] = useState(initial.client_id ?? defaultClientId ?? '');
-  const [labels, setLabels] = useState(
-    Array.isArray(initial.labels) ? initial.labels.join(', ') : ''
-  );
   const [subtasks, setSubtasks] = useState(() => {
     const raw = initial.subtasks;
     if (Array.isArray(raw) && raw.length > 0) {
@@ -93,10 +90,10 @@ export default function TaskForm({
   const assigneeOptions = [
     { value: '', label: 'Unassigned' },
     ...(teamMembers || []).map((m) => ({
-      value: m.id || m.user_id,
+      value: m.user_id ?? m.id ?? '',
       label: (m.name || m.displayName || m.email || 'Unknown').trim(),
     })),
-  ].filter((o) => o.value !== undefined && o.value !== null);
+  ].filter((o) => o.value != null && o.value !== '');
 
   const statusOptions = TASK_STATUSES.map((s) => ({ value: s.value, label: s.label }));
   const priorityOptions = TASK_PRIORITIES.map((p) => ({ value: p.value, label: p.label }));
@@ -147,12 +144,6 @@ export default function TaskForm({
         project_id: projectId || null,
         client_id: clientId || null,
         task_number: taskNumber.trim() || undefined,
-        labels: labels
-          ? labels
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean)
-          : [],
         subtasks: subtasks.map((s) => ({ id: s.id, title: (s.title || '').trim(), completed: s.completed })),
       };
       if (initial.id) {
@@ -360,16 +351,6 @@ export default function TaskForm({
                 value={projectId}
                 onChange={(e) => { markDirty(); setProjectId(e.target.value); }}
                 options={projectOptions}
-              />
-            </div>
-            <div className="mt-4">
-              <InputField
-                id="task-labels"
-                label="Labels / tags"
-                value={labels}
-                onChange={(e) => { markDirty(); setLabels(e.target.value); }}
-                placeholder="Comma-separated (e.g. bug, urgent)"
-                variant="light"
               />
             </div>
           </FormStepSection>

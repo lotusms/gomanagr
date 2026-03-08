@@ -49,18 +49,32 @@ describe('get-org-team-list API', () => {
               };
             }
             if (cols === 'user_id') {
-              return {
-                eq: () => ({
-                  eq: () => ({
-                    limit: () => ({
-                      maybeSingle: () =>
-                        Promise.resolve({
-                          data: { user_id: 'owner-1' },
-                          error: null,
+              const listPromise = Promise.resolve({
+                data: [
+                  { user_id: 'u1' },
+                  { user_id: 'u2' },
+                ],
+                error: null,
+              });
+              const chain = {
+                eq: (col, val) =>
+                  col === 'role' && val === 'superadmin'
+                    ? {
+                        limit: () => ({
+                          maybeSingle: () =>
+                            Promise.resolve({
+                              data: { user_id: 'owner-1' },
+                              error: null,
+                            }),
                         }),
-                    }),
-                  }),
-                }),
+                      }
+                    : Promise.resolve({ data: null, error: null }),
+              };
+              return {
+                eq: (col) =>
+                  col === 'organization_id'
+                    ? Object.assign(listPromise, chain)
+                    : listPromise,
               };
             }
             return {};
@@ -69,20 +83,29 @@ describe('get-org-team-list API', () => {
       }
       if (table === 'user_profiles') {
         return {
-          select: () => ({
-            eq: () => ({
-              single: () =>
+          select: (cols) => {
+            if (typeof cols === 'string' && cols.includes('team_members')) {
+              return {
+                eq: () => ({
+                  single: () =>
+                    Promise.resolve({
+                      data: { team_members: [] },
+                      error: null,
+                    }),
+                }),
+              };
+            }
+            return {
+              in: () =>
                 Promise.resolve({
-                  data: {
-                    team_members: [
-                      { id: 'tm1', name: 'Alice' },
-                      { id: 'tm2', name: 'Bob' },
-                    ],
-                  },
+                  data: [
+                    { id: 'u1', first_name: 'Alice', last_name: 'A', email: 'alice@test.com' },
+                    { id: 'u2', first_name: 'Bob', last_name: 'B', email: 'bob@test.com' },
+                  ],
                   error: null,
                 }),
-            }),
-          }),
+            };
+          },
         };
       }
       return {};
@@ -148,11 +171,19 @@ describe('get-org-team-list API', () => {
       body: { organizationId: 'org-1', callerUserId: 'user-1' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      teamMembers: [
-        { id: 'tm1', name: 'Alice' },
-        { id: 'tm2', name: 'Bob' },
-      ],
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.teamMembers).toHaveLength(2);
+    expect(payload.teamMembers[0]).toMatchObject({
+      id: 'u1',
+      user_id: 'u1',
+      name: 'Alice A',
+      email: 'alice@test.com',
+    });
+    expect(payload.teamMembers[1]).toMatchObject({
+      id: 'u2',
+      user_id: 'u2',
+      name: 'Bob B',
+      email: 'bob@test.com',
     });
   });
 });

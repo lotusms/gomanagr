@@ -7,13 +7,14 @@ import { HiChat, HiLightningBolt } from 'react-icons/hi';
 import { useAuth } from '@/lib/AuthContext';
 import { useOptionalUserAccount, getDisplayName } from '@/lib/UserAccountContext';
 
-function formatActivityKind(kind) {
+function formatActivityKind(kind, clientTermSingular = 'Client', projectTermSingular = 'Project') {
   const map = {
     created: 'Created',
     status: 'Status',
     assignee: 'Assignee',
     due_at: 'Due date',
-    link: 'Link',
+    client: `${clientTermSingular}`,
+    project: `${projectTermSingular}`,
     title: 'Title',
     priority: 'Priority',
   };
@@ -30,11 +31,12 @@ function formatPriorityValue(v) {
   return p ? p.label : v;
 }
 
-function formatActivityMessage(row, userNameById) {
+function formatActivityMessage(row, userNameById, clientTermSingular = 'Client', projectTermSingular = 'Project', taskTermSingular = 'Task') {
   const actor = userNameById[row.user_id] || 'Someone';
   const kind = row.kind;
+  const taskLower = taskTermSingular.toLowerCase();
   if (kind === 'created') {
-    return `${actor} created this task`;
+    return `${actor} created this ${taskLower}`;
   }
   if (kind === 'status') {
     return `${actor} changed status from ${formatStatusValue(row.old_value)} to ${formatStatusValue(row.new_value)}`;
@@ -50,15 +52,18 @@ function formatActivityMessage(row, userNameById) {
     return `${actor} changed due date from ${oldD} to ${newD}`;
   }
   if (kind === 'title') {
-    return `${actor} renamed the task`;
+    return `${actor} renamed the ${taskLower}`;
   }
   if (kind === 'priority') {
     return `${actor} changed priority from ${formatPriorityValue(row.old_value)} to ${formatPriorityValue(row.new_value)}`;
   }
-  if (kind === 'link') {
-    return `${actor} updated client/project link`;
+  if (kind === 'client') {
+    return `${actor} updated the ${clientTermSingular} of the ${taskLower}`;
   }
-  return `${actor} updated ${formatActivityKind(kind)}`;
+  if (kind === 'project') {
+    return `${actor} updated the ${projectTermSingular} of the ${taskLower}`;
+  }
+  return `${actor} updated ${formatActivityKind(kind, clientTermSingular, projectTermSingular).toLowerCase()}`;
 }
 
 function formatDate(iso) {
@@ -88,6 +93,8 @@ export default function TaskActivityComments({
   userId,
   teamMembers = [],
   taskTermSingular = 'Task',
+  clientTermSingular = 'Client',
+  projectTermSingular = 'Project',
 }) {
   const [activity, setActivity] = useState([]);
   const [comments, setComments] = useState([]);
@@ -193,7 +200,7 @@ export default function TaskActivityComments({
                       </div>
                       <div className="min-w-0 flex-1 pt-0.5">
                         <p className="text-sm text-gray-700 dark:text-gray-200 leading-snug">
-                          {formatActivityMessage(row, userNameById)}
+                          {formatActivityMessage(row, userNameById, clientTermSingular, projectTermSingular, taskTermSingular)}
                         </p>
                         <time
                           className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 block"

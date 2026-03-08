@@ -115,6 +115,7 @@ function TasksContent() {
     (teamMembers || []).forEach((m) => {
       const name = (m.name || m.displayName || m.email || 'Unknown').trim();
       if (m.id) map[m.id] = name;
+      if (m.user_id) map[m.user_id] = name;
     });
     return map;
   }, [teamMembers]);
@@ -131,10 +132,10 @@ function TasksContent() {
   const assigneeFilterOptions = [
     { value: '', label: 'All assignees' },
     ...(teamMembers || []).map((m) => ({
-      value: m.id || m.user_id,
+      value: m.user_id ?? m.id ?? '',
       label: (m.name || m.displayName || m.email || 'Unknown').trim(),
     })),
-  ].filter((o) => o.value != null);
+  ].filter((o) => o.value != null && o.value !== '');
   const statusFilterOptions = [
     { value: '', label: 'All statuses' },
     ...TASK_STATUSES.map((s) => ({ value: s.value, label: s.label })),

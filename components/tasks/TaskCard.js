@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { HiOutlineDotsVertical } from 'react-icons/hi';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/config/taskConstants';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
+import Avatar from '@/components/ui/Avatar';
 
 const PRIORITY_COLORS = {
   low: 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-200',
@@ -133,13 +134,17 @@ export default function TaskCard({ task, assigneeName, onStatusChange, onDelete 
           )}
         </div>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5">
         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${priorityClass}`}>
           {priorityLabel}
         </span>
         {assigneeName && (
-          <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]" title={assigneeName}>
-            {assigneeName}
+          <span title={assigneeName} className="flex-shrink-0">
+            <Avatar
+              name={assigneeName}
+              size="sm"
+              className="bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 border-2 border-white dark:border-gray-800 shadow-sm"
+            />
           </span>
         )}
       </div>

@@ -1,12 +1,15 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { PageHeader } from '@/components/ui';
+import { SecondaryButton } from '@/components/ui/buttons';
+import { HiArrowLeft } from 'react-icons/hi';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
-import TaskForm from '@/components/tasks/TaskForm';
+import TaskDetailTrello from '@/components/tasks/TaskDetailTrello';
 
 export default function NewTaskPage() {
   const router = useRouter();
@@ -20,7 +23,11 @@ export default function NewTaskPage() {
 
   const { status: queryStatus, projectId: queryProjectId, clientId: queryClientId, assigneeId: queryAssigneeId } = router.query;
   const accountIndustry = organization?.industry ?? userAccount?.industry;
-  const taskTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'tasks')) || 'Task';
+  const taskTermPlural = getTermForIndustry(accountIndustry, 'tasks');
+  const taskTermPluralLower = (taskTermPlural || 'tasks').toLowerCase();
+  const taskTermSingular = getTermSingular(taskTermPlural) || 'Task';
+  const taskTermSingularLower = taskTermSingular.toLowerCase();
+  const backUrl = '/dashboard/tasks';
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -90,27 +97,39 @@ export default function NewTaskPage() {
   return (
     <>
       <Head>
-        <title>New {taskTermSingular} - GoManagr</title>
+        <title>Create {taskTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Create a new ${taskTermSingularLower} and optionally link it to a client or project.`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title={`New ${taskTermSingular}`}
-          description="Create a task and optionally link it to a client or project."
+          title={`Create ${taskTermSingular}`}
+          description={`Create a ${taskTermSingularLower} for your team. Set title, status, and optionally link to a client or project.`}
+          actions={
+            <Link href={backUrl}>
+              <SecondaryButton type="button" className="gap-2">
+                <HiArrowLeft className="w-5 h-5" />
+                Back to {taskTermPluralLower}
+              </SecondaryButton>
+            </Link>
+          }
         />
-        <TaskForm
-          userId={currentUser?.uid}
-          organizationId={orgId}
-          industry={accountIndustry}
-          teamMembers={teamMembers}
-          clients={clients}
-          projects={projects}
-          defaultStatus={queryStatus && String(queryStatus).replace(/\s+/g, '_')}
-          defaultProjectId={queryProjectId}
-          defaultClientId={queryClientId}
-          defaultAssigneeId={queryAssigneeId}
-          onSuccess={handleSuccess}
-          onCancel={handleCancel}
-        />
+        <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
+          <TaskDetailTrello
+            task={{}}
+            userId={currentUser?.uid}
+            organizationId={orgId}
+            industry={accountIndustry}
+            teamMembers={teamMembers}
+            clients={clients}
+            projects={projects}
+            defaultStatus={queryStatus && String(queryStatus).replace(/\s+/g, '_')}
+            defaultProjectId={queryProjectId}
+            defaultClientId={queryClientId}
+            defaultAssigneeId={queryAssigneeId}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        </div>
       </div>
     </>
   );

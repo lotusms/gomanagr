@@ -1,10 +1,13 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { PageHeader } from '@/components/ui';
+import { SecondaryButton } from '@/components/ui/buttons';
+import { HiArrowLeft } from 'react-icons/hi';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import TaskDetailTrello from '@/components/tasks/TaskDetailTrello';
 
@@ -22,7 +25,11 @@ export default function EditTaskPage() {
   const [projects, setProjects] = useState([]);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
-  const taskTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'tasks')) || 'Task';
+  const taskTermPlural = getTermForIndustry(accountIndustry, 'tasks');
+  const taskTermPluralLower = (taskTermPlural || 'tasks').toLowerCase();
+  const taskTermSingular = getTermSingular(taskTermPlural) || 'Task';
+  const taskTermSingularLower = taskTermSingular.toLowerCase();
+  const backUrl = '/dashboard/tasks';
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -110,24 +117,35 @@ export default function EditTaskPage() {
   return (
     <>
       <Head>
-        <title>Edit {taskTermSingular} - GoManagr</title>
+        <title>Edit {taskTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Edit this ${taskTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title={task.title || taskTermSingular}
-          description={task.task_number ? `${taskTermSingular} · ${task.task_number}` : undefined}
+          title={`Edit ${taskTermSingular}`}
+          description={`Update the details of this ${taskTermSingularLower}. You can change status, assignee, and client or project link.`}
+          actions={
+            <Link href={backUrl}>
+              <SecondaryButton type="button" className="gap-2">
+                <HiArrowLeft className="w-5 h-5" />
+                Back to {taskTermPluralLower}
+              </SecondaryButton>
+            </Link>
+          }
         />
-        <TaskDetailTrello
-          task={task}
-          userId={currentUser?.uid}
-          organizationId={orgId}
-          industry={accountIndustry}
-          teamMembers={teamMembers}
-          clients={clients}
-          projects={projects}
-          onSuccess={handleSuccess}
-          onCancel={handleCancel}
-        />
+        <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
+          <TaskDetailTrello
+            task={task}
+            userId={currentUser?.uid}
+            organizationId={orgId}
+            industry={accountIndustry}
+            teamMembers={teamMembers}
+            clients={clients}
+            projects={projects}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        </div>
       </div>
     </>
   );

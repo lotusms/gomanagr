@@ -33,6 +33,17 @@ try {
 const STATUSES = ['backlog', 'to_do', 'in_progress', 'blocked', 'done'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
+/** Normalize due_at to YYYY-MM-DD for comparison so we only log activity when the date actually changed. */
+function dueAtDateOnly(iso) {
+  if (iso == null || iso === '') return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function buildUpdate(body) {
   const updates = { updated_at: new Date().toISOString() };
   if (body.title !== undefined) updates.title = String(body.title).trim() || 'Untitled task';
@@ -57,7 +68,6 @@ function buildUpdate(body) {
   if (body.linked_invoice_id !== undefined) updates.linked_invoice_id = body.linked_invoice_id || null;
   if (body.linked_proposal_id !== undefined) updates.linked_proposal_id = body.linked_proposal_id || null;
   if (body.linked_appointment_id !== undefined) updates.linked_appointment_id = body.linked_appointment_id || null;
-  if (body.labels !== undefined) updates.labels = Array.isArray(body.labels) ? body.labels : [];
   if (body.task_number !== undefined) updates.task_number = body.task_number != null && String(body.task_number).trim() !== '' ? String(body.task_number).trim() : null;
   if (body.subtasks !== undefined) updates.subtasks = Array.isArray(body.subtasks) ? body.subtasks : [];
   return updates;
@@ -135,7 +145,7 @@ export default async function handler(req, res) {
       if (updates.assignee_id !== undefined && updates.assignee_id !== existing.assignee_id) {
         activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'assignee', old_value: existing.assignee_id, new_value: updates.assignee_id, user_id: actorId });
       }
-      if (updates.due_at !== undefined && String(updates.due_at || '') !== String(existing.due_at || '')) {
+      if (updates.due_at !== undefined && dueAtDateOnly(updates.due_at) !== dueAtDateOnly(existing.due_at)) {
         activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'due_at', old_value: existing.due_at, new_value: updates.due_at, user_id: actorId });
       }
       if (updates.title !== undefined && updates.title !== existing.title) {
@@ -144,8 +154,11 @@ export default async function handler(req, res) {
       if (updates.priority !== undefined && updates.priority !== existing.priority) {
         activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'priority', old_value: existing.priority, new_value: updates.priority, user_id: actorId });
       }
-      if ((updates.project_id !== undefined && updates.project_id !== existing.project_id) || (updates.client_id !== undefined && updates.client_id !== existing.client_id)) {
-        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'link', old_value: null, new_value: [updates.project_id, updates.client_id].filter(Boolean).join(','), user_id: actorId });
+      if (updates.client_id !== undefined && updates.client_id !== existing.client_id) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'client', old_value: existing.client_id, new_value: updates.client_id, user_id: actorId });
+      }
+      if (updates.project_id !== undefined && updates.project_id !== existing.project_id) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'project', old_value: existing.project_id, new_value: updates.project_id, user_id: actorId });
       }
       if (activityRows.length > 0) {
         await supabaseAdmin.from('task_activity').insert(activityRows).then(() => {});

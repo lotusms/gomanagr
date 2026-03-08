@@ -47,7 +47,52 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Not a member of this organization' });
     }
 
-    const { data: ownerRow, error: ownerErr } = await supabaseAdmin
+    const { data: orgMemberRows, error: listErr } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', organizationId);
+
+    const userIds = listErr || !orgMemberRows?.length
+      ? []
+      : [...new Set(orgMemberRows.map((r) => r.user_id).filter(Boolean))];
+
+    let profileById = new Map();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profileErr } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds);
+      if (!profileErr && profiles?.length) {
+        profiles.forEach((p) => profileById.set(p.id, p));
+      }
+    }
+
+    // Build list from org_members (use profile when present, else Unknown)
+    const seenIds = new Set();
+    const teamMembers = userIds.map((uid) => {
+      seenIds.add(uid);
+      const p = profileById.get(uid);
+      if (p) {
+        const name = [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '';
+        return {
+          id: uid,
+          user_id: uid,
+          name: name || 'Unknown',
+          displayName: name || 'Unknown',
+          email: p.email || '',
+        };
+      }
+      return {
+        id: uid,
+        user_id: uid,
+        name: 'Unknown',
+        displayName: 'Unknown',
+        email: '',
+      };
+    });
+
+    // Include org owner's team_members so the list matches the Team page (full team, including anyone not yet in org_members)
+    const { data: ownerRow } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
       .eq('organization_id', organizationId)
@@ -55,21 +100,29 @@ export default async function handler(req, res) {
       .limit(1)
       .maybeSingle();
 
-    if (ownerErr || !ownerRow?.user_id) {
-      return res.status(200).json({ teamMembers: [] });
+    if (ownerRow?.user_id) {
+      const { data: ownerProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('team_members')
+        .eq('id', ownerRow.user_id)
+        .single();
+
+      const ownerTeam = Array.isArray(ownerProfile?.team_members) ? ownerProfile.team_members : [];
+      for (const m of ownerTeam) {
+        const uid = m?.userId ?? m?.id;
+        if (!uid || seenIds.has(uid)) continue;
+        seenIds.add(uid);
+        const name = [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || (m.name || '').trim() || m.email || '';
+        teamMembers.push({
+          id: uid,
+          user_id: uid,
+          name: name || 'Unknown',
+          displayName: name || 'Unknown',
+          email: m.email || '',
+        });
+      }
     }
 
-    const { data: profile, error: profileErr } = await supabaseAdmin
-      .from('user_profiles')
-      .select('team_members')
-      .eq('id', ownerRow.user_id)
-      .single();
-
-    if (profileErr || !profile) {
-      return res.status(200).json({ teamMembers: [] });
-    }
-
-    const teamMembers = Array.isArray(profile.team_members) ? profile.team_members : [];
     return res.status(200).json({ teamMembers });
   } catch (err) {
     console.error('[get-org-team-list]', err);

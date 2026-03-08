@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import TextareaField from '@/components/ui/TextareaField';
 import { PrimaryButton, SecondaryButton, IconButton } from '@/components/ui/buttons';
@@ -7,6 +7,7 @@ import { getTermForIndustry, getTermSingular } from '@/components/clients/client
 import TaskActivityComments from '@/components/tasks/TaskActivityComments';
 import { HiArrowLeft, HiPlus, HiTrash } from 'react-icons/hi';
 import TasksFormHeader from '@/components/ui/TasksFormHeader';
+import { useCancelWithConfirm } from '@/components/ui/DiscardChangesDialog';
 
 function toDateLocal(iso) {
   if (!iso) return '';
@@ -17,14 +18,32 @@ function toDateLocal(iso) {
   return `${y}-${m}-${day}`;
 }
 
+const emptyTask = {
+  id: null,
+  title: '',
+  description: '',
+  status: 'to_do',
+  priority: 'medium',
+  assignee_id: '',
+  due_at: null,
+  client_id: '',
+  project_id: '',
+  task_number: '',
+  subtasks: [],
+};
+
 export default function TaskDetailTrello({
-  task: initialTask,
+  task: initialTask = emptyTask,
   userId,
   organizationId,
   industry = null,
   teamMembers = [],
   clients = [],
   projects = [],
+  defaultStatus,
+  defaultProjectId,
+  defaultClientId,
+  defaultAssigneeId,
   onSuccess,
   onCancel,
 }) {
@@ -32,17 +51,21 @@ export default function TaskDetailTrello({
   const clientTermSingular = getTermSingular(getTermForIndustry(industry, 'client')) || 'Client';
   const projectTermSingular = getTermSingular(getTermForIndustry(industry, 'project')) || 'Project';
 
-  const [task, setTask] = useState(initialTask);
-  const [title, setTitle] = useState(initialTask.title ?? '');
-  const [description, setDescription] = useState(initialTask.description ?? '');
-  const [status, setStatus] = useState(initialTask.status ?? 'to_do');
-  const [priority, setPriority] = useState(initialTask.priority ?? 'medium');
-  const [assigneeId, setAssigneeId] = useState(initialTask.assignee_id ?? '');
-  const [dueAt, setDueAt] = useState(toDateLocal(initialTask.due_at) || '');
-  const [clientId, setClientId] = useState(initialTask.client_id ?? '');
-  const [projectId, setProjectId] = useState(initialTask.project_id ?? '');
+  const initial = initialTask && typeof initialTask === 'object' ? initialTask : emptyTask;
+  const isCreateMode = !initial.id;
+
+  const [task, setTask] = useState(initial);
+  const [taskNumber, setTaskNumber] = useState(initial.task_number ?? '');
+  const [title, setTitle] = useState(initial.title ?? '');
+  const [description, setDescription] = useState(initial.description ?? '');
+  const [status, setStatus] = useState(initial.status ?? defaultStatus ?? 'to_do');
+  const [priority, setPriority] = useState(initial.priority ?? 'medium');
+  const [assigneeId, setAssigneeId] = useState(initial.assignee_id ?? defaultAssigneeId ?? '');
+  const [dueAt, setDueAt] = useState(toDateLocal(initial.due_at) || '');
+  const [clientId, setClientId] = useState(initial.client_id ?? defaultClientId ?? '');
+  const [projectId, setProjectId] = useState(initial.project_id ?? defaultProjectId ?? '');
   const [subtasks, setSubtasks] = useState(() => {
-    const raw = initialTask.subtasks;
+    const raw = initial.subtasks;
     if (Array.isArray(raw) && raw.length > 0) {
       return raw.map((s) => ({
         id: s.id || `st-${Math.random().toString(36).slice(2, 9)}`,
@@ -56,15 +79,65 @@ export default function TaskDetailTrello({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const [suggestedIdFetched, setSuggestedIdFetched] = useState(false);
+  useEffect(() => {
+    if (!isCreateMode || !userId || !organizationId || suggestedIdFetched) return;
+    setSuggestedIdFetched(true);
+    fetch('/api/get-next-document-id', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, organizationId, prefix: 'TASK' }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.suggestedId) setTaskNumber(data.suggestedId);
+      })
+      .catch(() => {});
+  }, [isCreateMode, userId, organizationId, suggestedIdFetched]);
+
+  const hasChanges = useCallback(() => {
+    if (isCreateMode) {
+      return (
+        title.trim() !== '' ||
+        description.trim() !== '' ||
+        status !== (defaultStatus ?? 'to_do') ||
+        priority !== 'medium' ||
+        assigneeId !== (defaultAssigneeId ?? '') ||
+        dueAt !== '' ||
+        clientId !== (defaultClientId ?? '') ||
+        projectId !== (defaultProjectId ?? '') ||
+        subtasks.length > 0 ||
+        subtasks.some((s) => (s.title || '').trim() !== '')
+      );
+    }
+    return (
+      (title || '').trim() !== (initial.title || '').trim() ||
+      (description || '').trim() !== (initial.description || '').trim() ||
+      status !== (initial.status ?? 'to_do') ||
+      priority !== (initial.priority ?? 'medium') ||
+      assigneeId !== (initial.assignee_id ?? '') ||
+      dueAt !== (toDateLocal(initial.due_at) || '') ||
+      clientId !== (initial.client_id ?? '') ||
+      projectId !== (initial.project_id ?? '') ||
+      subtasks.length !== (initial.subtasks || []).length ||
+      subtasks.some((s, i) => {
+        const orig = (initial.subtasks || [])[i];
+        return !orig || s.title !== (orig.title || '') || s.completed !== Boolean(orig.completed);
+      })
+    );
+  }, [isCreateMode, title, description, status, priority, assigneeId, dueAt, clientId, projectId, subtasks, initial, defaultStatus, defaultAssigneeId, defaultClientId, defaultProjectId]);
+
+  const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges());
+
   const statusOptions = TASK_STATUSES.map((s) => ({ value: s.value, label: s.label }));
   const priorityOptions = TASK_PRIORITIES.map((p) => ({ value: p.value, label: p.label }));
   const assigneeOptions = [
     { value: '', label: 'Unassigned' },
     ...(teamMembers || []).map((m) => ({
-      value: m.id || m.user_id,
+      value: m.user_id ?? m.id ?? '',
       label: (m.name || m.displayName || m.email || 'Unknown').trim(),
     })),
-  ].filter((o) => o.value != null);
+  ].filter((o) => o.value != null && o.value !== '');
   const clientOptions = [
     { value: '', label: `No ${clientTermSingular.toLowerCase()}` },
     ...(clients || []).map((c) => ({
@@ -89,33 +162,57 @@ export default function TaskDetailTrello({
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/update-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          organizationId,
-          taskId: task.id,
-          title: trimmedTitle,
-          description: description.trim() || null,
-          status,
-          priority,
-          assignee_id: assigneeId || null,
-          due_at: dueAt ? new Date(dueAt + 'T12:00:00.000Z').toISOString() : null,
-          client_id: clientId || null,
-          project_id: projectId || null,
-          subtasks: subtasks.map((s) => ({ id: s.id, title: (s.title || '').trim(), completed: s.completed })),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to update');
-      onSuccess?.(data.task);
+      if (isCreateMode) {
+        const res = await fetch('/api/create-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            organizationId,
+            title: trimmedTitle,
+            description: description.trim() || null,
+            status,
+            priority,
+            assignee_id: assigneeId || null,
+            due_at: dueAt ? new Date(dueAt + 'T12:00:00.000Z').toISOString() : null,
+            client_id: clientId || null,
+            project_id: projectId || null,
+            task_number: taskNumber.trim() || undefined,
+            subtasks: subtasks.map((s) => ({ id: s.id, title: (s.title || '').trim(), completed: s.completed })),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to create');
+        onSuccess?.(data.task);
+      } else {
+        const res = await fetch('/api/update-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            organizationId,
+            taskId: task.id,
+            title: trimmedTitle,
+            description: description.trim() || null,
+            status,
+            priority,
+            assignee_id: assigneeId || null,
+            due_at: dueAt ? new Date(dueAt + 'T12:00:00.000Z').toISOString() : null,
+            client_id: clientId || null,
+            project_id: projectId || null,
+            subtasks: subtasks.map((s) => ({ id: s.id, title: (s.title || '').trim(), completed: s.completed })),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to update');
+        onSuccess?.(data.task);
+      }
     } catch (err) {
       setError(err.message || 'Something went wrong');
     } finally {
       setSaving(false);
     }
-  }, [task.id, userId, organizationId, title, description, status, priority, assigneeId, dueAt, clientId, projectId, subtasks, onSuccess]);
+  }, [isCreateMode, task.id, userId, organizationId, title, description, status, priority, assigneeId, dueAt, clientId, projectId, taskNumber, subtasks, onSuccess]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -129,9 +226,9 @@ export default function TaskDetailTrello({
           titleRequired
           onTitleChange={(e) => setTitle(e.target.value)}
           documentIdLabel={`${taskTermSingular} ID`}
-          documentIdValue={task.task_number || ''}
+          documentIdValue={isCreateMode ? taskNumber : (task.task_number || '')}
           documentIdPlaceholder="Auto-generated or enter your own"
-          onDocumentIdChange={() => {}}
+          onDocumentIdChange={(e) => isCreateMode && setTaskNumber(e.target.value)}
           statusLabel="Status"
           statusValue={status}
           statusOptions={statusOptions}
@@ -237,28 +334,34 @@ export default function TaskDetailTrello({
           )}
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <SecondaryButton type="button" onClick={onCancel}>
+            <SecondaryButton type="button" onClick={handleCancel}>
               Cancel
             </SecondaryButton>
             <PrimaryButton type="button" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : `Save ${taskTermSingular}`}
+              {saving ? 'Saving…' : isCreateMode ? `Create ${taskTermSingular}` : `Save ${taskTermSingular}`}
             </PrimaryButton>
           </div>
         </div>
       </div>
 
-      {/* Right column: comments and activity */}
-      <aside className="w-full lg:w-80 flex-shrink-0">
-        <div className="lg:sticky lg:top-4">
-          <TaskActivityComments
-            taskId={task.id}
-            organizationId={organizationId}
-            userId={userId}
-            teamMembers={teamMembers}
-            taskTermSingular={taskTermSingular}
-          />
-        </div>
-      </aside>
+      {/* Right column: comments and activity (only when task exists) */}
+      {task.id && (
+        <aside className="w-full lg:w-80 flex-shrink-0">
+          <div className="lg:sticky lg:top-4">
+            <TaskActivityComments
+              taskId={task.id}
+              organizationId={organizationId}
+              userId={userId}
+              teamMembers={teamMembers}
+              taskTermSingular={taskTermSingular}
+              clientTermSingular={clientTermSingular}
+              projectTermSingular={projectTermSingular}
+            />
+          </div>
+        </aside>
+      )}
+
+      {discardDialog}
     </div>
   );
 }

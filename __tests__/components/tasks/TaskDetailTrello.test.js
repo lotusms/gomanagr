@@ -94,6 +94,19 @@ describe('TaskDetailTrello', () => {
 
       expect(screen.getByRole('button', { name: /Add an item/i })).toBeInTheDocument();
     });
+
+    it('create mode: shows Create Task button and no activity sidebar when task has no id', () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('get-next-document-id')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'TASK-002' }) });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+      render(<TaskDetailTrello {...defaultProps} task={{}} />);
+
+      expect(screen.getByRole('button', { name: /^Create\s/i })).toBeInTheDocument();
+      expect(screen.queryByTestId('task-activity-comments')).not.toBeInTheDocument();
+    });
   });
 
   describe('submit', () => {
@@ -152,11 +165,32 @@ describe('TaskDetailTrello', () => {
   });
 
   describe('cancel', () => {
-    it('Cancel button calls onCancel', () => {
+    it('Cancel button calls onCancel when no changes', () => {
       render(<TaskDetailTrello {...defaultProps} onSuccess={onSuccess} onCancel={onCancel} />);
 
       fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
       expect(onCancel).toHaveBeenCalled();
+    });
+
+    it('shows discard dialog when Cancel clicked with unsaved changes, Discard calls onCancel', async () => {
+      render(<TaskDetailTrello {...defaultProps} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await act(async () => {
+        await userEvent.type(screen.getByRole('textbox', { name: /Task title/i }), ' changed');
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Discard changes\?/i)).toBeInTheDocument();
+      });
+      expect(screen.getByRole('button', { name: /Stay/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Discard/i })).toBeInTheDocument();
+      expect(onCancel).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /Discard/i }));
+      await waitFor(() => {
+        expect(onCancel).toHaveBeenCalled();
+      });
     });
   });
 });

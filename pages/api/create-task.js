@@ -2,7 +2,7 @@
  * Creates a task. POST body: { userId, organizationId, task_number?, ...taskFields }
  * Task fields: title, description, status, priority, assignee_id, due_at, project_id, client_id,
  * task_number (optional; auto-generated with TASK prefix if omitted),
- * linked_*, labels. userId and assignee_id are normalized to raw UUID (strips owner- prefix).
+ * linked_*. userId and assignee_id are normalized to raw UUID (strips owner- prefix).
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -46,7 +46,6 @@ function parseBody(body) {
     ? String(body.priority).toLowerCase()
     : 'medium';
   const title = String(body.title ?? '').trim();
-  const labels = Array.isArray(body.labels) ? body.labels : (body.labels ? [].concat(body.labels) : []);
   const rawCreatedBy = toRawUuid(body.userId);
   const rawAssigneeId = toRawUuid(body.assignee_id ?? body.assigneeId);
   return {
@@ -60,7 +59,6 @@ function parseBody(body) {
     assignee_id: rawAssigneeId,
     due_at: body.due_at ?? body.dueAt ?? null,
     position: body.position != null ? Number(body.position) : null,
-    labels: labels.length ? labels : [],
     linked_client_id: body.linked_client_id ?? body.linkedClientId ?? null,
     linked_project_id: body.linked_project_id ?? body.linkedProjectId ?? null,
     linked_invoice_id: body.linked_invoice_id ?? body.linkedInvoiceId ?? null,

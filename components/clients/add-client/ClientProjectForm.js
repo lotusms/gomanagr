@@ -56,6 +56,10 @@ export default function ClientProjectForm({
   const clientTermSingularLower = clientTermSingular.toLowerCase();
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
+  const proposalTermPlural = getTermForIndustry(industry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
+  const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -371,14 +375,14 @@ export default function ClientProjectForm({
         <Dropdown
           id="related-proposal"
           name="related-proposal"
-          label="Linked proposal"
+          label={`Linked ${proposalTermSingularLower}`}
           value={relatedProposalId}
           onChange={(e) => { markDirty(); setRelatedProposalId(e.target.value ?? ''); }}
           options={[
             { value: '', label: 'None' },
             ...proposals.map((p) => ({
               value: p.id,
-              label: (p.proposal_number || p.proposal_title || 'Untitled proposal').trim() || 'Untitled proposal',
+              label: (p.proposal_number || p.proposal_title || untitledProposalLabel).trim() || untitledProposalLabel,
             })),
           ]}
           placeholder={proposalsLoading ? 'Loading…' : 'None'}

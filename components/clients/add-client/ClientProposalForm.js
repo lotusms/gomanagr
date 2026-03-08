@@ -174,6 +174,9 @@ export default function ClientProposalForm({
   const clientTermPlural = getTermForIndustry(industry, 'client');
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const proposalTermPlural = getTermForIndustry(industry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
   const serviceTermSingular = getTermSingular(getTermForIndustry(industry, 'services')) || 'Service';
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
@@ -333,14 +336,14 @@ export default function ClientProposalForm({
     e.preventDefault();
     setError('');
     if (!proposalTitle.trim()) {
-      setError('Proposal title is required.');
+      setError(`${proposalTermSingular} title is required.`);
       return;
     }
     setSaving(true);
     try {
       await saveProposal();
       setHasUserEdited(false);
-      toast.success('Proposal saved.');
+      toast.success(`${proposalTermSingular} saved.`);
       onSuccess?.();
     } catch (err) {
       setError(err.message || 'Something went wrong');
@@ -353,7 +356,7 @@ export default function ClientProposalForm({
     e.preventDefault();
     setError('');
     if (!proposalTitle.trim()) {
-      setError('Proposal title is required.');
+      setError(`${proposalTermSingular} title is required.`);
       return;
     }
     setSaving(true);
@@ -375,9 +378,9 @@ export default function ClientProposalForm({
         });
         const sendData = await sendRes.json().catch(() => ({}));
         if (!sendRes.ok) throw new Error(sendData.error || 'Failed to send email');
-        toast.success(`Proposal saved and email sent to ${clientTermSingularLower}.`);
+        toast.success(`${proposalTermSingular} saved and email sent to ${clientTermSingularLower}.`);
       } else {
-        toast.success('Proposal saved.');
+        toast.success(`${proposalTermSingular} saved.`);
       }
       setHasUserEdited(false);
       onSuccess?.();
@@ -397,14 +400,14 @@ export default function ClientProposalForm({
       )}
 
       <DocumentFormHeader
-        sectionLabel="Proposal"
+        sectionLabel={proposalTermSingular}
         idPrefix="proposal"
-        titleLabel="Proposal title"
+        titleLabel={`${proposalTermSingular} title`}
         titleValue={proposalTitle}
-        titlePlaceholder="e.g. Website redesign proposal"
+        titlePlaceholder={`e.g. Website redesign ${proposalTermSingularLower}`}
         titleRequired
         onTitleChange={(e) => { markDirty(); setProposalTitle(e.target.value); }}
-        documentIdLabel="Proposal ID"
+        documentIdLabel={`${proposalTermSingular} ID`}
         documentIdValue={proposalNumber}
         documentIdPlaceholder="Auto-generated or enter your own"
         onDocumentIdChange={(e) => { markDirty(); setProposalNumber(e.target.value); }}

@@ -23,6 +23,7 @@ const MAX_ZOOM = 2;
  * @param {string} [currency='USD']
  * @param {boolean} [autoPrint] - when true, triggers print shortly after open
  * @param {string} [lineItemsSectionLabel='Services'] - Section heading for line items (e.g. "Procedures", "Products")
+ * @param {string} [documentTypeLabel] - When type is 'proposal', label for the document type (e.g. "Quote", "Estimate") for dialog title and document heading
  */
 export default function DocumentViewDialog({
   isOpen,
@@ -34,6 +35,7 @@ export default function DocumentViewDialog({
   currency = 'USD',
   autoPrint = false,
   lineItemsSectionLabel = 'Services',
+  documentTypeLabel,
 }) {
   const printRef = useRef(null);
   const contentRef = useRef(null);
@@ -67,7 +69,7 @@ export default function DocumentViewDialog({
   const zoomOut = () => setScale((s) => Math.max(MIN_ZOOM, ZOOM_STEPS.slice().reverse().find((z) => z < s) ?? s - 0.25));
   const set100 = () => setScale(1);
 
-  const title = type === 'proposal' ? 'View proposal' : 'View invoice';
+  const title = type === 'proposal' ? `View ${documentTypeLabel || 'proposal'}` : 'View invoice';
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -126,6 +128,7 @@ export default function DocumentViewDialog({
               >
                 <ProposalInvoiceDocument
                   type={type}
+                  documentTypeLabel={documentTypeLabel}
                   company={company}
                   client={client}
                   document={doc}

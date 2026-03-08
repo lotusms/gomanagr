@@ -27,6 +27,7 @@ function getOwnerNavItems(accountIndustry) {
   const teamTerm = getTermForIndustry(accountIndustry, 'team');
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const servicesTerm = getTermForIndustry(accountIndustry, 'services');
+  const proposalsTerm = getTermForIndustry(accountIndustry, 'proposal');
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
     { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
@@ -35,7 +36,7 @@ function getOwnerNavItems(accountIndustry) {
     { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
-    { name: 'Proposals', href: '/dashboard/proposals', icon: HiDocumentText },
+    { name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
     { divider: true },
@@ -51,6 +52,7 @@ function getAdminNavItems(accountIndustry, memberRole) {
   const teamTerm = getTermForIndustry(accountIndustry, 'team');
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const servicesTerm = getTermForIndustry(accountIndustry, 'services');
+  const proposalsTerm = getTermForIndustry(accountIndustry, 'proposal');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
@@ -62,7 +64,7 @@ function getAdminNavItems(accountIndustry, memberRole) {
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
   ];
   if (memberRole !== ORG_ROLE.DEVELOPER) {
-    items.push({ name: 'Proposals', href: '/dashboard/proposals', icon: HiDocumentText });
+    items.push({ name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText });
   }
   items.push(
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },

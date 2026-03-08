@@ -58,7 +58,7 @@ export const DOC_TYPES = [
 
 const VALID_DOC_SECTION_KEYS = DOC_TYPES.map((t) => t.key);
 
-function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD' }) {
+function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD', proposalTermSingular = 'Proposal' }) {
   const router = useRouter();
   const [contracts, setContracts] = useState([]);
   const [attachments, setAttachments] = useState([]);
@@ -151,6 +151,7 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
         onDelete={setContractToDelete}
         borderClass={type.borderClass}
         defaultCurrency={defaultCurrency}
+        proposalTermSingular={proposalTermSingular}
       />
       <ConfirmationDialog
         isOpen={!!contractToDelete}
@@ -167,7 +168,7 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   );
 }
 
-function ProposalsBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], clientTermSingular = 'Client' }) {
+function ProposalsBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], clientTermSingular = 'Client', proposalTermPlural = 'Proposals', proposalTermSingular = 'Proposal', proposalTermPluralLower = 'proposals', proposalTermSingularLower = 'proposal' }) {
   const router = useRouter();
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -220,17 +221,17 @@ function ProposalsBlock({ clientId, userId, organizationId, organization = null,
   };
 
   if (loading) {
-    return <EmptyStateCard message="Loading proposals…" />;
+    return <EmptyStateCard message={`Loading ${proposalTermPluralLower}…`} />;
   }
 
   if (proposals.length === 0) {
     return (
       <EmptyStateCard
-        message="No proposals yet"
+        message={`No ${proposalTermPluralLower} yet`}
         action={
           <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
             <HiPlus className="w-5 h-5" />
-            Add proposal
+            Add {proposalTermSingularLower}
           </PrimaryButton>
         }
       />
@@ -250,13 +251,15 @@ function ProposalsBlock({ clientId, userId, organizationId, organization = null,
         clientAddressLines={clientAddressLines}
         organization={organization}
         clientTermSingular={clientTermSingular}
+        proposalTermSingular={proposalTermSingular}
+        proposalTermSingularLower={proposalTermSingularLower}
       />
       <ConfirmationDialog
         isOpen={!!proposalToDelete}
         onClose={() => setProposalToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        title="Delete proposal"
-        message="This proposal will be permanently deleted. This cannot be undone."
+        title={`Delete ${proposalTermSingular}`}
+        message={`This ${proposalTermSingularLower} will be permanently deleted. This cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         confirmationWord="delete"
@@ -619,13 +622,20 @@ export default function DocumentsFilesSection({
   const clientTermPlural = getTermForIndustry(industry, 'client');
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const proposalTermPlural = getTermForIndustry(industry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermPluralLower = (proposalTermPlural || 'proposals').toLowerCase();
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
   const docTypesWithClientTerm = useMemo(
     () =>
-      DOC_TYPES.map((t) => ({
-        ...t,
-        description: t.description.replace(/this client/gi, `this ${clientTermSingularLower}`),
-      })),
-    [clientTermSingularLower]
+      DOC_TYPES.map((t) => {
+        const base = { ...t, description: t.description.replace(/this client/gi, `this ${clientTermSingularLower}`) };
+        if (t.key === 'proposals') {
+          return { ...base, label: proposalTermPlural, description: `${proposalTermPlural} sent to this ${clientTermSingularLower}` };
+        }
+        return base;
+      }),
+    [clientTermSingularLower, proposalTermPlural]
   );
   const useContractsFromApi = Boolean(clientId && userId);
   const useProposalsFromApi = Boolean(clientId && userId);
@@ -766,7 +776,7 @@ export default function DocumentsFilesSection({
 
   return (
     <SideNavViewerLayout
-      introText={`Track contracts, proposals, invoices, and other documents for this ${clientTermSingularLower}.`}
+      introText={`Track contracts, ${proposalTermPluralLower}, invoices, and other documents for this ${clientTermSingularLower}.`}
       navAriaLabel="Documents sections"
       navItems={navItems}
       selectedKey={selectedKey}
@@ -788,6 +798,7 @@ export default function DocumentsFilesSection({
           organizationId={organizationId}
           onHasEntries={setHasContractEntries}
           defaultCurrency={defaultCurrency}
+          proposalTermSingular={proposalTermSingular}
         />
       ) : selectedKey === 'proposals' && useProposalsFromApi ? (
         <ProposalsBlock
@@ -801,6 +812,10 @@ export default function DocumentsFilesSection({
           clientEmail={clientEmail}
           clientAddressLines={clientAddressLines}
           clientTermSingular={clientTermSingular}
+          proposalTermPlural={proposalTermPlural}
+          proposalTermSingular={proposalTermSingular}
+          proposalTermPluralLower={proposalTermPluralLower}
+          proposalTermSingularLower={proposalTermSingularLower}
         />
       ) : selectedKey === 'invoices' && useInvoicesFromApi ? (
         <InvoicesBlock

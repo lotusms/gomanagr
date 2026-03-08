@@ -2,7 +2,7 @@ import { useState } from 'react';
 import CardDeleteButton from './CardDeleteButton';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
-import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { DocumentViewDialog } from '@/components/documents';
 import { buildProposalDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
 import { HiEye, HiPrinter } from 'react-icons/hi';
@@ -31,12 +31,17 @@ const STATUS_LABELS = {
  * @param {string[]} [clientAddressLines] - Client address lines for Bill to (e.g. from billing or company address)
  * @param {Object|null} [organization] - User's organization (for company name, logo, address, phone on document)
  */
-export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, clientNameByClientId, clientName = '', clientEmail = '', clientAddressLines = [], defaultCurrency = 'USD', organization = null, clientTermSingular = 'Client' }) {
+export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, clientNameByClientId, clientName = '', clientEmail = '', clientAddressLines = [], defaultCurrency = 'USD', organization = null, clientTermSingular = 'Client', proposalTermSingular: proposalTermSingularProp, proposalTermSingularLower: proposalTermSingularLowerProp }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
   const [viewState, setViewState] = useState({ proposal: null, autoPrint: false });
-  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
+  const industry = organization?.industry ?? account?.industry;
+  const lineItemsSectionLabel = getTermForIndustry(industry, 'services');
+  const proposalTermPlural = getTermForIndustry(industry, 'proposal');
+  const proposalTermSingular = proposalTermSingularProp ?? getTermSingular(proposalTermPlural) ?? 'Proposal';
+  const proposalTermSingularLower = proposalTermSingularLowerProp ?? proposalTermSingular.toLowerCase();
+  const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
 
   const company = buildCompanyForDocument(account, organization);
   const closeView = () => setViewState({ proposal: null, autoPrint: false });
@@ -69,7 +74,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
                 setViewState({ proposal: p, autoPrint: false });
               }}
               className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 transition-colors"
-              title="View proposal"
+              title={`View ${proposalTermSingularLower}`}
             >
               <HiEye className="w-4 h-4" />
             </button>
@@ -81,13 +86,13 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
                 setViewState({ proposal: p, autoPrint: true });
               }}
               className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 transition-colors"
-              title="Print proposal"
+              title={`Print ${proposalTermSingularLower}`}
             >
               <HiPrinter className="w-4 h-4" />
             </button>
             <CardDeleteButton
               onDelete={() => onDelete(p.id)}
-              title="Delete proposal"
+              title={`Delete ${proposalTermSingularLower}`}
               className="opacity-60 group-hover:opacity-100"
             />
           </div>
@@ -96,7 +101,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
               <span className="font-medium">{clientNameByClientId[p.client_id]}</span>
             )}
             {p.proposal_number && (
-              <span title="Proposal ID">{p.proposal_number}</span>
+              <span title={`${proposalTermSingular} ID`}>{p.proposal_number}</span>
             )}
             {p.status && (
               <span className="font-medium px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
@@ -105,7 +110,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
             )}
             {p.date_created && <time dateTime={p.date_created}>{formatDateFromISO(p.date_created, dateFormat, timezone)}</time>}
           </div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.proposal_title || 'Untitled proposal'}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{p.proposal_title || untitledProposalLabel}</p>
           {p.scope_summary && (
             <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-3 whitespace-pre-wrap pr-8">{clipText(p.scope_summary, 3)}</p>
           )}
@@ -116,6 +121,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
           isOpen={!!viewState.proposal}
           onClose={closeView}
           type="proposal"
+          documentTypeLabel={proposalTermSingular}
           document={buildProposalDocumentPayload(viewState.proposal)}
           company={company}
           client={{

@@ -52,8 +52,12 @@ export default function ClientContractForm({
   const clientTermPlural = getTermForIndustry(industry, 'client');
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const proposalTermPlural = getTermForIndustry(industry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
+  const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -390,14 +394,14 @@ export default function ClientContractForm({
         <Dropdown
           id="related-proposal"
           name="related-proposal"
-          label="Linked proposal"
+          label={`Linked ${proposalTermSingularLower}`}
           value={relatedProposalId}
           onChange={(e) => { markDirty(); setRelatedProposalId(e.target.value ?? ''); }}
           options={[
             { value: '', label: 'None' },
             ...proposals.map((p) => ({
               value: p.id,
-              label: (p.proposal_number || p.proposal_title || 'Untitled proposal').trim() || 'Untitled proposal',
+              label: (p.proposal_number || p.proposal_title || untitledProposalLabel).trim() || untitledProposalLabel,
             })),
           ]}
           placeholder={proposalsLoading ? 'Loading…' : 'None'}
@@ -410,7 +414,7 @@ export default function ClientContractForm({
           onChange={(e) => { markDirty(); setContractValue(e.target.value ?? ''); }}
           currency={defaultCurrency}
           variant="light"
-          placeholder={relatedProposalId ? 'From linked proposal' : 'Link a proposal to set value'}
+          placeholder={relatedProposalId ? `From linked ${proposalTermSingularLower}` : `Link a ${proposalTermSingularLower} to set value`}
           disabled
         />
         <Dropdown

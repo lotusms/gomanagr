@@ -35,6 +35,7 @@
  * @param {Array<{value: string, label: string}>} [clientOptions] - Client dropdown options
  * @param {boolean} [clientsLoading] - Client options loading state
  * @param {boolean} [showUseProposalDropdown] - Whether to show "Use Proposal" dropdown (e.g. invoice from proposal)
+ * @param {string} [useProposalLabel] - Label for the proposal dropdown (e.g. "Use Proposal", "Use Quote")
  * @param {string} [useProposalValue] - Selected proposal id
  * @param {Function} [onUseProposalChange] - (e) => void
  * @param {Array<{value: string, label: string}>} [useProposalOptions] - Proposal options (per-client or all)
@@ -69,6 +70,7 @@ export default function DocumentFormHeader({
   clientOptions = [],
   clientsLoading = false,
   showUseProposalDropdown = false,
+  useProposalLabel = 'Use Proposal',
   useProposalValue = '',
   onUseProposalChange,
   useProposalOptions = [],
@@ -134,7 +136,7 @@ export default function DocumentFormHeader({
               <Dropdown
                 id={`${idPrefix}-use-proposal`}
                 name={`${idPrefix}-use-proposal`}
-                label="Use Proposal"
+                label={useProposalLabel}
                 value={useProposalValue}
                 onChange={(e) => onUseProposalChange?.(e)}
                 options={useProposalOptions}

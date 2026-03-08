@@ -42,9 +42,9 @@ const cellStyle = {
   fontSize: '10pt',
 };
 
-export default function ProposalInvoiceDocument({ type, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services' }) {
+export default function ProposalInvoiceDocument({ type, documentTypeLabel, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services' }) {
   const isProposal = type === 'proposal';
-  const title = isProposal ? 'Proposal' : 'Invoice';
+  const title = isProposal ? (documentTypeLabel || 'Proposal') : 'Invoice';
   const lineItems = Array.isArray(doc.lineItems) ? doc.lineItems : [];
   const subtotal = Number(doc.subtotal) || 0;
   const taxNum = Number(doc.tax) || 0;
@@ -217,7 +217,7 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
         </div>
         <div style={metaStyle}>
           <div style={{ marginBottom: '4px' }}>
-            <strong>{isProposal ? 'Proposal number:' : 'Invoice number:'}</strong> {doc.number || '—'}
+            <strong>{isProposal ? `${documentTypeLabel || 'Proposal'} number:` : 'Invoice number:'}</strong> {doc.number || '—'}
           </div>
           {isProposal && (
             <>

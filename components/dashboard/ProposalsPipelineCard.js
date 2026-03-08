@@ -12,6 +12,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const STATUS_CONFIG = [
   { key: 'draft', label: 'Draft', color: '#9ca3af' },
@@ -25,7 +26,11 @@ const STATUS_CONFIG = [
 /**
  * Pipeline counts as a horizontal bar chart: Draft / Sent / Viewed / Accepted / Expired / Rejected, "Create proposal" CTA.
  */
-export default function ProposalsPipelineCard({ counts = {} }) {
+export default function ProposalsPipelineCard({ counts = {}, accountIndustry = null } = {}) {
+  const proposalTermPlural = getTermForIndustry(accountIndustry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermPluralLower = (proposalTermPlural || 'proposals').toLowerCase();
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
   const chartData = STATUS_CONFIG.map(({ key, label, color }) => ({
     name: label,
     value: counts[key] ?? 0,
@@ -43,7 +48,7 @@ export default function ProposalsPipelineCard({ counts = {} }) {
           <HiDocumentText className="w-5 h-5" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Proposals pipeline
+          {proposalTermPlural} pipeline
         </h3>
       </div>
       <div className="px-5 py-4 space-y-4">
@@ -52,7 +57,7 @@ export default function ProposalsPipelineCard({ counts = {} }) {
             <div className="w-32 h-32 rounded-lg bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center mb-3">
               <span className="text-2xl font-bold text-gray-400 dark:text-gray-500">0</span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">No proposals yet</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">No {proposalTermPluralLower} yet</p>
           </div>
         ) : (
           <div className="h-56 sm:h-64 w-full">
@@ -112,7 +117,7 @@ export default function ProposalsPipelineCard({ counts = {} }) {
             className="inline-flex items-center gap-2 w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white font-medium text-sm transition-colors"
           >
             <HiPlus className="w-4 h-4" />
-            Create proposal
+            Create {proposalTermSingularLower}
           </Link>
         </div>
       </div>

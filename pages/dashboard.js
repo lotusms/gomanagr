@@ -429,7 +429,7 @@ function DashboardContent() {
                 dueIn30DaysCount={invoicesSummary.dueIn30DaysCount}
                 currency={currency}
               />
-              <ProposalsPipelineCard counts={proposalsPipeline} />
+              <ProposalsPipelineCard counts={proposalsPipeline} accountIndustry={accountIndustry} />
               <RecentlyUpdatedCard
                 items={recentlyUpdated}
                 dateFormat={dateFormat}

@@ -5,7 +5,7 @@ import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
 import { buildProposalDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
-import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -32,7 +32,12 @@ export default function ProposalCardServiceStyle({
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
-  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
+  const industry = organization?.industry ?? account?.industry;
+  const lineItemsSectionLabel = getTermForIndustry(industry, 'services');
+  const proposalTermPlural = getTermForIndustry(industry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
+  const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
   const [viewState, setViewState] = useState({ open: false, autoPrint: false });
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchorRect, setMenuAnchorRect] = useState(null);
@@ -78,7 +83,7 @@ export default function ProposalCardServiceStyle({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-bold text-white line-clamp-2">
-                {proposal.proposal_title || 'Untitled proposal'}
+                {proposal.proposal_title || untitledProposalLabel}
               </h3>
             </div>
           </div>
@@ -91,7 +96,7 @@ export default function ProposalCardServiceStyle({
                 onDelete(proposal.id);
               }}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-              title="Delete proposal"
+              title={`Delete ${proposalTermSingularLower}`}
             >
               <HiTrash className="size-5" />
             </button>
@@ -134,7 +139,7 @@ export default function ProposalCardServiceStyle({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <HiEye className="w-4 h-4 flex-shrink-0" />
-                    View proposal
+                    View {proposalTermSingularLower}
                   </button>
                   <button
                     type="button"
@@ -147,7 +152,7 @@ export default function ProposalCardServiceStyle({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <HiPrinter className="w-4 h-4 flex-shrink-0" />
-                    Print proposal
+                    Print {proposalTermSingularLower}
                   </button>
                 </div>,
                 document.body
@@ -174,7 +179,7 @@ export default function ProposalCardServiceStyle({
           {clientName && (
             <span className="font-medium text-gray-700 dark:text-gray-300">{clientName}</span>
           )}
-          {proposal.proposal_number && <span title="Proposal ID">{proposal.proposal_number}</span>}
+          {proposal.proposal_number && <span title={`${proposalTermSingular} ID`}>{proposal.proposal_number}</span>}
           {statusLabel && (
             <span className="font-medium px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
               {statusLabel}
@@ -202,6 +207,7 @@ export default function ProposalCardServiceStyle({
           isOpen={viewState.open}
           onClose={() => setViewState({ open: false, autoPrint: false })}
           type="proposal"
+          documentTypeLabel={proposalTermSingular}
           document={buildProposalDocumentPayload(proposal)}
           company={company}
           client={{ name: clientName || 'Client', email: '' }}

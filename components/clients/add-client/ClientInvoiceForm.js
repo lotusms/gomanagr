@@ -91,8 +91,12 @@ export default function ClientInvoiceForm({
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
   const serviceTermSingular = getTermSingular(getTermForIndustry(industry, 'services')) || 'Service';
+  const proposalTermPlural = getTermForIndustry(industry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
+  const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -305,7 +309,7 @@ export default function ClientInvoiceForm({
     { value: '', label: 'None' },
     ...proposals.map((p) => ({
       value: p.id,
-      label: (p.proposal_number || 'Untitled proposal').trim() || 'Untitled proposal',
+      label: (p.proposal_number || untitledProposalLabel).trim() || untitledProposalLabel,
     })),
   ];
 
@@ -313,7 +317,7 @@ export default function ClientInvoiceForm({
     { value: '', label: 'Fill invoice manually' },
     ...proposals.map((p) => ({
       value: p.id,
-      label: (p.proposal_number || 'Untitled proposal').trim() || 'Untitled proposal',
+      label: (p.proposal_number || untitledProposalLabel).trim() || untitledProposalLabel,
     })),
   ];
 
@@ -611,11 +615,12 @@ export default function ClientInvoiceForm({
         clientOptions={clientOptions}
         clientsLoading={clientsLoading}
         showUseProposalDropdown={true}
+        useProposalLabel={`Use ${proposalTermSingular}`}
         useProposalValue={startFromProposalId}
         onUseProposalChange={(e) => { markDirty(); handleStartFromProposalChange(e.target.value ?? ''); }}
         useProposalOptions={startFromProposalOptions}
         useProposalLoading={proposalsLoading}
-        useProposalPlaceholder={effectiveClientId ? 'Fill invoice manually' : 'Select a proposal'}
+        useProposalPlaceholder={effectiveClientId ? 'Fill invoice manually' : `Select a ${proposalTermSingularLower}`}
       />
 
       <FormStepNav
@@ -691,7 +696,7 @@ export default function ClientInvoiceForm({
                   value={scopeSummary}
                   onChange={(e) => { markDirty(); setScopeSummary(e.target.value); }}
                   rows={3}
-                  placeholder="Scope of work (prepopulated from linked proposal)"
+                  placeholder={`Scope of work (prepopulated from linked ${proposalTermSingularLower})`}
                   variant="light"
                 />
               </div>
@@ -734,7 +739,7 @@ export default function ClientInvoiceForm({
               value={terms}
               onChange={(e) => { markDirty(); setTerms(e.target.value); }}
               rows={6}
-              placeholder="Terms and conditions (prepopulated from linked proposal)"
+              placeholder={`Terms and conditions (prepopulated from linked ${proposalTermSingularLower})`}
               variant="light"
             />
             <FileUploadList

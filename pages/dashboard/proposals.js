@@ -31,6 +31,10 @@ function ProposalsContent() {
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
   const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
+  const proposalTermPlural = getTermForIndustry(accountIndustry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermPluralLower = (proposalTermPlural || 'proposals').toLowerCase();
+  const proposalTermSingularLower = (proposalTermSingular || 'proposal').toLowerCase();
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
   const paginatedProposals = useMemo(() => {
@@ -139,7 +143,7 @@ function ProposalsContent() {
     return (
       <>
         <Head>
-          <title>Proposals - GoManagr</title>
+          <title>{proposalTermPlural} - GoManagr</title>
         </Head>
         <ProposalsPageSkeleton />
       </>
@@ -149,14 +153,14 @@ function ProposalsContent() {
   return (
     <>
       <Head>
-        <title>Proposals - GoManagr</title>
-        <meta name="description" content="Manage proposals" />
+        <title>{proposalTermPlural} - GoManagr</title>
+        <meta name="description" content={`Manage ${proposalTermPluralLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title="Proposals"
-          description={`Proposals created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
+          title={proposalTermPlural}
+          description={`${proposalTermPlural} created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
           actions={
             <PrimaryButton
               type="button"
@@ -164,14 +168,14 @@ function ProposalsContent() {
               onClick={() => router.push('/dashboard/proposals/new')}
             >
               <HiPlus className="w-5 h-5" />
-              Create proposal
+              Create {proposalTermSingularLower}
             </PrimaryButton>
           }
         />
 
         {proposals.length === 0 ? (
           <EmptyStateCard
-            message="No proposals yet"
+            message={`No ${proposalTermPluralLower} yet`}
             action={
               <PrimaryButton
                 type="button"
@@ -179,7 +183,7 @@ function ProposalsContent() {
                 onClick={() => router.push('/dashboard/proposals/new')}
               >
                 <HiPlus className="w-5 h-5" />
-                Create your first proposal
+                Create your first {proposalTermSingularLower}
               </PrimaryButton>
             }
           />
@@ -216,8 +220,8 @@ function ProposalsContent() {
               isOpen={!!proposalToDelete}
               onClose={() => setProposalToDelete(null)}
               onConfirm={handleDeleteConfirm}
-              title="Delete proposal"
-              message="This proposal will be permanently deleted. This cannot be undone."
+              title={`Delete ${proposalTermSingular}`}
+              message={`This ${proposalTermSingularLower} will be permanently deleted. This cannot be undone.`}
               confirmText="Delete"
               cancelText="Cancel"
               confirmationWord="delete"

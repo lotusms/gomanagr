@@ -23,6 +23,10 @@ export default function NewProposalPage() {
   const accountIndustry = organization?.industry ?? industry;
   const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const proposalTermPlural = getTermForIndustry(accountIndustry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermSingularLower = proposalTermSingular.toLowerCase();
+  const proposalTermPluralLower = (proposalTermPlural || 'proposals').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -56,7 +60,7 @@ export default function NewProposalPage() {
     return (
       <>
         <Head>
-          <title>Create proposal - GoManagr</title>
+          <title>Create {proposalTermSingularLower} - GoManagr</title>
         </Head>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48" />
@@ -69,18 +73,18 @@ export default function NewProposalPage() {
   return (
     <>
       <Head>
-        <title>Create proposal - GoManagr</title>
-        <meta name="description" content={`Create a new proposal for a ${clientTermSingularLower}`} />
+        <title>Create {proposalTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Create a new ${proposalTermSingularLower} for a ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Create proposal"
-          description={`Create a sales offer or estimate. Select the ${clientTermSingularLower} this proposal is for.`}
+          title={`Create ${proposalTermSingular}`}
+          description={`Create a sales offer or estimate. Select the ${clientTermSingularLower} this ${proposalTermSingularLower} is for.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to proposals
+                Back to {proposalTermPluralLower}
               </SecondaryButton>
             </Link>
           }
@@ -91,7 +95,7 @@ export default function NewProposalPage() {
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
             showClientDropdown={true}
-            industry={industry}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

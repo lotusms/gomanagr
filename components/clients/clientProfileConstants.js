@@ -116,7 +116,7 @@ const TERMS_BY_CONCEPT = {
     'Agriculture': 'Fields',
     'Home Services': 'Jobs',
     'Automotive': 'Work Orders',
-    'Nonprofit': 'Programs',
+    'Nonprofit': 'Donations',
     'Government': 'Requests',
     'Entertainment': 'Events',
     'Beauty & Spa': 'Appointments',
@@ -130,6 +130,7 @@ const TERMS_BY_CONCEPT = {
     'Hospitality': 'Staff',
     'Food & Drink': 'Staff',
     'Healthcare': 'Staff',
+    'Nonprofit': 'Staff',
   },
   teamMember: {
     default: 'Team Members',
@@ -137,6 +138,7 @@ const TERMS_BY_CONCEPT = {
     'Hospitality': 'Staff Members',
     'Food & Drink': 'Staff Members',
     'Healthcare': 'Staff Members',
+    'Nonprofit': 'Staff Members',
   },
   client: {
     default: 'Clients',
@@ -145,6 +147,7 @@ const TERMS_BY_CONCEPT = {
     'Manufacturing': 'Accounts',
     'Education': 'Students',
     'Hospitality': 'Guests',
+    'Nonprofit': 'Donation Recipients', 
     'Automotive': 'Customers',
     'Government': 'Constituents',
     'Telecommunications': 'Subscribers',
@@ -158,12 +161,72 @@ const TERMS_BY_CONCEPT = {
     'Retail': 'Products',
     'Manufacturing': 'Products',
     'Education': 'Programs',
+    'Nonprofit': 'Programs',
     'Telecommunications': 'Plans',
     'Utilities': 'Plans',
     'Food & Drink': 'Menu Items',
     'Travel & Tourism': 'Packages',
   },
-  // Future: service: { proposal: { default: 'Proposals', ... },
+  proposals: {
+    default: 'Proposals',
+    'Healthcare': 'Estimates',
+    'Finance': 'Estimates',
+    'Real Estate': 'Offers',
+    'Retail': 'Quotes',
+    'Manufacturing': 'Quotes',
+    'Legal': 'Retainer Agreements',
+    'Transportation': 'Quotes',
+    'Agriculture': 'Estimates',
+    'Home Services': 'Estimates',
+    'Nonprofit': 'Donation Estimates',
+    'Automotive': 'Estimates',
+    'Government': 'Bids',
+    'Telecommunications': 'Quotes',
+    'Utilities': 'Quotes',
+    'Food & Drink': 'Quotes',
+    'Travel & Tourism': 'Quotes',
+  },
+  invoices: {
+    default: 'Invoices',
+    'Healthcare': 'Bills',
+    'Retail': 'Receipts',
+    'Education': 'Tuition Statements',
+    'Hospitality': 'Bills',
+    'Energy': 'Bills',
+    'Automotive': 'Repair Orders',
+    'Telecommunications': 'Bills',
+    'Utilities': 'Bills',
+    'Nonprofit': 'Donation Receipts',
+    'Food & Drink': 'Receipts',
+    'Beauty & Spa': 'Receipts',
+    'Travel & Tourism': 'Receipts',
+  },
+  contracts: {
+    default: 'Contracts',
+    'Technology': 'Agreements',
+    'Healthcare': 'Consent Forms',
+    'Finance': 'Agreements',
+    'Real Estate': 'Leases',
+    'Retail': 'Agreements',
+    'Manufacturing': 'Agreements',
+    'Education': 'Agreements',
+    'Marketing': 'Agreements',
+    'Hospitality': 'Agreements',
+    'Transportation': 'Agreements',
+    'Home Services': 'Agreements',
+    'Automotive': 'Service Agreements',
+    'Energy': 'Service Agreements',
+    'Agriculture': 'Agreements',
+    'Nonprofit': 'Agreements',
+    'Entertainment': 'Agreements',
+    'Media': 'Agreements',
+    'Telecommunications': 'Service Agreements',
+    'Utilities': 'Service Agreements',
+    'Beauty & Spa': 'Service Agreements',
+    'Food & Drink': 'Agreements',
+    'Health & Wellness': 'Waivers',
+    'Travel & Tourism': 'Booking Agreements',
+  },
 };
 
 /**
@@ -175,8 +238,8 @@ const TERMS_BY_CONCEPT = {
  */
 export function getTermForIndustry(industry, concept) {
   const key = typeof industry === 'string' ? industry.trim() : '';
-  const config = TERMS_BY_CONCEPT[concept];
-  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : concept === 'services' ? 'Services' : 'Projects';
+  const config = TERMS_BY_CONCEPT[concept] ?? (concept === 'proposal' ? TERMS_BY_CONCEPT.proposals : undefined);
+  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : concept === 'services' ? 'Services' : concept === 'proposal' ? 'Proposals' : 'Projects';
   if (!key) return config.default;
   return config[key] ?? config.default;
 }
@@ -229,6 +292,13 @@ export function getTermSingular(pluralTerm) {
     'Plans': 'Plan',
     'Menu Items': 'Menu Item',
     'Packages': 'Package',
+    'Proposals': 'Proposal',
+    'Estimates': 'Estimate',
+    'Offers': 'Offer',
+    'Quotes': 'Quote',
+    'Retainer Agreements': 'Retainer Agreement',
+    'Bids': 'Bid',
+    'Donation Estimates': 'Donation Estimate',
   };
 
   return singularMap[pluralTerm] || pluralTerm.replace(/s$/, '');

@@ -21,7 +21,7 @@ const TYPE_LABELS = {
   vendor_agreement: 'Vendor agreement',
 };
 
-export default function ContractLogCards({ contracts, onSelect, onDelete, borderClass, defaultCurrency = 'USD', attachments = [], clientId }) {
+export default function ContractLogCards({ contracts, onSelect, onDelete, borderClass, defaultCurrency = 'USD', attachments = [], clientId, proposalTermSingular = 'Proposal' }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -62,9 +62,9 @@ export default function ContractLogCards({ contracts, onSelect, onDelete, border
             {c.start_date && <time dateTime={c.start_date}>{formatDateFromISO(c.start_date, dateFormat, timezone)}</time>}
           </div>
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{c.contract_title || 'Untitled contract'}</p>
-          {c.related_proposal && (
+            {c.related_proposal && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              From proposal: {[c.related_proposal.proposal_number, c.related_proposal.proposal_title].filter(Boolean).join(' – ') || 'Proposal'}
+              From {proposalTermSingular.toLowerCase()}: {[c.related_proposal.proposal_number, c.related_proposal.proposal_title].filter(Boolean).join(' – ') || proposalTermSingular}
             </p>
           )}
           {c.contract_value != null && c.contract_value !== '' && (

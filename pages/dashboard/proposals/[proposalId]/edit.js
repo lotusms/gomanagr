@@ -26,6 +26,10 @@ export default function EditProposalPage() {
   const accountIndustry = organization?.industry ?? industry;
   const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
   const clientTermSingularLower = (getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client').toLowerCase();
+  const proposalTermPlural = getTermForIndustry(accountIndustry, 'proposal');
+  const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
+  const proposalTermPluralLower = (proposalTermPlural || 'proposals').toLowerCase();
+  const proposalTermSingularLower = (proposalTermSingular || 'proposal').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -83,7 +87,7 @@ export default function EditProposalPage() {
     return (
       <>
         <Head>
-          <title>Edit proposal - GoManagr</title>
+          <title>Edit {proposalTermSingularLower} - GoManagr</title>
         </Head>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48" />
@@ -97,17 +101,17 @@ export default function EditProposalPage() {
     return (
       <>
         <Head>
-          <title>Proposal not found - GoManagr</title>
+          <title>{proposalTermSingular} not found - GoManagr</title>
         </Head>
         <div className="space-y-6">
           <PageHeader
-            title="Proposals"
-            description={`Proposals created for your ${clientTermPluralLower}.`}
+            title={proposalTermPlural}
+            description={`${proposalTermPlural} created for your ${clientTermPluralLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
                   <HiArrowLeft className="w-5 h-5" />
-                  Back to proposals
+                  Back to {proposalTermPluralLower}
                 </SecondaryButton>
               </Link>
             }
@@ -118,14 +122,14 @@ export default function EditProposalPage() {
                 <HiDocumentText className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
               </div>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Proposal not found</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{proposalTermSingular} not found</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
-              This proposal may have been deleted or you don&apos;t have access to it.
+              This {proposalTermSingularLower} may have been deleted or you don&apos;t have access to it.
             </p>
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to proposals
+                Back to {proposalTermPluralLower}
               </SecondaryButton>
             </Link>
           </div>
@@ -137,18 +141,18 @@ export default function EditProposalPage() {
   return (
     <>
       <Head>
-        <title>Edit proposal - GoManagr</title>
-        <meta name="description" content="Edit this proposal" />
+        <title>Edit {proposalTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Edit this ${proposalTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Edit proposal"
-          description={`Update the details of this proposal. You can change the linked ${clientTermSingularLower} if needed.`}
+          title={`Edit ${proposalTermSingular}`}
+          description={`Update the details of this ${proposalTermSingularLower}. You can change the linked ${clientTermSingularLower} if needed.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to proposals
+                Back to {proposalTermPluralLower}
               </SecondaryButton>
             </Link>
           }

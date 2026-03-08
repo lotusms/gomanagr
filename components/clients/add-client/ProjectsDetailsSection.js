@@ -63,13 +63,16 @@ export default function ProjectsDetailsSection({
 
   const navItems = useMemo(
     () =>
-      projectTypes.map((t) => ({
-        key: t.key,
-        label: t.label,
-        icon: t.icon,
-        badgeClass: t.badgeClass,
-        count: null,
-      })),
+      projectTypes.map((t) => {
+        const tab = PROJECT_STATUS_TABS.find((p) => p.key === t.key);
+        return {
+          key: t.key,
+          label: tab ? tab.label : t.label,
+          icon: t.icon,
+          badgeClass: t.badgeClass,
+          count: null,
+        };
+      }),
     [projectTypes]
   );
 

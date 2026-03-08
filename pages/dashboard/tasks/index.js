@@ -21,6 +21,24 @@ const VIEWS = [
   { id: 'my', label: 'My Tasks', icon: HiUser },
 ];
 
+
+function FilterDropdown({ id, name, value, onChange, options, placeholder, searchable = false, widthClass = 'w-[160px] min-w-[100px]', className = '' }) {
+  return (
+    <div className={widthClass}>
+      <Dropdown
+        id={id}
+        name={name}
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        searchable={searchable}
+        className={className}
+      />
+    </div>
+  );
+}
+
 function TasksContent() {
   const router = useRouter();
   const { currentUser } = useAuth();
@@ -283,71 +301,81 @@ function TasksContent() {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <HiFilter className="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-          <Dropdown
-            id="filter-assignee"
-            name="filterAssignee"
-            value={filterAssignee}
-            onChange={(e) => setFilterAssignee(e.target.value)}
-            options={assigneeFilterOptions}
-            placeholder="Assignee"
-            searchable={assigneeFilterOptions.length > 8}
-          />
-          <Dropdown
-            id="filter-status"
-            name="filterStatus"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            options={statusFilterOptions}
-            placeholder="Status"
-            searchable={false}
-          />
-          <Dropdown
-            id="filter-priority"
-            name="filterPriority"
-            value={filterPriority}
-            onChange={(e) => setFilterPriority(e.target.value)}
-            options={priorityFilterOptions}
-            placeholder="Priority"
-            searchable={false}
-          />
-          <Dropdown
-            id="filter-due"
-            name="filterDueDate"
-            value={filterDueDate}
-            onChange={(e) => setFilterDueDate(e.target.value)}
-            options={dueDateFilterOptions}
-            placeholder="Due date"
-            searchable={false}
-          />
-          <Dropdown
-            id="filter-client"
-            name="filterClient"
-            value={filterClient}
-            onChange={(e) => setFilterClient(e.target.value)}
-            options={clientFilterOptions}
-            placeholder="Client"
-            searchable={clientFilterOptions.length > 10}
-          />
-          <Dropdown
-            id="filter-project"
-            name="filterProject"
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            options={projectFilterOptions}
-            placeholder="Project"
-            searchable={projectFilterOptions.length > 10}
-          />
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
-            >
-              Clear filters
-            </button>
-          )}
+        <div className="flex flex-col xl:flex-row xl:items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200/60 dark:border-gray-700/50 shadow-sm mb-6">
+          <div className="flex items-center gap-2 pr-2 sm:pr-3 border-r border-gray-200 dark:border-gray-600 mr-1">
+            <HiFilter className="w-4 h-4 text-gray-400 dark:text-gray-500" aria-hidden />
+            <span className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 hidden sm:inline">
+              Filters
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <FilterDropdown
+              id="filter-assignee"
+              name="filterAssignee"
+              value={filterAssignee}
+              onChange={(e) => setFilterAssignee(e.target.value)}
+              options={assigneeFilterOptions}
+              placeholder="Assignee"
+              searchable={assigneeFilterOptions.length > 8}
+              
+            />
+            <FilterDropdown
+              id="filter-status"
+              name="filterStatus"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              options={statusFilterOptions}
+              placeholder="Status"
+              
+            />
+            <FilterDropdown
+              id="filter-priority"
+              name="filterPriority"
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              options={priorityFilterOptions}
+              placeholder="Priority"
+              
+            />
+            <FilterDropdown
+              id="filter-due"
+              name="filterDueDate"
+              value={filterDueDate}
+              onChange={(e) => setFilterDueDate(e.target.value)}
+              options={dueDateFilterOptions}
+              placeholder="Due date"
+              
+            />
+            <FilterDropdown
+              id="filter-client"
+              name="filterClient"
+              value={filterClient}
+              onChange={(e) => setFilterClient(e.target.value)}
+              options={clientFilterOptions}
+              placeholder="Client"
+              searchable={clientFilterOptions.length > 10}
+              
+            />
+            <FilterDropdown
+              id="filter-project"
+              name="filterProject"
+              value={filterProject}
+              onChange={(e) => setFilterProject(e.target.value)}
+              options={projectFilterOptions}
+              placeholder="Project"
+              searchable={projectFilterOptions.length > 10}
+              
+            />
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="ml-auto text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 px-3 py-1.5 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
         </div>
 
         {tasks.length === 0 ? (

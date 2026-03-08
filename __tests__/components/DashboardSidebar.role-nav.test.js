@@ -40,7 +40,7 @@ describe('DashboardSidebar role-based navigation', () => {
 
     const items = getNavLinkNamesAndHrefs();
 
-    // Order must match DashboardSidebar getOwnerNavItems: Projects then Tasks then Contracts then Proposals then Invoices
+    // Order must match DashboardSidebar getOwnerNavItems: Projects, Contracts, Proposals, Invoices, then (after divider) Tasks, ...
     const expected = [
       { name: 'Home', href: '/dashboard' },
       { name: 'Team', href: '/dashboard/team' },
@@ -48,10 +48,10 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
-      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Marketing', href: '/dashboard/marketing' },
       { name: 'Insights', href: '/dashboard/insights' },
       { name: 'Timesheets', href: '/dashboard/timesheets' },
@@ -78,10 +78,10 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
-      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];
 
@@ -104,10 +104,10 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
-      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];
     expect(items).toHaveLength(expected.length);
@@ -132,8 +132,8 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
-      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
     ];
 
     expect(items).toHaveLength(expected.length);

@@ -4,6 +4,8 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import Avatar from '@/components/ui/Avatar';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/config/taskConstants';
 import { HiChat, HiLightningBolt } from 'react-icons/hi';
+import { useAuth } from '@/lib/AuthContext';
+import { useOptionalUserAccount, getDisplayName } from '@/lib/UserAccountContext';
 
 function formatActivityKind(kind) {
   const map = {
@@ -93,11 +95,21 @@ export default function TaskActivityComments({
   const [commentBody, setCommentBody] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
+  const { currentUser } = useAuth();
+  const userAccount = useOptionalUserAccount();
+
   const userNameById = {};
   (teamMembers || []).forEach((m) => {
     const id = m.id || m.user_id;
     if (id) userNameById[id] = (m.name || m.displayName || m.email || 'Unknown').trim();
   });
+  // Ensure current user is always in the map so their comments/activity show their name
+  if (userId && currentUser?.uid === userId) {
+    const name = userAccount
+      ? (getDisplayName(userAccount, currentUser.email || '').trim() || 'You')
+      : (currentUser.email || 'You');
+    userNameById[userId] = name;
+  }
 
   const fetchData = useCallback(() => {
     if (!userId || !organizationId || !taskId) return;

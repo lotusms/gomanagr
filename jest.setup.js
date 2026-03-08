@@ -1,5 +1,13 @@
 require('@testing-library/jest-dom');
 
+// Avoid Supabase throw when loading components that depend on lib/supabase (e.g. DateField -> UserAccountContext)
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+}
+
 const originalError = console.error;
 console.error = (...args) => {
   const msg = args.map((a) => (typeof a === 'string' ? a : String(a))).join(' ');

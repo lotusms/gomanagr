@@ -9,16 +9,21 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientEmailForm from '@/components/clients/add-client/ClientEmailForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditClientEmailPage() {
   const router = useRouter();
   const { id: clientId, emailId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
   const [email, setEmail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -26,6 +31,11 @@ export default function EditClientEmailPage() {
       .then((org) => setOrganization(org || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -89,7 +99,7 @@ export default function EditClientEmailPage() {
           <Link href={backUrl}>
             <SecondaryButton type="button" className="gap-2">
               <HiArrowLeft className="w-5 h-5" />
-              Back to client
+              Back to {clientTermSingular}
             </SecondaryButton>
           </Link>
         </div>
@@ -111,7 +121,7 @@ export default function EditClientEmailPage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }
@@ -123,7 +133,7 @@ export default function EditClientEmailPage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             emailId={emailId}
-            industry={industry}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

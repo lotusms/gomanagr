@@ -7,7 +7,7 @@ import { getUserOrganization } from '@/services/organizationService';
 import { DEFAULT_CLIENTS } from '@/config/defaultTeamAndClients';
 import ClientProfile from '@/components/clients/ClientProfile';
 import ClientFormPageSkeleton from '@/components/clients/ClientFormPageSkeleton';
-import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
@@ -73,14 +73,19 @@ export default function EditClientPage() {
   }, [fetchClientData]);
 
   const client = useMemo(() => clientData, [clientData, refreshKey]);
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
 
   if (!loaded) {
-    const projectTermPlural = getTermForIndustry(organization?.industry ?? userAccount?.industry, 'project');
+    const projectTermPlural = getTermForIndustry(accountIndustry, 'project');
     return (
       <>
         <Head>
-          <title>Edit Client - GoManagr</title>
-          <meta name="description" content="Loading client..." />
+          <title>Edit {clientTermSingular} - GoManagr</title>
+          <meta name="description" content={`Loading ${clientTermSingularLower}...`} />
         </Head>
         <ClientFormPageSkeleton projectTermPlural={projectTermPlural} />
       </>
@@ -103,26 +108,26 @@ export default function EditClientPage() {
           }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to save client');
+        if (!res.ok) throw new Error(data.error || `Failed to save ${clientTermSingularLower}`);
       }
     : undefined;
 
   return (
     <>
       <Head>
-        <title>{client.name || 'Client'} - GoManagr</title>
-        <meta name="description" content={`View and edit ${client.name}`} />
+        <title>{client.name || clientTermSingular} - GoManagr</title>
+        <meta name="description" content={`View and edit ${client.name || clientTermSingularLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title={`Edit ${client.name || 'Client'}`}
-          description="Update this client's details."
+          title={`Edit ${client.name || clientTermSingular}`}
+          description={`Update this ${clientTermSingularLower}'s details.`}
           actions={
             <Link href="/dashboard/clients">
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to clients
+                Back to {clientTermPlural}
               </SecondaryButton>
             </Link>
           }

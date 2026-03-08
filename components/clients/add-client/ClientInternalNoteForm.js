@@ -28,6 +28,7 @@ export default function ClientInternalNoteForm({
   industry = null,
 }) {
   const teamMemberSingular = getTermSingular(getTermForIndustry(industry, 'teamMember')) || 'Team member';
+  const clientTermSingularLower = (getTermSingular(getTermForIndustry(industry, 'client')) || 'Client').toLowerCase();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [content, setContent] = useState(initial.content ?? '');
@@ -97,7 +98,7 @@ export default function ClientInternalNoteForm({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={6}
-        placeholder="Private note about this client…"
+        placeholder={`Private note about this ${clientTermSingularLower}…`}
       />
 
       <Dropdown

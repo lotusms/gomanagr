@@ -9,6 +9,7 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import ContractsPageSkeleton from '@/components/dashboard/ContractsPageSkeleton';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
 import ContractCardServiceStyle from '@/components/dashboard/ContractCardServiceStyle';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { HiPlus } from 'react-icons/hi';
 
 function ContractsContent() {
@@ -17,11 +18,17 @@ function ContractsContent() {
   const [contracts, setContracts] = useState([]);
   const [clients, setClients] = useState([]);
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgResolved, setOrgResolved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [contractToDelete, setContractToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const unnamedClientLabel = `Unnamed ${(getTermSingular(clientTermPlural) || 'Client').toLowerCase()}`;
 
   const paginatedContracts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -45,6 +52,11 @@ function ContractsContent() {
       .then((o) => setOrganization(o || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgResolved(true));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -82,11 +94,11 @@ function ContractsContent() {
   const clientNameByClientId = useMemo(() => {
     const map = {};
     clients.forEach((c) => {
-      const name = (c.name || c.companyName || 'Unnamed client').trim();
+      const name = (c.name || c.companyName || unnamedClientLabel).trim();
       if (c.id) map[c.id] = name;
     });
     return map;
-  }, [clients]);
+  }, [clients, unnamedClientLabel]);
 
   const handleDeleteConfirm = async () => {
     if (!contractToDelete || !currentUser?.uid) return;
@@ -133,7 +145,7 @@ function ContractsContent() {
       <div className="space-y-6">
         <PageHeader
           title="Contracts"
-          description="Create and manage contracts for your clients"
+          description={`Create and manage contracts for your ${clientTermPluralLower}`}
           actions={
             <PrimaryButton
               type="button"

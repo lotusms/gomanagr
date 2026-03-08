@@ -8,16 +8,22 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientOnlineResourceForm from '@/components/clients/add-client/ClientOnlineResourceForm';
+import { getUserAccount } from '@/services/userService';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditClientOnlineResourcePage() {
   const router = useRouter();
   const { id: clientId, resourceId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
   const [resource, setResource] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -25,6 +31,11 @@ export default function EditClientOnlineResourcePage() {
       .then((org) => setOrganization(org || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -88,7 +99,7 @@ export default function EditClientOnlineResourcePage() {
           <Link href={backUrl}>
             <SecondaryButton type="button" className="gap-2">
               <HiArrowLeft className="w-5 h-5" />
-              Back to client
+              Back to {clientTermSingular}
             </SecondaryButton>
           </Link>
         </div>
@@ -110,7 +121,7 @@ export default function EditClientOnlineResourcePage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }

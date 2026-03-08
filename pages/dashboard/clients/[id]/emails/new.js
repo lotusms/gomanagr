@@ -9,6 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientEmailForm from '@/components/clients/add-client/ClientEmailForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewClientEmailPage() {
   const router = useRouter();
@@ -17,6 +18,10 @@ export default function NewClientEmailPage() {
   const [organization, setOrganization] = useState(null);
   const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
+
+  const accountIndustry = organization?.industry ?? industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -46,17 +51,17 @@ export default function NewClientEmailPage() {
     <>
       <Head>
         <title>Add email - GoManagr</title>
-        <meta name="description" content="Log an email for this client" />
+        <meta name="description" content={`Log an email for this ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
           title="Add email"
-          description="Log an email in this client’s communications."
+          description={`Log an email in this ${clientTermSingularLower}'s communications.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }
@@ -66,7 +71,7 @@ export default function NewClientEmailPage() {
             clientId={clientId}
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
-            industry={industry}
+            industry={accountIndustry}
             onSuccess={onSuccess}
             onCancel={onCancel}
           />

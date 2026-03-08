@@ -25,13 +25,14 @@ import { isOwnerRole, isAdminRole, isMemberRole, ORG_ROLE } from '@/config/roleP
 function getOwnerNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const teamTerm = getTermForIndustry(accountIndustry, 'team');
+  const clientTerm = getTermForIndustry(accountIndustry, 'client');
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
     { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
-    { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
+    { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: 'Services', href: '/dashboard/services', icon: HiTag },
     { name: 'Proposals', href: '/dashboard/proposals', icon: HiDocumentText },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
@@ -47,6 +48,7 @@ function getOwnerNavItems(accountIndustry) {
 function getAdminNavItems(accountIndustry, memberRole) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const teamTerm = getTermForIndustry(accountIndustry, 'team');
+  const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
@@ -54,7 +56,7 @@ function getAdminNavItems(accountIndustry, memberRole) {
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
-    { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
+    { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: 'Services', href: '/dashboard/services', icon: HiTag },
   ];
   if (memberRole !== ORG_ROLE.DEVELOPER) {
@@ -87,12 +89,13 @@ function isNavItemActive(pathname, href) {
 
 function getMemberNavItems(memberAccess, accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
+  const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
-    { name: 'Clients', href: '/dashboard/clients', icon: HiUserGroup },
+    { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: 'Services', href: '/dashboard/services', icon: HiTag },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
   ];

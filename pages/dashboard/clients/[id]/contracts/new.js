@@ -9,18 +9,29 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientContractForm from '@/components/clients/add-client/ClientContractForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewClientContractPage() {
   const router = useRouter();
   const { id: clientId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [ready, setReady] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid).then((o) => setOrganization(o || null)).catch(() => setOrganization(null));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -49,17 +60,17 @@ export default function NewClientContractPage() {
     <>
       <Head>
         <title>Add contract - GoManagr</title>
-        <meta name="description" content="Add a contract for this client" />
+        <meta name="description" content={`Add a contract for this ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
           title="Add contract"
-          description="Record a new contract for this client."
+          description={`Record a new contract for this ${clientTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }
@@ -70,7 +81,7 @@ export default function NewClientContractPage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
-            industry={organization?.industry ?? null}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

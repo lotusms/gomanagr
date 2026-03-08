@@ -9,6 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft, HiClipboardList } from 'react-icons/hi';
 import ClientContractForm from '@/components/clients/add-client/ClientContractForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditContractPage() {
   const router = useRouter();
@@ -22,6 +23,9 @@ export default function EditContractPage() {
   const [industry, setIndustry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? industry;
+  const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -94,7 +98,6 @@ export default function EditContractPage() {
   }, [currentUser?.uid, contract?.client_id, contractId, organization?.id, notFound]);
 
   const backUrl = '/dashboard/contracts';
-  const accountIndustry = organization?.industry ?? industry;
 
   if (!currentUser?.uid || !contractId) return null;
 
@@ -121,7 +124,7 @@ export default function EditContractPage() {
         <div className="space-y-6">
           <PageHeader
             title="Contracts"
-            description="Contracts created for your clients."
+            description={`Contracts created for your ${clientTermPluralLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
@@ -181,7 +184,7 @@ export default function EditContractPage() {
             contractId={contractId}
             defaultCurrency={defaultCurrency}
             linkedAttachments={linkedAttachments}
-            showClientDropdown={false}
+            showClientDropdown={true}
             industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}

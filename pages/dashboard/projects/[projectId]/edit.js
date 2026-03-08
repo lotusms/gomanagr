@@ -9,7 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
 import ClientProjectForm from '@/components/clients/add-client/ClientProjectForm';
-import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
+import { getProjectTermForIndustry, getProjectTermSingular, getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 export default function EditProjectPage() {
   const router = useRouter();
@@ -26,6 +26,7 @@ export default function EditProjectPage() {
   const projectTermPlural = getProjectTermForIndustry(accountIndustry);
   const projectTermSingular = getProjectTermSingular(projectTermPlural);
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
+  const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -95,7 +96,7 @@ export default function EditProjectPage() {
         <div className="space-y-6">
           <PageHeader
             title={projectTermPlural || 'Projects'}
-            description={`${projectTermPlural || 'Projects'} for your clients.`}
+            description={`${projectTermPlural || 'Projects'} for your ${clientTermPluralLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">

@@ -9,7 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
 import ClientProjectForm from '@/components/clients/add-client/ClientProjectForm';
-import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
+import { getProjectTermForIndustry, getProjectTermSingular, getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditClientProjectPage() {
   const router = useRouter();
@@ -26,6 +26,8 @@ export default function EditClientProjectPage() {
   const projectTermPlural = getProjectTermForIndustry(accountIndustry);
   const projectTermSingular = getProjectTermSingular(projectTermPlural);
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -95,12 +97,12 @@ export default function EditClientProjectPage() {
         <div className="space-y-6">
           <PageHeader
             title={`Edit ${projectTermSingularLower}`}
-            description={`${projectTermPlural || 'Projects'} for this client.`}
+            description={`${projectTermPlural || 'Projects'} for this ${clientTermSingularLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
                   <HiArrowLeft className="w-5 h-5" />
-                  Back to client
+                  Back to {clientTermSingular}
                 </SecondaryButton>
               </Link>
             }
@@ -120,7 +122,7 @@ export default function EditClientProjectPage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           </div>
@@ -143,7 +145,7 @@ export default function EditClientProjectPage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }

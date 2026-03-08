@@ -30,6 +30,8 @@
  * @param {boolean} [showClientDropdown] - Whether to show client selector
  * @param {string} [selectedClientId] - Selected client id
  * @param {Function} [onClientChange] - (e) => void
+ * @param {string} [clientLabel] - Label for client dropdown (e.g. "Client", "Account")
+ * @param {string} [clientPlaceholder] - Placeholder for client dropdown (e.g. "Select client")
  * @param {Array<{value: string, label: string}>} [clientOptions] - Client dropdown options
  * @param {boolean} [clientsLoading] - Client options loading state
  * @param {boolean} [showUseProposalDropdown] - Whether to show "Use Proposal" dropdown (e.g. invoice from proposal)
@@ -60,6 +62,8 @@ export default function DocumentFormHeader({
   onStatusChange,
   statusPlaceholder,
   showClientDropdown = false,
+  clientLabel = 'Client',
+  clientPlaceholder = 'Select client',
   selectedClientId = '',
   onClientChange,
   clientOptions = [],
@@ -100,11 +104,11 @@ export default function DocumentFormHeader({
               <Dropdown
                 id={`${idPrefix}-client`}
                 name={`${idPrefix}-client`}
-                label="Client"
+                label={clientLabel}
                 value={selectedClientId}
                 onChange={(e) => onClientChange?.(e)}
                 options={clientOptions}
-                placeholder={clientsLoading ? 'Loading…' : 'Select client'}
+                placeholder={clientsLoading ? 'Loading…' : clientPlaceholder}
                 searchable={clientOptions.length > 10}
               />
             )}

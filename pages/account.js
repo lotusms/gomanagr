@@ -12,6 +12,7 @@ import Dropdown from '@/components/ui/Dropdown';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { ConfirmationDialog } from '@/components/ui';
 import { PageHeader } from '@/components/ui';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import { HiUser } from 'react-icons/hi';
 
 
@@ -43,6 +44,10 @@ function AccountContent() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const accountIndustry = userAccount?.industry;
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
 
   useEffect(() => {
     if (currentUser?.uid) {
@@ -326,7 +331,7 @@ function AccountContent() {
             onClose={() => !deleting && setDeleteDialogOpen(false)}
             onConfirm={handleDeleteAccount}
             title="Delete Account"
-            message="This will permanently delete your account and all associated data. This action cannot be undone. All your clients, team members, services, appointments, and files will be permanently removed."
+            message={`This will permanently delete your account and all associated data. This action cannot be undone. All your ${clientTermPluralLower}, team members, services, appointments, and files will be permanently removed.`}
             confirmText={deleting ? "Deleting..." : "Delete Account"}
             cancelText="Cancel"
             confirmationWord="DELETE"

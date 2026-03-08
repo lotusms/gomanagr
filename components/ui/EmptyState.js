@@ -26,6 +26,10 @@ export default function EmptyState({
   const projectTermSingular = projectTermPlural ? getTermSingular(projectTermPlural) : null;
   const projectTermPluralLower = (projectTermPlural || 'projects').toLowerCase();
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
+  const clientTermPlural = industry ? getTermForIndustry(industry, 'client') : null;
+  const clientTermSingular = clientTermPlural ? getTermSingular(clientTermPlural) : null;
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
   const teamMemberTerm = industry ? getTermForIndustry(industry, 'teamMember') : 'Team members';
   const teamMemberTermLower = teamMemberTerm.toLowerCase();
 
@@ -37,8 +41,10 @@ export default function EmptyState({
     },
     clients: {
       icon: HiUserGroup,
-      title: 'No clients yet',
-      description: 'Add your first client to start managing relationships and tracking interactions.',
+      title: clientTermPlural ? `No ${clientTermPluralLower} yet` : 'No clients yet',
+      description: clientTermSingular
+        ? `Add your first ${clientTermSingularLower} to start managing relationships and tracking interactions.`
+        : 'Add your first client to start managing relationships and tracking interactions.',
     },
     team: {
       icon: HiUsers,
@@ -55,12 +61,12 @@ export default function EmptyState({
     requests: {
       icon: HiInbox,
       title: 'No requests yet',
-      description: `Requests from clients and ${teamMemberTermLower} will appear here.`,
+      description: `Requests from ${clientTermPluralLower} and ${teamMemberTermLower} will appear here.`,
     },
     proposals: {
       icon: HiDocumentText,
       title: 'No proposals yet',
-      description: `Proposals from clients and ${teamMemberTermLower} will appear here.`,
+      description: `Proposals from ${clientTermPluralLower} and ${teamMemberTermLower} will appear here.`,
     },
     jobs: {
       icon: HiBriefcase,
@@ -70,7 +76,7 @@ export default function EmptyState({
     contracts: {
       icon: HiClipboardList,
       title: 'No contracts yet',
-      description: 'Create and manage contracts for your clients.',
+      description: clientTermPlural ? `Create and manage contracts for your ${clientTermPluralLower}.` : 'Create and manage contracts for your clients.',
     },
     invoices: {
       icon: HiDocumentText,

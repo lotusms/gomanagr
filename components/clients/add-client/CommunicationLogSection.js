@@ -12,6 +12,7 @@ import MeetingNoteLogCards from './MeetingNoteLogCards';
 import InternalNoteLogCards from './InternalNoteLogCards';
 import LogEntryCard from './LogEntryCard';
 import InternalNotesView from './InternalNotesView';
+import { getTermForIndustry, getTermSingular } from '../clientProfileConstants';
 
 export const LOG_TYPES = [
   {
@@ -49,7 +50,7 @@ export const LOG_TYPES = [
   {
     key: 'internalNotes',
     label: 'Internal notes',
-    description: 'Not visible to client',
+    description: 'Not visible to client', // overridden per industry in component
     icon: HiLockClosed,
     borderClass: 'border-l-slate-500 dark:border-l-slate-400',
     badgeClass: 'bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-200',
@@ -584,6 +585,8 @@ export default function CommunicationLogSection({
   industry,
 }) {
   const router = useRouter();
+  const clientTermSingular = getTermSingular(getTermForIndustry(industry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
   const useEmailsFromApi = Boolean(clientId && userId);
   const useMessagesFromApi = Boolean(clientId && userId);
   const useCallsFromApi = Boolean(clientId && userId);
@@ -653,6 +656,7 @@ export default function CommunicationLogSection({
 
   const navItems = LOG_TYPES.map((t) => ({
     ...t,
+    description: t.key === 'internalNotes' ? `Not visible to ${clientTermSingularLower}` : t.description,
     count: t.key === 'emails' && useEmailsFromApi
       ? null
       : t.key === 'messages' && useMessagesFromApi
@@ -674,7 +678,7 @@ export default function CommunicationLogSection({
     ? {
         icon: selectedType.icon,
         title: selectedType.label,
-        description: selectedKey !== 'internalNotes' ? selectedType.description : undefined,
+        description: selectedKey === 'internalNotes' ? `Not visible to ${clientTermSingularLower}` : selectedType.description,
         badgeClass: selectedType.badgeClass,
       }
     : null;
@@ -742,7 +746,7 @@ export default function CommunicationLogSection({
           />
         );
       }
-      return <InternalNotesView value={internalNotes} onChange={onInternalNotesChange} />;
+      return <InternalNotesView value={internalNotes} onChange={onInternalNotesChange} clientTermSingularLower={clientTermSingularLower} />;
     }
     const block = blocks.find((b) => b.type.key === selectedKey);
     if (block) return <LogBlock {...block} />;
@@ -751,7 +755,7 @@ export default function CommunicationLogSection({
 
   return (
     <SideNavViewerLayout
-      introText="Keep a record of how you've communicated with this client."
+      introText={`Keep a record of how you've communicated with this ${clientTermSingularLower}.`}
       navAriaLabel="Communication log sections"
       navItems={navItems}
       selectedKey={selectedKey}

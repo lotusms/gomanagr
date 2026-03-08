@@ -61,6 +61,9 @@ export default function AppointmentForm({
   const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
   const teamMemberSingular = getTermSingular(teamMemberTerm);
   const teamMemberSingularLower = teamMemberSingular.toLowerCase();
+  const clientTermPlural = getTermForIndustry(industry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
   const startHour = parseHour(businessHoursStart);
   const endHour = parseHour(businessHoursEnd);
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
@@ -644,11 +647,13 @@ export default function AppointmentForm({
                   }
                 : undefined
             }
-            label="Client"
+            label={clientTermSingular}
             disabled={saving}
-            dropdownPlaceholder="Select client..."
+            dropdownPlaceholder={`Select ${clientTermSingularLower}...`}
             addButtonLabel="Add"
-            drawerTitle="Add Client"
+            drawerTitle={`Add ${clientTermSingular}`}
+            unnamedLabel={`Unnamed ${clientTermSingularLower}`}
+            industry={industry}
             onNestedDrawerChange={onNestedDrawerChange}
           />
           {errors.client && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.client}</p>}

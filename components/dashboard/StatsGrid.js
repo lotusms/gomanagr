@@ -36,9 +36,11 @@ function getStats(userAccount, organization, teamMemberCount, apiCounts) {
       ? counts.invoiceCount
       : (userAccount?.invoices?.length ?? 0);
 
+  const clientTerm = getTermForIndustry(industry, 'client');
+
   return [
     { title: `Total ${projectTerm}`, value: String(totalProjects), accent: 'blue', Icon: HiFolder },
-    { title: 'Clients', value: String(totalClients), accent: 'emerald', Icon: HiUserGroup },
+    { title: clientTerm, value: String(totalClients), accent: 'emerald', Icon: HiUserGroup },
     { title: teamMemberTerm, value: String(teamCount), accent: 'primary', Icon: HiUsers },
     { title: 'Total Invoices', value: String(invoiceCount), accent: 'amber', Icon: HiCurrencyDollar },
   ];

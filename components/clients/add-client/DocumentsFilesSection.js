@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { HiPlus, HiDocumentText, HiClipboardList, HiCurrencyDollar, HiPaperClip, HiGlobe } from 'react-icons/hi';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { ConfirmationDialog } from '@/components/ui';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import CardDeleteButton from './CardDeleteButton';
 import EmptyStateCard from './EmptyStateCard';
 import SideNavViewerLayout from './SideNavViewerLayout';
@@ -166,7 +167,7 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   );
 }
 
-function ProposalsBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
+function ProposalsBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], clientTermSingular = 'Client' }) {
   const router = useRouter();
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -248,6 +249,7 @@ function ProposalsBlock({ clientId, userId, organizationId, organization = null,
         clientEmail={clientEmail}
         clientAddressLines={clientAddressLines}
         organization={organization}
+        clientTermSingular={clientTermSingular}
       />
       <ConfirmationDialog
         isOpen={!!proposalToDelete}
@@ -264,7 +266,7 @@ function ProposalsBlock({ clientId, userId, organizationId, organization = null,
   );
 }
 
-function InvoicesBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [] }) {
+function InvoicesBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], clientTermSingular = 'Client' }) {
   const router = useRouter();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -346,6 +348,7 @@ function InvoicesBlock({ clientId, userId, organizationId, organization = null, 
         clientEmail={clientEmail}
         clientAddressLines={clientAddressLines}
         organization={organization}
+        clientTermSingular={clientTermSingular}
       />
       <ConfirmationDialog
         isOpen={!!invoiceToDelete}
@@ -595,6 +598,7 @@ export default function DocumentsFilesSection({
   userId,
   organizationId,
   organization = null,
+  industry = null,
   contracts,
   proposals,
   invoices,
@@ -612,12 +616,23 @@ export default function DocumentsFilesSection({
   clientAddressLines = [],
 }) {
   const router = useRouter();
+  const clientTermPlural = getTermForIndustry(industry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const docTypesWithClientTerm = useMemo(
+    () =>
+      DOC_TYPES.map((t) => ({
+        ...t,
+        description: t.description.replace(/this client/gi, `this ${clientTermSingularLower}`),
+      })),
+    [clientTermSingularLower]
+  );
   const useContractsFromApi = Boolean(clientId && userId);
   const useProposalsFromApi = Boolean(clientId && userId);
   const useInvoicesFromApi = Boolean(clientId && userId);
   const useAttachmentsFromApi = Boolean(clientId && userId);
   const useOnlineResourcesFromApi = Boolean(clientId && userId);
-  const defaultKey = initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection) ? initialSection : DOC_TYPES[0].key;
+  const defaultKey = initialSection && VALID_DOC_SECTION_KEYS.includes(initialSection) ? initialSection : docTypesWithClientTerm[0].key;
   const [selectedKey, setSelectedKey] = useState(defaultKey);
   const [hasContractEntries, setHasContractEntries] = useState(false);
   const [hasProposalEntries, setHasProposalEntries] = useState(false);
@@ -633,7 +648,7 @@ export default function DocumentsFilesSection({
 
   const blocks = [
     {
-      type: DOC_TYPES[0],
+      type: docTypesWithClientTerm[0],
       items: contracts,
       onAdd: () => onContractsChange([...contracts, '']),
       onEdit: (idx, v) => {
@@ -644,7 +659,7 @@ export default function DocumentsFilesSection({
       onRemove: (idx) => onContractsChange(contracts.filter((_, i) => i !== idx)),
     },
     {
-      type: DOC_TYPES[1],
+      type: docTypesWithClientTerm[1],
       items: proposals,
       onAdd: () => onProposalsChange([...proposals, '']),
       onEdit: (idx, v) => {
@@ -655,7 +670,7 @@ export default function DocumentsFilesSection({
       onRemove: (idx) => onProposalsChange(proposals.filter((_, i) => i !== idx)),
     },
     {
-      type: DOC_TYPES[2],
+      type: docTypesWithClientTerm[2],
       items: invoices,
       onAdd: () => onInvoicesChange([...invoices, '']),
       onEdit: (idx, v) => {
@@ -666,7 +681,7 @@ export default function DocumentsFilesSection({
       onRemove: (idx) => onInvoicesChange(invoices.filter((_, i) => i !== idx)),
     },
     {
-      type: DOC_TYPES[3],
+      type: docTypesWithClientTerm[3],
       items: attachments,
       onAdd: () => onAttachmentsChange([...attachments, '']),
       onEdit: (idx, v) => {
@@ -677,7 +692,7 @@ export default function DocumentsFilesSection({
       onRemove: (idx) => onAttachmentsChange(attachments.filter((_, i) => i !== idx)),
     },
     {
-      type: DOC_TYPES[4],
+      type: docTypesWithClientTerm[4],
       items: onlineResources,
       onAdd: () => onOnlineResourcesChange([...onlineResources, '']),
       onEdit: (idx, v) => {
@@ -689,7 +704,7 @@ export default function DocumentsFilesSection({
     },
   ];
 
-  const selectedType = DOC_TYPES.find((t) => t.key === selectedKey);
+  const selectedType = docTypesWithClientTerm.find((t) => t.key === selectedKey);
   const selectedBlock = blocks.find((b) => b.type.key === selectedKey);
   const hasEntriesInSelectedSection =
     selectedKey === 'contracts' && useContractsFromApi
@@ -728,7 +743,7 @@ export default function DocumentsFilesSection({
     if (selectedBlock) selectedBlock.onAdd();
   };
 
-  const navItems = DOC_TYPES.map((t) => ({
+  const navItems = docTypesWithClientTerm.map((t) => ({
     ...t,
     count:
       (t.key === 'contracts' && useContractsFromApi) ||
@@ -751,7 +766,7 @@ export default function DocumentsFilesSection({
 
   return (
     <SideNavViewerLayout
-      introText="Track contracts, proposals, invoices, and other documents for this client."
+      introText={`Track contracts, proposals, invoices, and other documents for this ${clientTermSingularLower}.`}
       navAriaLabel="Documents sections"
       navItems={navItems}
       selectedKey={selectedKey}
@@ -785,6 +800,7 @@ export default function DocumentsFilesSection({
           clientName={clientName}
           clientEmail={clientEmail}
           clientAddressLines={clientAddressLines}
+          clientTermSingular={clientTermSingular}
         />
       ) : selectedKey === 'invoices' && useInvoicesFromApi ? (
         <InvoicesBlock
@@ -797,6 +813,7 @@ export default function DocumentsFilesSection({
           clientName={clientName}
           clientEmail={clientEmail}
           clientAddressLines={clientAddressLines}
+          clientTermSingular={clientTermSingular}
         />
       ) : selectedKey === 'attachments' && useAttachmentsFromApi ? (
         <AttachmentsBlock

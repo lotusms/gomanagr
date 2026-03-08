@@ -10,12 +10,14 @@ import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
 import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
 import InvoicePaymentSummary from '@/components/invoices/InvoicePaymentSummary';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditClientInvoicePage() {
   const router = useRouter();
   const { id: clientId, invoiceId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
   const [invoice, setInvoice] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
@@ -23,6 +25,10 @@ export default function EditClientInvoicePage() {
   const [clientName, setClientName] = useState('');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   const fetchInvoice = useCallback(() => {
     if (!currentUser?.uid || !clientId || !invoiceId || !orgReady) return;
@@ -52,6 +58,11 @@ export default function EditClientInvoicePage() {
       .then((org) => setOrganization(org || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -144,12 +155,12 @@ export default function EditClientInvoicePage() {
         <div className="space-y-6">
           <PageHeader
             title="Edit invoice"
-            description="Invoices for this client."
+            description={`Invoices for this ${clientTermSingularLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
                   <HiArrowLeft className="w-5 h-5" />
-                  Back to client
+                  Back to {clientTermSingular}
                 </SecondaryButton>
               </Link>
             }
@@ -167,7 +178,7 @@ export default function EditClientInvoicePage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           </div>
@@ -190,7 +201,7 @@ export default function EditClientInvoicePage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }

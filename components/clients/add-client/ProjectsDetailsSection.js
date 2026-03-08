@@ -42,6 +42,8 @@ export default function ProjectsDetailsSection({
   const projectTerm = useMemo(() => getTermSingular(projectTermPlural) || 'Project', [projectTermPlural]);
   const projectTermLower = projectTerm.toLowerCase();
   const projectTermPluralLower = projectTermPlural.toLowerCase();
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry ?? companyIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   const projectTypes = useMemo(
     () =>
@@ -178,7 +180,7 @@ export default function ProjectsDetailsSection({
   return (
     <>
       <SideNavViewerLayout
-        introText={`Track ${projectTermPluralLower} by status for this client.`}
+        introText={`Track ${projectTermPluralLower} by status for this ${clientTermSingularLower}.`}
         navAriaLabel={`${projectTermPlural} sections`}
         navItems={navItems}
         selectedKey={selectedKey}

@@ -49,6 +49,12 @@ export default function ClientContractForm({
   onSuccess,
   onCancel,
 }) {
+  const clientTermPlural = getTermForIndustry(industry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
+  const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(
@@ -327,17 +333,17 @@ export default function ClientContractForm({
           <Dropdown
             id="client"
             name="client"
-            label="Client"
+            label={clientTermSingular}
             value={selectedClientId}
             onChange={(e) => { markDirty(); setSelectedClientId(e.target.value ?? ''); }}
             options={[
-              { value: '', label: 'Select client' },
+              { value: '', label: selectClientPlaceholder },
               ...clients.map((c) => ({
                 value: c.id,
-                label: (c.name || c.companyName || 'Unnamed client').trim(),
+                label: (c.name || c.companyName || unnamedClientLabel).trim(),
               })),
             ]}
-            placeholder={clientsLoading ? 'Loading…' : 'Select client'}
+            placeholder={clientsLoading ? 'Loading…' : selectClientPlaceholder}
             searchable={clients.length > 5}
           />
         )}

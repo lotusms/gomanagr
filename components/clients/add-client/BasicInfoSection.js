@@ -19,6 +19,7 @@ export default function BasicInfoSection({
   onEmailChange,
   onStatusChange,
   onPreferredCommunicationChange,
+  clientTermSingular = 'Client',
 }) {
   return (
     <div>
@@ -48,7 +49,7 @@ export default function BasicInfoSection({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InputField
             id="clientId"
-            label="Client ID"
+            label={`${clientTermSingular} ID`}
             value={clientId}
             onChange={() => {}}
             placeholder="Auto-generated"

@@ -9,6 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientProposalForm from '@/components/clients/add-client/ClientProposalForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewProposalPage() {
   const router = useRouter();
@@ -18,6 +19,10 @@ export default function NewProposalPage() {
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
+
+  const accountIndustry = organization?.industry ?? industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -65,12 +70,12 @@ export default function NewProposalPage() {
     <>
       <Head>
         <title>Create proposal - GoManagr</title>
-        <meta name="description" content="Create a new proposal for a client" />
+        <meta name="description" content={`Create a new proposal for a ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
           title="Create proposal"
-          description="Create a sales offer or estimate. Select the client this proposal is for."
+          description={`Create a sales offer or estimate. Select the ${clientTermSingularLower} this proposal is for.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

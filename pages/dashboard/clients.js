@@ -10,7 +10,7 @@ import { PageHeader, EmptyState, ConfirmationDialog, ConfirmDialog, InputField, 
 import { PrimaryButton, SecondaryButton, DangerButton, IconButton } from '@/components/ui/buttons';
 import Drawer from '@/components/ui/Drawer';
 import ClientSettings from '@/components/clients/ClientSettings';
-import { shouldShowCompanyDetails } from '@/components/clients/clientProfileConstants';
+import { shouldShowCompanyDetails, getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { useToast } from '@/components/ui/Toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { HiPlus, HiCog, HiExclamationCircle, HiX, HiRefresh, HiTrash } from 'react-icons/hi';
@@ -34,6 +34,12 @@ function ClientsContent() {
   const [clientToReactivate, setClientToReactivate] = useState(null);
   const [clientToPermanentlyDelete, setClientToPermanentlyDelete] = useState(null);
   const [organizationResolved, setOrganizationResolved] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPlural = useMemo(() => getTermForIndustry(accountIndustry, 'client'), [accountIndustry]);
+  const clientTermSingular = useMemo(() => getTermSingular(clientTermPlural) || 'Client', [clientTermPlural]);
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
 
   const activeClients = useMemo(
     () => allClients.filter((c) => (c.status || 'active') !== 'inactive'),
@@ -131,7 +137,7 @@ function ClientsContent() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Failed to deactivate');
         refetchOrgClients();
-        toast.success('Client deactivated. You can reactivate or delete them from Deactivated Clients.');
+        toast.success(`${clientTermSingular} deactivated. You can reactivate or delete them from Deactivated ${clientTermPlural}.`);
       } else {
         const account = await getUserAccount(currentUser.uid);
         const list = account?.clients || [];
@@ -141,14 +147,14 @@ function ClientsContent() {
         await updateClients(currentUser.uid, updated);
         setAllClients(updated);
         setUserAccount((prev) => (prev ? { ...prev, clients: updated } : null));
-        toast.success('Client deactivated. You can reactivate or delete them from Deactivated Clients.');
+        toast.success(`${clientTermSingular} deactivated. You can reactivate or delete them from Deactivated ${clientTermPlural}.`);
       }
       setDeactivateDialogOpen(false);
       setClientToDeactivate(null);
       setDeactivateDialogConfirmWord('');
     } catch (err) {
       console.error('Failed to deactivate client:', err);
-      toast.error(err.message || 'Failed to deactivate client. Please try again.');
+      toast.error(err.message || `Failed to deactivate ${clientTermSingularLower}. Please try again.`);
     } finally {
       setSaving(false);
     }
@@ -171,7 +177,7 @@ function ClientsContent() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Failed to delete');
         refetchOrgClients();
-        toast.success('Client permanently deleted.', 5000);
+        toast.success(`${clientTermSingular} permanently deleted.`, 5000);
       } else {
         const account = await getUserAccount(currentUser.uid);
         const list = account?.clients || [];
@@ -179,14 +185,14 @@ function ClientsContent() {
         await updateClients(currentUser.uid, updated);
         setAllClients(updated);
         setUserAccount((prev) => (prev ? { ...prev, clients: updated } : null));
-        toast.success('Client permanently deleted.', 5000);
+        toast.success(`${clientTermSingular} permanently deleted.`, 5000);
       }
       setDeactivateDialogOpen(false);
       setClientToDeactivate(null);
       setDeactivateDialogConfirmWord('');
     } catch (err) {
-      console.error('Failed to delete client:', err);
-      toast.error(err.message || 'Failed to delete client. Please try again.');
+      console.error(`Failed to delete ${clientTermSingularLower}:`, err);
+      toast.error(err.message || `Failed to delete ${clientTermSingularLower}. Please try again.`);
     } finally {
       setSaving(false);
     }
@@ -215,7 +221,7 @@ function ClientsContent() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Failed to reactivate');
         refetchOrgClients();
-        toast.success(`${clientToReactivate.name} has been reactivated. They will appear on the clients page.`);
+        toast.success(`${clientToReactivate.name} has been reactivated. They will appear on the ${clientTermPluralLower} page.`);
       } else {
         const account = await getUserAccount(currentUser.uid);
         const list = account?.clients || [];
@@ -230,7 +236,7 @@ function ClientsContent() {
       setClientToReactivate(null);
       setDeactivatedPanelOpen(false);
     } catch (err) {
-      console.error('Failed to reactivate client:', err);
+      console.error(`Failed to reactivate ${clientTermSingularLower}:`, err);
       toast.error(err.message || 'Failed to reactivate. Please try again.');
     } finally {
       setSaving(false);
@@ -254,7 +260,7 @@ function ClientsContent() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Failed to delete');
         refetchOrgClients();
-        toast.success('Client permanently deleted.');
+        toast.success(`${clientTermSingular} permanently deleted.`);
       } else {
         const account = await getUserAccount(currentUser.uid);
         const list = account?.clients || [];
@@ -262,13 +268,13 @@ function ClientsContent() {
         await updateClients(currentUser.uid, updated);
         setAllClients(updated);
         setUserAccount((prev) => (prev ? { ...prev, clients: updated } : null));
-        toast.success('Client permanently deleted.');
+        toast.success(`${clientTermSingular} permanently deleted.`);
       }
       setClientToPermanentlyDelete(null);
       setDeactivatedPanelOpen(false);
     } catch (err) {
-      console.error('Failed to delete client:', err);
-      toast.error(err.message || 'Failed to delete. Please try again.');
+      console.error(`Failed to delete ${clientTermSingularLower}:`, err);
+      toast.error(err.message || `Failed to delete ${clientTermSingularLower}. Please try again.`);
     } finally {
       setSaving(false);
     }
@@ -285,8 +291,8 @@ function ClientsContent() {
   return (
     <>
       <Head>
-        <title>Clients - GoManagr</title>
-        <meta name="description" content="Manage your clients" />
+        <title>{clientTermPlural} - GoManagr</title>
+        <meta name="description" content={`Manage your ${clientTermPluralLower}`} />
       </Head>
 
       <div className="space-y-6">
@@ -295,8 +301,8 @@ function ClientsContent() {
         ) : (
           <>
             <PageHeader
-              title="Clients"
-              description="Manage your client relationships. Stored in your account and synced across the app."
+              title={clientTermPlural}
+              description={`Manage your ${clientTermPluralLower} relationships. Stored in your account and synced across the app.`}
               actions={
                 <div className="flex items-center gap-3">
                   <SecondaryButton
@@ -305,7 +311,7 @@ function ClientsContent() {
                     className="gap-2"
                     aria-expanded={deactivatedPanelOpen}
                   >
-                    Deactivated Clients
+                    Deactivated {clientTermPlural}
                     {deactivatedClients.length > 0 && (
                       <span className="ml-1 px-2 py-0.5 bg-gray-200 dark:bg-gray-600 text-xs font-medium rounded-full">
                         {deactivatedClients.length}
@@ -318,14 +324,14 @@ function ClientsContent() {
                     className="gap-2"
                   >
                     <HiPlus className="w-5 h-5" />
-                    Add client
+                    Add {clientTermSingular}
                   </PrimaryButton>
                   <button
                     type="button"
                     onClick={() => setSettingsDrawerOpen(true)}
                     className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    title="Client Settings"
-                    aria-label="Client Settings"
+                    title={`${clientTermSingular} Settings`}
+                    aria-label={`${clientTermSingular} Settings`}
                   >
                     <HiCog className="w-5 h-5" />
                   </button>
@@ -336,7 +342,7 @@ function ClientsContent() {
             {deactivatedPanelOpen && (
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" data-testid="deactivated-clients-panel">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deactivated clients</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deactivated {clientTermPluralLower}</h2>
                   <button
                     type="button"
                     onClick={() => setDeactivatedPanelOpen(false)}
@@ -348,10 +354,10 @@ function ClientsContent() {
                 </div>
                 <div className="overflow-x-auto">
                   {deactivatedClients.length === 0 ? (
-                    <p className="px-4 py-8 text-gray-500 dark:text-gray-400 text-center" data-testid="deactivated-clients-empty">No deactivated clients.</p>
+                    <p className="px-4 py-8 text-gray-500 dark:text-gray-400 text-center" data-testid="deactivated-clients-empty">No deactivated {clientTermPluralLower}.</p>
                   ) : (
                     <Table
-                      ariaLabel="Deactivated clients"
+                      ariaLabel={`Deactivated ${clientTermPluralLower}`}
                       data-testid="deactivated-clients-table"
                       columns={[
                         { key: 'name', label: 'Name' },
@@ -400,10 +406,10 @@ function ClientsContent() {
               isOpen={!!clientToReactivate}
               onClose={() => setClientToReactivate(null)}
               onConfirm={handleReactivateConfirm}
-              title="Reactivate client"
+              title={`Reactivate ${clientTermSingular}`}
               message={
                 clientToReactivate
-                  ? `${clientToReactivate.name} will be reactivated. They will appear back on the clients page.`
+                  ? `${clientToReactivate.name} will be reactivated. They will appear back on the ${clientTermPluralLower} page.`
                   : ''
               }
               confirmText="Reactivate"
@@ -416,10 +422,10 @@ function ClientsContent() {
               isOpen={!!clientToPermanentlyDelete}
               onClose={() => setClientToPermanentlyDelete(null)}
               onConfirm={handlePermanentlyDeleteConfirm}
-              title="Permanently delete client"
+              title={`Permanently delete ${clientTermSingular}`}
               message={
                 clientToPermanentlyDelete
-                  ? `This client will be fully deleted forever. This cannot be undone. Their record will be removed.`
+                  ? `This ${clientTermSingularLower} will be fully deleted forever. This cannot be undone. Their record will be removed.`
                   : ''
               }
               confirmText="Delete forever"
@@ -432,6 +438,7 @@ function ClientsContent() {
             {activeClients.length === 0 ? (
               <EmptyState
                 type="clients"
+                industry={accountIndustry}
                 action={
                   <PrimaryButton
                     type="button"
@@ -439,7 +446,7 @@ function ClientsContent() {
                     className="gap-2"
                   >
                     <HiPlus className="w-5 h-5" />
-                    Add your first client
+                    Add your first {clientTermSingular}
                   </PrimaryButton>
                 }
               />
@@ -510,7 +517,7 @@ function ClientsContent() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <Dialog.Title className="text-2xl font-bold leading-tight text-amber-800 dark:text-amber-200">
-                    Deactivate client
+                    Deactivate {clientTermSingular}
                   </Dialog.Title>
                 </div>
                 <Dialog.Close asChild>
@@ -523,7 +530,7 @@ function ClientsContent() {
             <div className="px-6 py-6 bg-white dark:bg-gray-800">
               <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                 {clientToDeactivate
-                  ? `${clientToDeactivate.name} will be deactivated. They will be hidden from the clients page. You can reactivate or permanently delete them later from Deactivated Clients.`
+                  ? `${clientToDeactivate.name} will be deactivated. They will be hidden from the ${clientTermPluralLower} page. You can reactivate or permanently delete them later from Deactivated ${clientTermPlural}.`
                   : ''}
               </Dialog.Description>
               <div className="mb-6">
@@ -572,7 +579,7 @@ function ClientsContent() {
       <Drawer
         isOpen={settingsDrawerOpen}
         onClose={() => setSettingsDrawerOpen(false)}
-        title="Client Settings"
+        title={`${clientTermSingular} Settings`}
         width="50vw"
       >
         <ClientSettings />

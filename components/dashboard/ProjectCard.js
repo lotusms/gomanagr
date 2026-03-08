@@ -23,7 +23,8 @@ const defaultProject = { name: '', id: '', notes: '', estimate: '', address: '',
  * @param {string} props.variant - 'active' | 'completed'
  * @param {boolean} props.readOnly - If true, no edit/remove; show View client if clientId set
  * @param {string} props.clientName - Client name for read-only view
- * @param {string} props.clientId - Client id for "View client" link
+ * @param {string} props.clientId - Client id for "View {clientTermSingularLower}" link
+ * @param {string} [props.clientTermSingularLower] - Lowercase singular client term (e.g. "client", "patient")
  */
 export default function ProjectCard({
   project = defaultProject,
@@ -37,6 +38,7 @@ export default function ProjectCard({
   readOnly = false,
   clientName,
   clientId,
+  clientTermSingularLower = 'client',
 }) {
   const [localProject, setLocalProject] = useState(project);
 
@@ -75,10 +77,10 @@ export default function ProjectCard({
               <Link
                 href={`/dashboard/clients/${clientId}/edit`}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white/90 hover:text-white hover:bg-white/20 transition-colors text-sm font-medium"
-                title="View client"
+                title={`View ${clientTermSingularLower}`}
               >
                 <HiUser className="size-4" />
-                View client
+                View {clientTermSingularLower}
               </Link>
             ) : !readOnly ? (
               <>

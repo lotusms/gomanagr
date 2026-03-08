@@ -21,7 +21,7 @@ import ProjectsDetailsSection from './add-client/ProjectsDetailsSection';
 import CommunicationLogSection from './add-client/CommunicationLogSection';
 import DocumentsFilesSection from './add-client/DocumentsFilesSection';
 import ClientAppointmentsCalendar from '../dashboard/ClientAppointmentsCalendar';
-import { getProjectTermForIndustry, shouldShowCompanyFinancialSections } from './clientProfileConstants';
+import { getProjectTermForIndustry, shouldShowCompanyFinancialSections, getTermForIndustry, getTermSingular } from './clientProfileConstants';
 
 function normalizeCountryValue(value) {
   if (!value) return '';
@@ -389,7 +389,7 @@ export default function ClientProfile({
       
       if (onSaveClient) {
         await onSaveClient(clientData, !initialClient);
-        success(initialClient ? 'Client updated successfully' : 'Client created successfully');
+        success(initialClient ? `${clientTermSingular} updated successfully` : `${clientTermSingular} created successfully`);
         if (onSave) onSave(clientData.id);
         return;
       }
@@ -406,7 +406,7 @@ export default function ClientProfile({
       
       await updateClients(currentUser.uid, updatedClients);
       
-      success(initialClient ? 'Client updated successfully' : 'Client created successfully');
+      success(initialClient ? `${clientTermSingular} updated successfully` : `${clientTermSingular} created successfully`);
       
       if (onSave) {
         onSave(clientData.id);
@@ -417,7 +417,7 @@ export default function ClientProfile({
       }
     } catch (error) {
       console.error('Failed to save client:', error);
-      const errorMessage = error.message || 'Failed to save client. Please try again.';
+      const errorMessage = error.message || `Failed to save ${clientTermSingularLower}. Please try again.`;
       
       if (errorMessage.includes('RLS') || errorMessage.includes('permission') || errorMessage.includes('policy')) {
         showError('Permission denied. Please ensure you are logged in and try again.');
@@ -434,6 +434,8 @@ export default function ClientProfile({
   };
   
   const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
   const sections = useMemo(() => {
     const projectTermPlural = getProjectTermForIndustry(accountIndustry);
     const clientSettings = userAccount?.clientSettings || {};
@@ -479,6 +481,7 @@ export default function ClientProfile({
             email={email}
             preferredCommunication={preferredCommunication}
             errors={errors}
+            clientTermSingular={clientTermSingular}
             onFirstNameChange={(e) => {
               setFirstName(e.target.value);
               setErrors((prev) => ({ ...prev, firstName: '' }));
@@ -646,6 +649,7 @@ export default function ClientProfile({
               userId={currentUser?.uid}
               organizationId={organization?.id}
               organization={organization}
+              industry={accountIndustry}
               contracts={contracts}
               proposals={proposals}
               invoices={invoices}
@@ -710,7 +714,7 @@ export default function ClientProfile({
     <form onSubmit={handleSave} onInput={markDirty} className="space-y-6">
       {/* Toggle right below page header (Update this client's details / Add a new client) */}
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">This client is a company</span>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">This {clientTermSingular.toLowerCase()} is a company</span>
         <span className="text-sm text-gray-500 dark:text-gray-400">No</span>
         <Switch
           id="client-is-company"
@@ -734,7 +738,7 @@ export default function ClientProfile({
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
-          {saving ? 'Saving...' : initialClient ? 'Update Client' : 'Add Client'}
+          {saving ? 'Saving...' : initialClient ? `Update ${clientTermSingular}` : `Add ${clientTermSingular}`}
         </PrimaryButton>
       </div>
       {discardDialog}
@@ -776,11 +780,11 @@ export default function ClientProfile({
                   const updatedClients = [...(userAccount?.clients || []), newClient];
                   await updateClients(currentUser.uid, updatedClients);
                 }
-                success('Client added to appointment');
+                success(`${clientTermSingular} added to appointment`);
                 return newClientId;
               } catch (error) {
                 console.error('Failed to add client:', error);
-                showError('Failed to add client. Please try again.');
+                showError(`Failed to add ${clientTermSingularLower}. Please try again.`);
                 throw error;
               }
             }}

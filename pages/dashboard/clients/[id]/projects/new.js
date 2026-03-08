@@ -9,7 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientProjectForm from '@/components/clients/add-client/ClientProjectForm';
-import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
+import { getProjectTermForIndustry, getProjectTermSingular, getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewClientProjectPage() {
   const router = useRouter();
@@ -26,6 +26,8 @@ export default function NewClientProjectPage() {
   const projectTermPlural = getProjectTermForIndustry(accountIndustry);
   const projectTermSingular = getProjectTermSingular(projectTermPlural);
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -49,17 +51,17 @@ export default function NewClientProjectPage() {
     <>
       <Head>
         <title>Add {projectTermSingularLower} - GoManagr</title>
-        <meta name="description" content={`Add a ${projectTermSingularLower} for this client`} />
+        <meta name="description" content={`Add a ${projectTermSingularLower} for this ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
           title={`Add ${projectTermSingularLower}`}
-          description={`Create a ${projectTermSingularLower} for this client.`}
+          description={`Create a ${projectTermSingularLower} for this ${clientTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }

@@ -10,12 +10,14 @@ import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
 import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
 import InvoicePaymentSummary from '@/components/invoices/InvoicePaymentSummary';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditInvoicePage() {
   const router = useRouter();
   const { invoiceId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
   const [invoice, setInvoice] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
@@ -23,6 +25,10 @@ export default function EditInvoicePage() {
   const [clientName, setClientName] = useState('');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
+  const clientTermSingularLower = (getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'client').toLowerCase();
 
   const fetchInvoice = useCallback(() => {
     if (!currentUser?.uid || !invoiceId || !orgReady) return;
@@ -57,6 +63,7 @@ export default function EditInvoicePage() {
     if (!currentUser?.uid) return;
     getUserAccount(currentUser.uid)
       .then((account) => {
+        setUserAccount(account || null);
         const currency = account?.clientSettings?.defaultCurrency || 'USD';
         setDefaultCurrency(currency);
       })
@@ -136,7 +143,7 @@ export default function EditInvoicePage() {
         <div className="space-y-6">
           <PageHeader
             title="Invoices"
-            description="Invoices created for your clients."
+            description={`Invoices created for your ${clientTermPluralLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
@@ -177,7 +184,7 @@ export default function EditInvoicePage() {
       <div className="space-y-6">
         <PageHeader
           title="Edit invoice"
-          description="Update the details of this invoice. You can change the linked client if needed."
+          description={`Update the details of this invoice. You can change the linked ${clientTermSingularLower} if needed.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
@@ -204,9 +211,9 @@ export default function EditInvoicePage() {
               userId={currentUser.uid}
               organizationId={organization?.id ?? null}
               invoiceId={invoiceId}
-              industry={organization?.industry ?? null}
+              industry={accountIndustry}
               defaultCurrency={defaultCurrency}
-              showClientDropdown={false}
+              showClientDropdown={true}
               onSuccess={() => router.push(backUrl)}
               onCancel={() => router.push(backUrl)}
             />

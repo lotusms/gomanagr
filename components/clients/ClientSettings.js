@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/Toast';
 import InputField from '@/components/ui/InputField';
 import Dropdown from '@/components/ui/Dropdown';
 import { PrimaryButton } from '@/components/ui/buttons';
-import { CURRENCIES, getTermForIndustry } from './clientProfileConstants';
+import { CURRENCIES, getTermForIndustry, getTermSingular } from './clientProfileConstants';
 import { ChipsMulti } from '@/components/ui';
 
 export default function ClientSettings() {
@@ -16,6 +16,10 @@ export default function ClientSettings() {
   const [accountIndustry, setAccountIndustry] = useState('');
   
   const projectTermPlural = getTermForIndustry(accountIndustry, 'project') || 'Projects';
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client') || 'Clients';
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermPluralLower = clientTermPlural.toLowerCase();
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
   const availableTabs = [
     { value: 'company', label: 'Company Details' },
     { value: 'financial', label: 'Financial Information' },
@@ -76,7 +80,7 @@ export default function ClientSettings() {
       }
     } catch (err) {
       console.error('Failed to load client settings:', err);
-      showError('Failed to load client settings');
+      showError(`Failed to load ${clientTermSingularLower} settings`);
     } finally {
       setLoading(false);
     }
@@ -137,10 +141,10 @@ export default function ClientSettings() {
         );
       }
 
-      success('Client settings saved successfully');
+      success(`${clientTermSingular} settings saved successfully`);
     } catch (err) {
       console.error('Failed to save client settings:', err);
-      showError(err.message || 'Failed to save client settings');
+      showError(err.message || `Failed to save ${clientTermSingularLower} settings`);
     } finally {
       setSaving(false);
     }
@@ -157,9 +161,9 @@ export default function ClientSettings() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Client Defaults</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{clientTermSingular} Defaults</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Configure default values for new clients. These can be changed when creating individual clients.
+          Configure default values for new {clientTermPluralLower}. These can be changed when creating individual {clientTermPluralLower}.
         </p>
       </div>
 
@@ -205,9 +209,9 @@ export default function ClientSettings() {
         {/* Client Form Sections Settings */}
         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="mb-4">
-            <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-1">Client Form Configuration</h4>
+            <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-1">{clientTermSingular} Form Configuration</h4>
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Choose what information should be collected when creating or editing clients. Basic Information is always included.
+              Choose what information should be collected when creating or editing {clientTermPluralLower}. Basic Information is always included.
             </p>
           </div>
           

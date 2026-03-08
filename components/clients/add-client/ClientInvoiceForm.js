@@ -87,6 +87,11 @@ export default function ClientInvoiceForm({
   const projectTermSingular = getTermSingular(projectTermPlural) || 'project';
   const projectTermSingularLower = projectTermSingular.toLowerCase();
   const linkedProjectLabel = `Linked ${projectTermSingularLower}`;
+  const clientTermPlural = getTermForIndustry(industry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
+  const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -199,10 +204,10 @@ export default function ClientInvoiceForm({
   }, [showClientDropdown, userId]);
 
   const clientOptions = [
-    { value: '', label: 'Select client' },
+    { value: '', label: selectClientPlaceholder },
     ...clients.map((c) => ({
       value: c.id,
-      label: (c.name || c.companyName || 'Unnamed client').trim(),
+      label: (c.name || c.companyName || unnamedClientLabel).trim(),
     })),
   ];
 
@@ -598,6 +603,8 @@ export default function ClientInvoiceForm({
         onStatusChange={(e) => { markDirty(); setStatus(e.target.value ?? 'draft'); }}
         statusPlaceholder="Draft"
         showClientDropdown={showClientDropdown}
+        clientLabel={clientTermSingular}
+        clientPlaceholder={selectClientPlaceholder}
         selectedClientId={selectedClientId}
         onClientChange={(e) => { markDirty(); setSelectedClientId(e.target.value ?? ''); }}
         clientOptions={clientOptions}

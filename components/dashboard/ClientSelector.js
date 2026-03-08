@@ -13,6 +13,7 @@
  * @param {string} [dropdownPlaceholder]
  * @param {string} [addButtonLabel] - Default "Add"
  * @param {string} [drawerTitle] - Default "Add Client"
+ * @param {string} [industry] - Industry for client term (e.g. "healthcare" → "Patient") in drawer form
  * @param {Function} [onNestedDrawerChange] - (open: boolean) => void — so parent can avoid closing on overlay click
  */
 
@@ -34,6 +35,8 @@ export default function ClientSelector({
   dropdownPlaceholder = 'Select client...',
   addButtonLabel = 'Add',
   drawerTitle = 'Add Client',
+  unnamedLabel = 'Unnamed',
+  industry = null,
   onNestedDrawerChange,
 }) {
   const [showClientDrawer, setShowClientDrawer] = useState(false);
@@ -53,9 +56,9 @@ export default function ClientSelector({
     if (!clients || clients.length === 0) return [];
     return clients.map((client) => ({
       value: client.id,
-      label: client.company ? `${client.name} (${client.company})` : client.name || 'Unnamed',
+      label: client.company ? `${client.name} (${client.company})` : client.name || unnamedLabel,
     }));
-  }, [clients]);
+  }, [clients, unnamedLabel]);
 
   const handleAddClient = useCallback(
     async (clientData) => {
@@ -144,6 +147,7 @@ export default function ClientSelector({
             onSubmit={handleAddClient}
             onCancel={closeClientDrawer}
             saving={savingClient}
+            industry={industry}
           />
         </Drawer>
       )}

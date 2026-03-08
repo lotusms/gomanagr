@@ -171,11 +171,17 @@ export default function ClientProposalForm({
       .finally(() => setClientsLoading(false));
   }, [showClientDropdown, userId]);
 
+  const clientTermPlural = getTermForIndustry(industry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
+  const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
+
   const clientOptions = [
-    { value: '', label: 'Select client' },
+    { value: '', label: selectClientPlaceholder },
     ...clients.map((c) => ({
       value: c.id,
-      label: (c.name || c.companyName || 'Unnamed client').trim(),
+      label: (c.name || c.companyName || unnamedClientLabel).trim(),
     })),
   ];
 
@@ -354,7 +360,7 @@ export default function ClientProposalForm({
       const id = await saveProposal();
       if (id && clientEmailTrimmed) {
         const selectedOption = clientOptions.find((o) => o.value === (showClientDropdown ? selectedClientId : clientIdProp));
-        const clientNameForEmail = selectedOption?.label && selectedOption.label !== 'Select client' ? selectedOption.label : undefined;
+        const clientNameForEmail = selectedOption?.label && selectedOption.label !== selectClientPlaceholder ? selectedOption.label : undefined;
         const sendRes = await fetch('/api/send-proposal-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -368,7 +374,7 @@ export default function ClientProposalForm({
         });
         const sendData = await sendRes.json().catch(() => ({}));
         if (!sendRes.ok) throw new Error(sendData.error || 'Failed to send email');
-        toast.success('Proposal saved and email sent to client.');
+        toast.success(`Proposal saved and email sent to ${clientTermSingularLower}.`);
       } else {
         toast.success('Proposal saved.');
       }
@@ -407,6 +413,8 @@ export default function ClientProposalForm({
         onStatusChange={(e) => { markDirty(); setStatus(e.target.value ?? 'draft'); }}
         statusPlaceholder="Draft"
         showClientDropdown={showClientDropdown}
+        clientLabel={clientTermSingular}
+        clientPlaceholder={selectClientPlaceholder}
         selectedClientId={selectedClientId}
         onClientChange={(e) => setSelectedClientId(e.target.value ?? '')}
         clientOptions={clientOptions}
@@ -524,7 +532,7 @@ export default function ClientProposalForm({
         secondarySubmitLabel={secondarySubmitLabel}
         onSecondarySubmitClick={handleSaveAndSend}
         secondarySubmitDisabled={!clientEmailTrimmed}
-        noClientEmailWarning="(no email exists for this client)"
+        noClientEmailWarning={`(no email exists for this ${clientTermSingularLower})`}
       />
     </form>
   );

@@ -101,13 +101,11 @@ export const CURRENCIES = [
 const TERMS_BY_CONCEPT = {
   project: {
     default: 'Projects',
-    'Technology': 'Projects',
     'Healthcare': 'Cases',
     'Finance': 'Accounts',
     'Real Estate': 'Properties',
     'Retail': 'Orders',
     'Manufacturing': 'Jobs',
-    'Construction': 'Projects',
     'Education': 'Programs',
     'Legal': 'Cases',
     'Consulting': 'Engagements',
@@ -121,14 +119,10 @@ const TERMS_BY_CONCEPT = {
     'Nonprofit': 'Programs',
     'Government': 'Requests',
     'Entertainment': 'Events',
-    'Media': 'Projects',
-    'Telecommunications': 'Projects',
-    'Utilities': 'Projects',
     'Beauty & Spa': 'Appointments',
     'Food & Drink': 'Orders',
     'Health & Wellness': 'Cases',
     'Travel & Tourism': 'Reservations',
-    'Other': 'Projects',
   },
   team: {
     default: 'Team',
@@ -136,7 +130,6 @@ const TERMS_BY_CONCEPT = {
     'Hospitality': 'Staff',
     'Food & Drink': 'Staff',
     'Healthcare': 'Staff',
-    'Other': 'Team',
   },
   teamMember: {
     default: 'Team Members',
@@ -144,9 +137,22 @@ const TERMS_BY_CONCEPT = {
     'Hospitality': 'Staff Members',
     'Food & Drink': 'Staff Members',
     'Healthcare': 'Staff Members',
-    'Other': 'Team Members',
   },
-  // Future: client: { default: 'Clients', ... }, service: { default: 'Services', ... }, proposal: { default: 'Proposals', ... },
+  client: {
+    default: 'Clients',
+    'Healthcare': 'Patients',
+    'Retail': 'Customers',
+    'Manufacturing': 'Accounts',
+    'Education': 'Students',
+    'Hospitality': 'Guests',
+    'Automotive': 'Customers',
+    'Government': 'Constituents',
+    'Telecommunications': 'Subscribers',
+    'Utilities': 'Subscribers',
+    'Food & Drink': 'Customers',
+    'Travel & Tourism': 'Guests',
+  },
+  // Future: service: { default: 'Services', ... }, proposal: { default: 'Proposals', ... },
 };
 
 /**
@@ -159,7 +165,7 @@ const TERMS_BY_CONCEPT = {
 export function getTermForIndustry(industry, concept) {
   const key = typeof industry === 'string' ? industry.trim() : '';
   const config = TERMS_BY_CONCEPT[concept];
-  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : 'Projects';
+  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : 'Projects';
   if (!key) return config.default;
   return config[key] ?? config.default;
 }
@@ -199,6 +205,12 @@ export function getTermSingular(pluralTerm) {
     'Appointments': 'Appointment',
     'Team Members': 'Team Member',
     'Staff Members': 'Staff Member',
+    'Clients': 'Client',
+    'Patients': 'Patient',
+    'Customers': 'Customer',
+    'Students': 'Student',
+    'Guests': 'Guest',
+    'Constituents': 'Constituent',
   };
 
   return singularMap[pluralTerm] || pluralTerm.replace(/s$/, '');

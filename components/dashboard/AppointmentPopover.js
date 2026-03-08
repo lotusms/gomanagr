@@ -37,6 +37,7 @@ export default function AppointmentPopover({
   children,
 }) {
   const teamMemberLabel = getTermSingular(getTermForIndustry(industry, 'teamMember'));
+  const clientLabel = getTermSingular(getTermForIndustry(industry, 'client')) || 'Client';
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
@@ -163,7 +164,7 @@ export default function AppointmentPopover({
             <span>{teamMemberName}</span>
             <span className="text-gray-500 dark:text-gray-400">Service</span>
             <span className="truncate">{serviceLabel}</span>
-            <span className="text-gray-500 dark:text-gray-400">Client</span>
+            <span className="text-gray-500 dark:text-gray-400">{clientLabel}</span>
             <span className="truncate">{clientName}</span>
           </div>
           {notes ? (

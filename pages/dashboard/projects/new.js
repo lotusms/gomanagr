@@ -9,7 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientProjectForm from '@/components/clients/add-client/ClientProjectForm';
-import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
+import { getProjectTermForIndustry, getProjectTermSingular, getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -22,6 +22,8 @@ export default function NewProjectPage() {
   const projectTermPlural = getProjectTermForIndustry(accountIndustry);
   const projectTermSingular = getProjectTermSingular(projectTermPlural);
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -51,7 +53,7 @@ export default function NewProjectPage() {
       <div className="space-y-6">
         <PageHeader
           title={'Create ' + projectTermSingularLower}
-          description={'Create a ' + projectTermSingularLower + ' for a client. Select the client.'}
+          description={`Create a ${projectTermSingularLower} for a ${clientTermSingularLower}. Select the ${clientTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

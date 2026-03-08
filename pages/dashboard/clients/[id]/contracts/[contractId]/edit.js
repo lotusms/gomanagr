@@ -9,12 +9,14 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientContractForm from '@/components/clients/add-client/ClientContractForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditClientContractPage() {
   const router = useRouter();
   const { id: clientId, contractId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [contract, setContract] = useState(null);
@@ -22,12 +24,20 @@ export default function EditClientContractPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+
   useEffect(() => {
     if (!currentUser?.uid) return;
     getUserOrganization(currentUser.uid)
       .then((org) => setOrganization(org || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -124,7 +134,7 @@ export default function EditClientContractPage() {
           <Link href={backUrl}>
             <SecondaryButton type="button" className="gap-2">
               <HiArrowLeft className="w-5 h-5" />
-              Back to client
+              Back to {clientTermSingular}
             </SecondaryButton>
           </Link>
         </div>
@@ -146,7 +156,7 @@ export default function EditClientContractPage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }

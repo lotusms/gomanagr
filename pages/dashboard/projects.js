@@ -9,7 +9,7 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import ProjectsPageSkeleton from '@/components/dashboard/ProjectsPageSkeleton';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
 import ProjectCardServiceStyle from '@/components/dashboard/ProjectCardServiceStyle';
-import { getProjectTermForIndustry, getProjectTermSingular } from '@/components/clients/clientProfileConstants';
+import { getProjectTermForIndustry, getProjectTermSingular, getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { HiPlus } from 'react-icons/hi';
 
 function ProjectsContent() {
@@ -45,6 +45,9 @@ function ProjectsContent() {
   const projectTermSingular = useMemo(() => getProjectTermSingular(projectTermPlural), [projectTermPlural]);
   const projectTermPluralLower = (projectTermPlural || 'Projects').toLowerCase();
   const projectTermSingularLower = (projectTermSingular || 'project').toLowerCase();
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const unnamedClientLabel = `Unnamed ${(getTermSingular(clientTermPlural) || 'Client').toLowerCase()}`;
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -97,11 +100,11 @@ function ProjectsContent() {
   const clientNameByClientId = useMemo(() => {
     const map = {};
     clients.forEach((c) => {
-      const name = (c.name || c.companyName || 'Unnamed client').trim();
+      const name = (c.name || c.companyName || unnamedClientLabel).trim();
       if (c.id) map[c.id] = name;
     });
     return map;
-  }, [clients]);
+  }, [clients, unnamedClientLabel]);
 
   const handleDeleteConfirm = async () => {
     if (!projectToDelete || !currentUser?.uid) return;
@@ -150,7 +153,7 @@ function ProjectsContent() {
       <div className="space-y-6">
         <PageHeader
           title={title}
-          description={`${title} for your clients. Create and edit from here.`}
+          description={`${title} for your ${clientTermPluralLower}. Create and edit from here.`}
           actions={
             <PrimaryButton
               type="button"

@@ -9,6 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -16,7 +17,12 @@ export default function NewInvoicePage() {
   const [organization, setOrganization] = useState(null);
   const [orgResolved, setOrgResolved] = useState(false);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
+  const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
+
+  const accountIndustry = organization?.industry ?? industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -33,6 +39,7 @@ export default function NewInvoicePage() {
       .then((account) => {
         const currency = account?.clientSettings?.defaultCurrency || 'USD';
         setDefaultCurrency(currency);
+        if (account?.industry) setIndustry(account.industry);
       })
       .catch(() => setDefaultCurrency('USD'));
   }, [currentUser?.uid]);
@@ -63,12 +70,12 @@ export default function NewInvoicePage() {
     <>
       <Head>
         <title>Create invoice - GoManagr</title>
-        <meta name="description" content="Create a new invoice for a client" />
+        <meta name="description" content={`Create a new invoice for a ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
           title="Create invoice"
-          description="Create an invoice for a client. Select the client this invoice is for."
+          description={`Create an invoice for a ${clientTermSingularLower}. Select the ${clientTermSingularLower} this invoice is for.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

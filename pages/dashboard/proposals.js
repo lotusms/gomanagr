@@ -9,6 +9,7 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import ProposalsPageSkeleton from '@/components/dashboard/ProposalsPageSkeleton';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
 import ProposalCardServiceStyle from '@/components/dashboard/ProposalCardServiceStyle';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { HiPlus } from 'react-icons/hi';
 
 function ProposalsContent() {
@@ -17,12 +18,20 @@ function ProposalsContent() {
   const [proposals, setProposals] = useState([]);
   const [clients, setClients] = useState([]);
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgResolved, setOrgResolved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [proposalToDelete, setProposalToDelete] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
+  const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
   const paginatedProposals = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -53,6 +62,7 @@ function ProposalsContent() {
     if (!currentUser?.uid) return;
     getUserAccount(currentUser.uid)
       .then((account) => {
+        setUserAccount(account || null);
         const currency = account?.clientSettings?.defaultCurrency || 'USD';
         setDefaultCurrency(currency);
       })
@@ -95,11 +105,11 @@ function ProposalsContent() {
   const clientNameByClientId = useMemo(() => {
     const map = {};
     clients.forEach((c) => {
-      const name = (c.name || c.companyName || 'Unnamed client').trim();
+      const name = (c.name || c.companyName || unnamedClientLabel).trim();
       if (c.id) map[c.id] = name;
     });
     return map;
-  }, [clients]);
+  }, [clients, unnamedClientLabel]);
 
   const handleDeleteConfirm = async () => {
     if (!proposalToDelete || !currentUser?.uid) return;
@@ -146,7 +156,7 @@ function ProposalsContent() {
       <div className="space-y-6">
         <PageHeader
           title="Proposals"
-          description="Proposals created for your clients. Add from here or from a client’s Documents section."
+          description={`Proposals created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
           actions={
             <PrimaryButton
               type="button"

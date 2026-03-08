@@ -9,16 +9,22 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientProposalForm from '@/components/clients/add-client/ClientProposalForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewClientProposalPage() {
   const router = useRouter();
   const { id: clientId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [clientEmail, setClientEmail] = useState('');
   const [industry, setIndustry] = useState(null);
   const [ready, setReady] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry ?? industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -30,6 +36,8 @@ export default function NewClientProposalPage() {
     (async () => {
       try {
         const account = await getUserAccount(currentUser.uid);
+        setUserAccount(account || null);
+        if (account?.industry) setIndustry(account.industry);
         let clients = account?.clients ?? [];
         const orgRes = await fetch('/api/get-org-clients', {
           method: 'POST',
@@ -65,17 +73,17 @@ export default function NewClientProposalPage() {
     <>
       <Head>
         <title>Add proposal - GoManagr</title>
-        <meta name="description" content="Add a proposal for this client" />
+        <meta name="description" content={`Add a proposal for this ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
           title="Add proposal"
-          description="Create a sales offer or estimate for this client."
+          description={`Create a sales offer or estimate for this ${clientTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }
@@ -87,7 +95,7 @@ export default function NewClientProposalPage() {
             organizationId={organization?.id ?? null}
             defaultCurrency={defaultCurrency}
             clientEmail={clientEmail}
-            industry={industry}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

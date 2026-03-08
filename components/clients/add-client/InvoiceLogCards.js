@@ -21,7 +21,7 @@ const STATUS_LABELS = {
  * @param {string} [clientEmail] - Client email (for document view)
  * @param {string[]} [clientAddressLines] - Client address lines for Bill to (e.g. from billing or company address)
  */
-export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], organization = null }) {
+export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], organization = null, clientTermSingular = 'Client' }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -106,7 +106,7 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
           document={buildInvoiceDocumentPayload(viewState.invoice)}
           company={company}
           client={{
-            name: clientName || 'Client',
+            name: clientName || clientTermSingular,
             email: clientEmail || '',
             ...(clientAddressLines.length > 0 ? { addressLines: clientAddressLines } : {}),
           }}

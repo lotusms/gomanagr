@@ -8,16 +8,22 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientMessageForm from '@/components/clients/add-client/ClientMessageForm';
+import { getUserAccount } from '@/services/userService';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditClientMessagePage() {
   const router = useRouter();
   const { id: clientId, messageId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -25,6 +31,11 @@ export default function EditClientMessagePage() {
       .then((org) => setOrganization(org || null))
       .catch(() => setOrganization(null))
       .finally(() => setOrgReady(true));
+  }, [currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    getUserAccount(currentUser.uid).then((data) => setUserAccount(data || null)).catch(() => setUserAccount(null));
   }, [currentUser?.uid]);
 
   useEffect(() => {
@@ -88,7 +99,7 @@ export default function EditClientMessagePage() {
           <Link href={backUrl}>
             <SecondaryButton type="button" className="gap-2">
               <HiArrowLeft className="w-5 h-5" />
-              Back to client
+              Back to {clientTermSingular}
             </SecondaryButton>
           </Link>
         </div>
@@ -110,7 +121,7 @@ export default function EditClientMessagePage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }
@@ -122,7 +133,7 @@ export default function EditClientMessagePage() {
             userId={currentUser.uid}
             organizationId={organization?.id ?? null}
             messageId={messageId}
-            industry={organization?.industry ?? null}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

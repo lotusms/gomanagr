@@ -9,6 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
 import ClientProposalForm from '@/components/clients/add-client/ClientProposalForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditProposalPage() {
   const router = useRouter();
@@ -21,6 +22,10 @@ export default function EditProposalPage() {
   const [industry, setIndustry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? industry;
+  const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
+  const clientTermSingularLower = (getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -97,7 +102,7 @@ export default function EditProposalPage() {
         <div className="space-y-6">
           <PageHeader
             title="Proposals"
-            description="Proposals created for your clients."
+            description={`Proposals created for your ${clientTermPluralLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
@@ -138,7 +143,7 @@ export default function EditProposalPage() {
       <div className="space-y-6">
         <PageHeader
           title="Edit proposal"
-          description="Update the details of this proposal. You can change the linked client if needed."
+          description={`Update the details of this proposal. You can change the linked ${clientTermSingularLower} if needed.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
@@ -157,7 +162,7 @@ export default function EditProposalPage() {
             proposalId={proposalId}
             defaultCurrency={defaultCurrency}
             showClientDropdown={true}
-            industry={industry}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

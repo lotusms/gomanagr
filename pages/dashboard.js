@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { createDismissTodoHandler } from '@/utils/dismissTodoHandler';
 import { getUserOrganization, getOrganizationMembers } from '@/services/organizationService';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { formatDate } from '@/utils/dateTimeFormatters';
 import {
   HiClipboardList,
@@ -300,7 +301,12 @@ function DashboardContent() {
     onSuccess: (next) => setUserAccount((prev) => (prev ? { ...prev, dismissedTodoIds: next } : null)),
   });
 
-  const todoItems =
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const clientTermSingularLower = (getTermSingular(clientTermPlural) || 'client').toLowerCase();
+
+  const todoItemsRaw =
     dismissedTodoIds === null
       ? []
       : TODO_ITEMS.filter((item) => {
@@ -336,6 +342,15 @@ function DashboardContent() {
           }
           return true;
         });
+
+  const todoItems = todoItemsRaw.map((item) => ({
+    ...item,
+    description: item.description
+      .replace(/\byour clients\b/gi, `your ${clientTermPluralLower}`)
+      .replace(/\bfor your clients\b/gi, `for your ${clientTermPluralLower}`)
+      .replace(/^Clients can\b/, `${clientTermPlural || 'Clients'} can`)
+      .replace(/\bclient portal\b/gi, `${clientTermSingularLower} portal`),
+  }));
 
   const isSuperadmin = isOwnerRole(organization?.membership?.role);
   const showLoader = currentUser?.uid && (!organization || !isSuperadmin);

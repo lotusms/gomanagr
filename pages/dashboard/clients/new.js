@@ -8,6 +8,7 @@ import ClientProfile from '@/components/clients/ClientProfile';
 import ClientFormPageSkeleton from '@/components/clients/ClientFormPageSkeleton';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 
@@ -21,6 +22,11 @@ export default function NewClientPage() {
   const [userAccount, setUserAccount] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [organization, setOrganization] = useState(null);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = (clientTermSingular || 'client').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -61,8 +67,8 @@ export default function NewClientPage() {
     return (
       <>
         <Head>
-          <title>New Client - GoManagr</title>
-          <meta name="description" content="Add a new client" />
+          <title>New {clientTermSingular} - GoManagr</title>
+          <meta name="description" content={`Add a new ${clientTermSingularLower}`} />
         </Head>
         <ClientFormPageSkeleton />
       </>
@@ -81,26 +87,26 @@ export default function NewClientPage() {
           }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to save client');
+        if (!res.ok) throw new Error(data.error || `Failed to save ${clientTermSingularLower}`);
       }
     : undefined;
 
   return (
     <>
       <Head>
-        <title>New Client - GoManagr</title>
-        <meta name="description" content="Add a new client" />
+        <title>New {clientTermSingular} - GoManagr</title>
+        <meta name="description" content={`Add a new ${clientTermSingularLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title="Add client"
-          description="Add a new client to your account."
+          title={`Add ${clientTermSingular}`}
+          description={`Add a new ${clientTermSingularLower} to your account.`}
           actions={
             <Link href="/dashboard/clients">
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to clients
+                Back to {clientTermPlural}
               </SecondaryButton>
             </Link>
           }

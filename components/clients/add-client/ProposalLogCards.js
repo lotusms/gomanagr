@@ -30,7 +30,7 @@ const STATUS_LABELS = {
  * @param {string[]} [clientAddressLines] - Client address lines for Bill to (e.g. from billing or company address)
  * @param {Object|null} [organization] - User's organization (for company name, logo, address, phone on document)
  */
-export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, clientNameByClientId, clientName = '', clientEmail = '', clientAddressLines = [], defaultCurrency = 'USD', organization = null }) {
+export default function ProposalLogCards({ proposals, onSelect, onDelete, borderClass, clientNameByClientId, clientName = '', clientEmail = '', clientAddressLines = [], defaultCurrency = 'USD', organization = null, clientTermSingular = 'Client' }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -117,7 +117,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
           document={buildProposalDocumentPayload(viewState.proposal)}
           company={company}
           client={{
-            name: (viewState.proposal.client_id && clientNameByClientId?.[viewState.proposal.client_id]) || clientName || 'Client',
+            name: (viewState.proposal.client_id && clientNameByClientId?.[viewState.proposal.client_id]) || clientName || clientTermSingular,
             email: clientEmail || '',
             ...(clientAddressLines.length > 0 ? { addressLines: clientAddressLines } : {}),
           }}

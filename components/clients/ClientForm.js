@@ -11,6 +11,7 @@ import { State } from 'country-state-city';
 import { HiChevronDown, HiChevronRight } from 'react-icons/hi';
 import Dropdown from '@/components/ui/Dropdown';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function normalizeCountryValue(value) {
   if (!value) return '';
@@ -34,7 +35,11 @@ export default function ClientForm({
   onSubmit,
   onCancel,
   saving = false,
+  industry = null,
 }) {
+  const clientTermPlural = getTermForIndustry(industry, 'client');
+  const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -113,7 +118,7 @@ export default function ClientForm({
 
   const validate = () => {
     const newErrors = {};
-    if (!name || name.trim() === '') newErrors.name = 'Please enter a client name';
+    if (!name || name.trim() === '') newErrors.name = `Please enter a ${clientTermSingularLower} name`;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -160,13 +165,13 @@ export default function ClientForm({
         <InputField
           id="clientName"
           type="text"
-          label="Client Name"
+          label={`${clientTermSingular} Name`}
           value={name}
           onChange={(e) => {
             setName(e.target.value);
             setErrors((prev) => ({ ...prev, name: '' }));
           }}
-          placeholder="Enter client name"
+          placeholder={`Enter ${clientTermSingularLower} name`}
           required
           error={errors.name}
           variant="light"
@@ -339,7 +344,7 @@ export default function ClientForm({
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving}>
-          {saving ? 'Saving...' : initialClient ? 'Update Client' : 'Add Client'}
+          {saving ? 'Saving...' : initialClient ? `Update ${clientTermSingular}` : `Add ${clientTermSingular}`}
         </PrimaryButton>
       </div>
       {discardDialog}

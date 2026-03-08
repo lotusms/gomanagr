@@ -20,6 +20,7 @@ import {
 import AppointmentForm from '@/components/dashboard/AppointmentForm';
 import { PageHeader, ConfirmationDialog } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { HiArrowLeft } from 'react-icons/hi';
 
 export default function EditAppointmentPage() {
@@ -53,6 +54,9 @@ export default function EditAppointmentPage() {
     fetchOrgClients,
     broadcastScheduleUpdated,
   } = useScheduleData();
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermSingularLower = (getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client').toLowerCase();
 
   const appointment = useMemo(() => {
     if (!id || !appointments?.length) return null;
@@ -98,7 +102,7 @@ export default function EditAppointmentPage() {
               }),
             });
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Failed to add client');
+            if (!res.ok) throw new Error(data.error || `Failed to add ${clientTermSingularLower}`);
           }
           await fetchOrgSchedule();
           if (fetchOrgClients) fetchOrgClients();

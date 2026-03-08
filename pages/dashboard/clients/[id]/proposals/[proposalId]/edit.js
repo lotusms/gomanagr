@@ -9,12 +9,14 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientProposalForm from '@/components/clients/add-client/ClientProposalForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditClientProposalPage() {
   const router = useRouter();
   const { id: clientId, proposalId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgReady, setOrgReady] = useState(false);
   const [proposal, setProposal] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
@@ -22,6 +24,9 @@ export default function EditClientProposalPage() {
   const [industry, setIndustry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry ?? industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -45,6 +50,8 @@ export default function EditClientProposalPage() {
         const orgData = await orgRes.json().catch(() => ({}));
         const orgClients = orgData?.clients ?? [];
         if (orgClients.length > 0) clients = orgClients;
+        setUserAccount(account || null);
+        if (account?.industry) setIndustry(account.industry);
         const client = clients.find((c) => c.id === clientId);
         const currency =
           client?.defaultCurrency ||
@@ -120,7 +127,7 @@ export default function EditClientProposalPage() {
           <Link href={backUrl}>
             <SecondaryButton type="button" className="gap-2">
               <HiArrowLeft className="w-5 h-5" />
-              Back to client
+              Back to {clientTermSingular}
             </SecondaryButton>
           </Link>
         </div>
@@ -142,7 +149,7 @@ export default function EditClientProposalPage() {
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to client
+                Back to {clientTermSingular}
               </SecondaryButton>
             </Link>
           }
@@ -156,7 +163,7 @@ export default function EditClientProposalPage() {
             proposalId={proposalId}
             defaultCurrency={defaultCurrency}
             clientEmail={clientEmail}
-            industry={industry}
+            industry={accountIndustry}
             onSuccess={() => router.push(backUrl)}
             onCancel={() => router.push(backUrl)}
           />

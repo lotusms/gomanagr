@@ -9,6 +9,7 @@ import { PrimaryButton } from '@/components/ui/buttons';
 import InvoicesPageSkeleton from '@/components/dashboard/InvoicesPageSkeleton';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
 import InvoiceCardServiceStyle from '@/components/dashboard/InvoiceCardServiceStyle';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { HiPlus } from 'react-icons/hi';
 
 function InvoicesContent() {
@@ -17,12 +18,19 @@ function InvoicesContent() {
   const [invoices, setInvoices] = useState([]);
   const [clients, setClients] = useState([]);
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [orgResolved, setOrgResolved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  const accountIndustry = organization?.industry ?? userAccount?.industry;
+  const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
+  const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const clientTermSingularLower = (getTermSingular(clientTermPlural) || 'Client').toLowerCase();
+  const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
   const paginatedInvoices = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -52,6 +60,7 @@ function InvoicesContent() {
     if (!currentUser?.uid) return;
     getUserAccount(currentUser.uid)
       .then((account) => {
+        setUserAccount(account || null);
         const currency = account?.clientSettings?.defaultCurrency || 'USD';
         setDefaultCurrency(currency);
       })
@@ -93,11 +102,11 @@ function InvoicesContent() {
   const clientNameByClientId = useMemo(() => {
     const map = {};
     clients.forEach((c) => {
-      const name = (c.name || c.companyName || 'Unnamed client').trim();
+      const name = (c.name || c.companyName || unnamedClientLabel).trim();
       if (c.id) map[c.id] = name;
     });
     return map;
-  }, [clients]);
+  }, [clients, unnamedClientLabel]);
 
   const clientEmailByClientId = useMemo(() => {
     const map = {};
@@ -170,7 +179,7 @@ function InvoicesContent() {
       <div className="space-y-6">
         <PageHeader
           title="Invoices"
-          description="Invoices created for your clients. Add from here or from a client's Documents section."
+          description={`Invoices created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
           actions={
             <PrimaryButton
               type="button"

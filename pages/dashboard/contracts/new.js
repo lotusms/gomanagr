@@ -9,6 +9,7 @@ import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
 import ClientContractForm from '@/components/clients/add-client/ClientContractForm';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewContractPage() {
   const router = useRouter();
@@ -40,6 +41,8 @@ export default function NewContractPage() {
 
   const backUrl = '/dashboard/contracts';
   const accountIndustry = organization?.industry ?? industry;
+  const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const clientTermSingularLower = clientTermSingular.toLowerCase();
 
   if (!ready || !currentUser?.uid) return null;
 
@@ -47,12 +50,12 @@ export default function NewContractPage() {
     <>
       <Head>
         <title>Create contract - GoManagr</title>
-        <meta name="description" content="Create a new contract for a client" />
+        <meta name="description" content={`Create a new contract for a ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
           title="Create contract"
-          description="Create a contract for a client. Select the client this contract is for."
+          description={`Create a contract for a ${clientTermSingularLower}. Select the ${clientTermSingularLower} this contract is for.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

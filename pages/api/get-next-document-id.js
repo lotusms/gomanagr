@@ -30,6 +30,7 @@ const PREFIX_TO_TABLE_AND_COL = {
   CON: { table: 'client_contracts', column: 'contract_number' },
   CONT: { table: 'client_contracts', column: 'contract_number' },
   PROJ: { table: 'client_projects', column: 'project_number' },
+  TASK: { table: 'tasks', column: 'task_number', orgOnly: true },
 };
 
 function toDateYyyyMmDd(dateStr) {
@@ -56,6 +57,9 @@ export default async function handler(req, res) {
   const mapping = PREFIX_TO_TABLE_AND_COL[docPrefix];
   if (!mapping) {
     return res.status(400).json({ error: `Unsupported prefix: ${prefix}` });
+  }
+  if (mapping.orgOnly && !organizationId) {
+    return res.status(400).json({ error: 'organizationId is required for this document type' });
   }
 
   try {
@@ -99,8 +103,10 @@ export default async function handler(req, res) {
     let query = supabaseAdmin.from(mapping.table).select(mapping.column);
     if (organizationId) {
       query = query.eq('organization_id', organizationId);
-    } else {
+    } else if (!mapping.orgOnly) {
       query = query.eq('user_id', userId).is('organization_id', null);
+    } else {
+      return res.status(400).json({ error: 'organizationId is required for this document type' });
     }
     const { data: rows, error } = await query;
 

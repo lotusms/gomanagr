@@ -253,13 +253,33 @@ const TERMS_BY_CONCEPT = {
     'Health & Wellness': 'Wellness Coordinator',
     'Travel & Tourism': 'Tourism Coordinator',
   },
+  tasks: {
+    default: 'Tasks',
+    'Technology': 'Issues',
+    'Manufacturing': 'Work Orders',
+    'Construction': 'Punch Lists',
+    'Education': 'Assignments',
+    'Consulting': 'Action Items',
+    'Marketing': 'Action Items',
+    'Transportation': 'Dispatches',
+    'Energy': 'Work Orders',
+    'Home Services': 'To Dos',
+    'Automotive': 'Repairs',
+    'Government': 'Action Items',
+    'Telecommunications': 'Tickets',
+    'Utilities': 'Work Orders',
+    'Beauty & Spa': 'To Dos',
+    'Hospitality': 'Action Items',
+    'Food & Drink': 'Prep List',
+    'Nonprofit': 'Action Items',
+  }
 };
 
 /**
  * Returns the display term for a concept in the given industry.
  * Use this for nav labels, page titles, empty states, etc. Functionality is unchanged; only the label varies.
  * @param {string} industry - The account/organization industry (e.g. "Legal", "Beauty & Spa")
- * @param {string} concept - One of: 'project' | 'project_owner' | 'team' | 'teamMember' | 'client' | 'services' | 'proposal' | 'invoice' | 'contract' (extend TERMS_BY_CONCEPT for more)
+ * @param {string} concept - One of: 'project' | 'project_owner' | 'team' | 'teamMember' | 'client' | 'services' | 'proposal' | 'invoice' | 'contract' | 'tasks' (extend TERMS_BY_CONCEPT for more)
  * @returns {string} - The term for that concept (e.g. "Team", "Staff", "Cases")
  */
 export function getTermForIndustry(industry, concept) {
@@ -268,7 +288,7 @@ export function getTermForIndustry(industry, concept) {
     ?? (concept === 'proposal' ? TERMS_BY_CONCEPT.proposals : undefined)
     ?? (concept === 'invoice' ? TERMS_BY_CONCEPT.invoices : undefined)
     ?? (concept === 'contract' ? TERMS_BY_CONCEPT.contracts : undefined);
-  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : concept === 'services' ? 'Services' : concept === 'proposal' ? 'Proposals' : concept === 'invoice' ? 'Invoices' : concept === 'contract' ? 'Contracts' : 'Projects';
+  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : concept === 'services' ? 'Services' : concept === 'proposal' ? 'Proposals' : concept === 'invoice' ? 'Invoices' : concept === 'contract' ? 'Contracts' : concept === 'tasks' ? 'Tasks' : 'Projects';
   if (!key) return config.default;
   return config[key] ?? config.default;
 }

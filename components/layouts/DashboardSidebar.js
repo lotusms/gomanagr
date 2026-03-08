@@ -17,6 +17,7 @@ import {
   HiViewGrid,
   HiClipboardList,
   HiTag,
+  HiViewList,
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 import { getProjectTermForIndustry, getTermForIndustry } from '@/components/clients/clientProfileConstants';
@@ -31,6 +32,7 @@ function getOwnerNavItems(accountIndustry) {
   const proposalsTerm = getTermForIndustry(accountIndustry, 'proposal');
   const invoicesTerm = getTermForIndustry(accountIndustry, 'invoice');
   const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
+  const tasksTerm = getTermForIndustry(accountIndustry, 'tasks');
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
     { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
@@ -43,6 +45,7 @@ function getOwnerNavItems(accountIndustry) {
     { name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText },
     { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { divider: true },
+    { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
     { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
     { name: 'Timesheets', href: '/dashboard/timesheets', icon: HiClock },
@@ -58,6 +61,7 @@ function getAdminNavItems(accountIndustry) {
   const proposalsTerm = getTermForIndustry(accountIndustry, 'proposal');
   const invoicesTerm = getTermForIndustry(accountIndustry, 'invoice');
   const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
+  const tasksTerm = getTermForIndustry(accountIndustry, 'tasks');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
@@ -73,6 +77,7 @@ function getAdminNavItems(accountIndustry) {
   items.push(
     { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { divider: true },
+    { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid }
   );
   return items;
@@ -99,6 +104,7 @@ function getMemberNavItems(memberAccess, accountIndustry) {
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const servicesTerm = getTermForIndustry(accountIndustry, 'services');
   const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
+  const tasksTerm = getTermForIndustry(accountIndustry, 'tasks');
   const all = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
@@ -108,6 +114,8 @@ function getMemberNavItems(memberAccess, accountIndustry) {
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
+    { divider: true },
+    { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
   ];
   if (memberAccess == null) return all;
   return all.filter((item) => {

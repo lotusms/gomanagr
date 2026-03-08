@@ -40,7 +40,7 @@ describe('DashboardSidebar role-based navigation', () => {
 
     const items = getNavLinkNamesAndHrefs();
 
-    // Order must match DashboardSidebar getOwnerNavItems: Projects then Contracts then Proposals then Invoices
+    // Order must match DashboardSidebar getOwnerNavItems: Projects then Tasks then Contracts then Proposals then Invoices
     const expected = [
       { name: 'Home', href: '/dashboard' },
       { name: 'Team', href: '/dashboard/team' },
@@ -48,6 +48,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
@@ -77,6 +78,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
@@ -102,6 +104,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
@@ -114,8 +117,11 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('member: shows exact member nav items (Home, My Profile, Projects, Schedule, Clients, Services, Contracts)', () => {
-    renderSidebar({ memberRole: 'member', memberAccess: {} });
+  it('member: shows exact member nav items when all sections enabled (Home, My Profile, Schedule, Clients, Services, Projects, Tasks, Contracts)', () => {
+    renderSidebar({
+      memberRole: 'member',
+      memberAccess: { schedule: true, clients: true, projects: true, contracts: true },
+    });
 
     const items = getNavLinkNamesAndHrefs();
 
@@ -126,6 +132,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Clients', href: '/dashboard/clients' },
       { name: 'Services', href: '/dashboard/services' },
       { name: 'Projects', href: '/dashboard/projects' },
+      { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Contracts', href: '/dashboard/contracts' },
     ];
 

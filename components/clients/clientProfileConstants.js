@@ -152,7 +152,18 @@ const TERMS_BY_CONCEPT = {
     'Food & Drink': 'Customers',
     'Travel & Tourism': 'Guests',
   },
-  // Future: service: { default: 'Services', ... }, proposal: { default: 'Proposals', ... },
+  services: {
+    default: 'Services',
+    'Healthcare': 'Procedures',
+    'Retail': 'Products',
+    'Manufacturing': 'Products',
+    'Education': 'Programs',
+    'Telecommunications': 'Plans',
+    'Utilities': 'Plans',
+    'Food & Drink': 'Menu Items',
+    'Travel & Tourism': 'Packages',
+  },
+  // Future: service: { proposal: { default: 'Proposals', ... },
 };
 
 /**
@@ -165,7 +176,7 @@ const TERMS_BY_CONCEPT = {
 export function getTermForIndustry(industry, concept) {
   const key = typeof industry === 'string' ? industry.trim() : '';
   const config = TERMS_BY_CONCEPT[concept];
-  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : 'Projects';
+  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : concept === 'services' ? 'Services' : 'Projects';
   if (!key) return config.default;
   return config[key] ?? config.default;
 }
@@ -211,6 +222,13 @@ export function getTermSingular(pluralTerm) {
     'Students': 'Student',
     'Guests': 'Guest',
     'Constituents': 'Constituent',
+    'Subscribers': 'Subscriber',
+    'Services': 'Service',
+    'Procedures': 'Procedure',
+    'Products': 'Product',
+    'Plans': 'Plan',
+    'Menu Items': 'Menu Item',
+    'Packages': 'Package',
   };
 
   return singularMap[pluralTerm] || pluralTerm.replace(/s$/, '');

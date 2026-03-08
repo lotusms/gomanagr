@@ -6,6 +6,7 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
 import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import SendInvoiceDialog from '@/components/invoices/SendInvoiceDialog';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 
@@ -43,6 +44,7 @@ export default function InvoiceCardServiceStyle({
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
+  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
 
   const [viewState, setViewState] = useState({ open: false, autoPrint: false });
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
@@ -325,6 +327,7 @@ export default function InvoiceCardServiceStyle({
           client={{ name: clientName || 'Client', email: '' }}
           currency={defaultCurrency}
           autoPrint={viewState.autoPrint}
+          lineItemsSectionLabel={lineItemsSectionLabel}
         />
       )}
     </div>

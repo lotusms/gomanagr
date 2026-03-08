@@ -22,6 +22,7 @@ const MAX_ZOOM = 2;
  * @param {Object} client - { name, email? }
  * @param {string} [currency='USD']
  * @param {boolean} [autoPrint] - when true, triggers print shortly after open
+ * @param {string} [lineItemsSectionLabel='Services'] - Section heading for line items (e.g. "Procedures", "Products")
  */
 export default function DocumentViewDialog({
   isOpen,
@@ -32,6 +33,7 @@ export default function DocumentViewDialog({
   client = {},
   currency = 'USD',
   autoPrint = false,
+  lineItemsSectionLabel = 'Services',
 }) {
   const printRef = useRef(null);
   const contentRef = useRef(null);
@@ -128,6 +130,7 @@ export default function DocumentViewDialog({
                   client={client}
                   document={doc}
                   currency={currency}
+                  lineItemsSectionLabel={lineItemsSectionLabel}
                 />
               </div>
             </div>

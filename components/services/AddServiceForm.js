@@ -5,7 +5,7 @@ import { ChipsMulti } from '@/components/ui/Chips';
 import CurrencyInput from '@/components/ui/CurrencyInput';
 import Avatar from '@/components/ui/Avatar';
 import { unformatCurrency } from '@/utils/formatCurrency';
-import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 /**
  * Normalize a service name for comparison (remove spaces, lowercase, trim)
@@ -90,8 +90,11 @@ export default function AddServiceForm({
   const assignReadOnly = !isPageMode;
   const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
   const teamTerm = getTermForIndustry(industry, 'team');
+  const serviceTermPlural = getTermForIndustry(industry, 'services');
+  const serviceTermSingular = getTermSingular(serviceTermPlural) || 'Service';
+  const serviceTermSingularLower = serviceTermSingular.toLowerCase();
   const assignToLabel = `Assign to ${teamMemberTerm}`;
-  const emptyAssignCopy = `Add ${teamMemberTerm.toLowerCase()} in the ${teamTerm} section to assign services.`;
+  const emptyAssignCopy = `Add ${teamMemberTerm.toLowerCase()} in the ${teamTerm} section to assign ${serviceTermPlural.toLowerCase()}.`;
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -188,7 +191,7 @@ export default function AddServiceForm({
     const newErrors = {};
 
     if (!name || name.trim() === '') {
-      newErrors.name = 'Please enter a service name';
+      newErrors.name = `Please enter a ${serviceTermSingularLower} name`;
     } else {
       const trimmedName = name.trim();
       const duplicateCheck = checkDuplicateService(
@@ -198,7 +201,7 @@ export default function AddServiceForm({
       );
       
       if (duplicateCheck.isDuplicate) {
-        newErrors.name = `A service named "${duplicateCheck.similarService.name}" already exists. Please use a different name.`;
+        newErrors.name = `A ${serviceTermSingularLower} named "${duplicateCheck.similarService.name}" already exists. Please use a different name.`;
       }
     }
 
@@ -235,7 +238,7 @@ export default function AddServiceForm({
         <InputField
           id="name"
           type="text"
-          label="Service name"
+          label={`${serviceTermSingular} name`}
           value={name}
           onChange={(e) => {
             markDirty();
@@ -248,12 +251,12 @@ export default function AddServiceForm({
               if (duplicateCheck.isDuplicate) {
                 setErrors((prev) => ({
                   ...prev,
-                  name: `A service named "${duplicateCheck.similarService.name}" already exists. Please use a different name.`,
+                  name: `A ${serviceTermSingularLower} named "${duplicateCheck.similarService.name}" already exists. Please use a different name.`,
                 }));
               }
             }
           }}
-          placeholder="e.g., Haircut, Consultation, Massage"
+          placeholder={industry ? `e.g., enter ${serviceTermSingularLower} name` : 'e.g., Haircut, Consultation, Massage'}
           required
           error={errors.name}
           variant="light"
@@ -262,7 +265,7 @@ export default function AddServiceForm({
         <InputField
           id="serviceNumber"
           type="text"
-          label="Service ID"
+          label={`${serviceTermSingular} ID`}
           value={serviceNumber}
           onChange={(e) => { markDirty(); setServiceNumber(e.target.value); }}
           placeholder={initialService ? undefined : (isPageMode ? 'Auto-generated; editable for legacy IDs' : 'Optional')}
@@ -299,7 +302,7 @@ export default function AddServiceForm({
             setDescription(e.target.value);
             setErrors((prev) => ({ ...prev, description: '' }));
           }}
-          placeholder="Service description..."
+          placeholder={`${serviceTermSingular} description...`}
           rows={3}
           error={errors.description}
           variant="light"
@@ -314,7 +317,7 @@ export default function AddServiceForm({
                 {assignToLabel}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Assignments can only be changed from the Services page.
+                {`Assignments can only be changed from the ${serviceTermPlural} page.`}
               </p>
               <ul className="space-y-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50 p-3">
                 {sortedTeamMembers.map((member) => {
@@ -390,7 +393,7 @@ export default function AddServiceForm({
             }}
             disabled={saving}
           >
-            {saving ? 'Saving...' : initialService ? 'Update Service' : 'Add Service'}
+            {saving ? 'Saving...' : initialService ? `Update ${serviceTermSingular}` : `Add ${serviceTermSingular}`}
           </PrimaryButton>
         </div>
       </div>

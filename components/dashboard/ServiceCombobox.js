@@ -19,6 +19,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { Dropdown, Drawer } from '@/components/ui';
 import AddServiceForm from '@/components/services/AddServiceForm';
 import { HiPlus } from 'react-icons/hi';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function ServiceCombobox({
   id,
@@ -27,12 +28,16 @@ export default function ServiceCombobox({
   onChange,
   onServiceCreated,
   teamMembers = [],
-  placeholder = 'Select service...',
+  placeholder: placeholderProp,
   className = '',
   addButtonLabel = 'Add',
-  drawerTitle = 'Add service',
+  drawerTitle: drawerTitleProp,
   industry = null,
 }) {
+  const serviceTermSingular = getTermSingular(getTermForIndustry(industry, 'services')) || 'Service';
+  const serviceTermSingularLower = serviceTermSingular.toLowerCase();
+  const placeholder = placeholderProp ?? (industry ? `Select ${serviceTermSingularLower}...` : 'Select service...');
+  const drawerTitle = drawerTitleProp ?? (industry ? `Add ${serviceTermSingular}` : 'Add service');
   const [showDrawer, setShowDrawer] = useState(false);
   const [saving, setSaving] = useState(false);
 

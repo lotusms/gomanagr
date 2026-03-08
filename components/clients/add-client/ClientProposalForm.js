@@ -174,6 +174,7 @@ export default function ClientProposalForm({
   const clientTermPlural = getTermForIndustry(industry, 'client');
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const serviceTermSingular = getTermSingular(getTermForIndustry(industry, 'services')) || 'Service';
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
@@ -478,11 +479,12 @@ export default function ClientProposalForm({
                 items={lineItems}
                 onChange={(items) => { markDirty(); setLineItems(items); }}
                 currency={defaultCurrency}
-                itemLabel="Service"
+                itemLabel={serviceTermSingular}
                 addLabel="Add item"
                 services={services}
                 onServiceCreated={saveServices}
                 teamMembers={teamMembers}
+                industry={industry}
                 tax={tax}
                 discount={discount}
                 onTaxChange={(v) => { markDirty(); setTax(v); }}

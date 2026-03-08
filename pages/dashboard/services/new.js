@@ -10,19 +10,24 @@ import AddServiceForm from '@/components/services/AddServiceForm';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
-import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function NewServicePage() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [services, setServices] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [ownerUserId, setOwnerUserId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
-  const industry = organization?.industry ?? null;
+  const industry = organization?.industry ?? userAccount?.industry ?? null;
   const teamMemberTermLower = (getTermForIndustry(industry, 'teamMember') || 'team members').toLowerCase();
+  const serviceTerm = getTermForIndustry(industry, 'services');
+  const serviceTermSingular = getTermSingular(serviceTerm) || 'Service';
+  const serviceTermSingularLower = serviceTermSingular.toLowerCase();
+  const serviceTermLower = serviceTerm.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -48,6 +53,7 @@ export default function NewServicePage() {
     } else {
       getUserAccount(currentUser.uid)
         .then((account) => {
+          setUserAccount(account || null);
           setServices(account?.services || []);
           setTeamMembers(account?.teamMembers || []);
           setOwnerUserId(null);
@@ -64,6 +70,7 @@ export default function NewServicePage() {
     if (currentUser?.uid && organization && !organization?.id) {
       getUserAccount(currentUser.uid)
         .then((account) => {
+          setUserAccount(account || null);
           setServices(account?.services || []);
           setTeamMembers(account?.teamMembers || []);
           setOwnerUserId(null);
@@ -97,18 +104,18 @@ export default function NewServicePage() {
   return (
     <>
       <Head>
-        <title>Add service - GoManagr</title>
-        <meta name="description" content="Add a new service" />
+        <title>Add {serviceTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Add a new ${serviceTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Add service"
-          description={`Create a new service and assign it to ${teamMemberTermLower}.`}
+          title={`Add ${serviceTermSingular}`}
+          description={`Create a new ${serviceTermSingularLower} and assign it to ${teamMemberTermLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to services
+                Back to {serviceTermLower}
               </SecondaryButton>
             </Link>
           }

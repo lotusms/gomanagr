@@ -32,6 +32,10 @@ function ServicesContent() {
   const teamMemberSingular = getTermSingular(teamMemberTerm) || 'Team Member';
   const teamMemberTermLower = teamMemberTerm.toLowerCase();
   const teamMemberSingularLower = teamMemberSingular.toLowerCase();
+  const serviceTerm = getTermForIndustry(industry, 'services');
+  const serviceTermSingular = getTermSingular(serviceTerm) || 'Service';
+  const serviceTermLower = serviceTerm.toLowerCase();
+  const serviceTermSingularLower = serviceTermSingular.toLowerCase();
 
   const paginatedServices = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -176,8 +180,8 @@ function ServicesContent() {
   return (
     <>
       <Head>
-        <title>Services - GoManagr</title>
-        <meta name="description" content="Manage your services" />
+        <title>{serviceTerm} - GoManagr</title>
+        <meta name="description" content={`Manage your ${serviceTermLower}`} />
       </Head>
 
       <div className="space-y-6">
@@ -186,14 +190,14 @@ function ServicesContent() {
         ) : (
           <>
             <PageHeader
-              title="Services"
-              description={`Manage your services and assign them to ${teamMemberTermLower}. Services can be selected when creating appointments.`}
+              title={serviceTerm}
+              description={`Manage your ${serviceTermLower} and assign them to ${teamMemberTermLower}. ${serviceTerm} can be selected when creating appointments.`}
               actions={
                 <>
                   <Link href="/dashboard/services/new">
                     <PrimaryButton type="button" className="gap-2">
                       <HiPlus className="w-5 h-5" />
-                      Add service
+                      Add {serviceTermSingularLower}
                     </PrimaryButton>
                   </Link>
                   {saving && <span className="text-sm text-gray-500 dark:text-gray-400">Saving…</span>}
@@ -204,8 +208,8 @@ function ServicesContent() {
               isOpen={deleteDialogOpen}
               onClose={handleRemoveCancel}
               onConfirm={handleRemoveConfirm}
-              title="Delete Service"
-              message={`Are you sure you want to delete "${serviceToDelete?.name || 'this service'}"? This action cannot be undone and will remove all assignments to ${teamMemberTermLower}.`}
+              title={`Delete ${serviceTermSingular}`}
+              message={`Are you sure you want to delete "${serviceToDelete?.name || `this ${serviceTermSingularLower}`}"? This action cannot be undone and will remove all assignments to ${teamMemberTermLower}.`}
               confirmText="Delete"
               cancelText="Cancel"
               confirmationWord="delete"
@@ -255,7 +259,7 @@ function ServicesContent() {
                               handleRemoveClick(service);
                             }}
                             className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-                            title="Delete service"
+                            title={`Delete ${serviceTermSingularLower}`}
                             disabled={saving}
                           >
                             <HiTrash className="size-5" />

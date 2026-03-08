@@ -64,6 +64,9 @@ export default function AppointmentForm({
   const clientTermPlural = getTermForIndustry(industry, 'client');
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const serviceTermPlural = getTermForIndustry(industry, 'services');
+  const serviceTermSingular = getTermSingular(serviceTermPlural) || 'Service';
+  const serviceTermSingularLower = serviceTermSingular.toLowerCase();
   const startHour = parseHour(businessHoursStart);
   const endHour = parseHour(businessHoursEnd);
   const timeSlots = buildTimeSlots(businessHoursStart, businessHoursEnd, timeFormat);
@@ -620,11 +623,11 @@ export default function AppointmentForm({
             industry={industry}
             multiple={false}
             preselectedTeamMemberIds={effectiveStaffIds}
-            label="Service"
+            label={serviceTermSingular}
             disabled={saving}
-            dropdownPlaceholder="Select service..."
+            dropdownPlaceholder={`Select ${serviceTermSingularLower}...`}
             addButtonLabel="Add"
-            drawerTitle="Add Service"
+            drawerTitle={`Add ${serviceTermSingular}`}
             drawerWidth="75vw"
           />
           {errors.services && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.services}</p>}

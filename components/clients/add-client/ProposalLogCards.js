@@ -2,6 +2,7 @@ import { useState } from 'react';
 import CardDeleteButton from './CardDeleteButton';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import { DocumentViewDialog } from '@/components/documents';
 import { buildProposalDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
 import { HiEye, HiPrinter } from 'react-icons/hi';
@@ -35,6 +36,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
   const [viewState, setViewState] = useState({ proposal: null, autoPrint: false });
+  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
 
   const company = buildCompanyForDocument(account, organization);
   const closeView = () => setViewState({ proposal: null, autoPrint: false });
@@ -123,6 +125,7 @@ export default function ProposalLogCards({ proposals, onSelect, onDelete, border
           }}
           currency={defaultCurrency}
           autoPrint={viewState.autoPrint}
+          lineItemsSectionLabel={lineItemsSectionLabel}
         />
       )}
     </div>

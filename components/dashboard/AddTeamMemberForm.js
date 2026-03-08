@@ -77,6 +77,9 @@ export default function AddTeamMemberForm({
   const teamMemberTerm = getTermForIndustry(industry, 'teamMember');
   const teamMemberSingular = getTermSingular(teamMemberTerm);
   const teamMemberSingularLower = teamMemberSingular.toLowerCase();
+  const serviceTermPlural = getTermForIndustry(industry, 'services');
+  const serviceTermSingular = getTermSingular(serviceTermPlural) || 'Service';
+  const serviceTermSingularLower = serviceTermSingular.toLowerCase();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [role, setRole] = useState('');
@@ -635,12 +638,12 @@ export default function AddTeamMemberForm({
             industry={industry}
             multiple
             preselectedTeamMemberIds={initialMember?.id ? [initialMember.id] : []}
-            label="Services offered"
+            label={`${serviceTermPlural} offered`}
             chipsSectionLabel="Assigned to this member"
             disabled={saving}
-            dropdownPlaceholder="Select a service to assign..."
+            dropdownPlaceholder={`Select a ${serviceTermSingularLower} to assign...`}
             addButtonLabel="Add"
-            drawerTitle="Add Service"
+            drawerTitle={`Add ${serviceTermSingular}`}
             drawerWidth="75vw"
           />
           <ChipsArrayBuilder

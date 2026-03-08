@@ -5,6 +5,7 @@ import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
 import { buildProposalDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -31,6 +32,7 @@ export default function ProposalCardServiceStyle({
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
+  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
   const [viewState, setViewState] = useState({ open: false, autoPrint: false });
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchorRect, setMenuAnchorRect] = useState(null);
@@ -205,6 +207,7 @@ export default function ProposalCardServiceStyle({
           client={{ name: clientName || 'Client', email: '' }}
           currency={defaultCurrency}
           autoPrint={viewState.autoPrint}
+          lineItemsSectionLabel={lineItemsSectionLabel}
         />
       )}
     </div>

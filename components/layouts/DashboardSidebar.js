@@ -26,6 +26,7 @@ function getOwnerNavItems(accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const teamTerm = getTermForIndustry(accountIndustry, 'team');
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
+  const servicesTerm = getTermForIndustry(accountIndustry, 'services');
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
     { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
@@ -33,7 +34,7 @@ function getOwnerNavItems(accountIndustry) {
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
-    { name: 'Services', href: '/dashboard/services', icon: HiTag },
+    { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
     { name: 'Proposals', href: '/dashboard/proposals', icon: HiDocumentText },
     { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
@@ -49,6 +50,7 @@ function getAdminNavItems(accountIndustry, memberRole) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const teamTerm = getTermForIndustry(accountIndustry, 'team');
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
+  const servicesTerm = getTermForIndustry(accountIndustry, 'services');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
@@ -57,7 +59,7 @@ function getAdminNavItems(accountIndustry, memberRole) {
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
-    { name: 'Services', href: '/dashboard/services', icon: HiTag },
+    { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
   ];
   if (memberRole !== ORG_ROLE.DEVELOPER) {
     items.push({ name: 'Proposals', href: '/dashboard/proposals', icon: HiDocumentText });
@@ -90,13 +92,14 @@ function isNavItemActive(pathname, href) {
 function getMemberNavItems(memberAccess, accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
+  const servicesTerm = getTermForIndustry(accountIndustry, 'services');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
     { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
-    { name: 'Services', href: '/dashboard/services', icon: HiTag },
+    { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
     { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
   ];
   return items;

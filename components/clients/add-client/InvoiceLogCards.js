@@ -4,6 +4,7 @@ import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
 import { HiEye, HiPrinter } from 'react-icons/hi';
 
@@ -26,6 +27,7 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
   const [viewState, setViewState] = useState({ invoice: null, autoPrint: false });
+  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
 
   const company = buildCompanyForDocument(account, organization);
   const closeView = () => setViewState({ invoice: null, autoPrint: false });
@@ -112,6 +114,7 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
           }}
           currency={defaultCurrency}
           autoPrint={viewState.autoPrint}
+          lineItemsSectionLabel={lineItemsSectionLabel}
         />
       )}
     </div>

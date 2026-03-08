@@ -10,12 +10,14 @@ import AddServiceForm from '@/components/services/AddServiceForm';
 import { SecondaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 export default function EditServicePage() {
   const router = useRouter();
   const { id: serviceId } = router.query;
   const { currentUser } = useAuth();
   const [organization, setOrganization] = useState(null);
+  const [userAccount, setUserAccount] = useState(null);
   const [services, setServices] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [ownerUserId, setOwnerUserId] = useState(null);
@@ -23,7 +25,11 @@ export default function EditServicePage() {
   const [ready, setReady] = useState(false);
 
   const service = serviceId ? services.find((s) => s.id === serviceId) : null;
-  const industry = organization?.industry ?? null;
+  const industry = organization?.industry ?? userAccount?.industry ?? null;
+  const serviceTerm = getTermForIndustry(industry, 'services');
+  const serviceTermSingular = getTermSingular(serviceTerm) || 'Service';
+  const serviceTermSingularLower = serviceTermSingular.toLowerCase();
+  const serviceTermLower = serviceTerm.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -49,6 +55,7 @@ export default function EditServicePage() {
     } else {
       getUserAccount(currentUser.uid)
         .then((account) => {
+          setUserAccount(account || null);
           setServices(account?.services || []);
           setTeamMembers(account?.teamMembers || []);
           setOwnerUserId(null);
@@ -65,6 +72,7 @@ export default function EditServicePage() {
     if (currentUser?.uid && organization && !organization?.id) {
       getUserAccount(currentUser.uid)
         .then((account) => {
+          setUserAccount(account || null);
           setServices(account?.services || []);
           setTeamMembers(account?.teamMembers || []);
           setOwnerUserId(null);
@@ -123,13 +131,13 @@ export default function EditServicePage() {
   if (router.isReady && serviceId && !service) {
     return (
       <>
-        <Head><title>Service not found - GoManagr</title></Head>
+        <Head><title>{serviceTermSingular} not found - GoManagr</title></Head>
         <div className="space-y-6">
-          <p className="text-gray-600 dark:text-gray-400">Service not found.</p>
+          <p className="text-gray-600 dark:text-gray-400">{serviceTermSingular} not found.</p>
           <Link href={backUrl}>
             <SecondaryButton type="button" className="gap-2">
               <HiArrowLeft className="w-5 h-5" />
-              Back to services
+              Back to {serviceTermLower}
             </SecondaryButton>
           </Link>
         </div>
@@ -140,18 +148,18 @@ export default function EditServicePage() {
   return (
     <>
       <Head>
-        <title>Edit service - GoManagr</title>
-        <meta name="description" content="Edit service" />
+        <title>Edit {serviceTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Edit ${serviceTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Edit service"
-          description="Update the service and assignments."
+          title={`Edit ${serviceTermSingular}`}
+          description={`Update the ${serviceTermSingularLower} and assignments.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to services
+                Back to {serviceTermLower}
               </SecondaryButton>
             </Link>
           }

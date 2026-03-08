@@ -42,7 +42,7 @@ const cellStyle = {
   fontSize: '10pt',
 };
 
-export default function ProposalInvoiceDocument({ type, company = {}, client = {}, document: doc = {}, currency = 'USD' }) {
+export default function ProposalInvoiceDocument({ type, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services' }) {
   const isProposal = type === 'proposal';
   const title = isProposal ? 'Proposal' : 'Invoice';
   const lineItems = Array.isArray(doc.lineItems) ? doc.lineItems : [];
@@ -248,7 +248,7 @@ export default function ProposalInvoiceDocument({ type, company = {}, client = {
         </div>
       </div>
 
-      <div style={sectionLabelStyle}>Services</div>
+      <div style={sectionLabelStyle}>{lineItemsSectionLabel}</div>
       <div style={{ borderBottom: `1px dotted ${BORDER_COLOR}`, marginBottom: '8px' }} />
 
       <table style={tableStyle}>

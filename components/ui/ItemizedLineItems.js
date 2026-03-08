@@ -8,7 +8,8 @@
  * @param {Array<{ id: string, item_name: string, description: string, quantity: number|string, unit_price: string }>} props.items
  * @param {Function} props.onChange - (items) => void
  * @param {string} props.currency - e.g. 'USD'
- * @param {string} [props.itemLabel] - Column header for item name (default 'Service')
+ * @param {string} [props.itemLabel] - Column header for item name (default 'Service', or industry term when industry provided)
+ * @param {string} [props.industry] - Industry for service term (e.g. Healthcare → "Procedures")
  * @param {string} [props.addLabel] - Button label (default 'Add item')
  * @param {string} [props.className]
  * @param {Array<{ id: string, name: string }>} [props.services] - Org/user services for dropdown (when provided with onServiceCreated)
@@ -32,6 +33,7 @@ import ServiceCombobox from '@/components/dashboard/ServiceCombobox';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { formatCurrency, unformatCurrency } from '@/utils/formatCurrency';
 import { HiPlus, HiTrash } from 'react-icons/hi';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function computeAmount(quantity, unitPrice) {
   const q = parseFloat(quantity);
@@ -44,12 +46,13 @@ export default function ItemizedLineItems({
   items = [],
   onChange,
   currency = 'USD',
-  itemLabel = 'Service',
+  itemLabel: itemLabelProp,
   addLabel = 'Add item',
   className = '',
   services,
   onServiceCreated,
   teamMembers = [],
+  industry = null,
   tax = 0,
   discount = 0,
   onTaxChange,
@@ -60,6 +63,8 @@ export default function ItemizedLineItems({
   discountLabel = 'Discount',
   totalLabel = 'Total',
 }) {
+  const serviceTermSingular = industry ? (getTermSingular(getTermForIndustry(industry, 'services')) || 'Service') : null;
+  const itemLabel = itemLabelProp ?? serviceTermSingular ?? 'Service';
   const useServiceDropdown = services != null && typeof onServiceCreated === 'function';
   const updateItem = useCallback(
     (index, field, value) => {
@@ -174,10 +179,9 @@ export default function ItemizedLineItems({
                           onChange={(name) => updateItem(index, 'item_name', name)}
                           onServiceCreated={onServiceCreated}
                           teamMembers={teamMembers}
-                          placeholder="Select service..."
+                          industry={industry}
                           className="!mb-0"
                           addButtonLabel="Add"
-                          drawerTitle="Add service"
                         />
                       ) : (
                         <InputField

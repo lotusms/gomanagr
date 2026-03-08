@@ -131,7 +131,8 @@ export default function CompanyDetailsSection({
           onChange={onCompanyIndustryChange}
           options={INDUSTRIES.map((ind) => ({ value: ind, label: ind }))}
           placeholder="Select industry..."
-          variant="light"
+          searchable={true}
+          usePortal={true}
         />
         <Dropdown
           id="companySize"

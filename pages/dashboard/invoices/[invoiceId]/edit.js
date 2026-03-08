@@ -29,6 +29,10 @@ export default function EditInvoicePage() {
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
   const clientTermSingularLower = (getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'client').toLowerCase();
+  const invoiceTermPlural = getTermForIndustry(accountIndustry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermPluralLower = (invoiceTermPlural || 'invoices').toLowerCase();
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
 
   const fetchInvoice = useCallback(() => {
     if (!currentUser?.uid || !invoiceId || !orgReady) return;
@@ -124,7 +128,7 @@ export default function EditInvoicePage() {
     return (
       <>
         <Head>
-          <title>Edit invoice - GoManagr</title>
+          <title>Edit {invoiceTermSingularLower} - GoManagr</title>
         </Head>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48" />
@@ -138,17 +142,17 @@ export default function EditInvoicePage() {
     return (
       <>
         <Head>
-          <title>Invoice not found - GoManagr</title>
+          <title>{invoiceTermSingular} not found - GoManagr</title>
         </Head>
         <div className="space-y-6">
           <PageHeader
-            title="Invoices"
-            description={`Invoices created for your ${clientTermPluralLower}.`}
+            title={invoiceTermPlural}
+            description={`${invoiceTermPlural} created for your ${clientTermPluralLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
                   <HiArrowLeft className="w-5 h-5" />
-                  Back to invoices
+                  Back to {invoiceTermPluralLower}
                 </SecondaryButton>
               </Link>
             }
@@ -159,14 +163,14 @@ export default function EditInvoicePage() {
                 <HiDocumentText className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
               </div>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Invoice not found</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{invoiceTermSingular} not found</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
-              This invoice may have been deleted or you don&apos;t have access to it.
+              This {invoiceTermSingularLower} may have been deleted or you don&apos;t have access to it.
             </p>
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to invoices
+                Back to {invoiceTermPluralLower}
               </SecondaryButton>
             </Link>
           </div>
@@ -178,18 +182,18 @@ export default function EditInvoicePage() {
   return (
     <>
       <Head>
-        <title>Edit invoice - GoManagr</title>
-        <meta name="description" content="Edit this invoice" />
+        <title>Edit {invoiceTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Edit this ${invoiceTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Edit invoice"
-          description={`Update the details of this invoice. You can change the linked ${clientTermSingularLower} if needed.`}
+          title={`Edit ${invoiceTermSingular}`}
+          description={`Update the details of this ${invoiceTermSingularLower}. You can change the linked ${clientTermSingularLower} if needed.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to invoices
+                Back to {invoiceTermPluralLower}
               </SecondaryButton>
             </Link>
           }
@@ -203,6 +207,7 @@ export default function EditInvoicePage() {
             onInvoiceUpdated={fetchInvoice}
             organizationId={organization?.id ?? null}
             userId={currentUser.uid}
+            industry={accountIndustry}
           />
           <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
             <ClientInvoiceForm

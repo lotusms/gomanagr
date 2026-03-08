@@ -1,6 +1,7 @@
 import { HiClipboardList, HiTrash } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -19,10 +20,16 @@ export default function ContractCardServiceStyle({
   onSelect,
   onDelete,
   clientNameByClientId = {},
+  accountIndustry = null,
 }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
+  const industry = accountIndustry ?? account?.industry;
+  const contractTermPlural = getTermForIndustry(industry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
+  const untitledContractLabel = `Untitled ${contractTermSingularLower}`;
 
   const clientName = contract.client_id && clientNameByClientId[contract.client_id];
   const statusLabel = contract.status ? (STATUS_LABELS[contract.status] || contract.status) : null;
@@ -48,7 +55,7 @@ export default function ContractCardServiceStyle({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-bold text-white line-clamp-2">
-                {contract.contract_title || 'Untitled contract'}
+                {contract.contract_title || untitledContractLabel}
               </h3>
             </div>
           </div>
@@ -61,7 +68,7 @@ export default function ContractCardServiceStyle({
                 onDelete(contract.id);
               }}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-              title="Delete contract"
+              title={`Delete ${contractTermSingularLower}`}
             >
               <HiTrash className="size-5" />
             </button>

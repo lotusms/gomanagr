@@ -116,7 +116,6 @@ const TERMS_BY_CONCEPT = {
     'Agriculture': 'Fields',
     'Home Services': 'Jobs',
     'Automotive': 'Work Orders',
-    'Nonprofit': 'Donations',
     'Government': 'Requests',
     'Entertainment': 'Events',
     'Beauty & Spa': 'Appointments',
@@ -147,7 +146,7 @@ const TERMS_BY_CONCEPT = {
     'Manufacturing': 'Accounts',
     'Education': 'Students',
     'Hospitality': 'Guests',
-    'Nonprofit': 'Donation Recipients', 
+    'Nonprofit': 'Recipients', 
     'Automotive': 'Customers',
     'Government': 'Constituents',
     'Telecommunications': 'Subscribers',
@@ -178,7 +177,7 @@ const TERMS_BY_CONCEPT = {
     'Transportation': 'Quotes',
     'Agriculture': 'Estimates',
     'Home Services': 'Estimates',
-    'Nonprofit': 'Donation Estimates',
+    'Nonprofit': 'Estimates',
     'Automotive': 'Estimates',
     'Government': 'Bids',
     'Telecommunications': 'Quotes',
@@ -196,7 +195,7 @@ const TERMS_BY_CONCEPT = {
     'Automotive': 'Repair Orders',
     'Telecommunications': 'Bills',
     'Utilities': 'Bills',
-    'Nonprofit': 'Donation Receipts',
+    'Nonprofit': 'Receipts',
     'Food & Drink': 'Receipts',
     'Beauty & Spa': 'Receipts',
     'Travel & Tourism': 'Receipts',
@@ -227,19 +226,47 @@ const TERMS_BY_CONCEPT = {
     'Health & Wellness': 'Waivers',
     'Travel & Tourism': 'Booking Agreements',
   },
+  project_owner: {
+    default: 'Project Owner',
+    'Healthcare': 'Approving Physician',
+    'Finance': 'Accounting Manager',
+    'Real Estate': 'Property Manager',
+    'Nonprofit': 'Donation Coordinator',
+    'Retail': 'Sales Manager',
+    'Manufacturing': 'Account Manager',
+    'Construction': 'Site Foreman',
+    'Education': 'Signing Officer',
+    'Legal': 'Signing Counsel',
+    'Hospitality': 'Operations Manager',
+    'Transportation': 'Fleet Manager',
+    'Energy': 'Energy Manager',
+    'Agriculture': 'Agriculture Manager',
+    'Home Services': 'Home Services Manager',
+    'Automotive': 'Shop Manager',
+    'Government': 'Government Liaison',
+    'Telecommunications': 'Network Manager',
+    'Utilities': 'Utility Manager',
+    'Beauty & Spa': 'Spa Manager',
+    'Food & Drink': 'Restaurant Manager',
+    'Health & Wellness': 'Wellness Coordinator',
+    'Travel & Tourism': 'Tourism Coordinator',
+  },
 };
 
 /**
  * Returns the display term for a concept in the given industry.
  * Use this for nav labels, page titles, empty states, etc. Functionality is unchanged; only the label varies.
  * @param {string} industry - The account/organization industry (e.g. "Legal", "Beauty & Spa")
- * @param {string} concept - One of: 'project' | 'team' | 'teamMember' (extend TERMS_BY_CONCEPT for more)
+ * @param {string} concept - One of: 'project' | 'project_owner' | 'team' | 'teamMember' | 'client' | 'services' | 'proposal' | 'invoice' | 'contract' (extend TERMS_BY_CONCEPT for more)
  * @returns {string} - The term for that concept (e.g. "Team", "Staff", "Cases")
  */
 export function getTermForIndustry(industry, concept) {
   const key = typeof industry === 'string' ? industry.trim() : '';
-  const config = TERMS_BY_CONCEPT[concept] ?? (concept === 'proposal' ? TERMS_BY_CONCEPT.proposals : undefined);
-  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : concept === 'services' ? 'Services' : concept === 'proposal' ? 'Proposals' : 'Projects';
+  const config = TERMS_BY_CONCEPT[concept]
+    ?? (concept === 'proposal' ? TERMS_BY_CONCEPT.proposals : undefined)
+    ?? (concept === 'invoice' ? TERMS_BY_CONCEPT.invoices : undefined)
+    ?? (concept === 'contract' ? TERMS_BY_CONCEPT.contracts : undefined);
+  if (!config) return concept === 'team' ? 'Team' : concept === 'teamMember' ? 'Team Members' : concept === 'client' ? 'Clients' : concept === 'services' ? 'Services' : concept === 'proposal' ? 'Proposals' : concept === 'invoice' ? 'Invoices' : concept === 'contract' ? 'Contracts' : 'Projects';
   if (!key) return config.default;
   return config[key] ?? config.default;
 }
@@ -299,6 +326,21 @@ export function getTermSingular(pluralTerm) {
     'Retainer Agreements': 'Retainer Agreement',
     'Bids': 'Bid',
     'Donation Estimates': 'Donation Estimate',
+    // Invoices
+    'Invoices': 'Invoice',
+    'Bills': 'Bill',
+    'Receipts': 'Receipt',
+    'Tuition Statements': 'Tuition Statement',
+    'Repair Orders': 'Repair Order',
+    'Donation Receipts': 'Donation Receipt',
+    // Contracts
+    'Contracts': 'Contract',
+    'Agreements': 'Agreement',
+    'Consent Forms': 'Consent Form',
+    'Leases': 'Lease',
+    'Service Agreements': 'Service Agreement',
+    'Waivers': 'Waiver',
+    'Booking Agreements': 'Booking Agreement',
   };
 
   return singularMap[pluralTerm] || pluralTerm.replace(/s$/, '');

@@ -23,6 +23,10 @@ export default function NewInvoicePage() {
   const accountIndustry = organization?.industry ?? industry;
   const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const invoiceTermPlural = getTermForIndustry(accountIndustry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
+  const invoiceTermPluralLower = (invoiceTermPlural || 'invoices').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -56,7 +60,7 @@ export default function NewInvoicePage() {
     return (
       <>
         <Head>
-          <title>Create invoice - GoManagr</title>
+          <title>Create {invoiceTermSingularLower} - GoManagr</title>
         </Head>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48" />
@@ -69,18 +73,18 @@ export default function NewInvoicePage() {
   return (
     <>
       <Head>
-        <title>Create invoice - GoManagr</title>
-        <meta name="description" content={`Create a new invoice for a ${clientTermSingularLower}`} />
+        <title>Create {invoiceTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Create a new ${invoiceTermSingularLower} for a ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Create invoice"
-          description={`Create an invoice for a ${clientTermSingularLower}. Select the ${clientTermSingularLower} this invoice is for.`}
+          title={`Create ${invoiceTermSingular}`}
+          description={`Create a ${invoiceTermSingularLower} for a ${clientTermSingularLower}. Select the ${clientTermSingularLower} this ${invoiceTermSingularLower} is for.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to invoices
+                Back to {invoiceTermPluralLower}
               </SecondaryButton>
             </Link>
           }

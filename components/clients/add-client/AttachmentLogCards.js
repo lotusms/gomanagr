@@ -24,7 +24,7 @@ function displayFileName(attachment) {
   return match ? match[1] : segment || 'Unnamed file';
 }
 
-export default function AttachmentLogCards({ attachments, onSelect, onDelete, borderClass, clientId }) {
+export default function AttachmentLogCards({ attachments, onSelect, onDelete, borderClass, clientId, contractTermSingularLower = 'contract' }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
@@ -74,9 +74,9 @@ export default function AttachmentLogCards({ attachments, onSelect, onDelete, bo
                 href={`/dashboard/clients/${clientId}/contracts/${a.linked_contract_id}/edit`}
                 className="text-primary-600 dark:text-primary-400 hover:underline"
               >
-                Linked contract: {a.linked_contract
-                  ? [a.linked_contract.contract_number, a.linked_contract.contract_title].filter(Boolean).join(' – ') || 'View contract'
-                  : 'View contract'}
+                Linked {contractTermSingularLower}: {a.linked_contract
+                  ? [a.linked_contract.contract_number, a.linked_contract.contract_title].filter(Boolean).join(' – ') || `View ${contractTermSingularLower}`
+                  : `View ${contractTermSingularLower}`}
               </Link>
             </p>
           )}

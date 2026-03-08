@@ -42,7 +42,7 @@ export default function ClientProjectForm({
   const projectTermSingular = getTermSingular(projectTermPlural) || 'Project';
   const projectTitleLabel = `${projectTermSingular} title`;
   const projectIdLabel = `${projectTermSingular} ID`;
-  const projectOwnerLabel = `${projectTermSingular} owner`;
+  const projectOwnerLabel = getTermForIndustry(industry, 'project_owner') || 'Project Owner';
   const projectTitleRequiredError = `${projectTermSingular} title is required`;
   const projectFilesLabel = `${projectTermSingular} files`;
   const projectTermSingularLower = projectTermSingular.toLowerCase();
@@ -59,7 +59,11 @@ export default function ClientProjectForm({
   const proposalTermPlural = getTermForIndustry(industry, 'proposal');
   const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
   const proposalTermSingularLower = proposalTermSingular.toLowerCase();
+  const contractTermPlural = getTermForIndustry(industry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
   const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
+  const untitledContractLabel = `Untitled ${contractTermSingularLower}`;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -391,14 +395,14 @@ export default function ClientProjectForm({
         <Dropdown
           id="related-contract"
           name="related-contract"
-          label="Linked contract"
+          label={`Linked ${contractTermSingularLower}`}
           value={relatedContractId}
           onChange={(e) => { markDirty(); setRelatedContractId(e.target.value ?? ''); }}
           options={[
             { value: '', label: 'None' },
             ...contracts.map((c) => ({
               value: c.id,
-              label: (c.contract_number || c.contract_title || 'Untitled contract').trim() || 'Untitled contract',
+              label: (c.contract_number || c.contract_title || untitledContractLabel).trim() || untitledContractLabel,
             })),
           ]}
           placeholder={contractsLoading ? 'Loading…' : 'None'}

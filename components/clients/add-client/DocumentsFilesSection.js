@@ -58,7 +58,7 @@ export const DOC_TYPES = [
 
 const VALID_DOC_SECTION_KEYS = DOC_TYPES.map((t) => t.key);
 
-function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD', proposalTermSingular = 'Proposal' }) {
+function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaultCurrency = 'USD', proposalTermSingular = 'Proposal', contractTermPlural = 'Contracts', contractTermSingular = 'Contract', contractTermPluralLower = 'contracts', contractTermSingularLower = 'contract' }) {
   const router = useRouter();
   const [contracts, setContracts] = useState([]);
   const [attachments, setAttachments] = useState([]);
@@ -124,17 +124,17 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
   };
 
   if (loading) {
-    return <EmptyStateCard message="Loading contracts…" />;
+    return <EmptyStateCard message={`Loading ${contractTermPluralLower}…`} />;
   }
 
   if (contracts.length === 0) {
     return (
       <EmptyStateCard
-        message="No contracts yet"
+        message={`No ${contractTermPluralLower} yet`}
         action={
           <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
             <HiPlus className="w-5 h-5" />
-            Add contract
+            Add {contractTermSingularLower}
           </PrimaryButton>
         }
       />
@@ -152,13 +152,14 @@ function ContractsBlock({ clientId, userId, organizationId, onHasEntries, defaul
         borderClass={type.borderClass}
         defaultCurrency={defaultCurrency}
         proposalTermSingular={proposalTermSingular}
+        contractTermSingular={contractTermSingular}
       />
       <ConfirmationDialog
         isOpen={!!contractToDelete}
         onClose={() => setContractToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        title="Delete contract"
-        message="This contract will be permanently deleted. This cannot be undone."
+        title={`Delete ${contractTermSingular}`}
+        message={`This ${contractTermSingularLower} will be permanently deleted. This cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         confirmationWord="delete"
@@ -269,7 +270,7 @@ function ProposalsBlock({ clientId, userId, organizationId, organization = null,
   );
 }
 
-function InvoicesBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], clientTermSingular = 'Client' }) {
+function InvoicesBlock({ clientId, userId, organizationId, organization = null, onHasEntries, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], clientTermSingular = 'Client', invoiceTermPlural = 'Invoices', invoiceTermSingular = 'Invoice', invoiceTermPluralLower = 'invoices', invoiceTermSingularLower = 'invoice' }) {
   const router = useRouter();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -322,17 +323,17 @@ function InvoicesBlock({ clientId, userId, organizationId, organization = null, 
   };
 
   if (loading) {
-    return <EmptyStateCard message="Loading invoices…" />;
+    return <EmptyStateCard message={`Loading ${invoiceTermPluralLower}…`} />;
   }
 
   if (invoices.length === 0) {
     return (
       <EmptyStateCard
-        message="No invoices yet"
+        message={`No ${invoiceTermPluralLower} yet`}
         action={
           <PrimaryButton type="button" onClick={() => router.push(newUrl)} className="gap-2">
             <HiPlus className="w-5 h-5" />
-            Add invoice
+            Add {invoiceTermSingularLower}
           </PrimaryButton>
         }
       />
@@ -352,13 +353,15 @@ function InvoicesBlock({ clientId, userId, organizationId, organization = null, 
         clientAddressLines={clientAddressLines}
         organization={organization}
         clientTermSingular={clientTermSingular}
+        invoiceTermSingular={invoiceTermSingular}
+        invoiceTermSingularLower={invoiceTermSingularLower}
       />
       <ConfirmationDialog
         isOpen={!!invoiceToDelete}
         onClose={() => setInvoiceToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        title="Delete invoice"
-        message="This invoice will be permanently deleted. This cannot be undone."
+        title={`Delete ${invoiceTermSingular}`}
+        message={`This ${invoiceTermSingularLower} will be permanently deleted. This cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         confirmationWord="delete"
@@ -368,7 +371,7 @@ function InvoicesBlock({ clientId, userId, organizationId, organization = null, 
   );
 }
 
-function AttachmentsBlock({ clientId, userId, organizationId, onHasEntries }) {
+function AttachmentsBlock({ clientId, userId, organizationId, onHasEntries, contractTermSingularLower = 'contract' }) {
   const router = useRouter();
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(!!clientId && !!userId);
@@ -446,6 +449,7 @@ function AttachmentsBlock({ clientId, userId, organizationId, onHasEntries }) {
         onDelete={setAttachmentToDelete}
         borderClass={type.borderClass}
         clientId={clientId}
+        contractTermSingularLower={contractTermSingularLower}
       />
       <ConfirmationDialog
         isOpen={!!attachmentToDelete}
@@ -626,16 +630,30 @@ export default function DocumentsFilesSection({
   const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
   const proposalTermPluralLower = (proposalTermPlural || 'proposals').toLowerCase();
   const proposalTermSingularLower = proposalTermSingular.toLowerCase();
+  const invoiceTermPlural = getTermForIndustry(industry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermPluralLower = (invoiceTermPlural || 'invoices').toLowerCase();
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
+  const contractTermPlural = getTermForIndustry(industry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermPluralLower = (contractTermPlural || 'contracts').toLowerCase();
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
   const docTypesWithClientTerm = useMemo(
     () =>
       DOC_TYPES.map((t) => {
         const base = { ...t, description: t.description.replace(/this client/gi, `this ${clientTermSingularLower}`) };
+        if (t.key === 'contracts') {
+          return { ...base, label: contractTermPlural, description: `${contractTermPlural} with title, status, dates, and file links` };
+        }
         if (t.key === 'proposals') {
           return { ...base, label: proposalTermPlural, description: `${proposalTermPlural} sent to this ${clientTermSingularLower}` };
         }
+        if (t.key === 'invoices') {
+          return { ...base, label: invoiceTermPlural, description: `${invoiceTermPlural} or payment records for this ${clientTermSingularLower}` };
+        }
         return base;
       }),
-    [clientTermSingularLower, proposalTermPlural]
+    [clientTermSingularLower, proposalTermPlural, invoiceTermPlural, contractTermPlural]
   );
   const useContractsFromApi = Boolean(clientId && userId);
   const useProposalsFromApi = Boolean(clientId && userId);
@@ -776,7 +794,7 @@ export default function DocumentsFilesSection({
 
   return (
     <SideNavViewerLayout
-      introText={`Track contracts, ${proposalTermPluralLower}, invoices, and other documents for this ${clientTermSingularLower}.`}
+      introText={`Track ${contractTermPluralLower}, ${proposalTermPluralLower}, ${invoiceTermPluralLower}, and other documents for this ${clientTermSingularLower}.`}
       navAriaLabel="Documents sections"
       navItems={navItems}
       selectedKey={selectedKey}
@@ -799,6 +817,10 @@ export default function DocumentsFilesSection({
           onHasEntries={setHasContractEntries}
           defaultCurrency={defaultCurrency}
           proposalTermSingular={proposalTermSingular}
+          contractTermPlural={contractTermPlural}
+          contractTermSingular={contractTermSingular}
+          contractTermPluralLower={contractTermPluralLower}
+          contractTermSingularLower={contractTermSingularLower}
         />
       ) : selectedKey === 'proposals' && useProposalsFromApi ? (
         <ProposalsBlock
@@ -829,6 +851,10 @@ export default function DocumentsFilesSection({
           clientEmail={clientEmail}
           clientAddressLines={clientAddressLines}
           clientTermSingular={clientTermSingular}
+          invoiceTermPlural={invoiceTermPlural}
+          invoiceTermSingular={invoiceTermSingular}
+          invoiceTermPluralLower={invoiceTermPluralLower}
+          invoiceTermSingularLower={invoiceTermSingularLower}
         />
       ) : selectedKey === 'attachments' && useAttachmentsFromApi ? (
         <AttachmentsBlock
@@ -836,6 +862,7 @@ export default function DocumentsFilesSection({
           userId={userId}
           organizationId={organizationId}
           onHasEntries={setHasAttachmentEntries}
+          contractTermSingularLower={contractTermSingularLower}
         />
       ) : selectedKey === 'onlineResources' && useOnlineResourcesFromApi ? (
         <OnlineResourcesBlock

@@ -76,6 +76,10 @@ export default function ClientAttachmentForm({
   const noProjectLabel = `No ${(projectTermSingular || 'project').toLowerCase()}`;
   const projectOptions = [{ value: '', label: noProjectLabel }];
   const linkedProjectLabel = `Linked ${(projectTermSingular || 'project').toLowerCase()}`;
+  const contractTermPlural = getTermForIndustry(industry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
+  const untitledContractLabel = `Untitled ${contractTermSingularLower}`;
   const [hasChanges, setHasChanges] = useState(false);
   const markDirty = useCallback(() => setHasChanges(true), []);
   const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
@@ -98,7 +102,7 @@ export default function ClientAttachmentForm({
     { value: '', label: 'None' },
     ...contracts.map((c) => ({
       value: c.id,
-      label: (c.contract_number || 'Untitled contract').trim() || 'Untitled contract',
+      label: (c.contract_number || untitledContractLabel).trim() || untitledContractLabel,
     })),
   ];
 
@@ -235,7 +239,7 @@ export default function ClientAttachmentForm({
         <Dropdown
           id="linked-contract"
           name="linked-contract"
-          label="Linked contract"
+          label={`Linked ${contractTermSingularLower}`}
           value={linkedContractId}
           onChange={(e) => setLinkedContractId(e.target.value ?? '')}
           options={contractOptions}

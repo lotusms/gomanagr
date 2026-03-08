@@ -4,7 +4,7 @@ import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
-import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
 import { HiEye, HiPrinter } from 'react-icons/hi';
 
@@ -22,12 +22,17 @@ const STATUS_LABELS = {
  * @param {string} [clientEmail] - Client email (for document view)
  * @param {string[]} [clientAddressLines] - Client address lines for Bill to (e.g. from billing or company address)
  */
-export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], organization = null, clientTermSingular = 'Client' }) {
+export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderClass, defaultCurrency = 'USD', clientName = '', clientEmail = '', clientAddressLines = [], organization = null, clientTermSingular = 'Client', invoiceTermSingular: invoiceTermSingularProp, invoiceTermSingularLower: invoiceTermSingularLowerProp }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
   const [viewState, setViewState] = useState({ invoice: null, autoPrint: false });
-  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
+  const industry = organization?.industry ?? account?.industry;
+  const lineItemsSectionLabel = getTermForIndustry(industry, 'services');
+  const invoiceTermPlural = getTermForIndustry(industry, 'invoice');
+  const invoiceTermSingular = invoiceTermSingularProp ?? getTermSingular(invoiceTermPlural) ?? 'Invoice';
+  const invoiceTermSingularLower = invoiceTermSingularLowerProp ?? invoiceTermSingular.toLowerCase();
+  const untitledInvoiceLabel = `Untitled ${invoiceTermSingularLower}`;
 
   const company = buildCompanyForDocument(account, organization);
   const closeView = () => setViewState({ invoice: null, autoPrint: false });
@@ -60,7 +65,7 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
                 setViewState({ invoice: inv, autoPrint: false });
               }}
               className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 transition-colors"
-              title="View invoice"
+              title={`View ${invoiceTermSingularLower}`}
             >
               <HiEye className="w-4 h-4" />
             </button>
@@ -72,13 +77,13 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
                 setViewState({ invoice: inv, autoPrint: true });
               }}
               className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 transition-colors"
-              title="Print invoice"
+              title={`Print ${invoiceTermSingularLower}`}
             >
               <HiPrinter className="w-4 h-4" />
             </button>
             <CardDeleteButton
               onDelete={() => onDelete(inv.id)}
-              title="Delete invoice"
+              title={`Delete ${invoiceTermSingularLower}`}
               className="opacity-60 group-hover:opacity-100"
             />
           </div>
@@ -91,7 +96,7 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
             )}
             {inv.date_issued && <time dateTime={inv.date_issued}>{formatDateFromISO(inv.date_issued, dateFormat, timezone)}</time>}
           </div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{inv.invoice_title || 'Untitled invoice'}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white truncate pr-8">{inv.invoice_title || untitledInvoiceLabel}</p>
           {(inv.total || inv.amount) && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Total: {formatCurrency(inv.total || inv.amount, defaultCurrency)}</p>
           )}
@@ -105,6 +110,7 @@ export default function InvoiceLogCards({ invoices, onSelect, onDelete, borderCl
           isOpen={!!viewState.invoice}
           onClose={closeView}
           type="invoice"
+          documentTypeLabel={invoiceTermSingular}
           document={buildInvoiceDocumentPayload(viewState.invoice)}
           company={company}
           client={{

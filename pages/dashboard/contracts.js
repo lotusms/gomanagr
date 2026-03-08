@@ -28,6 +28,10 @@ function ContractsContent() {
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
   const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
+  const contractTermPlural = getTermForIndustry(accountIndustry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermPluralLower = (contractTermPlural || 'contracts').toLowerCase();
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
   const unnamedClientLabel = `Unnamed ${(getTermSingular(clientTermPlural) || 'Client').toLowerCase()}`;
 
   const paginatedContracts = useMemo(() => {
@@ -128,7 +132,7 @@ function ContractsContent() {
     return (
       <>
         <Head>
-          <title>Contracts - GoManagr</title>
+          <title>{contractTermPlural} - GoManagr</title>
         </Head>
         <ContractsPageSkeleton />
       </>
@@ -138,14 +142,14 @@ function ContractsContent() {
   return (
     <>
       <Head>
-        <title>Contracts - GoManagr</title>
-        <meta name="description" content="Manage contracts" />
+        <title>{contractTermPlural} - GoManagr</title>
+        <meta name="description" content={`Manage ${contractTermPluralLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title="Contracts"
-          description={`Create and manage contracts for your ${clientTermPluralLower}`}
+          title={contractTermPlural}
+          description={`Create and manage ${contractTermPluralLower} for your ${clientTermPluralLower}`}
           actions={
             <PrimaryButton
               type="button"
@@ -153,14 +157,14 @@ function ContractsContent() {
               onClick={() => router.push('/dashboard/contracts/new')}
             >
               <HiPlus className="w-5 h-5" />
-              Create contract
+              Create {contractTermSingularLower}
             </PrimaryButton>
           }
         />
 
         {contracts.length === 0 ? (
           <EmptyStateCard
-            message="No contracts yet"
+            message={`No ${contractTermPluralLower} yet`}
             action={
               <PrimaryButton
                 type="button"
@@ -168,7 +172,7 @@ function ContractsContent() {
                 onClick={() => router.push('/dashboard/contracts/new')}
               >
                 <HiPlus className="w-5 h-5" />
-                Create your first contract
+                Create your first {contractTermSingularLower}
               </PrimaryButton>
             }
           />
@@ -182,6 +186,7 @@ function ContractsContent() {
                   onSelect={(id) => router.push(`/dashboard/contracts/${id}/edit`)}
                   onDelete={setContractToDelete}
                   clientNameByClientId={clientNameByClientId}
+                  accountIndustry={accountIndustry}
                 />
               ))}
             </div>
@@ -204,8 +209,8 @@ function ContractsContent() {
               isOpen={!!contractToDelete}
               onClose={() => setContractToDelete(null)}
               onConfirm={handleDeleteConfirm}
-              title="Delete contract"
-              message="This contract will be permanently deleted. This cannot be undone."
+              title={`Delete ${contractTermSingular}`}
+              message={`This ${contractTermSingularLower} will be permanently deleted. This cannot be undone.`}
               confirmText="Delete"
               cancelText="Cancel"
               confirmationWord="delete"

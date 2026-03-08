@@ -55,9 +55,13 @@ export default function ClientContractForm({
   const proposalTermPlural = getTermForIndustry(industry, 'proposal');
   const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
   const proposalTermSingularLower = proposalTermSingular.toLowerCase();
+  const contractTermPlural = getTermForIndustry(industry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
   const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
+  const untitledContractLabel = `Untitled ${contractTermSingularLower}`;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -274,7 +278,7 @@ export default function ClientContractForm({
     e.preventDefault();
     setError('');
     if (!contractTitle.trim()) {
-      setError('Contract title is required');
+      setError(`${contractTermSingular} title is required`);
       return;
     }
     setSaving(true);
@@ -306,7 +310,7 @@ export default function ClientContractForm({
           body: JSON.stringify({ ...payload, contractId }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to update contract');
+        if (!res.ok) throw new Error(data.error || `Failed to update ${contractTermSingularLower}`);
       } else {
         const res = await fetch('/api/create-client-contract', {
           method: 'POST',
@@ -314,7 +318,7 @@ export default function ClientContractForm({
           body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to create contract');
+        if (!res.ok) throw new Error(data.error || `Failed to create ${contractTermSingularLower}`);
       }
       onSuccess?.();
     } catch (err) {
@@ -353,16 +357,16 @@ export default function ClientContractForm({
         )}
         <InputField
           id="contract-title"
-          label="Contract title"
+          label={`${contractTermSingular} title`}
           value={contractTitle}
           onChange={(e) => { markDirty(); setContractTitle(e.target.value); }}
           variant="light"
-          placeholder="Contract title"
+          placeholder={`${contractTermSingular} title`}
           required
         />
         <InputField
           id="contract-number"
-          label="Contract ID"
+          label={`${contractTermSingular} ID`}
           value={contractNumber}
           onChange={(e) => setContractNumber(e.target.value)}
           variant="light"
@@ -409,7 +413,7 @@ export default function ClientContractForm({
         />
         <CurrencyInput
           id="contract-value"
-          label={`Contract value (${defaultCurrency})`}
+          label={`${contractTermSingular} value (${defaultCurrency})`}
           value={contractValue}
           onChange={(e) => { markDirty(); setContractValue(e.target.value ?? ''); }}
           currency={defaultCurrency}
@@ -497,7 +501,7 @@ export default function ClientContractForm({
           Cancel
         </SecondaryButton>
         <PrimaryButton type="submit" disabled={saving || (showClientDropdown && !effectiveClientId) || !contractTitle.trim()}>
-          {saving ? 'Saving...' : contractId ? 'Update contract' : 'Add contract'}
+          {saving ? 'Saving...' : contractId ? `Update ${contractTermSingularLower}` : `Add ${contractTermSingularLower}`}
         </PrimaryButton>
       </div>
       {discardDialog}

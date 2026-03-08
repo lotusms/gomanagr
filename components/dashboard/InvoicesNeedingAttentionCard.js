@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { HiCurrencyDollar, HiPlus } from 'react-icons/hi';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function StatBox({ label, value, sublabel, accent }) {
   const isAmber = accent === 'amber';
@@ -45,7 +46,12 @@ export default function InvoicesNeedingAttentionCard({
   dueIn14DaysCount = 0,
   dueIn30DaysCount = 0,
   currency = 'USD',
+  accountIndustry = null,
 }) {
+  const invoiceTermPlural = getTermForIndustry(accountIndustry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermPluralLower = (invoiceTermPlural || 'invoices').toLowerCase();
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
   const hasAttention =
     overdueCount > 0 || dueIn7DaysCount > 0 || dueIn14DaysCount > 0 || dueIn30DaysCount > 0;
 
@@ -56,12 +62,12 @@ export default function InvoicesNeedingAttentionCard({
           <HiCurrencyDollar className="w-5 h-5" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Invoices needing attention
+          {invoiceTermPlural} needing attention
         </h3>
       </div>
       <div className="px-5 py-4 space-y-4">
         {!hasAttention ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No overdue or upcoming invoices.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">No overdue or upcoming {invoiceTermPluralLower}.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             <StatBox
@@ -73,17 +79,17 @@ export default function InvoicesNeedingAttentionCard({
             <StatBox
               label="Due in 7 days"
               value={dueIn7DaysCount}
-              sublabel={dueIn7DaysCount > 0 ? 'invoices' : null}
+              sublabel={dueIn7DaysCount > 0 ? invoiceTermPluralLower : null}
             />
             <StatBox
               label="Due in 14 days"
               value={dueIn14DaysCount}
-              sublabel={dueIn14DaysCount > 0 ? 'invoices' : null}
+              sublabel={dueIn14DaysCount > 0 ? invoiceTermPluralLower : null}
             />
             <StatBox
               label="Due in 30 days"
               value={dueIn30DaysCount}
-              sublabel={dueIn30DaysCount > 0 ? 'invoices' : null}
+              sublabel={dueIn30DaysCount > 0 ? invoiceTermPluralLower : null}
             />
           </div>
         )}
@@ -93,7 +99,7 @@ export default function InvoicesNeedingAttentionCard({
             className="inline-flex items-center gap-2 w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white font-medium text-sm transition-colors"
           >
             <HiPlus className="w-4 h-4" />
-            Create invoice
+            Create {invoiceTermSingularLower}
           </Link>
         </div>
       </div>

@@ -22,6 +22,7 @@ import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import SendInvoiceDialog from './SendInvoiceDialog';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function parseNum(v) {
   if (v == null || v === '') return 0;
@@ -37,8 +38,12 @@ export default function InvoicePaymentSummary({
   onInvoiceUpdated,
   organizationId = null,
   userId,
+  industry,
 }) {
   const account = useOptionalUserAccount();
+  const invoiceTermPlural = getTermForIndustry(industry ?? account?.industry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
 
@@ -100,7 +105,7 @@ export default function InvoicePaymentSummary({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to void invoice');
+        throw new Error(data.error || `Failed to void ${invoiceTermSingularLower}`);
       }
       setVoidDialogOpen(false);
       onInvoiceUpdated?.();
@@ -222,7 +227,7 @@ export default function InvoicePaymentSummary({
                   onClick={() => { setSendDialogReminder(false); setSendDialogOpen(true); }}
                 >
                   <HiMail className="w-4 h-4" />
-                  {everSent ? 'Resend invoice' : 'Send invoice'}
+                  {everSent ? `Resend ${invoiceTermSingularLower}` : `Send ${invoiceTermSingularLower}`}
                 </PrimaryButton>
               </>
             )}
@@ -248,9 +253,9 @@ export default function InvoicePaymentSummary({
         isOpen={voidDialogOpen}
         onClose={() => setVoidDialogOpen(false)}
         onConfirm={handleVoidConfirm}
-        title="Void invoice"
-        message="This will mark the invoice as void. The balance due will be set to zero. This action cannot be undone."
-        confirmText="Void invoice"
+        title={`Void ${invoiceTermSingularLower}`}
+        message={`This will mark the ${invoiceTermSingularLower} as void. The balance due will be set to zero. This action cannot be undone.`}
+        confirmText={`Void ${invoiceTermSingularLower}`}
         cancelText="Cancel"
         confirmationWord="void"
         variant="danger"

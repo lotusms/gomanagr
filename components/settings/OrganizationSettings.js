@@ -568,7 +568,8 @@ export default function OrganizationSettings() {
             onChange={handleInputChange}
             options={INDUSTRIES.map((ind) => ({ value: ind, label: ind }))}
             placeholder="Select industry..."
-            variant="light"
+            searchable={true}
+            usePortal={true}
           />
         </div>
 

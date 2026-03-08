@@ -178,6 +178,10 @@ export default function ClientProposalForm({
   const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
   const proposalTermSingularLower = proposalTermSingular.toLowerCase();
   const serviceTermSingular = getTermSingular(getTermForIndustry(industry, 'services')) || 'Service';
+  const contractTermPlural = getTermForIndustry(industry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
+  const untitledContractLabel = `Untitled ${contractTermSingularLower}`;
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
@@ -232,7 +236,7 @@ export default function ClientProposalForm({
     { value: '', label: 'None' },
     ...contracts.map((c) => ({
       value: c.id,
-      label: (c.contract_number || 'Untitled contract').trim() || 'Untitled contract',
+      label: (c.contract_number || untitledContractLabel).trim() || untitledContractLabel,
     })),
   ];
 
@@ -452,7 +456,7 @@ export default function ClientProposalForm({
               <Dropdown
                 id="linked-contract"
                 name="linked-contract"
-                label="Linked contract"
+                label={`Linked ${contractTermSingularLower}`}
                 value={linkedContractId}
                 onChange={(e) => { markDirty(); setLinkedContractId(e.target.value ?? ''); }}
                 options={contractOptions}

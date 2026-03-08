@@ -43,24 +43,28 @@ export default function NewContractPage() {
   const accountIndustry = organization?.industry ?? industry;
   const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const contractTermPlural = getTermForIndustry(accountIndustry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
+  const contractTermPluralLower = (contractTermPlural || 'contracts').toLowerCase();
 
   if (!ready || !currentUser?.uid) return null;
 
   return (
     <>
       <Head>
-        <title>Create contract - GoManagr</title>
-        <meta name="description" content={`Create a new contract for a ${clientTermSingularLower}`} />
+        <title>Create {contractTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Create a new ${contractTermSingularLower} for a ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Create contract"
-          description={`Create a contract for a ${clientTermSingularLower}. Select the ${clientTermSingularLower} this contract is for.`}
+          title={`Create ${contractTermSingular}`}
+          description={`Create a ${contractTermSingularLower} for a ${clientTermSingularLower}. Select the ${clientTermSingularLower} this ${contractTermSingularLower} is for.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to contracts
+                Back to {contractTermPluralLower}
               </SecondaryButton>
             </Link>
           }

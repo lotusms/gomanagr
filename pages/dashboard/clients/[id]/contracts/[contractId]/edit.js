@@ -26,6 +26,10 @@ export default function EditClientContractPage() {
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
+  const contractTermPlural = getTermForIndustry(accountIndustry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
+  const contractTermPluralLower = (contractTermPlural || 'contracts').toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -127,10 +131,10 @@ export default function EditClientContractPage() {
     return (
       <>
         <Head>
-          <title>Contract not found - GoManagr</title>
+          <title>{contractTermSingular} not found - GoManagr</title>
         </Head>
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">Contract not found.</p>
+          <p className="text-gray-600 dark:text-gray-400">{contractTermSingular} not found.</p>
           <Link href={backUrl}>
             <SecondaryButton type="button" className="gap-2">
               <HiArrowLeft className="w-5 h-5" />
@@ -150,8 +154,8 @@ export default function EditClientContractPage() {
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Edit contract"
-          description="Update the details of this contract."
+          title={`Edit ${contractTermSingular}`}
+          description={`Update the details of this ${contractTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

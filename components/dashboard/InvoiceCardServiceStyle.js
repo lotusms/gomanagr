@@ -6,7 +6,7 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { DocumentViewDialog } from '@/components/documents';
 import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
-import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
+import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import SendInvoiceDialog from '@/components/invoices/SendInvoiceDialog';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 
@@ -40,11 +40,17 @@ export default function InvoiceCardServiceStyle({
   defaultCurrency = 'USD',
   organization = null,
   userId = null,
+  accountIndustry = null,
 }) {
   const account = useOptionalUserAccount();
   const dateFormat = account?.dateFormat ?? 'MM/DD/YYYY';
   const timezone = account?.timezone ?? 'UTC';
-  const lineItemsSectionLabel = getTermForIndustry(organization?.industry ?? account?.industry, 'services');
+  const industry = accountIndustry ?? organization?.industry ?? account?.industry;
+  const lineItemsSectionLabel = getTermForIndustry(industry, 'services');
+  const invoiceTermPlural = getTermForIndustry(industry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
+  const untitledInvoiceLabel = `Untitled ${invoiceTermSingularLower}`;
 
   const [viewState, setViewState] = useState({ open: false, autoPrint: false });
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
@@ -105,7 +111,7 @@ export default function InvoiceCardServiceStyle({
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to void invoice');
+        throw new Error(data.error || `Failed to void ${invoiceTermSingularLower}`);
       }
       setVoidDialogOpen(false);
       onInvoiceUpdated?.();
@@ -136,7 +142,7 @@ export default function InvoiceCardServiceStyle({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-lg font-bold text-white truncate">
-                {invoice.invoice_title || 'Untitled invoice'}
+                {invoice.invoice_title || untitledInvoiceLabel}
               </h3>
             </div>
           </div>
@@ -145,7 +151,7 @@ export default function InvoiceCardServiceStyle({
               type="button"
               onClick={(e) => { e.stopPropagation(); onDelete(invoice.id); }}
               className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-              title="Delete invoice"
+              title={`Delete ${invoiceTermSingularLower}`}
             >
               <HiTrash className="size-5" />
             </button>
@@ -185,7 +191,7 @@ export default function InvoiceCardServiceStyle({
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <HiMail className="w-4 h-4 flex-shrink-0" />
-                        {everSent ? 'Resend invoice' : 'Send invoice'}
+                        {everSent ? `Resend ${invoiceTermSingularLower}` : `Send ${invoiceTermSingularLower}`}
                       </button>
                       {everSent && (
                         <button
@@ -218,7 +224,7 @@ export default function InvoiceCardServiceStyle({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <HiEye className="w-4 h-4 flex-shrink-0" />
-                    View invoice
+                    View {invoiceTermSingularLower}
                   </button>
                   <button
                     type="button"
@@ -227,7 +233,7 @@ export default function InvoiceCardServiceStyle({
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <HiPrinter className="w-4 h-4 flex-shrink-0" />
-                    Print invoice
+                    Print {invoiceTermSingularLower}
                   </button>
                 </div>,
                 document.body
@@ -310,9 +316,9 @@ export default function InvoiceCardServiceStyle({
         isOpen={voidDialogOpen}
         onClose={() => setVoidDialogOpen(false)}
         onConfirm={handleVoidConfirm}
-        title="Void invoice"
-        message="This will mark the invoice as void and set balance due to zero. This cannot be undone."
-        confirmText="Void invoice"
+        title={`Void ${invoiceTermSingular}`}
+        message={`This will mark the ${invoiceTermSingularLower} as void and set balance due to zero. This cannot be undone.`}
+        confirmText={`Void ${invoiceTermSingularLower}`}
         cancelText="Cancel"
         confirmationWord="void"
         variant="danger"
@@ -322,6 +328,7 @@ export default function InvoiceCardServiceStyle({
           isOpen={viewState.open}
           onClose={() => setViewState({ open: false, autoPrint: false })}
           type="invoice"
+          documentTypeLabel={invoiceTermSingular}
           document={buildInvoiceDocumentPayload(invoice)}
           company={company}
           client={{ name: clientName || 'Client', email: '' }}

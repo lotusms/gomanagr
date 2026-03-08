@@ -229,12 +229,12 @@ export default function Dropdown({
         className={
           listGrowsWithContent
             ? ''
-            : 'min-h-0 flex-1 overflow-y-auto overscroll-contain'
+            : 'min-h-0 flex-1 overflow-y-auto overscroll-contain shrink-0'
         }
         style={
           listGrowsWithContent
             ? undefined
-            : { maxHeight: OPTIONS_LIST_MAX_HEIGHT_PX, paddingBottom: BOTTOM_GAP_PX }
+            : { maxHeight: OPTIONS_LIST_MAX_HEIGHT_PX, minHeight: 0, paddingBottom: BOTTOM_GAP_PX }
         }
       >
         {filteredOptions.length === 0 ? (
@@ -285,7 +285,7 @@ export default function Dropdown({
   );
 
   const popupBaseClass = 'bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700';
-  const popupWrapperClassName = `z-[9999] ${popupBaseClass} min-w-full`;
+  const popupWrapperClassName = `z-[9999] ${popupBaseClass} min-w-full overflow-hidden flex flex-col`;
   const popupPortalClassName = `z-[9999] ${popupBaseClass} overflow-hidden flex flex-col`;
   const VIEWPORT_GAP_TOP_PX = 80;
 
@@ -351,7 +351,7 @@ export default function Dropdown({
               maxHeight: nonPortalMaxHeight,
             }}
           >
-            <div className="flex flex-col min-h-0 h-full overflow-hidden">
+            <div className="flex flex-col min-h-0 overflow-hidden" style={{ maxHeight: nonPortalMaxHeight }}>
               {dropdownPanelContent}
             </div>
           </div>

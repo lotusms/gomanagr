@@ -28,17 +28,19 @@ function getOwnerNavItems(accountIndustry) {
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const servicesTerm = getTermForIndustry(accountIndustry, 'services');
   const proposalsTerm = getTermForIndustry(accountIndustry, 'proposal');
+  const invoicesTerm = getTermForIndustry(accountIndustry, 'invoice');
+  const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
   return [
     { name: 'Home', href: '/dashboard', icon: HiHome },
     { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
-    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
+    { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
     { name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText },
-    { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
-    { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
+    { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
     { divider: true },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
     { name: 'Insights', href: '/dashboard/insights', icon: HiChartBar },
@@ -57,18 +59,20 @@ function getAdminNavItems(accountIndustry, memberRole) {
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
     { name: teamTerm, href: '/dashboard/team', icon: HiUsers },
-    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
-    { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { divider: true },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
+    { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
   ];
   if (memberRole !== ORG_ROLE.DEVELOPER) {
     items.push({ name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText });
   }
+  const invoicesTerm = getTermForIndustry(accountIndustry, 'invoice');
+  const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
   items.push(
-    { name: 'Invoices', href: '/dashboard/invoices', icon: HiCurrencyDollar },
-    { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
+    { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
+    { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
     { divider: true },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid }
   );
@@ -95,14 +99,15 @@ function getMemberNavItems(memberAccess, accountIndustry) {
   const projectTerm = getProjectTermForIndustry(accountIndustry);
   const clientTerm = getTermForIndustry(accountIndustry, 'client');
   const servicesTerm = getTermForIndustry(accountIndustry, 'services');
+  const contractsTerm = getTermForIndustry(accountIndustry, 'contract');
   const items = [
     { name: 'Home', href: '/dashboard/team-member', icon: HiHome },
     { name: 'My Profile', href: '/dashboard/team-member/profile', icon: HiUserGroup },
-    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
     { name: 'Schedule', href: '/dashboard/schedule', icon: HiCalendar },
     { name: clientTerm, href: '/dashboard/clients', icon: HiUserGroup },
     { name: servicesTerm, href: '/dashboard/services', icon: HiTag },
-    { name: 'Contracts', href: '/dashboard/contracts', icon: HiClipboardList },
+    { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
+    { name: projectTerm, href: '/dashboard/projects', icon: HiFolder },
   ];
   return items;
 }

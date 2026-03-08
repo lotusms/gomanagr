@@ -29,6 +29,10 @@ export default function EditClientInvoicePage() {
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const invoiceTermPlural = getTermForIndustry(accountIndustry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
+  const invoiceTermPluralLower = (invoiceTermPlural || 'invoices').toLowerCase();
 
   const fetchInvoice = useCallback(() => {
     if (!currentUser?.uid || !clientId || !invoiceId || !orgReady) return;
@@ -150,12 +154,12 @@ export default function EditClientInvoicePage() {
     return (
       <>
         <Head>
-          <title>Invoice not found - GoManagr</title>
+          <title>{invoiceTermSingular} not found - GoManagr</title>
         </Head>
         <div className="space-y-6">
           <PageHeader
-            title="Edit invoice"
-            description={`Invoices for this ${clientTermSingularLower}.`}
+            title={`Edit ${invoiceTermSingular}`}
+            description={`${invoiceTermPlural} for this ${clientTermSingularLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
@@ -171,9 +175,9 @@ export default function EditClientInvoicePage() {
                 <HiDocumentText className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
               </div>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Invoice not found</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{invoiceTermSingular} not found</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
-              This invoice may have been deleted or you don&apos;t have access to it.
+              This {invoiceTermSingularLower} may have been deleted or you don&apos;t have access to it.
             </p>
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
@@ -190,13 +194,13 @@ export default function EditClientInvoicePage() {
   return (
     <>
       <Head>
-        <title>Edit invoice - GoManagr</title>
-        <meta name="description" content="Edit this invoice" />
+        <title>Edit {invoiceTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Edit this ${invoiceTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Edit invoice"
-          description="Update the details of this invoice."
+          title={`Edit ${invoiceTermSingular}`}
+          description={`Update the details of this ${invoiceTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
@@ -215,6 +219,7 @@ export default function EditClientInvoicePage() {
             onInvoiceUpdated={fetchInvoice}
             organizationId={organization?.id ?? null}
             userId={currentUser.uid}
+            industry={accountIndustry}
           />
           <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
             <ClientInvoiceForm

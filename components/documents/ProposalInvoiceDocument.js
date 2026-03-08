@@ -44,7 +44,7 @@ const cellStyle = {
 
 export default function ProposalInvoiceDocument({ type, documentTypeLabel, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services' }) {
   const isProposal = type === 'proposal';
-  const title = isProposal ? (documentTypeLabel || 'Proposal') : 'Invoice';
+  const title = isProposal ? (documentTypeLabel || 'Proposal') : (documentTypeLabel || 'Invoice');
   const lineItems = Array.isArray(doc.lineItems) ? doc.lineItems : [];
   const subtotal = Number(doc.subtotal) || 0;
   const taxNum = Number(doc.tax) || 0;
@@ -217,7 +217,7 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
         </div>
         <div style={metaStyle}>
           <div style={{ marginBottom: '4px' }}>
-            <strong>{isProposal ? `${documentTypeLabel || 'Proposal'} number:` : 'Invoice number:'}</strong> {doc.number || '—'}
+            <strong>{isProposal ? `${documentTypeLabel || 'Proposal'} number:` : `${documentTypeLabel || 'Invoice'} number:`}</strong> {doc.number || '—'}
           </div>
           {isProposal && (
             <>
@@ -235,7 +235,7 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
           {!isProposal && (
             <>
               {doc.dateIssued && (
-                <div style={{ marginBottom: '2px' }}><strong>Invoice date:</strong> {formatDate(doc.dateIssued)}</div>
+                <div style={{ marginBottom: '2px' }}><strong>{documentTypeLabel || 'Invoice'} date:</strong> {formatDate(doc.dateIssued)}</div>
               )}
               {doc.dueDate && (
                 <div style={{ marginBottom: '2px' }}><strong>Payment due:</strong> {formatDate(doc.dueDate)}</div>

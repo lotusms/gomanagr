@@ -23,6 +23,9 @@ export default function NewClientInvoicePage() {
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'client')) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
+  const invoiceTermPlural = getTermForIndustry(accountIndustry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -59,13 +62,13 @@ export default function NewClientInvoicePage() {
   return (
     <>
       <Head>
-        <title>Add invoice - GoManagr</title>
-        <meta name="description" content={`Add an invoice for this ${clientTermSingularLower}`} />
+        <title>Add {invoiceTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Add a ${invoiceTermSingularLower} for this ${clientTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Add invoice"
-          description={`Record an invoice for this ${clientTermSingularLower}.`}
+          title={`Add ${invoiceTermSingularLower}`}
+          description={`Record a ${invoiceTermSingularLower} for this ${clientTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">

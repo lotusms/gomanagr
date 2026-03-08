@@ -407,10 +407,11 @@ function DashboardContent() {
             if (c?.id) clientNameById[c.id] = (c.name || c.company || 'Unknown').trim() || 'Unknown';
           });
           const data = { invoices, proposals };
-          const followUps = buildFollowUps(data, clientNameById);
+          const invoiceTermSingular = getTermSingular(getTermForIndustry(accountIndustry, 'invoice')) || 'Invoice';
+          const followUps = buildFollowUps(data, clientNameById, { invoiceTermSingular });
           const invoicesSummary = getInvoicesSummary(data);
           const proposalsPipeline = getProposalsPipeline(data);
-          const recentlyUpdated = buildRecentlyUpdated(data, clientNameById, 20);
+          const recentlyUpdated = buildRecentlyUpdated(data, clientNameById, 20, { invoiceTermSingular });
           const dateFormat = userAccount?.dateFormat ?? 'MM/DD/YYYY';
           const timezone = userAccount?.timezone ?? 'UTC';
           const currency = userAccount?.defaultCurrency ?? 'USD';
@@ -428,6 +429,7 @@ function DashboardContent() {
                 dueIn14DaysCount={invoicesSummary.dueIn14DaysCount}
                 dueIn30DaysCount={invoicesSummary.dueIn30DaysCount}
                 currency={currency}
+                accountIndustry={accountIndustry}
               />
               <ProposalsPipelineCard counts={proposalsPipeline} accountIndustry={accountIndustry} />
               <RecentlyUpdatedCard

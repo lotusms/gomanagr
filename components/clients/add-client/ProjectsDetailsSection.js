@@ -49,7 +49,9 @@ export default function ProjectsDetailsSection({
     () =>
       PROJECT_STATUS_TABS.map((tab) => ({
         key: tab.key,
-        label: tab.key === 'draft' ? `Draft ${projectTermPlural}` : tab.key === 'active' ? `Active ${projectTermPlural}` : tab.key === 'completed' ? `Completed ${projectTermPlural}` : tab.key === 'abandoned' ? `Abandoned ${projectTermPlural}` : `${tab.label} ${projectTermPlural}`,
+        label: tab.key === 'draft' 
+          ? `Draft ${projectTermPlural}` : tab.key === 'active' 
+          ? `Active ${projectTermPlural}` : tab.key === 'completed' ? `Completed ${projectTermPlural}` : tab.key === 'abandoned' ? `Abandoned ${projectTermPlural}` : `${tab.label} ${projectTermPlural}`,
         description: tab.key === 'draft' ? `${projectTermPlural} not yet started` : tab.key === 'active' ? `Current ${projectTermPluralLower} in progress` : tab.key === 'completed' ? `Finished ${projectTermPluralLower}` : tab.key === 'abandoned' ? `Cancelled or abandoned ${projectTermPluralLower}` : `${tab.label.toLowerCase()} ${projectTermPluralLower}`,
         icon: tab.icon,
         borderClass: tab.borderClass,

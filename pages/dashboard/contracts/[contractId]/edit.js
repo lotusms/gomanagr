@@ -26,6 +26,10 @@ export default function EditContractPage() {
 
   const accountIndustry = organization?.industry ?? industry;
   const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
+  const contractTermPlural = getTermForIndustry(accountIndustry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermPluralLower = (contractTermPlural || 'contracts').toLowerCase();
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -105,7 +109,7 @@ export default function EditContractPage() {
     return (
       <>
         <Head>
-          <title>Edit contract - GoManagr</title>
+          <title>Edit {contractTermSingularLower} - GoManagr</title>
         </Head>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48" />
@@ -119,17 +123,17 @@ export default function EditContractPage() {
     return (
       <>
         <Head>
-          <title>Contract not found - GoManagr</title>
+          <title>{contractTermSingular} not found - GoManagr</title>
         </Head>
         <div className="space-y-6">
           <PageHeader
-            title="Contracts"
-            description={`Contracts created for your ${clientTermPluralLower}.`}
+            title={contractTermPlural}
+            description={`${contractTermPlural} created for your ${clientTermPluralLower}.`}
             actions={
               <Link href={backUrl}>
                 <SecondaryButton type="button" className="gap-2">
                   <HiArrowLeft className="w-5 h-5" />
-                  Back to contracts
+                  Back to {contractTermPluralLower}
                 </SecondaryButton>
               </Link>
             }
@@ -140,14 +144,14 @@ export default function EditContractPage() {
                 <HiClipboardList className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden />
               </div>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Contract not found</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{contractTermSingular} not found</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
-              This contract may have been deleted or you don&apos;t have access to it.
+              This {contractTermSingularLower} may have been deleted or you don&apos;t have access to it.
             </p>
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to contracts
+                Back to {contractTermPluralLower}
               </SecondaryButton>
             </Link>
           </div>
@@ -159,18 +163,18 @@ export default function EditContractPage() {
   return (
     <>
       <Head>
-        <title>Edit contract - GoManagr</title>
-        <meta name="description" content="Edit this contract" />
+        <title>Edit {contractTermSingularLower} - GoManagr</title>
+        <meta name="description" content={`Edit this ${contractTermSingularLower}`} />
       </Head>
       <div className="space-y-6">
         <PageHeader
-          title="Edit contract"
-          description="Update the details of this contract."
+          title={`Edit ${contractTermSingular}`}
+          description={`Update the details of this ${contractTermSingularLower}.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
                 <HiArrowLeft className="w-5 h-5" />
-                Back to contracts
+                Back to {contractTermPluralLower}
               </SecondaryButton>
             </Link>
           }

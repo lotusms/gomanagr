@@ -94,9 +94,16 @@ export default function ClientInvoiceForm({
   const proposalTermPlural = getTermForIndustry(industry, 'proposal');
   const proposalTermSingular = getTermSingular(proposalTermPlural) || 'Proposal';
   const proposalTermSingularLower = proposalTermSingular.toLowerCase();
+  const invoiceTermPlural = getTermForIndustry(industry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
   const selectClientPlaceholder = `Select ${clientTermSingularLower}`;
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
   const untitledProposalLabel = `Untitled ${proposalTermSingularLower}`;
+  const contractTermPlural = getTermForIndustry(industry, 'contract');
+  const contractTermSingular = getTermSingular(contractTermPlural) || 'Contract';
+  const contractTermSingularLower = contractTermSingular.toLowerCase();
+  const untitledContractLabel = `Untitled ${contractTermSingularLower}`;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -156,7 +163,7 @@ export default function ClientInvoiceForm({
 
   const everSent = Boolean(initial.ever_sent) || hasBeenSentThisSession;
   const secondarySubmitLabel = !everSent
-    ? 'Send Invoice'
+    ? `Send ${invoiceTermSingular}`
     : hasUserEdited
       ? 'Save and Resend'
       : 'Resend';
@@ -314,7 +321,7 @@ export default function ClientInvoiceForm({
   ];
 
   const startFromProposalOptions = [
-    { value: '', label: 'Fill invoice manually' },
+    { value: '', label: `Fill ${invoiceTermSingularLower} manually` },
     ...proposals.map((p) => ({
       value: p.id,
       label: (p.proposal_number || untitledProposalLabel).trim() || untitledProposalLabel,
@@ -358,7 +365,7 @@ export default function ClientInvoiceForm({
     { value: '', label: 'None' },
     ...contracts.map((c) => ({
       value: c.id,
-      label: (c.contract_number || 'Untitled contract').trim() || 'Untitled contract',
+      label: (c.contract_number || untitledContractLabel).trim() || untitledContractLabel,
     })),
   ];
 
@@ -431,7 +438,7 @@ export default function ClientInvoiceForm({
     e.preventDefault();
     setError('');
     if (!invoiceTitle.trim()) {
-      setError('Invoice title is required');
+      setError(`${invoiceTermSingular} title is required`);
       return;
     }
     setSaving(true);
@@ -484,7 +491,7 @@ export default function ClientInvoiceForm({
           body: JSON.stringify({ ...payload, invoiceId }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to update invoice');
+        if (!res.ok) throw new Error(data.error || `Failed to update ${invoiceTermSingularLower}`);
       } else {
         const res = await fetch('/api/create-client-invoice', {
           method: 'POST',
@@ -492,7 +499,7 @@ export default function ClientInvoiceForm({
           body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to create invoice');
+        if (!res.ok) throw new Error(data.error || `Failed to create ${invoiceTermSingularLower}`);
       }
       setHasUserEdited(false);
       onSuccess?.();
@@ -507,7 +514,7 @@ export default function ClientInvoiceForm({
     e.preventDefault();
     setError('');
     if (!invoiceTitle.trim()) {
-      setError('Invoice title is required');
+      setError(`${invoiceTermSingular} title is required`);
       return;
     }
     setSaving(true);
@@ -561,7 +568,7 @@ export default function ClientInvoiceForm({
           body: JSON.stringify({ ...payload, invoiceId }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to update invoice');
+        if (!res.ok) throw new Error(data.error || `Failed to update ${invoiceTermSingularLower}`);
       } else {
         const res = await fetch('/api/create-client-invoice', {
           method: 'POST',
@@ -569,7 +576,7 @@ export default function ClientInvoiceForm({
           body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Failed to create invoice');
+        if (!res.ok) throw new Error(data.error || `Failed to create ${invoiceTermSingularLower}`);
       }
       setDateSent(dateSentToday);
       setHasBeenSentThisSession(true);
@@ -591,14 +598,14 @@ export default function ClientInvoiceForm({
       )}
 
       <DocumentFormHeader
-        sectionLabel="Invoice"
+        sectionLabel={invoiceTermSingular}
         idPrefix="invoice"
-        titleLabel="Invoice title"
+        titleLabel={`${invoiceTermSingular} title`}
         titleValue={invoiceTitle}
         titlePlaceholder="Description or reason"
         titleRequired={true}
         onTitleChange={(e) => { markDirty(); setInvoiceTitle(e.target.value); }}
-        documentIdLabel="Invoice ID"
+        documentIdLabel={`${invoiceTermSingular} ID`}
         documentIdValue={invoiceNumber}
         documentIdPlaceholder="Auto-generated or enter your own"
         onDocumentIdChange={(e) => { markDirty(); setInvoiceNumber(e.target.value); }}
@@ -620,14 +627,14 @@ export default function ClientInvoiceForm({
         onUseProposalChange={(e) => { markDirty(); handleStartFromProposalChange(e.target.value ?? ''); }}
         useProposalOptions={startFromProposalOptions}
         useProposalLoading={proposalsLoading}
-        useProposalPlaceholder={effectiveClientId ? 'Fill invoice manually' : `Select a ${proposalTermSingularLower}`}
+        useProposalPlaceholder={effectiveClientId ? `Fill ${invoiceTermSingularLower} manually` : `Select a ${proposalTermSingularLower}`}
       />
 
       <FormStepNav
         steps={STEPS}
         currentStep={step}
         onStepChange={setStep}
-        ariaLabel="Invoice form steps"
+        ariaLabel={`${invoiceTermSingular} form steps`}
       />
 
       <FormStepContent>
@@ -682,11 +689,11 @@ export default function ClientInvoiceForm({
               <Dropdown
                 id="linked-contract"
                 name="linked-contract"
-                label="Linked contract"
+                label={`Linked ${contractTermSingularLower}`}
                 value={linkedContractId}
                 onChange={(e) => { markDirty(); setLinkedContractId(e.target.value ?? ''); }}
                 options={contractOptions}
-                placeholder={contractsLoading ? 'Loading…' : contractOptions.length > 10 ? 'Select contract' : 'None'}
+                placeholder={contractsLoading ? 'Loading…' : contractOptions.length > 10 ? `Select ${contractTermSingularLower}` : 'None'}
                 searchable={contractOptions.length > 10}
               />
               <div className="sm:col-span-2 lg:col-span-3">
@@ -744,7 +751,7 @@ export default function ClientInvoiceForm({
             />
             <FileUploadList
               id="invoice-file"
-              label="Invoice files (PDF)"
+              label={`${invoiceTermSingular} files (PDF)`}
               value={fileUrls}
               onChange={(v) => { markDirty(); setFileUrls(v); }}
               onUpload={uploadFile}
@@ -762,7 +769,7 @@ export default function ClientInvoiceForm({
         onBack={() => setStep(step - 1)}
         onCancel={onCancel}
         onNext={() => setStep(step + 1)}
-        submitLabel={invoiceId ? 'Update invoice' : 'Add invoice'}
+        submitLabel={invoiceId ? `Update ${invoiceTermSingularLower}` : `Add ${invoiceTermSingularLower}`}
         onSubmitClick={() => handleSubmit({ preventDefault: () => {} })}
         saving={saving}
         submitDisabled={(showClientDropdown && !effectiveClientId) || !invoiceTitle.trim()}

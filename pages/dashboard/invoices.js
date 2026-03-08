@@ -30,6 +30,10 @@ function InvoicesContent() {
   const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
   const clientTermPluralLower = (clientTermPlural || 'clients').toLowerCase();
   const clientTermSingularLower = (getTermSingular(clientTermPlural) || 'Client').toLowerCase();
+  const invoiceTermPlural = getTermForIndustry(accountIndustry, 'invoice');
+  const invoiceTermSingular = getTermSingular(invoiceTermPlural) || 'Invoice';
+  const invoiceTermPluralLower = (invoiceTermPlural || 'invoices').toLowerCase();
+  const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
   const paginatedInvoices = useMemo(() => {
@@ -162,7 +166,7 @@ function InvoicesContent() {
     return (
       <>
         <Head>
-          <title>Invoices - GoManagr</title>
+          <title>{invoiceTermPlural} - GoManagr</title>
         </Head>
         <InvoicesPageSkeleton />
       </>
@@ -172,14 +176,14 @@ function InvoicesContent() {
   return (
     <>
       <Head>
-        <title>Invoices - GoManagr</title>
-        <meta name="description" content="Manage invoices" />
+        <title>{invoiceTermPlural} - GoManagr</title>
+        <meta name="description" content={`Manage ${invoiceTermPluralLower}`} />
       </Head>
 
       <div className="space-y-6">
         <PageHeader
-          title="Invoices"
-          description={`Invoices created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
+          title={invoiceTermPlural}
+          description={`${invoiceTermPlural} created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
           actions={
             <PrimaryButton
               type="button"
@@ -187,14 +191,14 @@ function InvoicesContent() {
               onClick={() => router.push('/dashboard/invoices/new')}
             >
               <HiPlus className="w-5 h-5" />
-              Create invoice
+              Create {invoiceTermSingularLower}
             </PrimaryButton>
           }
         />
 
         {invoices.length === 0 ? (
           <EmptyStateCard
-            message="No invoices yet"
+            message={`No ${invoiceTermPluralLower} yet`}
             action={
               <PrimaryButton
                 type="button"
@@ -202,7 +206,7 @@ function InvoicesContent() {
                 onClick={() => router.push('/dashboard/invoices/new')}
               >
                 <HiPlus className="w-5 h-5" />
-                Create your first invoice
+                Create your first {invoiceTermSingularLower}
               </PrimaryButton>
             }
           />
@@ -221,6 +225,7 @@ function InvoicesContent() {
                   defaultCurrency={defaultCurrency}
                   organization={organization}
                   userId={currentUser?.uid}
+                  accountIndustry={accountIndustry}
                 />
               ))}
             </div>
@@ -243,8 +248,8 @@ function InvoicesContent() {
               isOpen={!!invoiceToDelete}
               onClose={() => setInvoiceToDelete(null)}
               onConfirm={handleDeleteConfirm}
-              title="Delete invoice"
-              message="This invoice will be permanently deleted. This cannot be undone."
+              title={`Delete ${invoiceTermSingular}`}
+              message={`This ${invoiceTermSingularLower} will be permanently deleted. This cannot be undone.`}
               confirmText="Delete"
               cancelText="Cancel"
               confirmationWord="delete"

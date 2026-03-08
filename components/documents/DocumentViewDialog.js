@@ -69,7 +69,7 @@ export default function DocumentViewDialog({
   const zoomOut = () => setScale((s) => Math.max(MIN_ZOOM, ZOOM_STEPS.slice().reverse().find((z) => z < s) ?? s - 0.25));
   const set100 = () => setScale(1);
 
-  const title = type === 'proposal' ? `View ${documentTypeLabel || 'proposal'}` : 'View invoice';
+  const title = type === 'proposal' ? `View ${documentTypeLabel || 'proposal'}` : `View ${documentTypeLabel || 'invoice'}`;
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>

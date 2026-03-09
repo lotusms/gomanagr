@@ -189,7 +189,8 @@ export default function DashboardLayout({ children }) {
     let allowed = false;
     for (const [sectionPath, sectionKey] of Object.entries(PATH_TO_SECTION)) {
       if (path === sectionPath || path.startsWith(sectionPath + '/')) {
-        allowed = !!memberAccess?.[sectionKey];
+        // Tasks: allowed for members unless admin explicitly turned it off
+        allowed = sectionKey === 'tasks' ? memberAccess?.[sectionKey] !== false : !!memberAccess?.[sectionKey];
         break;
       }
     }

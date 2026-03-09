@@ -1,0 +1,27 @@
+---
+description: When adding modern design, animations, or drag-and-drop flair, prefer @dnd-kit and its overlay/animation APIs
+globs: components/**/*.js components/**/*.jsx pages/**/*.js pages/**/*.jsx
+alwaysApply: false
+---
+
+# Modern design and animations
+
+When the user asks for **modern design**, **animations**, **flair**, or **drag-and-drop** improvements:
+
+1. **Prefer @dnd-kit** for drag-and-drop and related motion
+   - The project already uses `@dnd-kit/core` and `@dnd-kit/utilities` for the task board.
+   - Use **DragOverlay** for custom drag previews (e.g. slanted card, exact clone with animations).
+   - Use **sensors** (PointerSensor, KeyboardSensor), **collision detection**, and **modifiers** for polish.
+   - Consider **dropAnimation** and custom animations for landing/spring effects.
+
+2. **Use the same stack for consistency**
+   - For new reorderable lists, sortable boards, or drag-to-move UI, use @dnd-kit rather than native HTML5 DnD or ad-hoc solutions.
+   - Keeps behavior and accessibility consistent and makes it easier to add overlay/animation flair later.
+
+3. **Animations and flair**
+   - When adding "modern" feel or micro-interactions, consider whether @dnd-kit’s overlay, modifiers, or drop animations can contribute (e.g. custom drag ghost, tilt, spring-back).
+   - Pair with CSS transitions or a small motion library if needed, but prefer @dnd-kit for any drag-and-drop–driven motion.
+
+## Reference
+
+- Task board implementation: `components/tasks/TaskBoard.js` (DndContext, DragOverlay, useDroppable), `components/tasks/TaskCard.js` (useDraggable, isOverlay with `rotate-[-7deg]`).

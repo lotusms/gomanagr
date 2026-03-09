@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { HiX } from 'react-icons/hi';
 
+const DRAWER_OUT_MS = 200;
+
 /**
  * Drawer that slides in from the right. Covers ~75% of viewport by default.
- * Renders via portal so it stacks above the dashboard header.
+ * Animates out (slides back) when closing. Renders via portal so it stacks above the dashboard header.
  * @param {boolean} isOpen
  * @param {() => void} onClose
  * @param {React.ReactNode} children
@@ -15,26 +17,84 @@ import { HiX } from 'react-icons/hi';
  * @param {boolean} [closeOnOverlayClick] - If false, clicking the overlay does not call onClose (default true). Use for parent drawers that contain nested drawers so button clicks cannot close the parent.
  */
 export default function Drawer({ isOpen, onClose, children, title, className = '', width = '75vw', zIndex = 100, closeOnOverlayClick = true }) {
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimeoutRef = useRef(null);
+  const prevOpenRef = useRef(isOpen);
+  const onCloseRef = useRef(onClose);
+  const closeInitiatedByUsRef = useRef(false);
+  onCloseRef.current = onClose;
   const isNested = zIndex > 100;
+
+  // When opening: reset closing state synchronously so the drawer shows immediately
+  useLayoutEffect(() => {
+    if (isOpen) {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+      closeInitiatedByUsRef.current = false;
+      prevOpenRef.current = true;
+      setIsClosing(false);
+    }
+  }, [isOpen]);
+
+  // When parent sets isOpen to false, run close animation only if we didn't initiate it (e.g. user clicked X/overlay)
   useEffect(() => {
-    if (!isOpen) return;
+    if (closeInitiatedByUsRef.current && !isOpen) {
+      closeInitiatedByUsRef.current = false;
+      prevOpenRef.current = false;
+      return;
+    }
+    if (prevOpenRef.current && !isOpen && !isClosing) {
+      prevOpenRef.current = false;
+      setIsClosing(true);
+      closeTimeoutRef.current = setTimeout(() => {
+        closeTimeoutRef.current = null;
+        setIsClosing(false);
+      }, DRAWER_OUT_MS);
+    }
+  }, [isOpen, isClosing]);
+
+  useEffect(() => {
+    if (!isOpen && !isClosing) return;
     const handleEscape = (e) => {
       if (e.key !== 'Escape') return;
-      onClose();
       e.stopPropagation();
       e.stopImmediatePropagation();
+      if (closeTimeoutRef.current) return; // already closing
+      closeInitiatedByUsRef.current = true;
+      setIsClosing(true);
+      closeTimeoutRef.current = setTimeout(() => {
+        closeTimeoutRef.current = null;
+        setIsClosing(false);
+        onCloseRef.current?.();
+      }, DRAWER_OUT_MS);
     };
     document.addEventListener('keydown', handleEscape, isNested);
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', handleEscape, isNested);
       document.body.style.overflow = '';
+      // Don't clear closeTimeoutRef here—closing animation timeout is cleared when it fires or when drawer reopens
     };
-  }, [isOpen, onClose, isNested]);
+  }, [isOpen, isClosing, isNested]);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    if (isClosing) return;
+    closeInitiatedByUsRef.current = true;
+    setIsClosing(true);
+    closeTimeoutRef.current = setTimeout(() => {
+      closeTimeoutRef.current = null;
+      setIsClosing(false);
+      onCloseRef.current?.();
+    }, DRAWER_OUT_MS);
+  };
+
+  if (!isOpen && !isClosing) return null;
 
   const drawerId = `drawer-${Math.random().toString(36).substr(2, 9)}`;
+  const panelAnimClass = isClosing ? 'animate-drawer-out' : 'animate-drawer-in';
+  const overlayOpacityClass = isClosing ? 'opacity-0' : 'opacity-100';
 
   const drawer = (
     <>
@@ -56,15 +116,15 @@ export default function Drawer({ isOpen, onClose, children, title, className = '
           role="presentation"
           onClick={(e) => {
             e.stopPropagation();
-            if (closeOnOverlayClick) onClose();
+            if (closeOnOverlayClick) handleClose();
           }}
-          className="absolute inset-0 bg-black/40 transition-opacity"
+          className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${overlayOpacityClass}`}
           aria-label={closeOnOverlayClick ? 'Close' : undefined}
         />
         {/* Panel */}
         <div
           id={drawerId}
-          className="relative ml-auto h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl animate-drawer-in"
+          className={`relative ml-auto h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl ${panelAnimClass}`}
         >
           <div className="flex items-center justify-between flex-shrink-0 px-6 py-4 bg-slate-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
             {title != null && title !== '' ? (
@@ -76,7 +136,7 @@ export default function Drawer({ isOpen, onClose, children, title, className = '
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onClose();
+                handleClose();
               }}
               className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors -mr-2"
               aria-label="Close"

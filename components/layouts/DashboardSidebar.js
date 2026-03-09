@@ -122,6 +122,8 @@ function getMemberNavItems(memberAccess, accountIndustry) {
     if (item.divider) return true;
     const sectionKey = PATH_TO_SECTION[item.href];
     if (!sectionKey) return true;
+    // Tasks: always show for members unless admin explicitly turned it off
+    if (sectionKey === 'tasks') return memberAccess[sectionKey] !== false;
     return !!memberAccess[sectionKey];
   });
 }

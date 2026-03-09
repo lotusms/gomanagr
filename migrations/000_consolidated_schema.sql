@@ -2,7 +2,7 @@
 -- Single file that defines the final database state (no intermediate adds/removes).
 -- Use on a fresh database or for schema-only restores. Does not run data migrations.
 -- Tables: user_profiles, organizations, org_members, org_invites, client_*, proposal_line_items (none),
--- invoice_line_items (none), platform_admins, backup_exports.
+-- invoice_line_items (none), tasks, task_activity, task_comments, platform_admins, backup_exports.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -858,6 +858,139 @@ CREATE POLICY "Users can delete own or org client online resources" ON public.cl
     (organization_id IS NULL AND user_id = auth.uid())
     OR (organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid()))
   );
+
+-- ---------------------------------------------------------------------------
+-- tasks (org-scoped work items; status workflow: backlog → to_do → in_progress → blocked → done)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES public.client_projects(id) ON DELETE SET NULL,
+  client_id TEXT,
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'to_do'
+    CHECK (status IN ('backlog', 'to_do', 'in_progress', 'blocked', 'done')),
+  priority TEXT NOT NULL DEFAULT 'medium'
+    CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  assignee_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+  due_at TIMESTAMPTZ,
+  position DOUBLE PRECISION,
+  task_number TEXT,
+  subtasks JSONB DEFAULT '[]'::jsonb,
+  linked_client_id TEXT,
+  linked_project_id UUID REFERENCES public.client_projects(id) ON DELETE SET NULL,
+  linked_invoice_id UUID REFERENCES public.client_invoices(id) ON DELETE SET NULL,
+  linked_proposal_id UUID REFERENCES public.client_proposals(id) ON DELETE SET NULL,
+  linked_appointment_id TEXT,
+  created_by UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_organization_id ON public.tasks(organization_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON public.tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_client_id ON public.tasks(client_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON public.tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_assignee_id ON public.tasks(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_at ON public.tasks(due_at);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_by ON public.tasks(created_by);
+CREATE INDEX IF NOT EXISTS idx_tasks_status_position ON public.tasks(status, position NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_tasks_task_number ON public.tasks(task_number) WHERE task_number IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_org_task_number ON public.tasks(organization_id, task_number) WHERE task_number IS NOT NULL;
+
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view tasks in their org"
+  ON public.tasks FOR SELECT
+  USING (
+    organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can insert tasks in their org"
+  ON public.tasks FOR INSERT
+  WITH CHECK (
+    created_by = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can update tasks in their org"
+  ON public.tasks FOR UPDATE
+  USING (
+    organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can delete tasks in their org"
+  ON public.tasks FOR DELETE
+  USING (
+    organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+-- ---------------------------------------------------------------------------
+-- task_activity (activity feed per task: created, status, assignee, due_at, title, priority, client, project)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.task_activity (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('created', 'status', 'assignee', 'due_at', 'title', 'priority', 'client', 'project')),
+  old_value TEXT,
+  new_value TEXT,
+  user_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_activity_task_id ON public.task_activity(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_activity_created_at ON public.task_activity(created_at DESC);
+
+ALTER TABLE public.task_activity ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view task activity in their org"
+  ON public.task_activity FOR SELECT
+  USING (
+    organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can insert task activity in their org"
+  ON public.task_activity FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+-- ---------------------------------------------------------------------------
+-- task_comments (comments per task)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.task_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  body TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON public.task_comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_comments_created_at ON public.task_comments(created_at DESC);
+
+ALTER TABLE public.task_comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view task comments in their org"
+  ON public.task_comments FOR SELECT
+  USING (
+    organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can insert task comments in their org"
+  ON public.task_comments FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can delete own task comments"
+  ON public.task_comments FOR DELETE
+  USING (user_id = auth.uid());
 
 -- ---------------------------------------------------------------------------
 -- platform_admins (auth.users)

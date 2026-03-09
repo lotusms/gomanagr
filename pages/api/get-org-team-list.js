@@ -67,31 +67,9 @@ export default async function handler(req, res) {
       }
     }
 
-    // Build list from org_members (use profile when present, else Unknown)
-    const seenIds = new Set();
-    const teamMembers = userIds.map((uid) => {
-      seenIds.add(uid);
-      const p = profileById.get(uid);
-      if (p) {
-        const name = [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '';
-        return {
-          id: uid,
-          user_id: uid,
-          name: name || 'Unknown',
-          displayName: name || 'Unknown',
-          email: p.email || '',
-        };
-      }
-      return {
-        id: uid,
-        user_id: uid,
-        name: 'Unknown',
-        displayName: 'Unknown',
-        email: '',
-      };
-    });
-
-    // Include org owner's team_members so the list matches the Team page (full team, including anyone not yet in org_members)
+    // Fetch org owner's team_members once (for photo URLs and to append members not in org_members)
+    const photoByUserId = new Map();
+    let ownerTeam = [];
     const { data: ownerRow } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
@@ -107,20 +85,56 @@ export default async function handler(req, res) {
         .eq('id', ownerRow.user_id)
         .single();
 
-      const ownerTeam = Array.isArray(ownerProfile?.team_members) ? ownerProfile.team_members : [];
+      ownerTeam = Array.isArray(ownerProfile?.team_members) ? ownerProfile.team_members : [];
       for (const m of ownerTeam) {
         const uid = m?.userId ?? m?.id;
-        if (!uid || seenIds.has(uid)) continue;
-        seenIds.add(uid);
-        const name = [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || (m.name || '').trim() || m.email || '';
-        teamMembers.push({
+        const photo = (m?.pictureUrl || m?.photoUrl || '').trim();
+        if (uid && photo) photoByUserId.set(uid, photo);
+      }
+    }
+
+    // Build list from org_members (use profile when present, else Unknown)
+    const seenIds = new Set();
+    const teamMembers = userIds.map((uid) => {
+      seenIds.add(uid);
+      const p = profileById.get(uid);
+      const photoUrl = photoByUserId.get(uid) || '';
+      if (p) {
+        const name = [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '';
+        return {
           id: uid,
           user_id: uid,
           name: name || 'Unknown',
           displayName: name || 'Unknown',
-          email: m.email || '',
-        });
+          email: p.email || '',
+          photoUrl,
+        };
       }
+      return {
+        id: uid,
+        user_id: uid,
+        name: 'Unknown',
+        displayName: 'Unknown',
+        email: '',
+        photoUrl,
+      };
+    });
+
+    // Append owner's team_members not already in org_members
+    for (const m of ownerTeam) {
+      const uid = m?.userId ?? m?.id;
+      if (!uid || seenIds.has(uid)) continue;
+      seenIds.add(uid);
+      const name = [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || (m.name || '').trim() || m.email || '';
+      const photoUrl = (m.pictureUrl || m.photoUrl || '').trim();
+      teamMembers.push({
+        id: uid,
+        user_id: uid,
+        name: name || 'Unknown',
+        displayName: name || 'Unknown',
+        email: m.email || '',
+        photoUrl,
+      });
     }
 
     return res.status(200).json({ teamMembers });

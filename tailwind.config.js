@@ -71,6 +71,10 @@ module.exports = {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
         },
+        'drawer-out': {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(100%)' },
+        },
         fadeIn: {
           from: { opacity: '0' },
           to: { opacity: '1' },
@@ -90,6 +94,7 @@ module.exports = {
       },
       animation: {
         'drawer-in': 'drawer-in 0.25s ease-out forwards',
+        'drawer-out': 'drawer-out 0.2s ease-in forwards',
       },
     },
   },

@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
@@ -8,17 +8,20 @@ import { PageHeader, ConfirmationDialog, EmptyState } from '@/components/ui';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/config/taskConstants';
-import { HiPlus, HiViewGrid, HiViewList, HiCalendar, HiUser, HiFilter } from 'react-icons/hi';
+import { isAdminRole } from '@/config/rolePermissions';
+import { getDefaultTaskSettings } from '@/lib/taskSettings';
+import { HiPlus, HiViewGrid, HiViewList, HiCalendar, HiFilter, HiCog } from 'react-icons/hi';
 import TaskBoard from '@/components/tasks/TaskBoard';
 import TaskList from '@/components/tasks/TaskList';
 import TaskCalendar from '@/components/tasks/TaskCalendar';
+import TasksViewSkeleton from '@/components/tasks/TasksViewSkeleton';
+import TasksSettingsDrawer from '@/components/tasks/TasksSettingsDrawer';
 import Dropdown from '@/components/ui/Dropdown';
 
-const VIEWS = [
+const VIEW_IDS = [
   { id: 'board', label: 'Board', icon: HiViewGrid },
-  { id: 'list', label: 'List', icon: HiViewList },
+  { id: 'list', label: 'Table', icon: HiViewList },
   { id: 'calendar', label: 'Calendar', icon: HiCalendar },
-  { id: 'my', label: 'My Tasks', icon: HiUser },
 ];
 
 
@@ -58,6 +61,8 @@ function TasksContent() {
   const [filterDueDate, setFilterDueDate] = useState('');
   const [filterClient, setFilterClient] = useState('');
   const [filterProject, setFilterProject] = useState('');
+  const [taskSettings, setTaskSettings] = useState(() => getDefaultTaskSettings());
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const taskTermPlural = getTermForIndustry(accountIndustry, 'tasks');
@@ -82,13 +87,33 @@ function TasksContent() {
 
   const orgId = organization?.id ?? undefined;
 
+  // Load task settings from server (org-wide, same on every device)
+  useEffect(() => {
+    if (!orgId || !currentUser?.uid) return;
+    fetch('/api/get-org-task-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.uid }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.taskSettings) setTaskSettings(data.taskSettings);
+        else setTaskSettings(getDefaultTaskSettings());
+      })
+      .catch(() => setTaskSettings(getDefaultTaskSettings()));
+  }, [orgId, currentUser?.uid]);
+
+  const isTasksAdmin = useMemo(
+    () => organization?.membership?.role != null && isAdminRole(organization.membership.role),
+    [organization?.membership?.role]
+  );
+
   useEffect(() => {
     if (!currentUser?.uid || !orgResolved || !orgId) return;
     setLoading(true);
     const body = {
       userId: currentUser.uid,
       organizationId: orgId,
-      myTasks: view === 'my',
       assigneeId: filterAssignee || undefined,
       status: filterStatus || undefined,
       priority: filterPriority || undefined,
@@ -138,6 +163,16 @@ function TasksContent() {
     return map;
   }, [teamMembers]);
 
+  const assigneePhotoById = useMemo(() => {
+    const map = {};
+    (teamMembers || []).forEach((m) => {
+      const photo = (m.photoUrl || m.pictureUrl || '').trim();
+      if (photo && m.id) map[m.id] = photo;
+      if (photo && m.user_id) map[m.user_id] = photo;
+    });
+    return map;
+  }, [teamMembers]);
+
   const clientNameById = useMemo(() => {
     const map = {};
     (clients || []).forEach((c) => {
@@ -156,7 +191,10 @@ function TasksContent() {
   ].filter((o) => o.value != null && o.value !== '');
   const statusFilterOptions = [
     { value: '', label: 'All statuses' },
-    ...TASK_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+    ...TASK_STATUSES.map((s) => ({
+      value: s.value,
+      label: taskSettings?.statusLabels?.[s.value] ?? s.label,
+    })),
   ];
   const priorityFilterOptions = [
     { value: '', label: 'All priorities' },
@@ -194,6 +232,10 @@ function TasksContent() {
 
   const handleStatusChange = async (task, newStatus) => {
     if (!currentUser?.uid || !orgId) return;
+    const previousStatus = task.status;
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
+    );
     try {
       const res = await fetch('/api/update-task', {
         method: 'POST',
@@ -206,11 +248,11 @@ function TasksContent() {
         }),
       });
       if (!res.ok) throw new Error('Failed to update');
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
-      );
     } catch (e) {
       console.error(e);
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: previousStatus } : t))
+      );
     }
   };
 
@@ -241,7 +283,39 @@ function TasksContent() {
     router.push(`/dashboard/tasks/new${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
-  const title = taskTermPlural || 'Tasks';
+  const title = `${taskTermSingularLower.charAt(0).toUpperCase() + taskTermSingularLower.slice(1)} Management` || 'Task Management';
+  const description = `Board, list, and calendar views to help you manage your ${taskTermSingularLower}s.`;
+
+  const visibleViewIds = useMemo(() => {
+    // Only admins see filtered views from settings; members always see Board + List + Calendar
+    if (!isTasksAdmin) return VIEW_IDS.map((v) => v.id);
+    const s = taskSettings;
+    if (!s) return VIEW_IDS.map((v) => v.id);
+    const ids = ['board'];
+    if (s.views?.list !== false) ids.push('list');
+    if (s.views?.calendar !== false) ids.push('calendar');
+    return ids;
+  }, [taskSettings, isTasksAdmin]);
+
+  const viewOptions = useMemo(
+    () => VIEW_IDS.filter((v) => visibleViewIds.includes(v.id)).map((v) => ({ ...v, label: v.label })),
+    [visibleViewIds]
+  );
+
+  useEffect(() => {
+    if (!taskSettings || visibleViewIds.includes(view)) return;
+    const fallback = visibleViewIds.includes(taskSettings.defaultView) ? taskSettings.defaultView : 'board';
+    setView(fallback);
+  }, [taskSettings, visibleViewIds, view]);
+
+  const initialDefaultViewSet = useRef(false);
+  useEffect(() => {
+    if (!taskSettings || initialDefaultViewSet.current) return;
+    if (visibleViewIds.includes(taskSettings.defaultView) && taskSettings.defaultView !== 'board') {
+      setView(taskSettings.defaultView);
+      initialDefaultViewSet.current = true;
+    }
+  }, [taskSettings, visibleViewIds]);
 
   if (loading) {
     return (
@@ -249,9 +323,42 @@ function TasksContent() {
         <Head>
           <title>{title} - GoManagr</title>
         </Head>
-        <div className="animate-pulse space-y-4">
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="space-y-6">
+          <PageHeader
+            title={title}
+            description={description}
+            actions={
+              <div className="h-10 w-36 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            }
+          />
+          <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
+            {viewOptions.map((v) => {
+              const Icon = v.icon;
+              const isActive = view === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  disabled
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium cursor-not-allowed ${
+                    isActive ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-400'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-col xl:flex-row xl:items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200/60 dark:border-gray-700/50 shadow-sm mb-6">
+            <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            <div className="flex flex-wrap gap-2 flex-1">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-9 w-32 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+              ))}
+            </div>
+          </div>
+          <TasksViewSkeleton view={view} />
         </div>
       </>
     );
@@ -267,7 +374,7 @@ function TasksContent() {
       <div className="space-y-6">
         <PageHeader
           title={title}
-          description={`Board, list, and calendar views for ${taskTermSingularLower}s.`}
+          description={description}
           actions={
             <PrimaryButton
               type="button"
@@ -280,27 +387,44 @@ function TasksContent() {
           }
         />
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
-          {VIEWS.map((v) => {
-            const Icon = v.icon;
-            return (
+        {/* Views (board, list, calendar, my) + settings (admin only) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-600 pb-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {viewOptions.map((v) => {
+              const Icon = v.icon;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setView(v.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    view === v.id
+                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2">
+            {isTasksAdmin && (
               <button
-                key={v.id}
                 type="button"
-                onClick={() => setView(v.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  view === v.id
-                    ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
+                onClick={() => setSettingsDrawerOpen(true)}
+                className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-1"
+                title="Task settings"
+                aria-label="Task settings"
               >
-                <Icon className="w-4 h-4" />
-                {v.label}
+                <HiCog className="w-5 h-5" />
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
 
+        {/* Filters bar */}
         <div className="flex flex-col xl:flex-row xl:items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200/60 dark:border-gray-700/50 shadow-sm mb-6">
           <div className="flex items-center gap-2 pr-2 sm:pr-3 border-r border-gray-200 dark:border-gray-600 mr-1">
             <HiFilter className="w-4 h-4 text-gray-400 dark:text-gray-500" aria-hidden />
@@ -378,6 +502,7 @@ function TasksContent() {
           </div>
         </div>
 
+        {/* Tasks views (board, list, calendar, my) - Empty state */}
         {tasks.length === 0 ? (
           <EmptyState
             type="custom"
@@ -400,33 +525,31 @@ function TasksContent() {
               <TaskBoard
                 tasks={tasks}
                 assigneeNameById={assigneeNameById}
+                assigneePhotoById={assigneePhotoById}
                 onStatusChange={handleStatusChange}
                 onDelete={setTaskToDelete}
                 onAddTask={handleAddTask}
+                statusLabels={taskSettings?.statusLabels}
               />
             )}
             {view === 'list' && (
               <TaskList
                 tasks={tasks}
                 assigneeNameById={assigneeNameById}
+                assigneePhotoById={assigneePhotoById}
                 clientNameById={clientNameById}
                 onDelete={setTaskToDelete}
+                columnsConfig={taskSettings?.columns}
+                statusLabels={taskSettings?.statusLabels}
               />
             )}
             {view === 'calendar' && (
-              <TaskCalendar tasks={tasks} assigneeNameById={assigneeNameById} />
-            )}
-            {view === 'my' && (
-              <TaskList
-                tasks={tasks}
-                assigneeNameById={assigneeNameById}
-                clientNameById={clientNameById}
-                onDelete={setTaskToDelete}
-              />
+              <TaskCalendar tasks={tasks} assigneeNameById={assigneeNameById} assigneePhotoById={assigneePhotoById} />
             )}
           </>
         )}
 
+        {/* Confirmation dialog for deleting a task */}
         <ConfirmationDialog
           isOpen={!!taskToDelete}
           onClose={() => setTaskToDelete(null)}
@@ -438,6 +561,17 @@ function TasksContent() {
           confirmationWord="delete"
           variant="danger"
         />
+
+        {isTasksAdmin && (
+          <TasksSettingsDrawer
+            isOpen={settingsDrawerOpen}
+            onClose={() => setSettingsDrawerOpen(false)}
+            orgId={orgId}
+            userId={currentUser?.uid}
+            taskSettings={taskSettings}
+            onSave={(next) => setTaskSettings(next)}
+          />
+        )}
       </div>
     </>
   );

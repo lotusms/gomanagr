@@ -10,7 +10,9 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "seed:tasks": "node scripts/seed-tasks-activity-comments.js",
+    "seed:tasks:dry": "node scripts/seed-tasks-activity-comments.js --dry-run"
   },
   "keywords": [],
   "author": "",

@@ -41,13 +41,14 @@ describe('TasksFormHeader', () => {
     expect(screen.getByLabelText('Status')).toBeInTheDocument();
   });
 
-  it('renders second row with Due date, Priority, Assignee when handlers provided', () => {
+  it('renders second row with Start date, Time to complete, Priority, Assignee when handlers provided', () => {
     render(
       <TasksFormHeader
         {...defaultProps}
-        dueDateValue="2026-03-10"
-        onDueDateChange={() => {}}
-        dueDateLabel="Due date"
+        startDateValue="2026-03-08"
+        onStartDateChange={() => {}}
+        durationDaysValue="3"
+        onDurationDaysChange={() => {}}
         priorityValue="high"
         onPriorityChange={() => {}}
         priorityOptions={[
@@ -58,10 +59,13 @@ describe('TasksFormHeader', () => {
         onAssigneeChange={() => {}}
         assigneeOptions={[{ value: 'u1', label: 'Jane' }]}
         assigneeLabel="Assignee"
+        onClientChange={() => {}}
+        onProjectChange={() => {}}
       />
     );
 
-    expect(screen.getByLabelText('Due date')).toBeInTheDocument();
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Time to complete/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Priority')).toBeInTheDocument();
     expect(screen.getByLabelText('Assignee')).toBeInTheDocument();
   });
@@ -70,7 +74,8 @@ describe('TasksFormHeader', () => {
     render(
       <TasksFormHeader
         {...defaultProps}
-        onDueDateChange={() => {}}
+        onStartDateChange={() => {}}
+        onDurationDaysChange={() => {}}
         onPriorityChange={() => {}}
         onAssigneeChange={() => {}}
         clientValue=""

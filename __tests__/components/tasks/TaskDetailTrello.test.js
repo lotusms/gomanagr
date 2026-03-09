@@ -85,7 +85,7 @@ describe('TaskDetailTrello', () => {
       expect(screen.getByDisplayValue('TASK-001')).toBeInTheDocument();
       expect(screen.getByLabelText(/Status/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Priority/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Due date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Start date/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Assignee/i)).toBeInTheDocument();
     });
 
@@ -95,7 +95,7 @@ describe('TaskDetailTrello', () => {
       expect(screen.getByRole('button', { name: /Add an item/i })).toBeInTheDocument();
     });
 
-    it('create mode: shows Create Task button and no activity sidebar when task has no id', () => {
+    it('create mode: shows Create Task button and activity sidebar (always visible)', () => {
       fetchMock.mockImplementation((url) => {
         if (url && url.includes('get-next-document-id')) {
           return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'TASK-002' }) });
@@ -105,7 +105,7 @@ describe('TaskDetailTrello', () => {
       render(<TaskDetailTrello {...defaultProps} task={{}} />);
 
       expect(screen.getByRole('button', { name: /^Create\s/i })).toBeInTheDocument();
-      expect(screen.queryByTestId('task-activity-comments')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-comments')).toBeInTheDocument();
     });
   });
 

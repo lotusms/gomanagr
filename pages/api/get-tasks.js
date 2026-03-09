@@ -111,14 +111,34 @@ export default async function handler(req, res) {
       .order('due_at', { ascending: true, nullsFirst: true })
       .order('created_at', { ascending: false });
 
-    const { data, error } = await query;
+    const { data: tasksData, error } = await query;
 
     if (error) {
       console.error('[get-tasks]', error);
       return res.status(500).json({ error: 'Failed to load tasks' });
     }
 
-    return res.status(200).json({ tasks: data || [] });
+    const tasksList = tasksData || [];
+
+    const [{ data: taskActivityData }, { data: taskCommentsData }] = await Promise.all([
+      supabaseAdmin
+        .from('task_activity')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
+        .limit(3),
+      supabaseAdmin
+        .from('task_comments')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: true }),
+    ]);
+
+    return res.status(200).json({
+      tasks: tasksList,
+      taskActivity: taskActivityData || [],
+      taskComments: taskCommentsData || [],
+    });
   } catch (err) {
     console.error('[get-tasks]', err);
     return res.status(500).json({ error: 'Failed to load tasks' });

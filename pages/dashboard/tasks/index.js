@@ -130,7 +130,7 @@ function TasksContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      }).then((r) => r.json().then((d) => d.tasks || [])),
+      }).then((r) => r.json()),
       fetch('/api/get-org-team-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,11 +147,17 @@ function TasksContent() {
         body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
       }).then((r) => r.json().then((d) => d.projects || [])),
     ])
-      .then(([tasksList, membersList, clientsList, projectsList]) => {
+      .then(([tasksPayload, membersList, clientsList, projectsList]) => {
+        const tasksList = tasksPayload?.tasks ?? tasksPayload ?? [];
+        const taskActivity = tasksPayload?.taskActivity ?? [];
+        const taskComments = tasksPayload?.taskComments ?? [];
         setTasks(tasksList);
         setTeamMembers(membersList);
         setClients(clientsList);
         setProjects(projectsList);
+        console.log('[tasks page] tasks', tasksList);
+        console.log('[tasks page] task_activity', taskActivity);
+        console.log('[tasks page] task_comments', taskComments);
       })
       .catch(() => setTasks([]))
       .finally(() => setLoading(false));

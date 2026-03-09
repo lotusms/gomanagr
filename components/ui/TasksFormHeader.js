@@ -20,9 +20,12 @@ export default function TasksFormHeader({
   statusValue,
   statusOptions = [],
   onStatusChange,
-  dueDateValue,
-  onDueDateChange,
-  dueDateLabel = 'Due date',
+  startDateValue,
+  onStartDateChange,
+  startDateLabel = 'Start date',
+  durationDaysValue,
+  onDurationDaysChange,
+  durationDaysLabel = 'Time to complete (days)',
   priorityValue,
   onPriorityChange,
   priorityOptions = [],
@@ -43,8 +46,8 @@ export default function TasksFormHeader({
   projectLabel = 'Project',
   projectPlaceholder = 'Select a project',
 }) {
-  const gridColsThree = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
-  const hasSecondRow = onDueDateChange != null || onPriorityChange != null || onAssigneeChange != null;
+  const gridColsThree = 'grid-cols-1 xl:grid-cols-3';
+  const hasSecondRow = onStartDateChange != null || onDurationDaysChange != null || onPriorityChange != null || onAssigneeChange != null;
   const hasThirdRow = onClientChange != null || onProjectChange != null;
 
   return (
@@ -78,14 +81,28 @@ export default function TasksFormHeader({
         />
       </div>
       {hasSecondRow && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {onDueDateChange != null && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          {onStartDateChange != null && (
             <DateField
-              id={`${idPrefix}-due`}
-              label={dueDateLabel}
-              value={dueDateValue ?? ''}
-              onChange={onDueDateChange}
+              id={`${idPrefix}-start`}
+              label={startDateLabel}
+              value={startDateValue ?? ''}
+              onChange={(e) => onStartDateChange(e.target.value)}
               variant="light"
+              min="2000-01-01"
+            />
+          )}
+          {onDurationDaysChange != null && (
+            <InputField
+              id={`${idPrefix}-duration-days`}
+              type="number"
+              min={1}
+              label={durationDaysLabel}
+              value={durationDaysValue ?? ''}
+              onChange={(e) => onDurationDaysChange(e.target.value)}
+              placeholder="e.g. 2"
+              variant="light"
+              title="For Gantt: bar spans this many days ending on due date"
             />
           )}
           {onPriorityChange != null && (
@@ -100,6 +117,10 @@ export default function TasksFormHeader({
               searchable={false}
             />
           )}
+        </div>
+      )}
+      {hasThirdRow && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           {onAssigneeChange != null && (
             <Dropdown
               id={`${idPrefix}-assignee`}
@@ -112,10 +133,6 @@ export default function TasksFormHeader({
               searchable={assigneeOptions.length > 8}
             />
           )}
-        </div>
-      )}
-      {hasThirdRow && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {onClientChange != null && (
             <Dropdown
               id={`${idPrefix}-client`}

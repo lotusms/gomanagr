@@ -875,6 +875,8 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
   assignee_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
   due_at TIMESTAMPTZ,
+  start_date DATE,
+  duration_days INTEGER,
   position DOUBLE PRECISION,
   task_number TEXT,
   subtasks JSONB DEFAULT '[]'::jsonb,

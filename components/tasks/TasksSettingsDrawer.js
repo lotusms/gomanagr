@@ -79,6 +79,7 @@ export default function TasksSettingsDrawer({ isOpen, onClose, orgId, userId, ta
     { value: 'board', label: 'Board' },
     { value: 'list', label: 'Table' },
     { value: 'calendar', label: 'Calendar' },
+    { value: 'gantt', label: 'Gantt' },
   ];
 
   return (
@@ -136,7 +137,7 @@ export default function TasksSettingsDrawer({ isOpen, onClose, orgId, userId, ta
         <section>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Views</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            Board is always shown. You can hide Table and Calendar for the organization.
+            Board is always shown. You can hide Table, Calendar, and Gantt for the organization.
           </p>
           <ul className="space-y-2">
             <li className="flex items-center justify-between gap-3">
@@ -153,6 +154,14 @@ export default function TasksSettingsDrawer({ isOpen, onClose, orgId, userId, ta
                 checked={settings.views.calendar !== false}
                 onCheckedChange={(checked) => handleViewToggle('calendar', checked)}
                 aria-label="Show Calendar view"
+              />
+            </li>
+            <li className="flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Show Gantt view</span>
+              <Switch
+                checked={settings.views.gantt !== false}
+                onCheckedChange={(checked) => handleViewToggle('gantt', checked)}
+                aria-label="Show Gantt view"
               />
             </li>
           </ul>

@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import { HiArrowLeft } from 'react-icons/hi';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
+import { getCurrentSprintEndDate } from '@/lib/taskSettings';
 import TaskDetailTrello from '@/components/tasks/TaskDetailTrello';
 
 export default function EditTaskPage() {
@@ -23,6 +24,7 @@ export default function EditTaskPage() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [taskSettings, setTaskSettings] = useState(null);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const taskTermPlural = getTermForIndustry(accountIndustry, 'tasks');
@@ -73,12 +75,18 @@ export default function EditTaskPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
       }).then((r) => r.json().then((d) => d.projects || [])),
+      fetch('/api/get-org-task-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json().then((d) => d.taskSettings || null)),
     ])
-      .then(([taskData, members, clientsList, projectsList]) => {
+      .then(([taskData, members, clientsList, projectsList, settings]) => {
         setTask(taskData);
         setTeamMembers(members);
         setClients(clientsList);
         setProjects(projectsList);
+        setTaskSettings(settings);
       })
       .catch(() => setTask(null))
       .finally(() => setLoading(false));
@@ -123,7 +131,7 @@ export default function EditTaskPage() {
       <div className="space-y-6">
         <PageHeader
           title={`Edit ${taskTermSingular}`}
-          description={`Update the details of this ${taskTermSingularLower}. You can change status, assignee, and client or project link.`}
+          description={`Update the details of this ${taskTermSingularLower}. You can change status, assignee, and client, project, etc.`}
           actions={
             <Link href={backUrl}>
               <SecondaryButton type="button" className="gap-2">
@@ -142,6 +150,7 @@ export default function EditTaskPage() {
             teamMembers={teamMembers}
             clients={clients}
             projects={projects}
+            defaultSprintEndDate={taskSettings ? getCurrentSprintEndDate(taskSettings.sprintStartDate, taskSettings.sprintWeeks) : null}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />

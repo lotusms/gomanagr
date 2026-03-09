@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import { HiArrowLeft } from 'react-icons/hi';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
+import { getCurrentSprintEndDate } from '@/lib/taskSettings';
 import TaskDetailTrello from '@/components/tasks/TaskDetailTrello';
 
 export default function NewTaskPage() {
@@ -20,6 +21,7 @@ export default function NewTaskPage() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [clients, setClients] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [taskSettings, setTaskSettings] = useState(null);
 
   const { status: queryStatus, projectId: queryProjectId, clientId: queryClientId, assigneeId: queryAssigneeId } = router.query;
   const accountIndustry = organization?.industry ?? userAccount?.industry;
@@ -65,10 +67,16 @@ export default function NewTaskPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: currentUser.uid, organizationId: orgId }),
       }).then((r) => r.json().then((d) => d.projects || [])),
-    ]).then(([members, clientsList, projectsList]) => {
+      fetch('/api/get-org-task-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
+      }).then((r) => r.json().then((d) => d.taskSettings || null)),
+    ]).then(([members, clientsList, projectsList, settings]) => {
       setTeamMembers(members);
       setClients(clientsList);
       setProjects(projectsList);
+      setTaskSettings(settings);
     });
   }, [currentUser?.uid, orgResolved, orgId]);
 
@@ -126,6 +134,7 @@ export default function NewTaskPage() {
             defaultProjectId={queryProjectId}
             defaultClientId={queryClientId}
             defaultAssigneeId={queryAssigneeId}
+            defaultSprintEndDate={taskSettings ? getCurrentSprintEndDate(taskSettings.sprintStartDate, taskSettings.sprintWeeks) : null}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />

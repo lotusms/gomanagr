@@ -45,6 +45,7 @@ export default function TaskForm({
   const [priority, setPriority] = useState(initial.priority ?? 'medium');
   const [assigneeId, setAssigneeId] = useState(initial.assignee_id ?? defaultAssigneeId ?? '');
   const [dueAt, setDueAt] = useState(toDateLocal(initial.due_at) || '');
+  const [durationDays, setDurationDays] = useState(initial.duration_days != null ? String(initial.duration_days) : '');
   const [projectId, setProjectId] = useState(initial.project_id ?? defaultProjectId ?? '');
   const [clientId, setClientId] = useState(initial.client_id ?? defaultClientId ?? '');
   const [subtasks, setSubtasks] = useState(() => {
@@ -141,6 +142,7 @@ export default function TaskForm({
         priority,
         assignee_id: assigneeId || null,
         due_at: dueAt ? new Date(dueAt + 'T12:00:00.000Z').toISOString() : null,
+        duration_days: durationDays !== '' ? Math.max(1, parseInt(durationDays, 10) || 1) : null,
         project_id: projectId || null,
         client_id: clientId || null,
         task_number: taskNumber.trim() || undefined,
@@ -328,6 +330,17 @@ export default function TaskForm({
                 value={dueAt}
                 onChange={(e) => { markDirty(); setDueAt(e.target.value); }}
                 variant="light"
+              />
+              <InputField
+                id="task-duration-days"
+                type="number"
+                min={1}
+                label="Time to complete (days)"
+                value={durationDays}
+                onChange={(e) => { markDirty(); setDurationDays(e.target.value); }}
+                placeholder="e.g. 2"
+                variant="light"
+                title="For Gantt: bar spans this many days ending on due date"
               />
             </div>
           </FormStepSection>

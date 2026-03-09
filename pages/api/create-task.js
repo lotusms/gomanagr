@@ -58,6 +58,8 @@ function parseBody(body) {
     priority,
     assignee_id: rawAssigneeId,
     due_at: body.due_at ?? body.dueAt ?? null,
+    start_date: body.start_date ?? body.startDate ?? null,
+    duration_days: body.duration_days != null ? Math.max(0, parseInt(body.duration_days, 10) || 0) || null : (body.durationDays != null ? Math.max(0, parseInt(body.durationDays, 10) || 0) || null : null),
     position: body.position != null ? Number(body.position) : null,
     linked_client_id: body.linked_client_id ?? body.linkedClientId ?? null,
     linked_project_id: body.linked_project_id ?? body.linkedProjectId ?? null,

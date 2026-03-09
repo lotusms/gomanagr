@@ -10,18 +10,21 @@ import { getTermForIndustry, getTermSingular } from '@/components/clients/client
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/config/taskConstants';
 import { isAdminRole } from '@/config/rolePermissions';
 import { getDefaultTaskSettings } from '@/lib/taskSettings';
-import { HiPlus, HiViewGrid, HiViewList, HiCalendar, HiFilter, HiCog } from 'react-icons/hi';
+import { HiPlus, HiViewGrid, HiViewList, HiCalendar, HiChartBar, HiFilter, HiCog, HiClock } from 'react-icons/hi';
 import TaskBoard from '@/components/tasks/TaskBoard';
 import TaskList from '@/components/tasks/TaskList';
 import TaskCalendar from '@/components/tasks/TaskCalendar';
+import TaskGantt from '@/components/tasks/TaskGantt';
 import TasksViewSkeleton from '@/components/tasks/TasksViewSkeleton';
 import TasksSettingsDrawer from '@/components/tasks/TasksSettingsDrawer';
+import SprintConfigDrawer from '@/components/tasks/SprintConfigDrawer';
 import Dropdown from '@/components/ui/Dropdown';
 
 const VIEW_IDS = [
   { id: 'board', label: 'Board', icon: HiViewGrid },
   { id: 'list', label: 'Table', icon: HiViewList },
   { id: 'calendar', label: 'Calendar', icon: HiCalendar },
+  { id: 'gantt', label: 'Gantt', icon: HiChartBar },
 ];
 
 
@@ -63,6 +66,7 @@ function TasksContent() {
   const [filterProject, setFilterProject] = useState('');
   const [taskSettings, setTaskSettings] = useState(() => getDefaultTaskSettings());
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+  const [sprintConfigDrawerOpen, setSprintConfigDrawerOpen] = useState(false);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const taskTermPlural = getTermForIndustry(accountIndustry, 'tasks');
@@ -294,6 +298,7 @@ function TasksContent() {
     const ids = ['board'];
     if (s.views?.list !== false) ids.push('list');
     if (s.views?.calendar !== false) ids.push('calendar');
+    if (s.views?.gantt !== false) ids.push('gantt');
     return ids;
   }, [taskSettings, isTasksAdmin]);
 
@@ -411,15 +416,26 @@ function TasksContent() {
           </div>
           <div className="flex items-center gap-2">
             {isTasksAdmin && (
-              <button
-                type="button"
-                onClick={() => setSettingsDrawerOpen(true)}
-                className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-1"
-                title="Task settings"
-                aria-label="Task settings"
-              >
-                <HiCog className="w-5 h-5" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSprintConfigDrawerOpen(true)}
+                  className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ml-1"
+                  title="Sprint config"
+                  aria-label="Sprint config"
+                >
+                  <HiClock className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsDrawerOpen(true)}
+                  className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="Task settings"
+                  aria-label="Task settings"
+                >
+                  <HiCog className="w-5 h-5" />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -546,6 +562,17 @@ function TasksContent() {
             {view === 'calendar' && (
               <TaskCalendar tasks={tasks} assigneeNameById={assigneeNameById} assigneePhotoById={assigneePhotoById} />
             )}
+            {view === 'gantt' && (
+              <TaskGantt
+                tasks={tasks}
+                assigneeNameById={assigneeNameById}
+                assigneePhotoById={assigneePhotoById}
+                sprintWeeks={taskSettings?.sprintWeeks ?? 4}
+                sprintStartDate={taskSettings?.sprintStartDate ?? null}
+                taskTermSingular={taskTermSingular}
+                taskTermPlural={taskTermPlural}
+              />
+            )}
           </>
         )}
 
@@ -563,14 +590,24 @@ function TasksContent() {
         />
 
         {isTasksAdmin && (
-          <TasksSettingsDrawer
-            isOpen={settingsDrawerOpen}
-            onClose={() => setSettingsDrawerOpen(false)}
-            orgId={orgId}
-            userId={currentUser?.uid}
-            taskSettings={taskSettings}
-            onSave={(next) => setTaskSettings(next)}
-          />
+          <>
+            <TasksSettingsDrawer
+              isOpen={settingsDrawerOpen}
+              onClose={() => setSettingsDrawerOpen(false)}
+              orgId={orgId}
+              userId={currentUser?.uid}
+              taskSettings={taskSettings}
+              onSave={(next) => setTaskSettings(next)}
+            />
+            <SprintConfigDrawer
+              isOpen={sprintConfigDrawerOpen}
+              onClose={() => setSprintConfigDrawerOpen(false)}
+              orgId={orgId}
+              userId={currentUser?.uid}
+              taskSettings={taskSettings}
+              onSave={(next) => setTaskSettings(next)}
+            />
+          </>
         )}
       </div>
     </>

@@ -73,6 +73,42 @@ function ListSkeleton() {
   );
 }
 
+function GanttSkeleton() {
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 overflow-hidden" data-testid="tasks-gantt-skeleton">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+        <div className="flex gap-2">
+          <div className={`h-9 w-9 rounded-lg ${PULSE}`} />
+          <div className={`h-9 w-9 rounded-lg ${PULSE}`} />
+        </div>
+      </div>
+      <div className="flex min-w-max">
+        <div className="flex-shrink-0 w-60 border-r border-gray-200 dark:border-gray-600 p-3 space-y-2">
+          <div className={`h-4 w-16 rounded ${PULSE}`} />
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`h-6 w-6 rounded-full ${PULSE}`} />
+              <div className={`h-4 flex-1 rounded ${PULSE}`} />
+            </div>
+          ))}
+        </div>
+        <div className="flex-1 min-w-[400px] p-3 border-b border-gray-200 dark:border-gray-600">
+          <div className="flex gap-1 mb-2">
+            {Array.from({ length: 14 }, (_, i) => (
+              <div key={i} className={`h-8 flex-1 rounded ${PULSE}`} />
+            ))}
+          </div>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="flex gap-1 h-11 items-center">
+              <div className={`h-7 w-24 rounded ${PULSE}`} style={{ marginLeft: `${i * 8}%` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CalendarSkeleton() {
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 overflow-hidden" data-testid="tasks-calendar-skeleton">
@@ -106,5 +142,6 @@ function CalendarSkeleton() {
 export default function TasksViewSkeleton({ view = 'board' }) {
   if (view === 'board') return <BoardSkeleton />;
   if (view === 'calendar') return <CalendarSkeleton />;
+  if (view === 'gantt') return <GanttSkeleton />;
   return <ListSkeleton />;
 }

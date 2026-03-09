@@ -45,8 +45,10 @@ function getDefaultTaskSettings() {
   return {
     columns: { ...defaultColumns },
     statusLabels: { ...defaultStatusLabels },
-    views: { list: true, calendar: true },
+    views: { list: true, calendar: true, gantt: true },
     defaultView: 'board',
+    sprintWeeks: 4,
+    sprintStartDate: null,
   };
 }
 
@@ -66,10 +68,12 @@ function sanitizeTaskSettings(input) {
       ? { ...defaults.views, ...input.views }
       : defaults.views;
   const defaultView =
-    input.defaultView === 'list' || input.defaultView === 'calendar'
+    ['list', 'calendar', 'gantt'].includes(input.defaultView)
       ? input.defaultView
       : 'board';
-  return { columns, statusLabels, views, defaultView };
+  const sprintWeeks = [2, 3, 4, 5, 6].includes(Number(input.sprintWeeks)) ? Number(input.sprintWeeks) : defaults.sprintWeeks;
+  const sprintStartDate = typeof input.sprintStartDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.sprintStartDate.trim()) ? input.sprintStartDate.trim() : null;
+  return { columns, statusLabels, views, defaultView, sprintWeeks, sprintStartDate };
 }
 
 async function getConfigOwnerUserId(supabase, orgId) {

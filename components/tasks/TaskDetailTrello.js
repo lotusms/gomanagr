@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import TextareaField from '@/components/ui/TextareaField';
 import { PrimaryButton, SecondaryButton, IconButton } from '@/components/ui/buttons';
@@ -26,6 +26,8 @@ const emptyTask = {
   priority: 'medium',
   assignee_id: '',
   due_at: null,
+  start_date: null,
+  duration_days: null,
   client_id: '',
   project_id: '',
   task_number: '',
@@ -44,6 +46,7 @@ export default function TaskDetailTrello({
   defaultProjectId,
   defaultClientId,
   defaultAssigneeId,
+  defaultSprintEndDate,
   onSuccess,
   onCancel,
 }) {
@@ -61,7 +64,9 @@ export default function TaskDetailTrello({
   const [status, setStatus] = useState(initial.status ?? defaultStatus ?? 'to_do');
   const [priority, setPriority] = useState(initial.priority ?? 'medium');
   const [assigneeId, setAssigneeId] = useState(initial.assignee_id ?? defaultAssigneeId ?? '');
-  const [dueAt, setDueAt] = useState(toDateLocal(initial.due_at) || '');
+  const [dueAt, setDueAt] = useState(toDateLocal(initial.due_at) || defaultSprintEndDate || '');
+  const [startDate, setStartDate] = useState(toDateLocal(initial.start_date) || '');
+  const [durationDays, setDurationDays] = useState(initial.duration_days != null ? String(initial.duration_days) : '');
   const [clientId, setClientId] = useState(initial.client_id ?? defaultClientId ?? '');
   const [projectId, setProjectId] = useState(initial.project_id ?? defaultProjectId ?? '');
   const [subtasks, setSubtasks] = useState(() => {
@@ -80,6 +85,14 @@ export default function TaskDetailTrello({
   const [error, setError] = useState('');
 
   const [suggestedIdFetched, setSuggestedIdFetched] = useState(false);
+  const hasSetDefaultSprintEnd = useRef(false);
+  useEffect(() => {
+    if (hasSetDefaultSprintEnd.current || !defaultSprintEndDate) return;
+    if (!toDateLocal(initial.due_at)) {
+      setDueAt(defaultSprintEndDate);
+      hasSetDefaultSprintEnd.current = true;
+    }
+  }, [defaultSprintEndDate, initial.due_at]);
   useEffect(() => {
     if (!isCreateMode || !userId || !organizationId || suggestedIdFetched) return;
     setSuggestedIdFetched(true);
@@ -104,6 +117,8 @@ export default function TaskDetailTrello({
         priority !== 'medium' ||
         assigneeId !== (defaultAssigneeId ?? '') ||
         dueAt !== '' ||
+        startDate !== '' ||
+        durationDays !== '' ||
         clientId !== (defaultClientId ?? '') ||
         projectId !== (defaultProjectId ?? '') ||
         subtasks.length > 0 ||
@@ -117,6 +132,8 @@ export default function TaskDetailTrello({
       priority !== (initial.priority ?? 'medium') ||
       assigneeId !== (initial.assignee_id ?? '') ||
       dueAt !== (toDateLocal(initial.due_at) || '') ||
+      startDate !== (toDateLocal(initial.start_date) || '') ||
+      durationDays !== (initial.duration_days != null ? String(initial.duration_days) : '') ||
       clientId !== (initial.client_id ?? '') ||
       projectId !== (initial.project_id ?? '') ||
       subtasks.length !== (initial.subtasks || []).length ||
@@ -125,7 +142,7 @@ export default function TaskDetailTrello({
         return !orig || s.title !== (orig.title || '') || s.completed !== Boolean(orig.completed);
       })
     );
-  }, [isCreateMode, title, description, status, priority, assigneeId, dueAt, clientId, projectId, subtasks, initial, defaultStatus, defaultAssigneeId, defaultClientId, defaultProjectId]);
+  }, [isCreateMode, title, description, status, priority, assigneeId, dueAt, startDate, durationDays, clientId, projectId, subtasks, initial, defaultStatus, defaultAssigneeId, defaultClientId, defaultProjectId]);
 
   const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges());
 
@@ -175,6 +192,8 @@ export default function TaskDetailTrello({
             priority,
             assignee_id: assigneeId || null,
             due_at: dueAt ? new Date(dueAt + 'T12:00:00.000Z').toISOString() : null,
+            start_date: startDate && startDate.trim() ? startDate.trim().slice(0, 10) : null,
+            duration_days: durationDays !== '' ? Math.max(1, parseInt(durationDays, 10) || 1) : null,
             client_id: clientId || null,
             project_id: projectId || null,
             task_number: taskNumber.trim() || undefined,
@@ -198,6 +217,8 @@ export default function TaskDetailTrello({
             priority,
             assignee_id: assigneeId || null,
             due_at: dueAt ? new Date(dueAt + 'T12:00:00.000Z').toISOString() : null,
+            start_date: startDate && startDate.trim() ? startDate.trim().slice(0, 10) : null,
+            duration_days: durationDays !== '' ? Math.max(1, parseInt(durationDays, 10) || 1) : null,
             client_id: clientId || null,
             project_id: projectId || null,
             subtasks: subtasks.map((s) => ({ id: s.id, title: (s.title || '').trim(), completed: s.completed })),
@@ -212,7 +233,7 @@ export default function TaskDetailTrello({
     } finally {
       setSaving(false);
     }
-  }, [isCreateMode, task.id, userId, organizationId, title, description, status, priority, assigneeId, dueAt, clientId, projectId, taskNumber, subtasks, onSuccess]);
+  }, [isCreateMode, task.id, userId, organizationId, title, description, status, priority, assigneeId, dueAt, startDate, durationDays, clientId, projectId, taskNumber, subtasks, onSuccess]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
@@ -233,9 +254,12 @@ export default function TaskDetailTrello({
           statusValue={status}
           statusOptions={statusOptions}
           onStatusChange={(e) => setStatus(e.target.value)}
-          dueDateValue={dueAt}
-          onDueDateChange={(e) => setDueAt(e.target.value)}
-          dueDateLabel="Due date"
+          startDateValue={startDate}
+          onStartDateChange={(v) => setStartDate(v)}
+          startDateLabel="Start date"
+          durationDaysValue={durationDays}
+          onDurationDaysChange={(v) => setDurationDays(v)}
+          durationDaysLabel="Time to complete (days)"
           priorityValue={priority}
           onPriorityChange={(e) => setPriority(e.target.value)}
           priorityOptions={priorityOptions}
@@ -344,22 +368,23 @@ export default function TaskDetailTrello({
         </div>
       </div>
 
-      {/* Right column: comments and activity (only when task exists) */}
-      {task.id && (
-        <aside className="w-full lg:w-80 flex-shrink-0">
-          <div className="lg:sticky lg:top-4">
-            <TaskActivityComments
-              taskId={task.id}
-              organizationId={organizationId}
-              userId={userId}
-              teamMembers={teamMembers}
-              taskTermSingular={taskTermSingular}
-              clientTermSingular={clientTermSingular}
-              projectTermSingular={projectTermSingular}
-            />
-          </div>
-        </aside>
-      )}
+      {/* Right column: sprint end date, activity and comments (always visible) */}
+      <aside className="w-full lg:w-80 flex-shrink-0 space-y-4">
+        <div className="text-sm text-gray-500 dark:text-gray-400 text-end">
+          <h4 className="font-semibold">Sprint ends on: <span className="font-normal">{dueAt || '—'}</span></h4>
+        </div>
+        <div className="lg:sticky lg:top-4">
+          <TaskActivityComments
+            taskId={task.id}
+            organizationId={organizationId}
+            userId={userId}
+            teamMembers={teamMembers}
+            taskTermSingular={taskTermSingular}
+            clientTermSingular={clientTermSingular}
+            projectTermSingular={projectTermSingular}
+          />
+        </div>
+      </aside>
 
       {discardDialog}
     </div>

@@ -119,7 +119,12 @@ export default function TaskActivityComments({
   }
 
   const fetchData = useCallback(() => {
-    if (!userId || !organizationId || !taskId) return;
+    if (!userId || !organizationId || !taskId) {
+      setLoading(false);
+      setActivity([]);
+      setComments([]);
+      return;
+    }
     setLoading(true);
     Promise.all([
       fetch('/api/get-task-activity', {
@@ -254,13 +259,14 @@ export default function TaskActivityComments({
               id="task-comment-body"
               value={commentBody}
               onChange={(e) => setCommentBody(e.target.value)}
-              placeholder="Write a comment…"
+              placeholder={taskId ? 'Write a comment…' : `Save the ${taskTermSingular} first to add a comment`}
               rows={2}
               className="!mb-0"
+              disabled={!taskId}
             />
             <PrimaryButton
               type="submit"
-              disabled={!commentBody.trim() || submittingComment}
+              disabled={!taskId || !commentBody.trim() || submittingComment}
               className="!min-w-0 self-end px-4 py-1.5 text-sm"
             >
               {submittingComment ? 'Adding…' : 'Add comment'}

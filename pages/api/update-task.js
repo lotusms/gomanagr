@@ -58,6 +58,10 @@ function buildUpdate(body) {
   if (body.assigneeId !== undefined) updates.assignee_id = toRawUuid(body.assigneeId) ?? updates.assignee_id ?? null;
   if (body.due_at !== undefined) updates.due_at = body.due_at || null;
   if (body.dueAt !== undefined) updates.due_at = body.dueAt || null;
+  if (body.duration_days !== undefined) updates.duration_days = body.duration_days == null ? null : Math.max(0, parseInt(body.duration_days, 10) || 0) || null;
+  if (body.durationDays !== undefined) updates.duration_days = body.durationDays == null ? null : Math.max(0, parseInt(body.durationDays, 10) || 0) || null;
+  if (body.start_date !== undefined) updates.start_date = body.start_date && String(body.start_date).trim() ? String(body.start_date).trim().slice(0, 10) : null;
+  if (body.startDate !== undefined) updates.start_date = body.startDate && String(body.startDate).trim() ? String(body.startDate).trim().slice(0, 10) : null;
   if (body.position !== undefined) updates.position = body.position == null ? null : Number(body.position);
   if (body.project_id !== undefined) updates.project_id = body.project_id || null;
   if (body.projectId !== undefined) updates.project_id = body.projectId || null;
@@ -159,6 +163,9 @@ export default async function handler(req, res) {
       }
       if (updates.project_id !== undefined && updates.project_id !== existing.project_id) {
         activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'project', old_value: existing.project_id, new_value: updates.project_id, user_id: actorId });
+      }
+      if (updates.duration_days !== undefined && String(updates.duration_days) !== String(existing.duration_days ?? '')) {
+        activityRows.push({ task_id: taskId, organization_id: organizationId, kind: 'duration_days', old_value: existing.duration_days != null ? String(existing.duration_days) : null, new_value: updates.duration_days != null ? String(updates.duration_days) : null, user_id: actorId });
       }
       if (activityRows.length > 0) {
         await supabaseAdmin.from('task_activity').insert(activityRows).then(() => {});

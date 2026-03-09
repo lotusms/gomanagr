@@ -45,8 +45,10 @@ function getDefaultTaskSettings() {
   return {
     columns: { ...defaultColumns },
     statusLabels: { ...defaultStatusLabels },
-    views: { list: true, calendar: true },
+    views: { list: true, calendar: true, gantt: true },
     defaultView: 'board',
+    sprintWeeks: 4,
+    sprintStartDate: null,
   };
 }
 
@@ -112,11 +114,15 @@ export default async function handler(req, res) {
     const profile = typeof profileRow.profile === 'object' ? profileRow.profile : {};
     const raw = profile.taskSettings || {};
     const defaults = getDefaultTaskSettings();
+    const sprintWeeks = [2, 3, 4, 5, 6].includes(Number(raw.sprintWeeks)) ? Number(raw.sprintWeeks) : (defaults.sprintWeeks ?? 4);
+    const sprintStartDate = typeof raw.sprintStartDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.sprintStartDate.trim()) ? raw.sprintStartDate.trim() : null;
     const taskSettings = {
       columns: { ...defaults.columns, ...(raw.columns && typeof raw.columns === 'object' ? raw.columns : {}) },
       statusLabels: { ...defaults.statusLabels, ...(raw.statusLabels && typeof raw.statusLabels === 'object' ? raw.statusLabels : {}) },
       views: { ...defaults.views, ...(raw.views && typeof raw.views === 'object' ? raw.views : {}) },
-      defaultView: raw.defaultView === 'list' || raw.defaultView === 'calendar' ? raw.defaultView : 'board',
+      defaultView: ['list', 'calendar', 'gantt'].includes(raw.defaultView) ? raw.defaultView : 'board',
+      sprintWeeks,
+      sprintStartDate,
     };
 
     return res.status(200).json({ taskSettings });

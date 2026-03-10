@@ -80,6 +80,7 @@ export default function ClientInvoiceForm({
   defaultCurrency = 'USD',
   showClientDropdown = false,
   industry = null,
+  clientEmail: clientEmailProp = '',
   onSuccess,
   onCancel,
 }) {
@@ -178,6 +179,23 @@ export default function ClientInvoiceForm({
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
   const effectiveClientId = (clientId && String(clientId).trim()) || null;
+
+  const selectedClient = useMemo(
+    () => (effectiveClientId ? clients.find((c) => c.id === effectiveClientId) : null),
+    [clients, effectiveClientId]
+  );
+  const clientEmailDisplay = useMemo(() => {
+    if (showClientDropdown && selectedClient) {
+      const primary = selectedClient.email;
+      if (primary && String(primary).trim()) return String(primary).trim();
+      const emails = Array.isArray(selectedClient.emails) ? selectedClient.emails : [];
+      const first = emails[0];
+      if (first && typeof first === 'string') return first.trim();
+      if (first && first.address) return String(first.address).trim();
+      return '';
+    }
+    return (clientEmailProp && String(clientEmailProp).trim()) || '';
+  }, [selectedClient, showClientDropdown, clientEmailProp]);
 
   useEffect(() => {
     if (invoiceId || !userId || !organizationId || invoiceIdSuggested) return;
@@ -628,6 +646,22 @@ export default function ClientInvoiceForm({
         useProposalOptions={startFromProposalOptions}
         useProposalLoading={proposalsLoading}
         useProposalPlaceholder={effectiveClientId ? `Fill ${invoiceTermSingularLower} manually` : `Select a ${proposalTermSingularLower}`}
+        showClientEmail={showClientDropdown || !!clientIdProp}
+        clientEmailValue={clientEmailDisplay}
+        clientEmailDisabled={showClientDropdown ? !effectiveClientId : true}
+        clientEmailPlaceholder={
+          showClientDropdown
+            ? (effectiveClientId ? 'No email in client profile' : `Select a ${clientTermSingularLower} above`)
+            : 'No email in client profile'
+        }
+        clientEmailLabel={`${clientTermSingular} email`}
+        clientEmailHint={
+          showClientDropdown
+            ? (effectiveClientId
+              ? 'Invoices are sent to this address when you click Send or Resend.'
+              : `Choose a ${clientTermSingularLower} to see their email from the profile.`)
+            : 'Invoices are sent to this address when you click Send or Resend.'
+        }
       />
 
       <FormStepNav

@@ -115,20 +115,37 @@ export default function EditClientInvoicePage() {
 
   useEffect(() => {
     if (!clientId || !currentUser?.uid) return;
-    getUserAccount(currentUser.uid)
-      .then((account) => {
-        const client = account?.clients?.find((c) => c.id === clientId);
-        if (client) {
-          setClientEmail((client.email && String(client.email).trim()) || '');
-          setClientName(
-            (client.name || client.companyName || '').trim() ||
-            [client.firstName, client.lastName].filter(Boolean).join(' ') ||
-            ''
-          );
-        }
+    const setEmailAndName = (client) => {
+      if (!client) return;
+      setClientEmail((client.email && String(client.email).trim()) || '');
+      setClientName(
+        (client.name || client.companyName || '').trim() ||
+        [client.firstName, client.lastName].filter(Boolean).join(' ') ||
+        ''
+      );
+    };
+    if (organization?.id) {
+      fetch('/api/get-org-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
       })
-      .catch(() => {});
-  }, [clientId, currentUser?.uid]);
+        .then((res) => res.json())
+        .then((data) => {
+          const clients = Array.isArray(data?.clients) ? data.clients : [];
+          const client = clients.find((c) => c.id === clientId);
+          setEmailAndName(client);
+        })
+        .catch(() => {});
+    } else {
+      getUserAccount(currentUser.uid)
+        .then((account) => {
+          const client = account?.clients?.find((c) => c.id === clientId);
+          setEmailAndName(client);
+        })
+        .catch(() => {});
+    }
+  }, [clientId, currentUser?.uid, organization?.id]);
 
   const backUrl = `/dashboard/clients/${clientId}/edit?tab=documents&section=invoices`;
 
@@ -230,6 +247,7 @@ export default function EditClientInvoicePage() {
               invoiceId={invoiceId}
               industry={organization?.industry ?? null}
               defaultCurrency={defaultCurrency}
+              clientEmail={clientEmail}
               onSuccess={() => router.push(backUrl)}
               onCancel={() => router.push(backUrl)}
             />

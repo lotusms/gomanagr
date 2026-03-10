@@ -42,7 +42,7 @@ const cellStyle = {
   fontSize: '10pt',
 };
 
-export default function ProposalInvoiceDocument({ type, documentTypeLabel, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services' }) {
+export default function ProposalInvoiceDocument({ type, documentTypeLabel, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services', payUrl }) {
   const isProposal = type === 'proposal';
   const title = isProposal ? (documentTypeLabel || 'Proposal') : (documentTypeLabel || 'Invoice');
   const lineItems = Array.isArray(doc.lineItems) ? doc.lineItems : [];
@@ -302,6 +302,34 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
           <div style={{ ...sectionLabelStyle, marginTop: '24px' }}>Terms</div>
           <div style={{ whiteSpace: 'pre-wrap', marginTop: '4px' }}>{doc.terms}</div>
         </>
+      )}
+
+      {/* Pay now CTA: email only (payUrl is only passed when rendering for invoice email, not for print/preview) */}
+      {!isProposal && payUrl && (doc.amountDue == null || Number(doc.amountDue) > 0) && (
+        <div style={{ marginTop: '24px', padding: '16px', textAlign: 'center', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+          <p style={{ margin: '0 0 12px 0', fontSize: '12pt', fontWeight: 600, color: TEXT_COLOR }}>
+            Pay this invoice online
+          </p>
+          <a
+            href={payUrl}
+            style={{
+              display: 'inline-block',
+              padding: '12px 28px',
+              backgroundColor: ACCENT_COLOR,
+              color: '#fff',
+              textDecoration: 'none',
+              fontWeight: 600,
+              borderRadius: '6px',
+              fontSize: '12pt',
+            }}
+          >
+            Pay now
+          </a>
+          <p style={{ margin: '12px 0 0 0', fontSize: '10pt', color: MUTED_COLOR }}>
+            If the button doesn&apos;t work, copy this link into your browser:<br />
+            <a href={payUrl} style={{ color: ACCENT_COLOR, wordBreak: 'break-all' }}>{payUrl}</a>
+          </p>
+        </div>
       )}
 
       {!isProposal && (doc.paymentMethod || doc.paidDate) && (

@@ -1,8 +1,10 @@
 /**
  * Send an invoice copy by email. POST body: { userId, organizationId?, invoiceId, to, clientName?, isReminder? }
  * Uses same SMTP/Resend config as send-proposal-email. Email body is HTML version of the invoice.
+ * When sending, generates payment_token if missing so the email can include a "Pay now" link.
  */
 
+import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
@@ -130,8 +132,19 @@ export default async function handler(req, res) {
     if (!clientName) clientName = toEmail;
 
     const docPayload = buildInvoiceDocumentPayload(invoice);
+    const status = (invoice.status && String(invoice.status).toLowerCase().trim()) || 'draft';
+    const isPaidOrVoid = status === 'paid' || status === 'void';
+    const showPayLink = !isPaidOrVoid;
+    let paymentToken = invoice.payment_token || null;
+    if (showPayLink && !paymentToken) {
+      paymentToken = crypto.randomBytes(16).toString('hex');
+    }
+    // Use APP_BASE_URL for pay links so they hit the app (e.g. app.gomanagr.com), not the marketing site (www.gomanagr.com).
+    const appBaseUrl = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const payPath = `/pay/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(paymentToken)}`;
+    const payUrl = showPayLink && paymentToken && invoiceId ? `${appBaseUrl}${payPath}` : null;
 
-    const html = renderDocumentToHtml({
+    const htmlBase = renderDocumentToHtml({
       type: 'invoice',
       company: {
         name: displayName,
@@ -147,7 +160,21 @@ export default async function handler(req, res) {
       },
       document: docPayload,
       currency: 'USD',
+      payUrl: undefined,
     });
+    const paySection = payUrl
+      ? `
+<div style="margin:24px 16px;padding:20px;text-align:center;background:#eff6ff;border:1px solid #2563eb;border-radius:8px;">
+  <p style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:#1e40af;">Pay this invoice online</p>
+  <p style="margin:0 0 16px 0;font-size:14px;color:#374151;">Click the button below to pay securely:</p>
+  <a href="${payUrl}" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;border-radius:6px;font-size:16px;">Pay now</a>
+  <p style="margin:16px 0 0 0;font-size:12px;color:#6b7280;">Or copy and paste this link into your browser:</p>
+  <p style="margin:4px 0 0 0;font-size:12px;"><a href="${payUrl}" style="color:#2563eb;word-break:break-all;">${payUrl}</a></p>
+</div>`
+      : '';
+    const html = paySection
+      ? htmlBase.replace(/\s*<\/body>\s*/, `${paySection}\n</body>\n`)
+      : htmlBase;
 
     const smtpHost = process.env.SMTP_HOST;
     const smtpUser = process.env.SMTP_USER;
@@ -168,7 +195,9 @@ export default async function handler(req, res) {
       const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
       await transporter.sendMail({ from, to: toEmail, subject, html });
       if (!isReminder) {
-        await supabaseAdmin.from('client_invoices').update({ ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() }).eq('id', invoiceId);
+        const updatePayload = { ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() };
+        if (paymentToken && !invoice.payment_token) updatePayload.payment_token = paymentToken;
+        await supabaseAdmin.from('client_invoices').update(updatePayload).eq('id', invoiceId);
       }
       return res.status(200).json({ sent: true, message: isReminder ? 'Reminder sent' : 'Invoice email sent' });
     }
@@ -184,7 +213,9 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to send email', details: error.message });
       }
       if (!isReminder) {
-        await supabaseAdmin.from('client_invoices').update({ ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() }).eq('id', invoiceId);
+        const updatePayload = { ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() };
+        if (paymentToken && !invoice.payment_token) updatePayload.payment_token = paymentToken;
+        await supabaseAdmin.from('client_invoices').update(updatePayload).eq('id', invoiceId);
       }
       return res.status(200).json({ sent: true, message: isReminder ? 'Reminder sent' : 'Invoice email sent' });
     }

@@ -104,21 +104,38 @@ export default function EditInvoicePage() {
 
   useEffect(() => {
     if (!invoice?.client_id || !currentUser?.uid) return;
-    getUserAccount(currentUser.uid)
-      .then((account) => {
-        const clients = Array.isArray(account?.clients) ? account.clients : [];
-        const client = clients.find((c) => c.id === invoice.client_id);
-        if (client) {
-          setClientEmail((client.email && String(client.email).trim()) || '');
-          setClientName(
-            (client.name || client.companyName || '').trim() ||
-            [client.firstName, client.lastName].filter(Boolean).join(' ') ||
-            ''
-          );
-        }
+    const setEmailAndName = (client) => {
+      if (!client) return;
+      setClientEmail((client.email && String(client.email).trim()) || '');
+      setClientName(
+        (client.name || client.companyName || '').trim() ||
+        [client.firstName, client.lastName].filter(Boolean).join(' ') ||
+        ''
+      );
+    };
+    if (organization?.id) {
+      fetch('/api/get-org-clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid }),
       })
-      .catch(() => {});
-  }, [invoice?.client_id, currentUser?.uid]);
+        .then((res) => res.json())
+        .then((data) => {
+          const clients = Array.isArray(data?.clients) ? data.clients : [];
+          const client = clients.find((c) => c.id === invoice.client_id);
+          setEmailAndName(client);
+        })
+        .catch(() => {});
+    } else {
+      getUserAccount(currentUser.uid)
+        .then((account) => {
+          const clients = Array.isArray(account?.clients) ? account.clients : [];
+          const client = clients.find((c) => c.id === invoice.client_id);
+          setEmailAndName(client);
+        })
+        .catch(() => {});
+    }
+  }, [invoice?.client_id, currentUser?.uid, organization?.id]);
 
   const backUrl = '/dashboard/invoices';
 

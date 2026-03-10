@@ -41,6 +41,12 @@
  * @param {Array<{value: string, label: string}>} [useProposalOptions] - Proposal options (per-client or all)
  * @param {boolean} [useProposalLoading] - Proposal options loading state
  * @param {string} [useProposalPlaceholder] - Placeholder when no proposal selected
+ * @param {boolean} [showClientEmail] - When true, show optional Client email row (read-only, from profile)
+ * @param {string} [clientEmailValue] - Value for the client email field
+ * @param {boolean} [clientEmailDisabled] - Disable the client email field (e.g. when no client selected)
+ * @param {string} [clientEmailPlaceholder] - Placeholder when empty/disabled
+ * @param {string} [clientEmailLabel] - Label for the field (e.g. "Client email")
+ * @param {string} [clientEmailHint] - Hint text below the field
  */
 import InputField from '@/components/ui/InputField';
 import Dropdown from '@/components/ui/Dropdown';
@@ -76,6 +82,12 @@ export default function DocumentFormHeader({
   useProposalOptions = [],
   useProposalLoading = false,
   useProposalPlaceholder = 'No — fill manually',
+  showClientEmail = false,
+  clientEmailValue = '',
+  clientEmailDisabled = true,
+  clientEmailPlaceholder = '',
+  clientEmailLabel = 'Client email',
+  clientEmailHint = '',
 }) {
   const showFullWidthTitle = showClientDropdown || showUseProposalDropdown;
   // 3-field row: 1 col < md, 2 at md, 3 at lg+
@@ -98,8 +110,25 @@ export default function DocumentFormHeader({
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4 space-y-4">
       {showFullWidthTitle ? (
         <>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {titleField}
+            {showClientEmail && (
+              <div className="grid grid-cols-1 gap-1">
+                <InputField
+                  id={`${idPrefix}-client-email`}
+                  label={clientEmailLabel}
+                  value={clientEmailValue}
+                  onChange={() => {}}
+                  variant="light"
+                  disabled={clientEmailDisabled}
+                  placeholder={clientEmailPlaceholder}
+                  inputProps={{ readOnly: true }}
+                />
+                {clientEmailHint && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{clientEmailHint}</p>
+                )}
+              </div>
+            )}
           </div>
           <div className={`grid ${showClientDropdown && showUseProposalDropdown ? gridColsFour : gridColsThree} gap-4`}>
             {showClientDropdown && (
@@ -169,6 +198,7 @@ export default function DocumentFormHeader({
           />
         </div>
       )}
+     
     </div>
   );
 }

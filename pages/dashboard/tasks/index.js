@@ -155,9 +155,6 @@ function TasksContent() {
         setTeamMembers(membersList);
         setClients(clientsList);
         setProjects(projectsList);
-        console.log('[tasks page] tasks', tasksList);
-        console.log('[tasks page] task_activity', taskActivity.slice(0, 3));
-        console.log('[tasks page] task_comments', taskComments.slice(0, 3));
       })
       .catch(() => setTasks([]))
       .finally(() => setLoading(false));

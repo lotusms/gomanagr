@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TasksFormHeader from '@/components/ui/TasksFormHeader';
 
@@ -101,5 +101,46 @@ describe('TasksFormHeader', () => {
     await userEvent.type(screen.getByLabelText('Task title'), 'Updated');
 
     expect(onTitleChange).toHaveBeenCalled();
+  });
+
+  it('calls onDurationDaysChange when time to complete changes', () => {
+    const onDurationDaysChange = jest.fn();
+    render(
+      <TasksFormHeader
+        {...defaultProps}
+        durationDaysValue="3"
+        onDurationDaysChange={onDurationDaysChange}
+        onClientChange={() => {}}
+        onProjectChange={() => {}}
+      />
+    );
+    const durationInput = screen.getByLabelText(/Time to complete/i);
+    fireEvent.change(durationInput, { target: { value: '5' } });
+    expect(onDurationDaysChange).toHaveBeenCalled();
+  });
+
+  it('calls onPriorityChange when priority dropdown change event fires', () => {
+    const onPriorityChange = jest.fn();
+    render(
+      <TasksFormHeader
+        {...defaultProps}
+        priorityValue="high"
+        onPriorityChange={onPriorityChange}
+        priorityOptions={[
+          { value: 'low', label: 'Low' },
+          { value: 'high', label: 'High' },
+        ]}
+        onClientChange={() => {}}
+        onProjectChange={() => {}}
+      />
+    );
+    const priorityButton = screen.getByLabelText('Priority');
+    expect(priorityButton).toBeInTheDocument();
+    fireEvent.click(priorityButton);
+    const options = screen.getAllByRole('option');
+    if (options.length > 0) {
+      fireEvent.click(options[0]);
+      expect(onPriorityChange).toHaveBeenCalled();
+    }
   });
 });

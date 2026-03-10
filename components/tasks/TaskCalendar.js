@@ -76,13 +76,13 @@ export default function TaskCalendar({ tasks = [], assigneeNameById = {}, assign
   const monthStartKey = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const monthEndKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-  /** Tasks that span 2+ days: list of { task, weekIndex, colStart, colEnd, lane } for bars in this month */
+  /** All tasks as segments (multi-day span cols; single-day = 1 col). One unified bar strip per day. */
   const spanSegmentsByWeek = useMemo(() => {
     const byWeek = {};
     for (let r = 0; r < rows; r++) byWeek[r] = [];
     tasks.forEach((t) => {
       const keys = getTaskDateKeys(t);
-      if (keys.length < 2) return;
+      if (keys.length === 0) return;
       const inMonth = keys.filter((k) => k >= monthStartKey && k <= monthEndKey);
       if (inMonth.length === 0) return;
       const first = inMonth[0];
@@ -113,21 +113,6 @@ export default function TaskCalendar({ tasks = [], assigneeNameById = {}, assign
     return byWeek;
   }, [tasks, year, month, rows, startPad, monthStartKey, monthEndKey]);
 
-  /** Single-day tasks only (for day cell lists); multi-day tasks shown as bars */
-  const tasksByDate = useMemo(() => {
-    const map = {};
-    tasks.forEach((t) => {
-      const keys = getTaskDateKeys(t);
-      if (keys.length > 1) return;
-      const key = keys[0];
-      if (key) {
-        if (!map[key]) map[key] = [];
-        map[key].push(t);
-      }
-    });
-    return map;
-  }, [tasks]);
-
   const today = new Date();
   const todayKey = toDateKey(today.toISOString().slice(0, 10));
 
@@ -151,8 +136,13 @@ export default function TaskCalendar({ tasks = [], assigneeNameById = {}, assign
     setCursor({ year: today.getFullYear(), month: today.getMonth() });
   };
 
-  const CELL_MIN_HEIGHT = 100;
-  const BAR_ROW_HEIGHT = 28;
+  /** Apple-style: fixed cell sizes, thin bars, "+n more" overflow, consistent 1px gaps */
+  const THIN_BAR_HEIGHT = 16;
+  const ROW_GAP = 1;
+  const MAX_VISIBLE_BARS = 3;
+  const MORE_ROW_HEIGHT = 8;
+  const FIXED_BAR_STRIP_HEIGHT =
+    MAX_VISIBLE_BARS * THIN_BAR_HEIGHT + (MAX_VISIBLE_BARS - 1) * ROW_GAP + ROW_GAP + MORE_ROW_HEIGHT;
 
   /** For week row r, get day number for column c (1-based day or null if padding/out of month) */
   function dayNumFor(r, c) {
@@ -165,10 +155,7 @@ export default function TaskCalendar({ tasks = [], assigneeNameById = {}, assign
   const gridRows = [];
   for (let r = 0; r < rows; r++) {
     const segments = spanSegmentsByWeek[r] || [];
-    const barStripHeight =
-      segments.length > 0
-        ? BAR_ROW_HEIGHT * (Math.max(0, ...segments.map((s) => s.lane)) + 1)
-        : BAR_ROW_HEIGHT;
+    const visibleSegments = segments.filter((s) => s.lane < MAX_VISIBLE_BARS);
 
     gridRows.push(
       <tr key={r}>
@@ -181,7 +168,8 @@ export default function TaskCalendar({ tasks = [], assigneeNameById = {}, assign
             className="grid w-full border-b border-gray-100 dark:border-gray-700"
             style={{
               gridTemplateColumns: 'repeat(7, 1fr)',
-              gridTemplateRows: `auto ${barStripHeight}px minmax(${CELL_MIN_HEIGHT}px, 1fr)`,
+              gridTemplateRows: `auto ${FIXED_BAR_STRIP_HEIGHT}px`,
+              rowGap: `${ROW_GAP}px`,
             }}
           >
             {/* Row 1: Day numbers on top (Apple-style) */}
@@ -220,24 +208,27 @@ export default function TaskCalendar({ tasks = [], assigneeNameById = {}, assign
               );
             })}
 
-            {/* Row 2: Event bar strip – directly under day numbers, on top of content */}
+            {/* Row 2: All tasks (multi-day + single-day) – thin bars, fixed row heights, 1px gaps, "+n more" */}
             <div
-              className="grid gap-0 px-0.5 py-0 border-r border-gray-100 dark:border-gray-700 last:border-r-0 bg-white dark:bg-gray-800"
+              className="grid gap-x-0 px-0.5 py-0 border-r border-gray-100 dark:border-gray-700 last:border-r-0 bg-white dark:bg-gray-800 overflow-hidden"
               style={{
                 gridColumn: '1 / -1',
                 gridRow: 2,
                 gridTemplateColumns: 'repeat(7, 1fr)',
-                gridAutoRows: `${BAR_ROW_HEIGHT}px`,
+                gridTemplateRows: `${THIN_BAR_HEIGHT}px ${THIN_BAR_HEIGHT}px ${THIN_BAR_HEIGHT}px ${MORE_ROW_HEIGHT}px`,
+                rowGap: `${ROW_GAP}px`,
+                height: FIXED_BAR_STRIP_HEIGHT,
               }}
             >
-              {segments.map((seg) => (
+              {visibleSegments.map((seg) => (
                 <Link
                   key={`${seg.task.id}-${r}-${seg.colStart}`}
                   href={`/dashboard/tasks/${seg.task.id}/edit`}
-                  className="flex items-center gap-1.5 min-w-0 h-full rounded px-2 py-0 overflow-hidden bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-200 border border-primary-200/50 dark:border-primary-700/50 hover:opacity-90 transition-opacity text-xs font-medium"
+                  className="flex items-center gap-1 min-w-0 h-full rounded px-1.5 py-0 overflow-hidden bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-200 border border-primary-200/50 dark:border-primary-700/50 hover:opacity-90 transition-opacity text-xs font-medium"
                   style={{
                     gridColumn: `${seg.colStart + 1} / ${seg.colEnd + 2}`,
                     gridRow: seg.lane + 1,
+                    minHeight: THIN_BAR_HEIGHT,
                   }}
                   title={seg.task.title}
                 >
@@ -247,61 +238,29 @@ export default function TaskCalendar({ tasks = [], assigneeNameById = {}, assign
                         src={assigneePhotoById[seg.task.assignee_id] || undefined}
                         name={assigneeNameById[seg.task.assignee_id] || 'Unknown'}
                         size="sm"
-                        className="flex-shrink-0 !size-4 !text-[8px] bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300"
+                        className="flex-shrink-0 !size-3 !text-[6px] bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300"
                       />
                     )}
                   <span className="truncate">{seg.task.title || 'Untitled'}</span>
                 </Link>
               ))}
+              {/* "+n more" only on the day the segment starts */}
+              {[0, 1, 2, 3, 4, 5, 6].map((c) => {
+                const overflowCount = segments.filter(
+                  (s) => s.colStart === c && s.lane >= MAX_VISIBLE_BARS
+                ).length;
+                if (overflowCount <= 0) return null;
+                return (
+                  <div
+                    key={`more-${r}-${c}`}
+                    className="flex items-center px-1 text-xs text-primary-600 dark:text-primary-400 font-medium cursor-pointer hover:underline"
+                    style={{ gridColumn: c + 1, gridRow: MAX_VISIBLE_BARS + 1 }}
+                  >
+                    +{overflowCount} more
+                  </div>
+                );
+              })}
             </div>
-
-            {/* Row 3: Single-day task lists */}
-            {[0, 1, 2, 3, 4, 5, 6].map((c) => {
-              const day = dayNumFor(r, c);
-              const key =
-                day != null
-                  ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                  : `pad-${r}-${c}`;
-              const dayTasks = day != null ? tasksByDate[key] || [] : [];
-              const isToday = key !== `pad-${r}-${c}` && key === todayKey;
-              const isEmpty = day == null;
-              return (
-                <div
-                  key={`list-${key}`}
-                  className={`min-h-0 overflow-y-auto p-2 border-r border-gray-100 dark:border-gray-700 last:border-r-0 ${
-                    isEmpty
-                      ? 'bg-gray-50/50 dark:bg-gray-800/50'
-                      : isToday
-                        ? 'bg-primary-50/50 dark:bg-primary-900/30'
-                        : 'bg-white dark:bg-gray-800'
-                  }`}
-                  style={{ gridColumn: c + 1, gridRow: 3 }}
-                >
-                  <ul className="space-y-1">
-                    {dayTasks.map((t) => (
-                      <li key={t.id} className="flex items-center gap-1 min-w-0">
-                        {t.assignee_id &&
-                          (assigneeNameById[t.assignee_id] || assigneePhotoById[t.assignee_id]) && (
-                            <Avatar
-                              src={assigneePhotoById[t.assignee_id] || undefined}
-                              name={assigneeNameById[t.assignee_id] || 'Unknown'}
-                              size="sm"
-                              className="flex-shrink-0 !size-5 !text-[8px] bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300"
-                            />
-                          )}
-                        <Link
-                          href={`/dashboard/tasks/${t.id}/edit`}
-                          className="flex-1 min-w-0 text-xs font-medium truncate block rounded px-1.5 py-0.5 bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-200 border border-primary-200/50 dark:border-primary-700/50 hover:opacity-90 transition-opacity"
-                          title={t.title}
-                        >
-                          {t.title || 'Untitled'}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
           </div>
         </td>
       </tr>

@@ -131,6 +131,15 @@ export default async function handler(req, res) {
     }
     if (!clientName) clientName = toEmail;
 
+    const clientSnapshot =
+      !isReminder && (clientName || toEmail)
+        ? {
+            name: clientName || toEmail,
+            email: toEmail,
+            ...(clientAddressLines.length > 0 && { addressLines: clientAddressLines }),
+          }
+        : null;
+
     const docPayload = buildInvoiceDocumentPayload(invoice);
     const status = (invoice.status && String(invoice.status).toLowerCase().trim()) || 'draft';
     const isPaidOrVoid = status === 'paid' || status === 'void';
@@ -197,6 +206,7 @@ export default async function handler(req, res) {
       if (!isReminder) {
         const updatePayload = { ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() };
         if (paymentToken && !invoice.payment_token) updatePayload.payment_token = paymentToken;
+        if (clientSnapshot) updatePayload.client_snapshot = clientSnapshot;
         await supabaseAdmin.from('client_invoices').update(updatePayload).eq('id', invoiceId);
       }
       return res.status(200).json({ sent: true, message: isReminder ? 'Reminder sent' : 'Invoice email sent' });
@@ -215,6 +225,7 @@ export default async function handler(req, res) {
       if (!isReminder) {
         const updatePayload = { ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() };
         if (paymentToken && !invoice.payment_token) updatePayload.payment_token = paymentToken;
+        if (clientSnapshot) updatePayload.client_snapshot = clientSnapshot;
         await supabaseAdmin.from('client_invoices').update(updatePayload).eq('id', invoiceId);
       }
       return res.status(200).json({ sent: true, message: isReminder ? 'Reminder sent' : 'Invoice email sent' });

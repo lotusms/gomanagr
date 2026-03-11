@@ -70,10 +70,22 @@ You still need to:
 2. Get **API keys**: Dashboard → Developers → API keys.  
    - **Publishable key** → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`  
    - **Secret key** → `STRIPE_SECRET_KEY` (server only).
-3. (Optional) **Webhook**: Developers → Webhooks → Add endpoint, e.g. `https://your-app.com/api/webhooks/stripe`.  
-   Events to subscribe to: `checkout.session.completed`, `payment_intent.succeeded` (if using Payment Intents).
+3. **Webhook (required for invoice to mark paid and send emails)**  
+   - In Stripe Dashboard: **Developers → Webhooks → Add endpoint**.  
+   - **Endpoint URL**: `https://your-production-domain.com/api/webhooks/stripe` (e.g. `https://gomanagr.com/api/webhooks/stripe`).  
+   - **Events to send**: select `payment_intent.succeeded` (and `checkout.session.completed` if you use Checkout).  
+   - After creating the endpoint, open it and reveal the **Signing secret** (starts with `whsec_`).  
+   - Set **`STRIPE_WEBHOOK_SECRET`** in your production environment to that value.  
+   - If this is missing or wrong, payments will succeed in Stripe but the invoice in GoManagr will **not** update (balance stays, no “paid” status), **no receipt or notification emails** will be sent, and the invoice will **not** appear on the Receipts page.
 
 ### 3.2 Payment when client clicks “Pay now”
+
+**How the paid transaction updates the Supabase invoice**
+
+When a payment succeeds, the **Supabase `client_invoices`** row is updated so the invoice shows as paid in GoManagr (status, balance due, date paid):
+
+1. **Webhook** (`/api/webhooks/stripe`): On `payment_intent.succeeded`, the handler updates the invoice by `id` (from PaymentIntent metadata or `stripe_payment_intent_id`): sets `status = 'paid'`, `outstanding_balance = '0'`, `paid_date = today`, and `updated_at`. Receipt and notification emails are sent after the update.
+2. **Success-page sync** (`/api/sync-invoice-paid`): Stripe redirects the **customer** to the pay page with `?paid=1` after a successful payment (our `return_url`). When that page loads, it calls this API so the invoice is updated in Supabase if the webhook did not run. The **org admin never visits that URL**; they see paid status on the Invoices list (green card) and when opening the invoice at `/dashboard/invoices/[id]/edit` (no `?paid=1`—the edit page is data-driven and shows the paid design when the invoice record has `status = 'paid'`).
 
 Two common options:
 
@@ -139,7 +151,34 @@ STRIPE_WEBHOOK_SECRET=whsec_...   # for webhook signature verification
 
 ---
 
-## 5. Verifying payments in Stripe
+## 5. Testing on localhost (webhooks)
+
+Stripe cannot send webhooks to `localhost`. To test the full flow (pay → invoice marked paid → receipt):
+
+1. **Install Stripe CLI**: [stripe.com/docs/stripe-cli](https://stripe.com/docs/stripe-cli)
+2. **Log in**: `stripe login`
+3. **Forward webhooks to your app**:  
+   `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+4. The CLI prints a **webhook signing secret** (e.g. `whsec_...`). Put it in `.env.local` as `STRIPE_WEBHOOK_SECRET` (temporarily; use the real secret in production).
+5. Run your app (`npm run dev`) and open the pay link. After a successful payment, Stripe sends the event to the CLI, which forwards it to `localhost:3000`. The webhook then updates the invoice to paid and it appears on the Receipts page.
+
+Without this, payments succeed in Stripe but the invoice in GoManagr stays unpaid until you deploy and use a public URL for the webhook.
+
+**Fewer “Incomplete” transactions:** The app reuses one PaymentIntent per invoice when the pay page is opened or refreshed. A new PaymentIntent is only created when there isn’t an existing one in `requires_payment_method`. That way, opening the link multiple times doesn’t create new incompletes in Stripe; only successful, declined, or other terminal states appear as separate transactions.
+
+---
+
+## 6. Verifying the webhook (invoice not updating / no emails)
+
+If the invoice still shows a balance and no payment info after a successful payment, or you didn’t get receipt/notification emails:
+
+1. **Production**: Ensure a webhook endpoint is configured in Stripe with your **production** URL and `STRIPE_WEBHOOK_SECRET` is set in production to the endpoint’s **signing secret**.
+2. **Stripe Dashboard → Developers → Webhooks**: Open your endpoint and check **Recent deliveries**. A failed delivery will show a non-200 response or an error message; you can “Resend” to retry.
+3. **Server logs** (e.g. Vercel): Look for `[webhooks/stripe]` messages. You should see “Processing payment for invoice: …”, “Invoice updated to paid”, and “Receipt email sent” / “Payment notification sent”. If you see “Signature verification failed”, the webhook secret doesn’t match. If you see “No email transport configured”, set SMTP or `RESEND_API_KEY` so receipt and notification emails can be sent.
+
+---
+
+## 7. Verifying payments in Stripe
 
 After a client pays, you can confirm the payment reached Stripe and your app:
 
@@ -158,7 +197,7 @@ After a client pays, you can confirm the payment reached Stripe and your app:
 
 ---
 
-## 6. Security
+## 8. Security
 
 - **Pay page**: Only show invoice details and allow payment if `token` query param matches `client_invoices.payment_token`.  
 - **Create session / PaymentIntent**: Always validate `invoiceId` + `token` server-side; never trust the client.  
@@ -166,7 +205,7 @@ After a client pays, you can confirm the payment reached Stripe and your app:
 
 ---
 
-## 7. Summary checklist
+## 9. Summary checklist
 
 | Step | Status |
 |------|--------|

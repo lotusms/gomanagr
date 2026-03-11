@@ -618,7 +618,7 @@ ALTER TABLE public.client_contracts
   FOREIGN KEY (related_proposal_id) REFERENCES public.client_proposals(id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------------
--- client_invoices (final: file_urls, line_items JSONB, discount, ever_sent, date_sent, payment_terms, paid_status, terms, scope_summary; no notes, no related_service)
+-- client_invoices (final: file_urls, line_items JSONB, discount, ever_sent, date_sent, payment_terms, paid_status, terms, scope_summary, payment_token, client_snapshot, stripe_payment_intent_id; no notes, no related_service)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.client_invoices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -650,10 +650,14 @@ CREATE TABLE IF NOT EXISTS public.client_invoices (
   scope_summary TEXT DEFAULT '',
   line_items JSONB NOT NULL DEFAULT '[]'::jsonb,
   ever_sent BOOLEAN NOT NULL DEFAULT false,
+  payment_token TEXT DEFAULT NULL,
+  client_snapshot JSONB DEFAULT NULL,
+  stripe_payment_intent_id TEXT DEFAULT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_client_invoices_payment_token ON public.client_invoices(payment_token) WHERE payment_token IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_client_invoices_client_id ON public.client_invoices(client_id);
 CREATE INDEX IF NOT EXISTS idx_client_invoices_org_id ON public.client_invoices(organization_id);
 CREATE INDEX IF NOT EXISTS idx_client_invoices_user_id ON public.client_invoices(user_id);

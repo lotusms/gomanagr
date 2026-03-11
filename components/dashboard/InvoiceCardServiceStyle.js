@@ -87,6 +87,21 @@ export default function InvoiceCardServiceStyle({
   const canSend = invoice.status !== 'void' && invoice.status !== 'paid';
   const canVoid = invoice.status !== 'void';
 
+  // Header color by status: paid=green, overdue=red, partially_paid=amber, draft=slate, sent=primary, void=gray
+  const statusForHeader = (invoice.status || 'draft').toLowerCase();
+  const headerGradient =
+    statusForHeader === 'paid'
+      ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700'
+      : statusForHeader === 'overdue'
+        ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700'
+        : statusForHeader === 'partially_paid'
+          ? 'bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700'
+          : statusForHeader === 'draft'
+            ? 'bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700'
+            : statusForHeader === 'void'
+              ? 'bg-gradient-to-br from-gray-500 via-gray-600 to-gray-700'
+              : 'bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700';
+
   const openEdit = () => onSelect(invoice.id);
 
   const handleSendSuccess = () => {
@@ -122,8 +137,8 @@ export default function InvoiceCardServiceStyle({
 
   return (
     <div className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col">
-      {/* Header with gradient background (primary) */}
-      <div className="relative bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 px-5 py-4">
+      {/* Header with gradient by status: paid=green, overdue=red, partially_paid=amber, draft=slate, sent=primary */}
+      <div className={`relative ${headerGradient} px-5 py-4`}>
         <div className="flex items-center justify-between gap-2">
           <div
             role="button"

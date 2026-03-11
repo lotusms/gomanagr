@@ -118,14 +118,17 @@ export default function InvoicePaymentSummary({
   const isPaid = status === 'paid' || status === 'partially_paid';
   const canVoid = status !== 'void';
 
+  // Paid: light green bg + darker green border (like receipt/success). Partially paid: amber. Overdue: red. Draft/sent: blue. Void: gray.
   const cardTheme =
     status === 'overdue'
       ? 'border-2 border-red-200 dark:border-red-800 bg-red-50/40 dark:bg-red-900/15'
-      : status === 'paid' || status === 'partially_paid'
-        ? 'border-2 border-emerald-200 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-900/15'
-        : status === 'void'
-          ? 'border-2 border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-800/60'
-          : 'border-2 border-blue-200 dark:border-blue-700 bg-blue-50/40 dark:bg-blue-900/15';
+      : status === 'paid'
+        ? 'border-2 border-emerald-300 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/25'
+        : status === 'partially_paid'
+          ? 'border-2 border-amber-200 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/20'
+          : status === 'void'
+            ? 'border-2 border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-800/60'
+            : 'border-2 border-blue-200 dark:border-blue-700 bg-blue-50/40 dark:bg-blue-900/15';
 
   return (
     <>

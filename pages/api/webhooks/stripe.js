@@ -48,7 +48,9 @@ async function sendEmail(to, subject, html) {
     const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     const { error } = await resend.emails.send({ from, to: [to], subject, html });
     if (error) throw error;
+    return;
   }
+  console.warn('[webhooks/stripe] No email transport (SMTP or RESEND_API_KEY) configured; skipping send');
 }
 
 function formatMoney(value, currency = 'USD') {
@@ -88,6 +90,7 @@ export default async function handler(req, res) {
 
   try {
     let invoiceId = null;
+    let paymentIntentObject = null;
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       invoiceId = session.metadata?.invoice_id;
@@ -99,10 +102,40 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true });
       }
     } else if (event.type === 'payment_intent.succeeded') {
-      const paymentIntent = event.data.object;
-      invoiceId = paymentIntent.metadata?.invoice_id;
-      if (!invoiceId) return res.status(200).json({ received: true });
+      paymentIntentObject = event.data.object;
+      invoiceId = paymentIntentObject.metadata?.invoice_id;
+      if (!invoiceId && paymentIntentObject.id) {
+        const { data: row } = await supabaseAdmin
+          .from('client_invoices')
+          .select('id')
+          .eq('stripe_payment_intent_id', paymentIntentObject.id)
+          .limit(1)
+          .maybeSingle();
+        if (row?.id) invoiceId = row.id;
+      }
+      if (!invoiceId) {
+        console.warn('[webhooks/stripe] payment_intent.succeeded could not resolve invoice (metadata or stripe_payment_intent_id)');
+        return res.status(200).json({ received: true });
+      }
     } else {
+      return res.status(200).json({ received: true });
+    }
+
+    console.log('[webhooks/stripe] Processing payment for invoice:', invoiceId);
+
+    // Update Supabase client_invoices so the invoice shows as paid in GoManagr (status, balance, paid_date).
+    const { data: existingInvoice } = await supabaseAdmin
+      .from('client_invoices')
+      .select('id, status')
+      .eq('id', invoiceId)
+      .single();
+
+    if (!existingInvoice) {
+      console.warn('[webhooks/stripe] Invoice not found:', invoiceId);
+      return res.status(200).json({ received: true });
+    }
+    if (existingInvoice.status === 'paid') {
+      console.log('[webhooks/stripe] Invoice already marked paid (idempotent):', invoiceId);
       return res.status(200).json({ received: true });
     }
 
@@ -118,9 +151,11 @@ export default async function handler(req, res) {
       .eq('id', invoiceId);
 
     if (updateError) {
-      console.error('[webhooks/stripe] Failed to update invoice:', invoiceId, updateError);
+      console.error('[webhooks/stripe] Failed to update Supabase client_invoices:', invoiceId, updateError);
       return res.status(500).json({ error: 'Database update failed' });
     }
+
+    console.log('[webhooks/stripe] Supabase client_invoices updated to paid:', invoiceId);
 
     const { data: invoice } = await supabaseAdmin
       .from('client_invoices')
@@ -148,7 +183,21 @@ export default async function handler(req, res) {
       <p>— ${appName}</p>
     `;
 
-    const customerEmail = invoice.client_snapshot?.email && String(invoice.client_snapshot.email).trim();
+    let customerEmail = invoice.client_snapshot?.email && String(invoice.client_snapshot.email).trim();
+    if (!customerEmail && paymentIntentObject) {
+      const email = paymentIntentObject.receipt_email || paymentIntentObject.charges?.data?.[0]?.billing_details?.email;
+      if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) customerEmail = String(email).trim();
+      if (!customerEmail && paymentIntentObject.id) {
+        try {
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          const pi = await stripe.paymentIntents.retrieve(paymentIntentObject.id, { expand: ['charges.data.billing_details'] });
+          const chargeEmail = pi.charges?.data?.[0]?.billing_details?.email;
+          if (chargeEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(chargeEmail)) customerEmail = String(chargeEmail).trim();
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
     if (customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
       try {
         await sendEmail(
@@ -156,9 +205,12 @@ export default async function handler(req, res) {
           `Payment receipt – Invoice #${invNum}`,
           receiptHtml
         );
+        console.log('[webhooks/stripe] Receipt email sent to:', customerEmail);
       } catch (e) {
         console.error('[webhooks/stripe] Failed to send receipt to customer:', e.message);
       }
+    } else if (!customerEmail) {
+      console.warn('[webhooks/stripe] No customer email for receipt (invoice', invoiceId, ')');
     }
 
     let ownerEmail = null;
@@ -194,9 +246,12 @@ export default async function handler(req, res) {
           `Payment received – Invoice #${invNum} (${amountStr})`,
           notificationHtml
         );
+        console.log('[webhooks/stripe] Payment notification sent to owner/superadmin:', ownerEmail);
       } catch (e) {
         console.error('[webhooks/stripe] Failed to send payment notification to owner:', e.message);
       }
+    } else {
+      console.warn('[webhooks/stripe] No owner/superadmin email for notification (invoice', invoiceId, ')');
     }
 
     return res.status(200).json({ received: true });

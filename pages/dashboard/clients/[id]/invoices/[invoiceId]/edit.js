@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount } from '@/services/userService';
 import { PageHeader } from '@/components/ui';
@@ -112,6 +112,27 @@ export default function EditClientInvoicePage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, clientId, invoiceId, organization?.id]);
+
+  const syncRequestedRef = useRef(false);
+  useEffect(() => {
+    if (!invoice?.id || !currentUser?.uid || invoice.status === 'paid') return;
+    if (syncRequestedRef.current) return;
+    syncRequestedRef.current = true;
+    fetch('/api/sync-invoice-paid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceId: invoice.id,
+        userId: currentUser.uid,
+        organizationId: organization?.id ?? undefined,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ok && data?.synced) fetchInvoice();
+      })
+      .catch(() => {});
+  }, [invoice?.id, invoice?.status, currentUser?.uid, organization?.id, fetchInvoice]);
 
   useEffect(() => {
     if (!clientId || !currentUser?.uid) return;

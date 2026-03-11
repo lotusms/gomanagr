@@ -2,11 +2,16 @@
  * Public payment page. Client lands here from the "Pay now" link in the invoice email.
  * Requires ?token=... to match client_invoices.payment_token.
  * Layout and styling match the print/email invoice. Payment form is embedded (Stripe Payment Element).
+ *
+ * DO NOT REVERT: The card form MUST autoload when the invoice loads. We create the PaymentIntent
+ * in a useEffect (one request per mount). We show "Loading payment form…" then the form.
+ * NEVER show a "Pay now" or "Pay with card" button that the user must click to reveal the form.
+ * The API reuses an existing PaymentIntent per invoice so viewing does not create new Incompletes.
  */
 
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Logo from '@/components/Logo';
@@ -15,6 +20,7 @@ const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
+const PAY_SESSION_KEY = 'gomanagr_pay_secret';
 
 // Match ProposalInvoiceDocument colors
 const BORDER_COLOR = '#1e3a5f';
@@ -52,41 +58,56 @@ function PayPageLayout({ children }) {
   );
 }
 
-function PaymentForm({ returnUrl, onError }) {
+function PaymentForm({ returnUrl, onError, onTerminalStateError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
+  const [elementReady, setElementReady] = useState(false);
+  const submittedRef = useRef(false);
+
+  const handleLoadError = (event) => {
+    const msg = event?.error?.message || '';
+    if (msg.includes('terminal state') || msg.includes('cannot be used')) {
+      onTerminalStateError?.();
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || !elementReady) return;
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     setSubmitting(true);
     onError('');
-    const { error: confirmError } = await stripe.confirmPayment({
-      elements,
-      confirmParams: { return_url: returnUrl },
-    });
-    if (confirmError) {
-      onError(confirmError.message || 'Payment failed');
+    try {
+      const { error: confirmError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: returnUrl },
+      });
+      if (confirmError) {
+        onError(confirmError.message || 'Payment failed');
+        submittedRef.current = false;
+      }
+    } finally {
       setSubmitting(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-left">
-      <PaymentElement />
+      <PaymentElement onReady={() => setElementReady(true)} onLoadError={handleLoadError} />
       <button
         type="submit"
-        disabled={!stripe || submitting}
+        disabled={!stripe || submitting || !elementReady}
         className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
       >
-        {submitting ? 'Processing…' : 'Pay now'}
+        {submitting ? 'Processing…' : 'Pay with card'}
       </button>
     </form>
   );
 }
 
-function EmbeddedPaymentSection({ clientSecret, returnUrl, onError }) {
+function EmbeddedPaymentSection({ clientSecret, returnUrl, onError, onTerminalStateError }) {
   if (!stripePromise || !clientSecret) return null;
   const options = {
     clientSecret,
@@ -97,7 +118,7 @@ function EmbeddedPaymentSection({ clientSecret, returnUrl, onError }) {
   };
   return (
     <Elements stripe={stripePromise} options={options}>
-      <PaymentForm returnUrl={returnUrl} onError={onError} />
+      <PaymentForm returnUrl={returnUrl} onError={onError} onTerminalStateError={onTerminalStateError} />
     </Elements>
   );
 }
@@ -113,6 +134,17 @@ export default function PayInvoicePage() {
   const [intentLoading, setIntentLoading] = useState(false);
   const [returnUrl, setReturnUrl] = useState('');
   const intentRequestedRef = useRef(false);
+
+  // When Stripe reports terminal state (e.g. cached PI already succeeded/canceled), clear cache and request a fresh PI.
+  const handleTerminalStateError = useCallback(() => {
+    if (typeof window !== 'undefined' && invoiceId) {
+      try {
+        sessionStorage.removeItem(`${PAY_SESSION_KEY}_${invoiceId}`);
+      } catch (_) {}
+    }
+    intentRequestedRef.current = false;
+    setClientSecret(null);
+  }, [invoiceId]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && invoiceId && token) {
@@ -154,9 +186,19 @@ export default function PayInvoicePage() {
     return () => { cancelled = true; };
   }, [invoiceId, token]);
 
-  
+  // Create PaymentIntent when invoice is ready. Use sessionStorage to avoid duplicate requests on remount (fixes Incompletes).
   useEffect(() => {
-    if (!invoiceId || !token || !invoice || invoice.alreadyPaid || clientSecret || intentRequestedRef.current) return;
+    if (!invoiceId || !token || !invoice || invoice.alreadyPaid) return;
+    const storageKey = `${PAY_SESSION_KEY}_${invoiceId}`;
+    if (typeof window !== 'undefined') {
+      const cached = sessionStorage.getItem(storageKey);
+      if (cached && cached.trim()) {
+        setClientSecret(cached.trim());
+        return;
+      }
+    }
+    if (clientSecret) return;
+    if (intentRequestedRef.current) return;
     intentRequestedRef.current = true;
     let cancelled = false;
     setIntentError('');
@@ -171,6 +213,7 @@ export default function PayInvoicePage() {
         if (cancelled) return;
         if (ok && data.clientSecret) {
           setClientSecret(data.clientSecret);
+          if (typeof window !== 'undefined') sessionStorage.setItem(storageKey, data.clientSecret);
         } else {
           setIntentError(data.error || 'Could not load payment form');
         }
@@ -183,6 +226,29 @@ export default function PayInvoicePage() {
       });
     return () => { cancelled = true; };
   }, [invoiceId, token, invoice, clientSecret]);
+
+  const paymentSuccess = router.query.paid === '1' || router.query.redirect_status === 'succeeded';
+  const syncRequestedRef = useRef(false);
+  useEffect(() => {
+    if (paymentSuccess && invoiceId && typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(`${PAY_SESSION_KEY}_${invoiceId}`);
+      } catch (_) {}
+    }
+  }, [paymentSuccess, invoiceId]);
+
+  // When Stripe redirects the customer here after payment (return_url has ?paid=1), sync invoice to paid in Supabase
+  // if the webhook did not run. The org admin never visits this URL; they see paid status on the invoices list and
+  // when opening the invoice at /dashboard/invoices/[id]/edit (data-driven, no ?paid=1 needed).
+  useEffect(() => {
+    if (!paymentSuccess || !invoiceId || !token || syncRequestedRef.current) return;
+    syncRequestedRef.current = true;
+    const url = `/api/sync-invoice-paid?invoiceId=${encodeURIComponent(invoiceId)}&token=${encodeURIComponent(token)}`;
+    fetch(url)
+      .then((res) => res.json())
+      .then(() => {})
+      .catch(() => {});
+  }, [paymentSuccess, invoiceId, token]);
 
   if (!invoiceId || !token) {
     return (
@@ -223,7 +289,6 @@ export default function PayInvoicePage() {
     );
   }
 
-  const paymentSuccess = router.query.paid === '1' || router.query.redirect_status === 'succeeded';
   if (paymentSuccess) {
     return (
       <>
@@ -371,9 +436,9 @@ export default function PayInvoicePage() {
               <div className="text-base font-bold mt-2">Total: {formatMoney(total, currency)}</div>
             </div>
 
-            {/* Card payment form: shown as soon as invoice loads (one PaymentIntent per page load). Card only. */}
+            {/* DO NOT REVERT: Show only "Loading payment form…" then the card form. Never a "Pay now" / "Pay with card" button to reveal the form. */}
             <div className="mt-6 p-4 rounded-lg border bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Pay this invoice online</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3 text-center">Pay this invoice online</p>
               {stripePublishableKey ? (
                 <>
                   {(intentError || error) && (
@@ -384,6 +449,7 @@ export default function PayInvoicePage() {
                       clientSecret={clientSecret}
                       returnUrl={returnUrl}
                       onError={setError}
+                      onTerminalStateError={handleTerminalStateError}
                     />
                   ) : !intentError ? (
                     <p className="text-sm text-gray-600 dark:text-gray-400">Loading payment form…</p>

@@ -6,7 +6,7 @@
 
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Logo from '@/components/Logo';
@@ -112,7 +112,8 @@ export default function PayInvoicePage() {
   const [intentError, setIntentError] = useState('');
   const [intentLoading, setIntentLoading] = useState(false);
   const [returnUrl, setReturnUrl] = useState('');
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const intentRequestedRef = useRef(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined' && invoiceId && token) {
       setReturnUrl(`${window.location.origin}/pay/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(token)}&paid=1`);
@@ -153,8 +154,11 @@ export default function PayInvoicePage() {
     return () => { cancelled = true; };
   }, [invoiceId, token]);
 
-  const handlePayWithCardClick = () => {
-    if (!invoiceId || !token || intentLoading || clientSecret) return;
+  
+  useEffect(() => {
+    if (!invoiceId || !token || !invoice || invoice.alreadyPaid || clientSecret || intentRequestedRef.current) return;
+    intentRequestedRef.current = true;
+    let cancelled = false;
     setIntentError('');
     setIntentLoading(true);
     fetch('/api/create-payment-intent', {
@@ -164,16 +168,21 @@ export default function PayInvoicePage() {
     })
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
+        if (cancelled) return;
         if (ok && data.clientSecret) {
           setClientSecret(data.clientSecret);
-          setShowPaymentForm(true);
         } else {
           setIntentError(data.error || 'Could not load payment form');
         }
       })
-      .catch(() => setIntentError('Could not load payment form'))
-      .finally(() => setIntentLoading(false));
-  };
+      .catch(() => {
+        if (!cancelled) setIntentError('Could not load payment form');
+      })
+      .finally(() => {
+        if (!cancelled) setIntentLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [invoiceId, token, invoice, clientSecret]);
 
   if (!invoiceId || !token) {
     return (
@@ -362,16 +371,13 @@ export default function PayInvoicePage() {
               <div className="text-base font-bold mt-2">Total: {formatMoney(total, currency)}</div>
             </div>
 
-            {/* Embedded payment form: create PaymentIntent only when user clicks Pay with card (avoids multiple Stripe transactions) */}
+            {/* Card payment form: shown as soon as invoice loads (one PaymentIntent per page load). Card only. */}
             <div className="mt-6 p-4 rounded-lg border bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
               <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Pay this invoice online</p>
               {stripePublishableKey ? (
                 <>
-                  {intentError && (
-                    <p className="text-sm text-red-600 dark:text-red-400 mb-3">{intentError}</p>
-                  )}
-                  {error && (
-                    <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
+                  {(intentError || error) && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-3">{intentError || error}</p>
                   )}
                   {clientSecret && returnUrl ? (
                     <EmbeddedPaymentSection
@@ -379,18 +385,9 @@ export default function PayInvoicePage() {
                       returnUrl={returnUrl}
                       onError={setError}
                     />
-                  ) : intentLoading ? (
+                  ) : !intentError ? (
                     <p className="text-sm text-gray-600 dark:text-gray-400">Loading payment form…</p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handlePayWithCardClick}
-                      disabled={intentLoading}
-                      className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                    >
-                      Pay with card
-                    </button>
-                  )}
+                  ) : null}
                 </>
               ) : (
                 <p className="text-sm text-gray-700 dark:text-gray-300">

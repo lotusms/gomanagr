@@ -14,7 +14,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Logo from '@/components/Logo';
 
 const LottiePlayer = dynamic(
@@ -51,8 +51,8 @@ const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
-// Cache key includes version so old PIs (e.g. with bank) are not reused; only card is allowed.
-const PAY_SESSION_KEY = 'gomanagr_pay_secret_cardonly_v1';
+// Cache key: bump to force new PI after Dashboard config changes (e.g. disable ACH/Bank).
+const PAY_SESSION_KEY = 'gomanagr_pay_secret_cardonly_v4';
 // Fireworks from LottieFiles – file in public/Fireworks.json (served as /Fireworks.json)
 const LOTTIE_FIREWORKS_URL = '/Fireworks.json';
 
@@ -92,36 +92,61 @@ function PayPageLayout({ children }) {
   );
 }
 
-function PaymentForm({ returnUrl, onError, onTerminalStateError }) {
+// Separate card fields (number, expiry, CVC). No Bank tab. Success flow unchanged: redirect to return_url → ?paid=1 → sync + webhook.
+const cardFieldStyle = {
+  base: { fontSize: '16px', color: '#1f2937', '::placeholder': { color: '#9ca3af' } },
+  invalid: { color: '#dc2626' },
+};
+
+function CardPaymentForm({ clientSecret, returnUrl, onError, onTerminalStateError }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
-  const [elementReady, setElementReady] = useState(false);
+  const [cardholderName, setCardholderName] = useState('');
+  const [billingZip, setBillingZip] = useState('');
   const submittedRef = useRef(false);
-
-  const handleLoadError = (event) => {
-    const msg = event?.error?.message || '';
-    if (msg.includes('terminal state') || msg.includes('cannot be used')) {
-      onTerminalStateError?.();
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!stripe || !elements || !elementReady) return;
-    if (submittedRef.current) return;
+    if (!stripe || !elements || !clientSecret || submittedRef.current) return;
+    const name = cardholderName.trim();
+    const zip = billingZip.trim();
+    if (!name) {
+      onError?.('Please enter the cardholder name.');
+      return;
+    }
+    if (!zip) {
+      onError?.('Please enter the billing ZIP code.');
+      return;
+    }
+    const cardNumberEl = elements.getElement(CardNumberElement);
+    if (!cardNumberEl) {
+      onError?.('Card fields not ready');
+      return;
+    }
     submittedRef.current = true;
     setSubmitting(true);
     onError('');
     try {
-      const { error: confirmError } = await stripe.confirmPayment({
-        elements,
-        confirmParams: { return_url: returnUrl },
+      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardNumberEl,
+          billing_details: {
+            name,
+            address: { postal_code: zip },
+          },
+        },
+        return_url: returnUrl,
       });
       if (confirmError) {
         onError(confirmError.message || 'Payment failed');
         submittedRef.current = false;
+      } else if (paymentIntent?.status === 'succeeded') {
+        window.location.href = returnUrl;
       }
+    } catch (err) {
+      onError?.(err?.message || 'Payment failed');
+      submittedRef.current = false;
     } finally {
       setSubmitting(false);
     }
@@ -129,10 +154,64 @@ function PaymentForm({ returnUrl, onError, onTerminalStateError }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-left">
-      <PaymentElement options={{ paymentMethodOrder: ['card'] }} onReady={() => setElementReady(true)} onLoadError={handleLoadError} />
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="cardholder-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cardholder name</label>
+          <input
+            id="cardholder-name"
+            type="text"
+            required
+            placeholder="Name on card"
+            value={cardholderName}
+            onChange={(e) => setCardholderName(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            autoComplete="cc-name"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Card number</label>
+          <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+            <CardNumberElement
+              options={{ style: cardFieldStyle }}
+              onChange={(e) => {
+                if (e?.error?.message?.includes('terminal state') || e?.error?.message?.includes('cannot be used')) {
+                  onTerminalStateError?.();
+                }
+              }}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expiry</label>
+            <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+              <CardExpiryElement options={{ style: cardFieldStyle }} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CVC</label>
+            <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+              <CardCvcElement options={{ style: cardFieldStyle }} />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label htmlFor="billing-zip" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Billing ZIP code</label>
+          <input
+            id="billing-zip"
+            type="text"
+            required
+            placeholder="ZIP / Postal code"
+            value={billingZip}
+            onChange={(e) => setBillingZip(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            autoComplete="postal-code"
+          />
+        </div>
+      </div>
       <button
         type="submit"
-        disabled={!stripe || submitting || !elementReady}
+        disabled={!stripe || submitting || !cardholderName.trim() || !billingZip.trim()}
         className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
       >
         {submitting ? 'Processing…' : 'Pay with card'}
@@ -152,7 +231,7 @@ function EmbeddedPaymentSection({ clientSecret, returnUrl, onError, onTerminalSt
   };
   return (
     <Elements stripe={stripePromise} options={options}>
-      <PaymentForm returnUrl={returnUrl} onError={onError} onTerminalStateError={onTerminalStateError} />
+      <CardPaymentForm clientSecret={clientSecret} returnUrl={returnUrl} onError={onError} onTerminalStateError={onTerminalStateError} />
     </Elements>
   );
 }

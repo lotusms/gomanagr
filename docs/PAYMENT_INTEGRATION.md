@@ -82,7 +82,7 @@ You still need to:
    The integration is configured to accept **card only** (no bank/ACH). If the Payment Element still shows a "Bank" option (e.g. due to Stripe account defaults), create a **card-only Payment Method Configuration** and point the API to it:  
    - In Stripe Dashboard: **Settings → Payment methods** (or **Developers → Payment method configurations**).  
    - Create a new configuration (e.g. "Card only"). Enable **Card** only; leave all other methods (Bank, Link, etc.) off. Save and copy the **Configuration ID** (e.g. `pmc_xxxx`).  
-   - In your environment, set **`STRIPE_PAYMENT_METHOD_CONFIGURATION_ID`** to that ID. The create-payment-intent API will use it so only card is offered.
+   - In your environment, set **`STRIPE_PAYMENT_METHOD_CONFIGURATION_ID`** (server) and **`NEXT_PUBLIC_STRIPE_PAYMENT_METHOD_CONFIGURATION_ID`** (client) to that same ID (e.g. `pmc_xxxx`). The API and the Payment Element both use it so only card is offered and Bank is hidden.
 
 ### 3.2 Payment when client clicks "Pay now"
 

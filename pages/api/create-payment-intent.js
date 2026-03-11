@@ -99,9 +99,12 @@ export default async function handler(req, res) {
 
       const stripe = new Stripe(secretKey);
 
-      // REQUIRED: Reuse existing PaymentIntent so viewing the pay page does not create new Incompletes.
+      // Card only: use config if set so Payment Element only shows card (no bank).
+      const cardOnlyConfigId = process.env.STRIPE_PAYMENT_METHOD_CONFIGURATION_ID?.trim() || '';
+
+      // Reuse existing PaymentIntent only when it's still usable and card-only (or created with our card-only config).
       const existingPiId = invoice.stripe_payment_intent_id && String(invoice.stripe_payment_intent_id).trim();
-      if (existingPiId) {
+      if (existingPiId && !cardOnlyConfigId) {
         try {
           const existing = await stripe.paymentIntents.retrieve(existingPiId);
           const onlyCard = Array.isArray(existing.payment_method_types) && existing.payment_method_types.length === 1 && existing.payment_method_types[0] === 'card';
@@ -112,10 +115,17 @@ export default async function handler(req, res) {
           // PI not found or invalid; fall through to create new
         }
       }
+      if (existingPiId && cardOnlyConfigId) {
+        try {
+          const existing = await stripe.paymentIntents.retrieve(existingPiId);
+          const sameConfig = existing.payment_method_configuration === cardOnlyConfigId;
+          if (existing.status === 'requires_payment_method' && existing.amount === amountCents && sameConfig) {
+            return res.status(200).json({ clientSecret: existing.client_secret });
+          }
+        } catch (_) {}
+      }
 
-      // No reusable PI: create one and save. Lock ensures only one request creates per invoice (avoids 60+ Incompletes).
-      // Card only: bank and other methods are not authorized. Use card-only config ID if set, else explicit types + exclude bank.
-      const cardOnlyConfigId = process.env.STRIPE_PAYMENT_METHOD_CONFIGURATION_ID?.trim() || '';
+      // No reusable PI: create one and save.
       const createParams = {
         amount: amountCents,
         currency: 'usd',
@@ -152,7 +162,8 @@ export default async function handler(req, res) {
           try {
             const current = await stripe.paymentIntents.retrieve(currentPiId);
             const currentOnlyCard = Array.isArray(current.payment_method_types) && current.payment_method_types.length === 1 && current.payment_method_types[0] === 'card';
-            if (current.status === 'requires_payment_method' && current.amount === amountCents && currentOnlyCard) {
+            const currentSameConfig = cardOnlyConfigId && current.payment_method_configuration === cardOnlyConfigId;
+            if (current.status === 'requires_payment_method' && current.amount === amountCents && (currentOnlyCard || currentSameConfig)) {
               return res.status(200).json({ clientSecret: current.client_secret });
             }
           } catch (_) {}

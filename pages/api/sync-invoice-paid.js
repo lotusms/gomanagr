@@ -5,10 +5,46 @@
  * 2) POST with body { invoiceId, userId, organizationId? } — org admin opening the edit page; verifies access then syncs.
  * If the stored stripe_payment_intent_id is not succeeded, searches Stripe for any succeeded PI with metadata.invoice_id
  * (handles multiple PIs / customer paid a different attempt).
+ * After updating the invoice, sends receipt to client and payment notification to org admin (same as webhook).
  */
 
 import Stripe from 'stripe';
+import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+
+async function sendEmail(to, subject, html) {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD;
+  const fromEmail = process.env.SMTP_FROM_EMAIL || '';
+  const fromName = process.env.SMTP_FROM_NAME || process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
+  if (smtpHost && smtpUser && smtpPass && fromEmail) {
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
+    const secure = process.env.SMTP_SECURE === 'true';
+    const transporter = nodemailer.createTransport({ host: smtpHost, port, secure, auth: { user: smtpUser, pass: smtpPass } });
+    const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
+    await transporter.sendMail({ from, to, subject, html });
+    return;
+  }
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    const { Resend } = await import('resend');
+    const resend = new Resend(resendKey);
+    const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    const { error } = await resend.emails.send({ from, to: [to], subject, html });
+    if (error) throw error;
+    return;
+  }
+  console.warn('[sync-invoice-paid] No email transport (SMTP or RESEND_API_KEY) configured; skipping send');
+}
+
+function formatMoney(value, currency = 'USD') {
+  if (value == null || value === '') return '—';
+  const n = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^\d.-]/g, ''));
+  if (Number.isNaN(n)) return '—';
+  const sym = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
+  return `${sym}${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+}
 
 let supabaseAdmin;
 try {
@@ -139,6 +175,82 @@ export default async function handler(req, res) {
     }
 
     console.log('[sync-invoice-paid] Supabase client_invoices updated to paid:', invoiceId);
+
+    const { data: invoiceForEmail } = await supabaseAdmin
+      .from('client_invoices')
+      .select('invoice_number, invoice_title, total, user_id, organization_id, client_snapshot')
+      .eq('id', invoiceId)
+      .single();
+
+    if (invoiceForEmail) {
+      const amountStr = formatMoney(invoiceForEmail.total, 'USD');
+      const invNum = invoiceForEmail.invoice_number || invoiceId;
+      const invTitle = invoiceForEmail.invoice_title || 'Invoice';
+      const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
+
+      const receiptHtml = `
+        <p>Your payment for <strong>${invTitle}</strong> (Invoice #${invNum}) has been received.</p>
+        <p><strong>Amount paid:</strong> ${amountStr}</p>
+        <p>Thank you for your business.</p>
+        <p>— ${appName}</p>
+      `;
+      const notificationHtml = `
+        <p>A payment has been received for an invoice.</p>
+        <p><strong>Invoice:</strong> ${invTitle} (#${invNum})</p>
+        <p><strong>Amount:</strong> ${amountStr}</p>
+        <p>— ${appName}</p>
+      `;
+
+      let customerEmail = invoiceForEmail.client_snapshot?.email && String(invoiceForEmail.client_snapshot.email).trim();
+      if (customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+        try {
+          await sendEmail(customerEmail, `Payment receipt – Invoice #${invNum}`, receiptHtml);
+          console.log('[sync-invoice-paid] Receipt email sent to:', customerEmail);
+        } catch (e) {
+          console.error('[sync-invoice-paid] Failed to send receipt to customer:', e.message);
+        }
+      } else {
+        console.warn('[sync-invoice-paid] No customer email for receipt (invoice', invoiceId, ')');
+      }
+
+      let ownerEmail = null;
+      if (invoiceForEmail.organization_id) {
+        const { data: superadmin } = await supabaseAdmin
+          .from('org_members')
+          .select('user_id')
+          .eq('organization_id', invoiceForEmail.organization_id)
+          .eq('role', 'superadmin')
+          .limit(1)
+          .maybeSingle();
+        if (superadmin?.user_id) {
+          const { data: profile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('email')
+            .eq('id', superadmin.user_id)
+            .maybeSingle();
+          if (profile?.email) ownerEmail = profile.email.trim();
+        }
+      }
+      if (!ownerEmail && invoiceForEmail.user_id) {
+        const { data: profile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('email')
+          .eq('id', invoiceForEmail.user_id)
+          .maybeSingle();
+        if (profile?.email) ownerEmail = profile.email.trim();
+      }
+      if (ownerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
+        try {
+          await sendEmail(ownerEmail, `Payment received – Invoice #${invNum} (${amountStr})`, notificationHtml);
+          console.log('[sync-invoice-paid] Payment notification sent to owner/superadmin:', ownerEmail);
+        } catch (e) {
+          console.error('[sync-invoice-paid] Failed to send payment notification to owner:', e.message);
+        }
+      } else {
+        console.warn('[sync-invoice-paid] No owner/superadmin email for notification (invoice', invoiceId, ')');
+      }
+    }
+
     return res.status(200).json({ ok: true, synced: true });
   } catch (err) {
     console.error('[sync-invoice-paid]', err);

@@ -10,17 +10,25 @@
  */
 
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Logo from '@/components/Logo';
 
+const LottiePlayer = dynamic(
+  () => import('@lottiefiles/react-lottie-player').then((mod) => mod.Player),
+  { ssr: false }
+);
+
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
 const PAY_SESSION_KEY = 'gomanagr_pay_secret';
+// Fireworks from LottieFiles – file in public/Fireworks.json (served as /Fireworks.json)
+const LOTTIE_FIREWORKS_URL = '/Fireworks.json';
 
 // Match ProposalInvoiceDocument colors
 const BORDER_COLOR = '#1e3a5f';
@@ -294,12 +302,32 @@ export default function PayInvoicePage() {
       <>
         <Head><title>Payment successful - {appName}</title></Head>
         <PayPageLayout>
-          <div className="w-full max-w-md text-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow-sm">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Thank you!</h1>
-            <p className="text-gray-700 dark:text-gray-300 mb-2">Your payment was successful.</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              A receipt has been sent to your email. This invoice is now marked as paid.
-            </p>
+          <div className="w-full max-w-lg mx-auto text-center">
+            <div className="relative rounded-2xl border-2 border-emerald-200 dark:border-emerald-700 bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-900/30 dark:to-gray-800 p-8 sm:p-10 shadow-xl overflow-hidden">
+              {/* Fireworks from LottieFiles – change LOTTIE_FIREWORKS_URL for a different animation */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-90">
+                <LottiePlayer
+                  src={LOTTIE_FIREWORKS_URL}
+                  autoplay
+                  loop={false}
+                  keepLastFrame
+                  style={{ height: '100%', width: '100%', maxHeight: '420px' }}
+                  renderer="svg"
+                />
+              </div>
+              <div className="relative z-10">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-800/50 mb-6">
+                  <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Thank you!</h1>
+                <p className="text-gray-700 dark:text-gray-300 mb-1">Your payment was successful.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  A receipt has been sent to your email. This invoice is now marked as paid.
+                </p>
+              </div>
+            </div>
           </div>
         </PayPageLayout>
       </>

@@ -1,13 +1,18 @@
 /**
  * Public payment page. Client lands here from the "Pay now" link in the invoice email.
  * Requires ?token=... to match client_invoices.payment_token.
- * Layout and styling match the print/email invoice (ProposalInvoiceDocument) so it feels like the same document.
+ * Layout and styling match the print/email invoice. Payment form is embedded (Stripe Payment Element).
  */
 
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Logo from '@/components/Logo';
+
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
 
@@ -47,12 +52,72 @@ function PayPageLayout({ children }) {
   );
 }
 
+function PaymentForm({ returnUrl, onError }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setSubmitting(true);
+    onError('');
+    const { error: confirmError } = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: returnUrl },
+    });
+    if (confirmError) {
+      onError(confirmError.message || 'Payment failed');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 text-left">
+      <PaymentElement />
+      <button
+        type="submit"
+        disabled={!stripe || submitting}
+        className="w-full inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+      >
+        {submitting ? 'Processing…' : 'Pay now'}
+      </button>
+    </form>
+  );
+}
+
+function EmbeddedPaymentSection({ clientSecret, returnUrl, onError }) {
+  if (!stripePromise || !clientSecret) return null;
+  const options = {
+    clientSecret,
+    appearance: {
+      theme: 'stripe',
+      variables: { borderRadius: '8px' },
+    },
+  };
+  return (
+    <Elements stripe={stripePromise} options={options}>
+      <PaymentForm returnUrl={returnUrl} onError={onError} />
+    </Elements>
+  );
+}
+
 export default function PayInvoicePage() {
   const router = useRouter();
   const { invoiceId, token } = router.query;
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [clientSecret, setClientSecret] = useState(null);
+  const [intentError, setIntentError] = useState('');
+  const [intentLoading, setIntentLoading] = useState(false);
+  const [returnUrl, setReturnUrl] = useState('');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && invoiceId && token) {
+      setReturnUrl(`${window.location.origin}/pay/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(token)}&paid=1`);
+    }
+  }, [invoiceId, token]);
 
   useEffect(() => {
     if (!invoiceId || !token) return;
@@ -88,6 +153,28 @@ export default function PayInvoicePage() {
     return () => { cancelled = true; };
   }, [invoiceId, token]);
 
+  const handlePayWithCardClick = () => {
+    if (!invoiceId || !token || intentLoading || clientSecret) return;
+    setIntentError('');
+    setIntentLoading(true);
+    fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId, token }),
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (ok && data.clientSecret) {
+          setClientSecret(data.clientSecret);
+          setShowPaymentForm(true);
+        } else {
+          setIntentError(data.error || 'Could not load payment form');
+        }
+      })
+      .catch(() => setIntentError('Could not load payment form'))
+      .finally(() => setIntentLoading(false));
+  };
+
   if (!invoiceId || !token) {
     return (
       <>
@@ -121,6 +208,24 @@ export default function PayInvoicePage() {
         <PayPageLayout>
           <div className="w-full max-w-md text-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow-sm">
             <p className="text-red-600 dark:text-red-400">{error || 'Invoice not found'}</p>
+          </div>
+        </PayPageLayout>
+      </>
+    );
+  }
+
+  const paymentSuccess = router.query.paid === '1' || router.query.redirect_status === 'succeeded';
+  if (paymentSuccess) {
+    return (
+      <>
+        <Head><title>Payment successful - {appName}</title></Head>
+        <PayPageLayout>
+          <div className="w-full max-w-md text-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow-sm">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Thank you!</h1>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">Your payment was successful.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              A receipt has been sent to your email. This invoice is now marked as paid.
+            </p>
           </div>
         </PayPageLayout>
       </>
@@ -257,12 +362,41 @@ export default function PayInvoicePage() {
               <div className="text-base font-bold mt-2">Total: {formatMoney(total, currency)}</div>
             </div>
 
-            {/* Payment notice */}
-            <div className="mt-6 p-4 rounded-lg border text-center bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
+            {/* Embedded payment form: create PaymentIntent only when user clicks Pay with card (avoids multiple Stripe transactions) */}
+            <div className="mt-6 p-4 rounded-lg border bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
               <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Pay this invoice online</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Online card payment is not yet available for this invoice. Please contact the sender to pay by bank transfer, check, or another method.
-              </p>
+              {stripePublishableKey ? (
+                <>
+                  {intentError && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-3">{intentError}</p>
+                  )}
+                  {error && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
+                  )}
+                  {clientSecret && returnUrl ? (
+                    <EmbeddedPaymentSection
+                      clientSecret={clientSecret}
+                      returnUrl={returnUrl}
+                      onError={setError}
+                    />
+                  ) : intentLoading ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Loading payment form…</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handlePayWithCardClick}
+                      disabled={intentLoading}
+                      className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                    >
+                      Pay with card
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  Online card payment is not yet available for this invoice. Please contact the sender to pay by bank transfer, check, or another method.
+                </p>
+              )}
             </div>
           </div>
         </div>

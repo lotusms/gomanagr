@@ -114,7 +114,8 @@ export default function InvoicePaymentSummary({
     }
   };
 
-  const canSend = status !== 'void' && status !== 'paid';
+  const canSend = status !== 'void';
+  const isPaid = status === 'paid' || status === 'partially_paid';
   const canVoid = status !== 'void';
 
   const cardTheme =
@@ -211,7 +212,7 @@ export default function InvoicePaymentSummary({
             )}
             {canSend && (
               <>
-                {everSent && (
+                {everSent && !isPaid && (
                   <SecondaryButton
                     type="button"
                     className="gap-2 px-4 py-1.5 min-w-0 text-sm"
@@ -227,7 +228,7 @@ export default function InvoicePaymentSummary({
                   onClick={() => { setSendDialogReminder(false); setSendDialogOpen(true); }}
                 >
                   <HiMail className="w-4 h-4" />
-                  {everSent ? `Resend ${invoiceTermSingularLower}` : `Send ${invoiceTermSingularLower}`}
+                  {isPaid ? `Email receipt` : everSent ? `Resend ${invoiceTermSingularLower}` : `Send ${invoiceTermSingularLower}`}
                 </PrimaryButton>
               </>
             )}

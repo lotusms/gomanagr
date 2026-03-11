@@ -18,6 +18,7 @@ import {
   HiClipboardList,
   HiTag,
   HiViewList,
+  HiReceiptRefund,
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 import { getProjectTermForIndustry, getTermForIndustry } from '@/components/clients/clientProfileConstants';
@@ -44,6 +45,7 @@ function getOwnerNavItems(accountIndustry) {
     { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
     { name: proposalsTerm, href: '/dashboard/proposals', icon: HiDocumentText },
     { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
+    { name: 'Receipts', href: '/dashboard/receipts', icon: HiReceiptRefund },
     { divider: true },
     { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
     { name: 'Marketing', href: '/dashboard/marketing', icon: HiSpeakerphone },
@@ -76,6 +78,7 @@ function getAdminNavItems(accountIndustry) {
   ];
   items.push(
     { name: invoicesTerm, href: '/dashboard/invoices', icon: HiCurrencyDollar },
+    { name: 'Receipts', href: '/dashboard/receipts', icon: HiReceiptRefund },
     { divider: true },
     { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid }

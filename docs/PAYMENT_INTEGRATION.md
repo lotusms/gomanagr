@@ -2,6 +2,24 @@
 
 This guide describes how to add Wave-style payment processing to GoManagr with **no monthly fee**, using **Stripe** (you only pay per transaction: ~2.9% + 30¢ per successful charge).
 
+---
+
+## What you need to make it work with Stripe
+
+The pay page already shows the invoice and the “Pay this invoice online” section; the message says card payment is not available until you complete these steps:
+
+| # | What to do |
+|---|------------|
+| 1 | **Stripe account + keys** — Sign up at [stripe.com](https://stripe.com), get **Publishable** and **Secret** keys from Dashboard → Developers → API keys. Add to `.env`: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`. |
+| 2 | **Create payment session API** — New route (e.g. `pages/api/create-payment-session.js`) that accepts `invoiceId` + `token`, validates the token, and creates a [Stripe Checkout Session](https://docs.stripe.com/checkout/quickstart) (or PaymentIntent) for the invoice amount. Return `sessionId` (for Checkout) or `clientSecret` (for Payment Element). |
+| 3 | **Pay page: “Pay with card”** — Replace the “not yet available” message with a button that calls your new API, then either redirects to Stripe Checkout (`session.url`) or shows Stripe’s Payment Element and confirms with the returned `clientSecret`. |
+| 4 | **Webhook** — Add `pages/api/webhooks/stripe.js` to receive `checkout.session.completed` (or `payment_intent.succeeded`). Verify signature with `STRIPE_WEBHOOK_SECRET`. On success: update the invoice (`status`, `outstanding_balance`, `paid_date`) and optionally insert into an `invoice_payments` table for payout tracking. |
+| 5 | **(Optional) Payout screen** — Dashboard page to list pending/paid payments and (later) 3-day hold / instant payout. |
+
+**Minimum to accept card payments:** Steps 1–4. After that, the “Pay this invoice online” box can show a real “Pay with card” button and complete the charge; the webhook marks the invoice as paid.
+
+---
+
 ## Flow overview
 
 1. **User sends invoice** to client via email (existing flow).
@@ -121,7 +139,26 @@ STRIPE_WEBHOOK_SECRET=whsec_...   # for webhook signature verification
 
 ---
 
-## 5. Security
+## 5. Verifying payments in Stripe
+
+After a client pays, you can confirm the payment reached Stripe and your app:
+
+1. **Stripe Dashboard → Payments**  
+   [dashboard.stripe.com/test/payments](https://dashboard.stripe.com/test/payments) (or /payments in live mode)  
+   Lists all payments with amount, status, and customer. Match by amount and time to your invoice.
+
+2. **Stripe Dashboard → Developers → Events**  
+   Shows every event (e.g. `payment_intent.succeeded`). Click an event to see the payload and that the webhook was triggered.
+
+3. **Stripe Dashboard → Developers → Webhooks**  
+   Open your webhook endpoint and check **Recent deliveries**. A successful delivery has a 200 response; you can resend or view the request/response.
+
+4. **Your app**  
+   The webhook updates the invoice to `status: paid` and `outstanding_balance: 0`. In your dashboard, the invoice should show as paid. The customer receives a receipt email and the invoice owner (or org superadmin) receives a payment notification email.
+
+---
+
+## 6. Security
 
 - **Pay page**: Only show invoice details and allow payment if `token` query param matches `client_invoices.payment_token`.  
 - **Create session / PaymentIntent**: Always validate `invoiceId` + `token` server-side; never trust the client.  
@@ -129,7 +166,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...   # for webhook signature verification
 
 ---
 
-## 6. Summary checklist
+## 7. Summary checklist
 
 | Step | Status |
 |------|--------|

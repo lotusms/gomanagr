@@ -747,6 +747,24 @@ export default function ClientInvoiceForm({
 
         {step === 2 && (
           <FormStepSection title="Line items" description="Itemize what you're charging for">
+            <div className="relative min-h-[280px]">
+              {(status === 'paid' || status === 'partially_paid') && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                  aria-hidden
+                >
+                  <span
+                    className="text-7xl sm:text-8xl md:text-9xl font-black tracking-widest text-red-500/35 dark:text-red-400/30 select-none"
+                    style={{
+                      transform: 'rotate(-18deg)',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      fontFamily: 'ui-monospace, monospace',
+                    }}
+                  >
+                    PAID
+                  </span>
+                </div>
+              )}
             <ItemizedLineItems
               items={lineItems}
               onChange={(items) => { markDirty(); setLineItems(items); }}
@@ -769,6 +787,7 @@ export default function ClientInvoiceForm({
                 Leave empty to use the single Amount from Step 1. Add items to build a line-item total (subtotal + tax − discount = total).
               </p>
             )}
+            </div>
           </FormStepSection>
         )}
 

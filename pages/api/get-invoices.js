@@ -31,10 +31,11 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Service unavailable' });
   }
 
-  const { userId, organizationId, invoiceId } = req.body || {};
+  const { userId, organizationId, invoiceId, statuses } = req.body || {};
   if (!userId) {
     return res.status(400).json({ error: 'Missing userId' });
   }
+  const filterByStatuses = Array.isArray(statuses) && statuses.length > 0;
 
   try {
     if (organizationId) {
@@ -56,6 +57,10 @@ export default async function handler(req, res) {
       query = query.eq('organization_id', organizationId);
     } else {
       query = query.eq('user_id', userId).is('organization_id', null);
+    }
+
+    if (filterByStatuses) {
+      query = query.in('status', statuses);
     }
 
     if (invoiceId) {

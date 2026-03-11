@@ -78,7 +78,13 @@ You still need to:
    - Set **`STRIPE_WEBHOOK_SECRET`** in your production environment to that value.  
    - If this is missing or wrong, payments will succeed in Stripe but the invoice in GoManagr will **not** update (balance stays, no “paid” status), **no receipt or notification emails** will be sent, and the invoice will **not** appear on the Receipts page.
 
-### 3.2 Payment when client clicks “Pay now”
+4. **Card-only (optional)**  
+   The integration is configured to accept **card only** (no bank/ACH). If the Payment Element still shows a "Bank" option (e.g. due to Stripe account defaults), create a **card-only Payment Method Configuration** and point the API to it:  
+   - In Stripe Dashboard: **Settings → Payment methods** (or **Developers → Payment method configurations**).  
+   - Create a new configuration (e.g. "Card only"). Enable **Card** only; leave all other methods (Bank, Link, etc.) off. Save and copy the **Configuration ID** (e.g. `pmc_xxxx`).  
+   - In your environment, set **`STRIPE_PAYMENT_METHOD_CONFIGURATION_ID`** to that ID. The create-payment-intent API will use it so only card is offered.
+
+### 3.2 Payment when client clicks "Pay now"
 
 **How the paid transaction updates the Supabase invoice**
 

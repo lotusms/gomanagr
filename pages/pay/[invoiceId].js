@@ -51,7 +51,8 @@ const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
-const PAY_SESSION_KEY = 'gomanagr_pay_secret';
+// Cache key includes version so old PIs (e.g. with bank) are not reused; only card is allowed.
+const PAY_SESSION_KEY = 'gomanagr_pay_secret_cardonly_v1';
 // Fireworks from LottieFiles – file in public/Fireworks.json (served as /Fireworks.json)
 const LOTTIE_FIREWORKS_URL = '/Fireworks.json';
 
@@ -178,6 +179,11 @@ export default function PayInvoicePage() {
     intentRequestedRef.current = false;
     setClientSecret(null);
   }, [invoiceId]);
+
+  const clearPaymentError = useCallback(() => {
+    setError('');
+    setIntentError('');
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && invoiceId && token) {
@@ -379,11 +385,6 @@ export default function PayInvoicePage() {
   // Payment failed / decline: same layout as thank you page but "sad" (red/rose theme, X icon, Try again).
   const paymentErrorMessage = intentError || error;
   const showPaymentFailedCard = Boolean(paymentErrorMessage);
-
-  const clearPaymentError = useCallback(() => {
-    setError('');
-    setIntentError('');
-  }, []);
 
   if (showPaymentFailedCard) {
     return (

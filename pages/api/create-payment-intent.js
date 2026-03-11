@@ -114,15 +114,21 @@ export default async function handler(req, res) {
       }
 
       // No reusable PI: create one and save. Lock ensures only one request creates per invoice (avoids 60+ Incompletes).
-      const paymentIntent = await stripe.paymentIntents.create({
+      // Card only: bank and other methods are not authorized. Use card-only config ID if set, else explicit types + exclude bank.
+      const cardOnlyConfigId = process.env.STRIPE_PAYMENT_METHOD_CONFIGURATION_ID?.trim() || '';
+      const createParams = {
         amount: amountCents,
         currency: 'usd',
-        automatic_payment_methods: { enabled: false },
-        payment_method_types: ['card'],
-        metadata: {
-          invoice_id: invoiceId,
-        },
-      });
+        metadata: { invoice_id: invoiceId },
+      };
+      if (cardOnlyConfigId) {
+        createParams.automatic_payment_methods = { enabled: true };
+        createParams.payment_method_configuration = cardOnlyConfigId;
+      } else {
+        createParams.automatic_payment_methods = { enabled: false };
+        createParams.payment_method_types = ['card'];
+      }
+      const paymentIntent = await stripe.paymentIntents.create(createParams);
 
       const { data: updated, error: updateError } = await supabaseAdmin
         .from('client_invoices')

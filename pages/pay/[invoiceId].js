@@ -22,6 +22,31 @@ const LottiePlayer = dynamic(
   { ssr: false }
 );
 
+const LOOP_COUNT = 3;
+
+function FireworksLoopThree({ style }) {
+  const [loopsDone, setLoopsDone] = useState(false);
+  const loopCountRef = useRef(0);
+  const handleEvent = useCallback((event) => {
+    if (event === 'loop') {
+      loopCountRef.current += 1;
+      if (loopCountRef.current >= LOOP_COUNT) setLoopsDone(true);
+    }
+  }, []);
+  if (loopsDone) return <div style={style} aria-hidden="true" />;
+  return (
+    <LottiePlayer
+      src={LOTTIE_FIREWORKS_URL}
+      autoplay
+      loop
+      keepLastFrame={false}
+      onEvent={handleEvent}
+      style={style}
+      renderer="svg"
+    />
+  );
+}
+
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
@@ -103,7 +128,7 @@ function PaymentForm({ returnUrl, onError, onTerminalStateError }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-left">
-      <PaymentElement onReady={() => setElementReady(true)} onLoadError={handleLoadError} />
+      <PaymentElement options={{ paymentMethodOrder: ['card'] }} onReady={() => setElementReady(true)} onLoadError={handleLoadError} />
       <button
         type="submit"
         disabled={!stripe || submitting || !elementReady}
@@ -284,7 +309,8 @@ export default function PayInvoicePage() {
     );
   }
 
-  if (error || !invoice) {
+  // Only show generic error when invoice failed to load. Payment errors (e.g. card declined) use the sad card below.
+  if (!invoice) {
     return (
       <>
         <Head><title>Error - {appName}</title></Head>
@@ -302,31 +328,22 @@ export default function PayInvoicePage() {
       <>
         <Head><title>Payment successful - {appName}</title></Head>
         <PayPageLayout>
-          <div className="w-full max-w-lg mx-auto text-center">
-            <div className="relative rounded-2xl border-2 border-emerald-200 dark:border-emerald-700 bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-900/30 dark:to-gray-800 p-8 sm:p-10 shadow-xl overflow-hidden">
-              {/* Fireworks from LottieFiles – change LOTTIE_FIREWORKS_URL for a different animation */}
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-90">
-                <LottiePlayer
-                  src={LOTTIE_FIREWORKS_URL}
-                  autoplay
-                  loop={false}
-                  keepLastFrame
-                  style={{ height: '100%', width: '100%', maxHeight: '420px' }}
-                  renderer="svg"
-                />
+          {/* Fireworks at page level – full viewport, loop 3 times then stop */}
+          <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-0">
+            <FireworksLoopThree style={{ height: '100vh', width: '100vw', minHeight: '100%', minWidth: '100%' }} />
+          </div>
+          <div className="relative z-10 w-full max-w-lg mx-auto text-center">
+            <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-700 bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-900/30 dark:to-gray-800 p-8 sm:p-10 shadow-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-800/50 mb-6">
+                <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <div className="relative z-10">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-800/50 mb-6">
-                  <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Thank you!</h1>
-                <p className="text-gray-700 dark:text-gray-300 mb-1">Your payment was successful.</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  A receipt has been sent to your email. This invoice is now marked as paid.
-                </p>
-              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Thank you!</h1>
+              <p className="text-gray-700 dark:text-gray-300 mb-1">Your payment was successful.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                A receipt has been sent to your email. This invoice is now marked as paid.
+              </p>
             </div>
           </div>
         </PayPageLayout>
@@ -339,9 +356,60 @@ export default function PayInvoicePage() {
       <>
         <Head><title>Invoice paid - {appName}</title></Head>
         <PayPageLayout>
-          <div className="w-full max-w-md text-center rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 shadow-sm">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Invoice paid</h1>
-            <p className="text-gray-600 dark:text-gray-400">This invoice has already been paid. Thank you.</p>
+          {/* Fireworks at page level – full viewport, loop 3 times then stop */}
+          <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-0">
+            <FireworksLoopThree style={{ height: '100vh', width: '100vw', minHeight: '100%', minWidth: '100%' }} />
+          </div>
+          <div className="relative z-10 w-full max-w-lg mx-auto text-center">
+            <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-700 bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-900/30 dark:to-gray-800 p-8 sm:p-10 shadow-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-800/50 mb-6">
+                <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Invoice paid</h1>
+              <p className="text-gray-600 dark:text-gray-400">This invoice has already been paid. Thank you.</p>
+            </div>
+          </div>
+        </PayPageLayout>
+      </>
+    );
+  }
+
+  // Payment failed / decline: same layout as thank you page but "sad" (red/rose theme, X icon, Try again).
+  const paymentErrorMessage = intentError || error;
+  const showPaymentFailedCard = Boolean(paymentErrorMessage);
+
+  const clearPaymentError = useCallback(() => {
+    setError('');
+    setIntentError('');
+  }, []);
+
+  if (showPaymentFailedCard) {
+    return (
+      <>
+        <Head><title>Payment failed - {appName}</title></Head>
+        <PayPageLayout>
+          <div className="relative z-10 w-full max-w-lg mx-auto text-center">
+            <div className="rounded-2xl border-2 border-red-200 dark:border-red-800 bg-gradient-to-b from-red-50 to-white dark:from-red-900/20 dark:to-gray-800 p-8 sm:p-10 shadow-xl bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/50 mb-6">
+                <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Payment failed</h1>
+              <p className="text-red-600 dark:text-red-400 font-medium mb-1">{paymentErrorMessage}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                You can try again with a different card or payment method.
+              </p>
+              <button
+                type="button"
+                onClick={clearPaymentError}
+                className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              >
+                Try again
+              </button>
+            </div>
           </div>
         </PayPageLayout>
       </>

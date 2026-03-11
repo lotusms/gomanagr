@@ -64,7 +64,9 @@ function parseBody(body, existing, computedFromItems) {
   const total = computedFromItems?.total != null
     ? String(computedFromItems.total)
     : String(body.total ?? existing?.total ?? '').trim() || '';
+  const clientIdValue = body.client_id !== undefined ? (body.client_id || null) : (body.clientId !== undefined ? (body.clientId || null) : (existing?.client_id ?? null));
   const out = {
+    client_id: clientIdValue,
     invoice_number: String(body.invoice_number ?? existing?.invoice_number ?? '').trim() || '',
     invoice_title: String(body.invoice_title ?? existing?.invoice_title ?? '').trim() || '',
     amount,
@@ -151,7 +153,7 @@ export default async function handler(req, res) {
     const fileUrls = Array.isArray(updates.file_urls) ? updates.file_urls : [];
     if (fileUrls.length > 0) {
       await ensureAttachmentsFromFiles(supabaseAdmin, {
-        clientId: existing.client_id,
+        clientId: updates.client_id ?? existing.client_id,
         userId: existing.user_id,
         organizationId: existing.organization_id,
         fileUrls,

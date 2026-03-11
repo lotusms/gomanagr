@@ -104,7 +104,8 @@ export default async function handler(req, res) {
       if (existingPiId) {
         try {
           const existing = await stripe.paymentIntents.retrieve(existingPiId);
-          if (existing.status === 'requires_payment_method' && existing.amount === amountCents) {
+          const onlyCard = Array.isArray(existing.payment_method_types) && existing.payment_method_types.length === 1 && existing.payment_method_types[0] === 'card';
+          if (existing.status === 'requires_payment_method' && existing.amount === amountCents && onlyCard) {
             return res.status(200).json({ clientSecret: existing.client_secret });
           }
         } catch (_) {
@@ -116,6 +117,7 @@ export default async function handler(req, res) {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amountCents,
         currency: 'usd',
+        automatic_payment_methods: { enabled: false },
         payment_method_types: ['card'],
         metadata: {
           invoice_id: invoiceId,
@@ -143,7 +145,8 @@ export default async function handler(req, res) {
         if (currentPiId) {
           try {
             const current = await stripe.paymentIntents.retrieve(currentPiId);
-            if (current.status === 'requires_payment_method' && current.amount === amountCents) {
+            const currentOnlyCard = Array.isArray(current.payment_method_types) && current.payment_method_types.length === 1 && current.payment_method_types[0] === 'card';
+            if (current.status === 'requires_payment_method' && current.amount === amountCents && currentOnlyCard) {
               return res.status(200).json({ clientSecret: current.client_secret });
             }
           } catch (_) {}

@@ -344,7 +344,14 @@ function InvoicesBlock({ clientId, userId, organizationId, organization = null, 
     <>
       <InvoiceLogCards
         invoices={invoices}
-        onSelect={(id) => router.push(editUrl(id))}
+        onSelect={(id) => {
+          const inv = invoices.find((i) => i.id === id);
+          if (inv && (inv.status === 'paid' || inv.status === 'partially_paid')) {
+            router.push(`/dashboard/receipts?open=${encodeURIComponent(id)}`);
+          } else {
+            router.push(editUrl(id));
+          }
+        }}
         onDelete={setInvoiceToDelete}
         borderClass={type.borderClass}
         defaultCurrency={defaultCurrency}

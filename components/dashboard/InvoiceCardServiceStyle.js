@@ -74,7 +74,10 @@ export default function InvoiceCardServiceStyle({
 
   const clientName = invoice.client_id && clientNameByClientId[invoice.client_id];
   const clientEmail = invoice.client_id && clientEmailByClientId[invoice.client_id];
-  const statusLabel = invoice.status ? (STATUS_LABELS[invoice.status] || invoice.status) : null;
+  const statusLabel =
+    invoice.status && invoice.status !== 'paid' && invoice.status !== 'partially_paid'
+      ? (STATUS_LABELS[invoice.status] || invoice.status)
+      : null;
   const total = parseNum(invoice.total ?? invoice.amount);
   const rawBalance = invoice.outstanding_balance;
   const hasBalanceSet = rawBalance != null && String(rawBalance).trim() !== '';
@@ -296,7 +299,7 @@ export default function InvoiceCardServiceStyle({
           )}
           {amountPaid > 0 && (
             <p className="text-emerald-600 dark:text-emerald-400 font-medium">
-              Paid: {formatCurrency(amountPaid, defaultCurrency)}
+              Amount paid: {formatCurrency(amountPaid, defaultCurrency)}
             </p>
           )}
           {balanceDue > 0 && (
@@ -306,7 +309,7 @@ export default function InvoiceCardServiceStyle({
           )}
           {paidDate && (
             <p className="text-gray-500 dark:text-gray-400 text-xs">
-              Paid {formatDateFromISO(paidDate, dateFormat, timezone)}
+              {formatDateFromISO(paidDate, dateFormat, timezone)}
             </p>
           )}
           {total === 0 && amountPaid === 0 && balanceDue === 0 && (

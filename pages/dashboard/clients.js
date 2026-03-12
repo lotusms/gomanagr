@@ -340,7 +340,7 @@ function ClientsContent() {
               }
             />
             {deactivatedPanelOpen && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" data-testid="deactivated-clients-panel">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0" data-testid="deactivated-clients-panel">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deactivated {clientTermPluralLower}</h2>
                   <button
@@ -352,7 +352,7 @@ function ClientsContent() {
                     <HiX className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto w-full min-w-0">
                   {deactivatedClients.length === 0 ? (
                     <p className="px-4 py-8 text-gray-500 dark:text-gray-400 text-center" data-testid="deactivated-clients-empty">No deactivated {clientTermPluralLower}.</p>
                   ) : (
@@ -373,7 +373,7 @@ function ClientsContent() {
                           render: (client) => (
                             <div className="flex items-center justify-center gap-1">
                               <IconButton
-                                variant="primary"
+                                variant="light"
                                 onClick={() => setClientToReactivate(client)}
                                 disabled={saving}
                                 aria-label="Reactivate"

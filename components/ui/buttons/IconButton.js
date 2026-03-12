@@ -12,11 +12,11 @@ export default function IconButton({
   ...props
 }) {
   const base =
-    'p-2 rounded-full overflow-hidden transition-all bg-white/20 dark:bg-gray-700/20 border border-white/30 dark:border-gray-700/30 duration-200 inline-flex items-center justify-center';
+    'p-2 rounded-full overflow-hidden transition-all border border-white/30 dark:border-gray-700/30 duration-200 inline-flex items-center justify-center';
 
   const variants = {
     primary:
-      'text-primary-500 hover:text-primary-800 hover:bg-white/20 dark:hover:bg-gray-700/20',
+      'bg-primary-600 hover:bg-primary-700 border-2 border-primary-600 hover:border-primary-700 text-white',
     secondary:
       'text-amber-500 hover:text-amber-700 hover:bg-white/20 dark:hover:bg-gray-700/20',
     danger:

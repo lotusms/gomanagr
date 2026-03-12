@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/router';
 import { HiReceiptRefund, HiEye, HiPrinter, HiMail, HiDotsVertical } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -38,12 +39,16 @@ export default function ReceiptCard({
   const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
   const untitledLabel = `Untitled ${invoiceTermSingularLower}`;
 
-  const [viewState, setViewState] = useState({ open: false, autoPrint: false });
+  const router = useRouter();
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchorRect, setMenuAnchorRect] = useState(null);
   const menuButtonRef = useRef(null);
   const menuContentRef = useRef(null);
+
+  const openView = () => router.push(`/dashboard/receipts?open=${invoice.id}`);
+  const openPrint = () => setPrintDialogOpen(true);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -66,10 +71,6 @@ export default function ReceiptCard({
   const paidDate = invoice.paid_date || null;
   const company = buildCompanyForDocument(account, organization);
 
-  const openView = (autoPrint = false) => {
-    setViewState({ open: true, autoPrint });
-  };
-
   const handleSendSuccess = () => {
     setSendDialogOpen(false);
     onReceiptUpdated?.();
@@ -82,11 +83,11 @@ export default function ReceiptCard({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => openView(false)}
+            onClick={openView}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                openView(false);
+                openView();
               }
             }}
             className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
@@ -130,7 +131,7 @@ export default function ReceiptCard({
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); openView(false); }}
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); openView(); }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <HiEye className="w-4 h-4 flex-shrink-0" />
@@ -139,7 +140,7 @@ export default function ReceiptCard({
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); openView(true); }}
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); openPrint(); }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <HiPrinter className="w-4 h-4 flex-shrink-0" />
@@ -164,11 +165,11 @@ export default function ReceiptCard({
       <div
         role="button"
         tabIndex={0}
-        onClick={() => openView(false)}
+        onClick={openView}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            openView(false);
+            openView();
           }
         }}
         className="p-5 flex-1 flex flex-col cursor-pointer"
@@ -217,17 +218,17 @@ export default function ReceiptCard({
         organizationId={organization?.id ?? null}
         isReminder={false}
       />
-      {viewState.open && (
+      {printDialogOpen && (
         <DocumentViewDialog
-          isOpen={viewState.open}
-          onClose={() => setViewState({ open: false, autoPrint: false })}
+          isOpen={printDialogOpen}
+          onClose={() => setPrintDialogOpen(false)}
           type="invoice"
           documentTypeLabel="Receipt"
           document={buildInvoiceDocumentPayload(invoice)}
           company={company}
-          client={{ name: clientName || 'Client', email: '' }}
+          client={{ name: clientName || 'Client', email: clientEmail || '' }}
           currency={defaultCurrency}
-          autoPrint={viewState.autoPrint}
+          autoPrint={true}
           lineItemsSectionLabel={lineItemsSectionLabel}
         />
       )}

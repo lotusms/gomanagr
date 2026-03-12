@@ -798,7 +798,7 @@ function TeamContent() {
         ) : (
           <>
             {deactivatedPanelOpen && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" data-testid="deactivated-members-panel">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0" data-testid="deactivated-members-panel">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deactivated {teamMemberTermLower}</h2>
                   <button
@@ -810,7 +810,7 @@ function TeamContent() {
                     <HiX className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto w-full min-w-0">
                   {deactivatedMembers.length === 0 ? (
                     <p className="px-4 py-8 text-gray-500 dark:text-gray-400 text-center" data-testid="deactivated-members-empty">No deactivated {teamMemberTermLower}.</p>
                   ) : (
@@ -818,18 +818,19 @@ function TeamContent() {
                       ariaLabel={`Deactivated ${teamMemberTerm}`}
                       data-testid="deactivated-members-table"
                       columns={[
-                        { key: 'name', label: 'Name' },
-                        { key: 'email', label: 'Email' },
-                        { key: 'role', label: 'Role' },
+                        { key: 'name', label: 'Name', widthClass: 'w-[120px]' },
+                        { key: 'email', label: 'Email', widthClass: 'w-[160px]' },
+                        { key: 'role', label: 'Role', widthClass: 'w-[80px]' },
                         {
                           key: 'actions',
                           label: 'Actions',
+                          widthClass: 'w-[60px]',
                           align: 'center',
                           compact: true,
                           render: (member) => (
                             <div className="flex items-center justify-center gap-1">
                               <IconButton
-                                variant="primary"
+                                variant="light"
                                 onClick={() => setMemberToReactivate(member)}
                                 disabled={saving}
                                 aria-label="Reactivate"

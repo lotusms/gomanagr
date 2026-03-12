@@ -150,7 +150,7 @@ export default function PersonCard({ name, subtitle, src, onClick, onRemove, onI
       )}
       {onRemove && (
         <IconButton
-          white
+          variant="danger"
           className={`${cardIconButtonClass} ${removeIconButtonClass}`}
           onClick={(e) => {
             e.stopPropagation();

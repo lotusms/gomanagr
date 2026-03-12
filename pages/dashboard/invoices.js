@@ -159,7 +159,12 @@ function InvoicesContent() {
   };
 
   const handleSelectInvoice = (invoiceId) => {
-    router.push(`/dashboard/invoices/${invoiceId}/edit`);
+    const inv = invoices.find((i) => i.id === invoiceId);
+    if (inv && (inv.status === 'paid' || inv.status === 'partially_paid')) {
+      router.push(`/dashboard/receipts?open=${encodeURIComponent(invoiceId)}`);
+    } else {
+      router.push(`/dashboard/invoices/${invoiceId}/edit`);
+    }
   };
 
   if (loading) {

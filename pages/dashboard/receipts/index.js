@@ -1,15 +1,23 @@
 import Head from 'next/head';
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/router';
+import { HiArrowLeft, HiPrinter, HiMail } from 'react-icons/hi';
+
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { PageHeader, Paginator } from '@/components/ui';
-import InvoicesPageSkeleton from '@/components/dashboard/InvoicesPageSkeleton';
+import { IconButton, SecondaryButton } from '@/components/ui/buttons';
+import ReceiptsPageSkeleton from '@/components/dashboard/ReceiptsPageSkeleton';
+import ReceiptViewSkeleton from '@/components/dashboard/ReceiptViewSkeleton';
+import ReceiptViewInPage from '@/components/dashboard/ReceiptViewInPage';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
 import ReceiptCard from '@/components/dashboard/ReceiptCard';
+import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function ReceiptsContent() {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const [receipts, setReceipts] = useState([]);
   const [clients, setClients] = useState([]);
@@ -25,6 +33,14 @@ function ReceiptsContent() {
   const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
   const clientTermSingularLower = (getTermSingular(clientTermPlural) || 'Client').toLowerCase();
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
+  const lineItemsSectionLabel = getTermForIndustry(accountIndustry, 'services');
+  const company = useMemo(() => buildCompanyForDocument(userAccount, organization), [userAccount, organization]);
+
+  const openInvoiceId = router.query.open && String(router.query.open).trim();
+  const receiptToOpen = useMemo(
+    () => (openInvoiceId && receipts.length > 0 ? receipts.find((r) => r.id === openInvoiceId) : null),
+    [openInvoiceId, receipts]
+  );
 
   const paginatedReceipts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -138,57 +154,110 @@ function ReceiptsContent() {
         <Head>
           <title>Receipts - GoManagr</title>
         </Head>
-        <InvoicesPageSkeleton />
+        {openInvoiceId ? <ReceiptViewSkeleton /> : <ReceiptsPageSkeleton />}
       </>
     );
   }
 
+  const dateFormat = userAccount?.dateFormat ?? 'MM/DD/YYYY';
+  const timezone = userAccount?.timezone ?? 'UTC';
+
   return (
     <>
       <Head>
-        <title>Receipts - GoManagr</title>
-        <meta name="description" content="Paid invoices (receipts). View, print, or email." />
+        <title>{receiptToOpen ? 'Receipt - GoManagr' : 'Receipts - GoManagr'}</title>
+        <meta name="description" content={receiptToOpen ? 'View receipt.' : 'Paid invoices (receipts). View, print, or email.'} />
       </Head>
 
       <div className="space-y-6">
-        <PageHeader
-          title="Receipts"
-          description="Paid invoices. Receipts are read-only; you can print or email them."
-        />
-
-        {receipts.length === 0 ? (
-          <EmptyStateCard message="No receipts yet" />
+        {receiptToOpen ? (
+          <>
+            <PageHeader
+              title="Receipt"
+              description={receiptToOpen.invoice_number || receiptToOpen.invoice_title || 'View receipt'}
+              actions={
+                <>
+                  <SecondaryButton type="button" onClick={() => router.push('/dashboard/receipts')} className="gap-2">
+                    <HiArrowLeft className="w-4 h-4" />
+                    Back to receipts
+                  </SecondaryButton>
+                  <IconButton 
+                    type="button" 
+                    onClick={() => window.print()} 
+                    className="gap-2" 
+                    variant="light"
+                    title="Print"
+                    aria-label="Print receipt"
+                  >
+                    <HiPrinter className="w-5 h-5" />
+                  </IconButton>
+                  <IconButton 
+                    type="button" 
+                    onClick={() => router.push(`/dashboard/receipts/${receiptToOpen.id}/email`)} 
+                    className="gap-2" 
+                    variant="light"
+                    title="Email"
+                    aria-label="Email receipt"
+                  >
+                    <HiMail className="w-5 h-5" />
+                  </IconButton>
+                </>
+              }
+            />
+            <ReceiptViewInPage
+              document={buildInvoiceDocumentPayload(receiptToOpen)}
+              client={{
+                name: (receiptToOpen.client_id && clientNameByClientId[receiptToOpen.client_id]) || 'Client',
+                email: (receiptToOpen.client_id && clientEmailByClientId[receiptToOpen.client_id]) || '',
+              }}
+              currency={defaultCurrency}
+              lineItemsSectionLabel={lineItemsSectionLabel}
+              dateFormat={dateFormat}
+              timezone={timezone}
+            />
+          </>
         ) : (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {paginatedReceipts.map((inv) => (
-                <ReceiptCard
-                  key={inv.id}
-                  invoice={inv}
-                  onReceiptUpdated={refreshReceipts}
-                  clientNameByClientId={clientNameByClientId}
-                  clientEmailByClientId={clientEmailByClientId}
-                  defaultCurrency={defaultCurrency}
-                  organization={organization}
-                  userId={currentUser?.uid}
-                  accountIndustry={accountIndustry}
-                />
-              ))}
-            </div>
-            {receipts.length > 6 && (
-              <Paginator
-                currentPage={currentPage}
-                totalItems={receipts.length}
-                itemsPerPage={itemsPerPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={handleItemsPerPageChange}
-                itemsPerPageOptions={[6, 12, 24, 48, 96]}
-                showItemsPerPage={true}
-                maxVisiblePages={5}
-                showInfo={false}
-                showFirstLast={false}
-                className="mt-6"
-              />
+            <PageHeader
+              title="Receipts"
+              description="Paid invoices. View receipts in read-only form; print or email from each receipt."
+            />
+
+            {receipts.length === 0 ? (
+              <EmptyStateCard message="No receipts yet" />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {paginatedReceipts.map((inv) => (
+                    <ReceiptCard
+                      key={inv.id}
+                      invoice={inv}
+                      onReceiptUpdated={refreshReceipts}
+                      clientNameByClientId={clientNameByClientId}
+                      clientEmailByClientId={clientEmailByClientId}
+                      defaultCurrency={defaultCurrency}
+                      organization={organization}
+                      userId={currentUser?.uid}
+                      accountIndustry={accountIndustry}
+                    />
+                  ))}
+                </div>
+                {receipts.length > 6 && (
+                  <Paginator
+                    currentPage={currentPage}
+                    totalItems={receipts.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    itemsPerPageOptions={[6, 12, 24, 48, 96]}
+                    showItemsPerPage={true}
+                    maxVisiblePages={5}
+                    showInfo={false}
+                    showFirstLast={false}
+                    className="mt-6"
+                  />
+                )}
+              </>
             )}
           </>
         )}

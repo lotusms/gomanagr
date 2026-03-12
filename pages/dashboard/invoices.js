@@ -12,8 +12,7 @@ import InvoiceCardServiceStyle from '@/components/dashboard/InvoiceCardServiceSt
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { HiOutlineInformationCircle, HiPlus } from 'react-icons/hi';
 import { formatCurrency } from '@/utils/formatCurrency';
-
-const PAYOUT_AMOUNT = 1000;
+import Tooltip from '@/components/ui/Tooltip';
 
 function InvoicesContent() {
   const router = useRouter();
@@ -28,7 +27,17 @@ function InvoicesContent() {
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
-  const [showPayoutInfo, setShowPayoutInfo] = useState(false);
+  const [payoutBalance, setPayoutBalance] = useState({
+    availableCents: 0,
+    pendingCents: 0,
+    currency: 'usd',
+    livemode: false,
+    upcomingPayoutArrivalDate: null,
+    instantAvailableCents: 0,
+  });
+  const [payoutBalanceLoading, setPayoutBalanceLoading] = useState(false);
+  const [payoutInProgress, setPayoutInProgress] = useState(false);
+  const [payoutError, setPayoutError] = useState(null);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
@@ -40,7 +49,9 @@ function InvoicesContent() {
   const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
 
-  const payoutTotal = PAYOUT_AMOUNT;
+  const hasPayoutBalance = payoutBalance.availableCents > 0 || payoutBalance.pendingCents > 0;
+  const payoutTotal = payoutBalance.availableCents / 100;
+  const pendingTotal = payoutBalance.pendingCents / 100;
 
   const paginatedInvoices = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -109,10 +120,83 @@ function InvoicesContent() {
       .finally(() => setLoading(false));
   }, [currentUser?.uid, orgResolved, organization?.id]);
 
+  const fetchPayoutBalance = useCallback(() => {
+    if (!currentUser?.uid) return;
+    setPayoutBalanceLoading(true);
+    setPayoutError(null);
+    fetch('/api/stripe-balance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.uid }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) {
+          setPayoutError(data.error);
+          setPayoutBalance({
+            availableCents: 0,
+            pendingCents: 0,
+            currency: 'usd',
+            livemode: false,
+            upcomingPayoutArrivalDate: null,
+            instantAvailableCents: 0,
+          });
+        } else {
+          setPayoutBalance({
+            availableCents: data.availableCents ?? 0,
+            pendingCents: data.pendingCents ?? 0,
+            currency: data.currency || 'usd',
+            livemode: data.livemode === true,
+            upcomingPayoutArrivalDate: data.upcomingPayoutArrivalDate ?? null,
+            instantAvailableCents: data.instantAvailableCents ?? 0,
+          });
+        }
+      })
+      .catch(() => {
+        setPayoutBalance({
+          availableCents: 0,
+          pendingCents: 0,
+          currency: 'usd',
+          livemode: false,
+          upcomingPayoutArrivalDate: null,
+          instantAvailableCents: 0,
+        });
+        setPayoutError('Could not load balance');
+      })
+      .finally(() => setPayoutBalanceLoading(false));
+  }, [currentUser?.uid]);
+
   useEffect(() => {
-    //if stripe reports that there is a balance that can be transferred to the user's bank account, show the payout info
-    
-  }, []);
+    if (!currentUser?.uid || !orgResolved) return;
+    fetchPayoutBalance();
+  }, [currentUser?.uid, orgResolved, fetchPayoutBalance]);
+
+  const handlePayout = useCallback(async (instant = false) => {
+    if (!currentUser?.uid || payoutBalance.availableCents <= 0 || payoutInProgress) return;
+    setPayoutInProgress(true);
+    setPayoutError(null);
+    try {
+      const res = await fetch('/api/stripe-payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          amountCents: payoutBalance.availableCents,
+          instant: !!instant,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPayoutError(data.error || 'Payout failed');
+        return;
+      }
+      fetchPayoutBalance();
+    } catch (err) {
+      setPayoutError(err.message || 'Something went wrong');
+    } finally {
+      setPayoutInProgress(false);
+    }
+  }, [currentUser?.uid, payoutBalance.availableCents, payoutInProgress, fetchPayoutBalance]);
 
   const clientNameByClientId = useMemo(() => {
     const map = {};
@@ -197,6 +281,91 @@ function InvoicesContent() {
       </Head>
 
       <div className="space-y-6">
+        {(hasPayoutBalance || payoutBalanceLoading) && (
+          <div className="relative flex-col -top-9 flex items-center gap-2 bg-secondary-50 dark:bg-secondary-900 rounded-bl-lg rounded-br-lg p-4 shadow-sm border border-secondary-300 dark:border-secondary-500">
+            <div className="flex flex-col items-center justify-between sm:flex-row gap-4 sm:gap-6 mt-6 sm:mt-2 w-full">
+              {/* Balance summary */}
+              <div className="flex flex-col min-w-0">
+                {payoutBalanceLoading ? (
+                  <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                    <span className="inline-block size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+                    <span className="text-sm font-medium">Loading balance…</span>
+                  </div>
+                ) : (
+                  <>
+                    {payoutBalance.availableCents > 0 && (
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-semibold text-primary-600 dark:text-primary-400">
+                          {formatCurrency(payoutTotal, defaultCurrency)}
+                        </span>
+                        <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                          Available
+                        </span>
+                      </div>
+                    )}
+                    {payoutBalance.pendingCents > 0 && (
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="text-2xl font-semibold text-gray-500 dark:text-gray-400">
+                          {formatCurrency(pendingTotal, defaultCurrency)}
+                        </span>
+                        <span className="text-sm text-gray-400 dark:text-gray-500">pending</span>
+                        <Tooltip
+                          content={
+                            payoutBalance.upcomingPayoutArrivalDate
+                              ? `Funds will be transferred automatically on ${new Date(payoutBalance.upcomingPayoutArrivalDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}.`
+                              : 'Pending funds will be transferred according to your payout schedule.'
+                          }
+                          placement="bottom"
+                        >
+                          <span className="cursor-help inline-flex text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+                            <HiOutlineInformationCircle className="size-4 shrink-0" aria-hidden />
+                          </span>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+
+              {/* Actions */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <SecondaryButton
+                  type="button"
+                  className="gap-2"
+                  size="mini"
+                  disabled={payoutBalance.availableCents <= 0 || payoutInProgress}
+                  onClick={() => handlePayout(false)}
+                >
+                  {payoutInProgress ? 'Transferring…' : 'Pay out now'}
+                </SecondaryButton>
+                {payoutBalance.availableCents > 0 && payoutBalance.instantAvailableCents > 0 && (
+                  <SecondaryButton
+                    type="button"
+                    className="gap-2"
+                    size="mini"
+                    disabled={payoutInProgress}
+                    onClick={() => handlePayout(true)}
+                  >
+                    {payoutInProgress ? '…' : 'Transfer instantly (1% fee)'}
+                  </SecondaryButton>
+                )}
+              </div>
+            </div>
+
+            {/* Footer: error + test mode */}
+            {(payoutError || (!payoutBalance.livemode && hasPayoutBalance)) && (
+              <div className="border-t border-secondary-200 dark:border-secondary-600 flex flex-col gap-1">
+                {payoutError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{payoutError}</p>
+                )}
+                {/* {!payoutBalance.livemode && hasPayoutBalance && (
+                  <p className="pt-3 text-xs text-amber-600 dark:text-amber-400">Test mode — no real transfer</p>
+                )} */}
+              </div>
+            )}
+          </div>
+        )}
         <PageHeader
           title={invoiceTermPlural}
           description={`${invoiceTermPlural} created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
@@ -211,26 +380,6 @@ function InvoicesContent() {
                 Create {invoiceTermSingularLower}
               </PrimaryButton>
 
-              {showPayoutInfo && (
-                <div className="relative flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700">
-                  <div classNAme="relative top-0 right-0">
-                    <HiOutlineInformationCircle className="absolute top-1 right-1 size-4 text-gray-500 dark:text-gray-300" />
-                  </div>
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xl font-bold text-primary-500 dark:text-primary-400">{formatCurrency(payoutTotal, defaultCurrency)}</p>
-                    </div>
-                    <SecondaryButton
-                      type="button"
-                      className="gap-2"
-                      size="mini"
-                      onClick={() => alert('Coming soon!')}
-                    >
-                      Pay out now
-                    </SecondaryButton>
-                  </div>
-                </div>
-              )}
             </>
           }
         />

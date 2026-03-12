@@ -213,7 +213,7 @@ describe('AddTeamMemberForm', () => {
   it('shows email duplicate error when email matches another team member', async () => {
     renderForm({ teamMembers: [{ id: 'other', email: 'taken@example.com' }], initialMember: null });
     const emailInput = screen.getByLabelText('Email');
-    await userEvent.type(emailInput, 'taken@example.com');
+    fireEvent.change(emailInput, { target: { value: 'taken@example.com' } });
     expect(emailInput).toHaveAttribute('data-error', 'This email has already been assigned to someone else');
     await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
     expect(mockOnSubmit).not.toHaveBeenCalled();

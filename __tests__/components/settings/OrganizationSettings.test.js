@@ -1,24 +1,26 @@
 /**
- * Unit tests for OrganizationSettings: loading, form render with company name and fields
+ * Unit tests for OrganizationSettings: loading, form render, load data, input change, add/remove location, logo, submit
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import OrganizationSettings from '@/components/settings/OrganizationSettings';
 
+const stableCurrentUser = { uid: 'u1', email: 'u@test.com' };
 jest.mock('@/lib/AuthContext', () => ({
-  useAuth: () => ({ currentUser: { uid: 'u1' } }),
+  useAuth: () => ({ currentUser: stableCurrentUser }),
 }));
 
 const mockGetUserAccount = jest.fn();
-const mockGetUserOrganization = jest.fn();
+const mockCreateUserAccount = jest.fn();
 jest.mock('@/services/userService', () => ({
   getUserAccount: (...args) => mockGetUserAccount(...args),
-  createUserAccount: jest.fn(() => Promise.resolve()),
+  createUserAccount: (...args) => mockCreateUserAccount(...args),
   listStorageFiles: jest.fn(() => Promise.resolve([])),
   getStoragePublicUrl: jest.fn((path) => path),
   removeStorageFiles: jest.fn(() => Promise.resolve()),
 }));
 
+const mockGetUserOrganization = jest.fn();
 jest.mock('@/services/organizationService', () => ({
   getUserOrganization: (...args) => mockGetUserOrganization(...args),
 }));
@@ -29,16 +31,65 @@ jest.mock('react-icons/hi', () => ({
   HiPlus: () => <span data-testid="icon-plus" />,
 }));
 
-jest.mock('@/components/ui/Dropdown', () => function MockDropdown({ id, label }) {
-  return <div data-testid={`dropdown-${id}`}>{label}</div>;
+jest.mock('@/components/ui/Dropdown', () => function MockDropdown({ id, label, name, onChange, value, options = [] }) {
+  const opts = Array.isArray(options) ? options : [];
+  return (
+    <div data-testid={`dropdown-${id}`}>
+      <span>{label}</span>
+      <select
+        data-testid={`select-${id}`}
+        name={name}
+        value={value || ''}
+        onChange={(e) => onChange && onChange(e)}
+      >
+        <option value="">--</option>
+        {opts.map((o) => (
+          <option key={String(o.value)} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
 });
 
-jest.mock('@/components/ui/InputField', () => function MockInputField({ id, label }) {
-  return <div data-testid={`input-${id}`}>{label}</div>;
+jest.mock('@/components/ui/InputField', () => function MockInputField({ id, label, onChange, value, inputProps }) {
+  return (
+    <div data-testid={`input-wrap-${id}`}>
+      <span>{label}</span>
+      <input
+        data-testid={`input-${id}`}
+        name={inputProps?.name || id}
+        value={value || ''}
+        onChange={(e) => onChange && onChange(e)}
+      />
+    </div>
+  );
 });
 
 jest.mock('@/components/ui', () => ({
-  AddressAutocomplete: () => <div data-testid="address-autocomplete" />,
+  AddressAutocomplete: function MockAddressAutocomplete({ id, onSelect, label }) {
+    const isNewLocation = id === 'newLocation';
+    return (
+      <div data-testid={isNewLocation ? 'address-new-location' : 'address-autocomplete'}>
+        <span>{label}</span>
+        {onSelect && (
+          <button
+            type="button"
+            data-testid={isNewLocation ? 'address-add-location-btn' : 'address-hq-select-btn'}
+            onClick={() => onSelect({
+              address1: '123 Main St',
+              address2: 'Suite 1',
+              city: 'Lancaster',
+              state: 'PA',
+              postalCode: '17601',
+              country: 'US',
+            })}
+          >
+            Select address
+          </button>
+        )}
+      </div>
+    );
+  },
   PhoneNumberInput: () => <div data-testid="phone-input" />,
 }));
 
@@ -46,10 +97,10 @@ jest.mock('@/components/ui/buttons', () => ({
   PrimaryButton: ({ children }) => <button type="submit" data-testid="save-btn">{children}</button>,
 }));
 
-jest.mock('@/utils/countries', () => ({ COUNTRIES: [{ code: 'US', name: 'United States' }] }));
+jest.mock('@/utils/countries', () => ({ COUNTRIES: [{ value: 'US', label: 'United States' }] }));
 
 jest.mock('@/components/clients/clientProfileConstants', () => ({
-  INDUSTRIES: [{ value: 'general', label: 'General' }],
+  INDUSTRIES: ['general', 'healthcare'],
 }));
 
 describe('OrganizationSettings', () => {
@@ -57,7 +108,10 @@ describe('OrganizationSettings', () => {
     jest.clearAllMocks();
     mockGetUserAccount.mockResolvedValue({ companyName: 'Acme', industry: 'general' });
     mockGetUserOrganization.mockResolvedValue(null);
+    mockCreateUserAccount.mockResolvedValue({});
+    global.fetch = jest.fn();
     console.log = jest.fn();
+    console.error = jest.fn();
   });
 
   it('shows loading then form with heading', async () => {
@@ -71,5 +125,142 @@ describe('OrganizationSettings', () => {
     render(<OrganizationSettings />);
     await waitFor(() => expect(mockGetUserAccount).toHaveBeenCalledWith('u1'));
     expect(mockGetUserOrganization).toHaveBeenCalledWith('u1');
+  });
+
+  it('shows loading spinner when currentUser exists and data is loading', async () => {
+    let resolveUser;
+    let resolveOrg;
+    mockGetUserAccount.mockReturnValue(new Promise((r) => { resolveUser = r; }));
+    mockGetUserOrganization.mockReturnValue(new Promise((r) => { resolveOrg = r; }));
+    render(<OrganizationSettings />);
+    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
+    resolveUser({ companyName: 'Acme' });
+    resolveOrg(null);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Organization' })).toBeInTheDocument());
+  });
+
+  it('loads org with logo, alt logo, and locations and merges them', async () => {
+    mockGetUserAccount.mockResolvedValueOnce({
+      companyName: 'User Co',
+      organizationAddress: '456 User St',
+      organizationCity: 'York',
+      organizationState: 'PA',
+      organizationCountry: 'US',
+    });
+    mockGetUserOrganization.mockResolvedValueOnce({
+      id: 'org1',
+      name: 'Org Inc',
+      logo_url: 'https://example.com/logo.png',
+      alt_logo_url: 'https://example.com/alt.png',
+      address_line_1: '123 Main St',
+      city: 'Lancaster',
+      state: 'PA',
+      country: 'US',
+      locations: [
+        { address: '123 Main St', city: 'Lancaster', state: 'PA', postalCode: '17601', country: 'US' },
+        '999 Other St',
+      ],
+    });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Organization' })).toBeInTheDocument());
+    expect(screen.getByAltText('Organization logo')).toBeInTheDocument();
+    expect(screen.getByAltText('Organization alt logo')).toBeInTheDocument();
+    expect(screen.getByText('123 Main St')).toBeInTheDocument();
+  });
+
+  it('updates form when company name input changes', async () => {
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('input-companyName')).toBeInTheDocument());
+    const nameInput = screen.getByTestId('input-companyName');
+    fireEvent.change(nameInput, { target: { name: 'companyName', value: 'New Name' } });
+    await waitFor(() => expect(nameInput).toHaveValue('New Name'));
+  });
+
+  it('adds location when Add Location onSelect is triggered', async () => {
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Organization' })).toBeInTheDocument(), { timeout: 3000 });
+    expect(screen.getByText('Locations')).toBeInTheDocument();
+    const addLocationBtn = screen.getByTestId('address-add-location-btn');
+    fireEvent.click(addLocationBtn);
+    await waitFor(() => expect(screen.getByText('123 Main St')).toBeInTheDocument(), { timeout: 1500 });
+  });
+
+  it('removes non-HQ location when remove is clicked', async () => {
+    mockGetUserOrganization.mockResolvedValueOnce({
+      id: 'org1',
+      name: 'Org',
+      address_line_1: '123 Main St',
+      locations: [
+        { address: '123 Main St', city: 'Lancaster' },
+        { address: '456 Other St', city: 'York' },
+      ],
+    });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByText('456 Other St')).toBeInTheDocument());
+    const removeButtons = screen.getAllByTitle('Remove location');
+    expect(removeButtons.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(removeButtons[0]);
+    await waitFor(() => expect(screen.queryByText('456 Other St')).not.toBeInTheDocument());
+  });
+
+  it('shows error when logo file exceeds 5MB', async () => {
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Organization' })).toBeInTheDocument());
+    const fileInput = document.getElementById('logo');
+    if (fileInput) {
+      const bigFile = new File(['x'], 'big.png', { type: 'image/png' });
+      Object.defineProperty(bigFile, 'size', { value: 6 * 1024 * 1024 });
+      fireEvent.change(fileInput, { target: { files: [bigFile] } });
+      await waitFor(() => expect(screen.getByText(/Logo file size must be less than 5MB/)).toBeInTheDocument());
+    }
+  });
+
+  it('calls removeLogo and clears logo when Remove logo is clicked', async () => {
+    mockGetUserOrganization
+      .mockResolvedValueOnce({ id: 'org1', name: 'Org', logo_url: 'https://example.com/logo.png' })
+      .mockResolvedValue({ id: 'org1', name: 'Org' });
+    mockGetUserAccount.mockResolvedValue({ companyName: 'Org', companyLogo: 'https://example.com/logo.png' });
+    global.fetch.mockResolvedValue({ ok: true });
+    mockCreateUserAccount.mockResolvedValue({ companyLogo: '' });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByAltText('Organization logo')).toBeInTheDocument());
+    const removeBtn = screen.getByTitle('Remove logo');
+    fireEvent.click(removeBtn);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/update-organization', expect.any(Object)));
+    await waitFor(() => expect(mockCreateUserAccount).toHaveBeenCalled());
+  });
+
+  it('calls removeAltLogo when Remove alt logo is clicked', async () => {
+    mockGetUserOrganization
+      .mockResolvedValueOnce({ id: 'org1', name: 'Org', alt_logo_url: 'https://example.com/alt.png' })
+      .mockResolvedValue({ id: 'org1', name: 'Org' });
+    global.fetch.mockResolvedValue({ ok: true });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByAltText('Organization alt logo')).toBeInTheDocument());
+    const removeBtn = screen.getByTitle('Remove alt logo');
+    fireEvent.click(removeBtn);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/update-organization', expect.any(Object)));
+  });
+
+  it('submits form and calls update-organization and createUserAccount', async () => {
+    mockGetUserOrganization.mockResolvedValue({ id: 'org1', name: 'Org' });
+    mockGetUserAccount.mockResolvedValue({ companyName: 'Org', userId: 'u1', email: 'u@test.com' });
+    global.fetch.mockResolvedValue({ ok: true });
+    mockCreateUserAccount.mockResolvedValue({});
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('save-btn'));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/update-organization', expect.any(Object)));
+    await waitFor(() => expect(mockCreateUserAccount).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText(/Organization settings saved successfully/)).toBeInTheDocument());
+  });
+
+  it('shows error when update-organization fails', async () => {
+    mockGetUserOrganization.mockResolvedValue({ id: 'org1', name: 'Org' });
+    global.fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: 'Forbidden' }) });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('save-btn'));
+    await waitFor(() => expect(screen.getByText(/Forbidden|Failed to update/)).toBeInTheDocument());
   });
 });

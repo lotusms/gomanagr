@@ -1,5 +1,14 @@
 require('@testing-library/jest-dom');
 
+// jsdom does not provide ResizeObserver (used by Radix Dropdown, etc.)
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 // Avoid Supabase throw when loading components that depend on lib/supabase (e.g. DateField -> UserAccountContext)
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ContractLogCards from '@/components/clients/add-client/ContractLogCards';
 
@@ -90,5 +90,54 @@ describe('ContractLogCards', () => {
     await userEvent.click(screen.getByText('Service Agreement').closest('[role="button"]'));
 
     expect(onSelect).toHaveBeenCalledWith('c1');
+  });
+
+  it('calls onSelect when card is activated with Enter key', () => {
+    const onSelect = jest.fn();
+    render(<ContractLogCards contracts={contracts} onSelect={onSelect} onDelete={() => {}} />);
+    const card = screen.getByText('Service Agreement').closest('[role="button"]');
+    card.focus();
+    fireEvent.keyDown(card, { key: 'Enter', preventDefault: jest.fn() });
+    expect(onSelect).toHaveBeenCalledWith('c1');
+  });
+
+  it('shows related proposal when provided', () => {
+    const withProposal = [
+      {
+        id: 'c3',
+        contract_title: 'From Quote',
+        related_proposal: { proposal_number: 'Q-1', proposal_title: 'Q1 Quote' },
+      },
+    ];
+    render(<ContractLogCards contracts={withProposal} onSelect={() => {}} onDelete={() => {}} />);
+    expect(screen.getByText(/From proposal: Q-1 – Q1 Quote/)).toBeInTheDocument();
+  });
+
+  it('shows contract value when set', () => {
+    render(<ContractLogCards contracts={contracts} onSelect={() => {}} onDelete={() => {}} defaultCurrency="USD" />);
+    expect(screen.getByText(/Value:.*\$5,000\.00/)).toBeInTheDocument();
+  });
+
+  it('clips scope_summary to 3 lines with ellipsis', () => {
+    const withScope = [
+      { id: 'c4', contract_title: 'Scoped', scope_summary: 'Line1\nLine2\nLine3\nLine4\nLine5' },
+    ];
+    render(<ContractLogCards contracts={withScope} onSelect={() => {}} onDelete={() => {}} />);
+    expect(screen.getByText(/Line1/)).toBeInTheDocument();
+    expect(screen.getByText(/…/)).toBeInTheDocument();
+  });
+
+  it('shows Unnamed file when attachment has no file_name', () => {
+    const attachments = [{ id: 'a1', file_name: '', linked_contract_id: 'c1' }];
+    render(
+      <ContractLogCards
+        contracts={contracts}
+        attachments={attachments}
+        clientId="client-99"
+        onSelect={() => {}}
+        onDelete={() => {}}
+      />
+    );
+    expect(screen.getByRole('link', { name: 'Unnamed file' })).toBeInTheDocument();
   });
 });

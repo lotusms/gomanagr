@@ -118,6 +118,41 @@ describe('update-client-invoice API', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Invoice not found' });
   });
 
+  it('updates payment fields (status paid, paid_date, outstanding_balance) and returns 200', async () => {
+    let capturedUpdate;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: () => ({
+            eq: () => ({ limit: () => ({ single: () => Promise.resolve({ data: existingInvoice, error: null }) }) }),
+          }),
+          update: (updates) => {
+            capturedUpdate = updates;
+            return { eq: () => Promise.resolve({ error: null }) };
+          },
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/update-client-invoice')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: {
+        userId: 'u1',
+        invoiceId: 'inv-1',
+        status: 'paid',
+        paid_date: '2025-01-15',
+        outstanding_balance: '0',
+      },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true });
+    expect(capturedUpdate.status).toBe('paid');
+    expect(capturedUpdate.paid_date).toBe('2025-01-15');
+    expect(capturedUpdate.outstanding_balance).toBe('0');
+  });
+
   it('updates file_urls, terms, scope_summary, and linked_contract_id and returns 200', async () => {
     let capturedUpdate;
     mockFrom.mockImplementation((table) => {

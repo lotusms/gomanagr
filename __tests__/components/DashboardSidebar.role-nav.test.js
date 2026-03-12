@@ -51,6 +51,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Receipts', href: '/dashboard/receipts' },
       { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Marketing', href: '/dashboard/marketing' },
       { name: 'Insights', href: '/dashboard/insights' },
@@ -81,6 +82,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Receipts', href: '/dashboard/receipts' },
       { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];
@@ -107,6 +109,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Proposals', href: '/dashboard/proposals' },
       { name: 'Invoices', href: '/dashboard/invoices' },
+      { name: 'Receipts', href: '/dashboard/receipts' },
       { name: 'Tasks', href: '/dashboard/tasks' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];

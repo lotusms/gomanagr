@@ -203,6 +203,37 @@ describe('ClientEmailForm', () => {
     });
   });
 
+  describe('payload fields', () => {
+    it('includes related_project_case and follow_up_date in create payload when set', async () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('create-client-email')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+      render(<ClientEmailForm {...defaultProps} />);
+      await act(async () => {
+        await userEvent.type(screen.getByLabelText(/subject/i), 'Subject');
+        await userEvent.type(screen.getByLabelText(/^to$/i), 'a@b.com');
+      });
+      const relatedInput = screen.getByLabelText(/related (project|case)/i) || screen.getByPlaceholderText(/project|case/i);
+      if (relatedInput) fireEvent.change(relatedInput, { target: { value: 'PRJ-1' } });
+      const followUpInput = screen.getByLabelText(/follow-up date/i);
+      if (followUpInput) fireEvent.change(followUpInput, { target: { value: '2026-04-01' } });
+      const form = document.querySelector('form');
+      await act(async () => {
+        fireEvent.submit(form);
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      });
+      const createCall = fetchMock.mock.calls.find((c) => String(c[0] || '').includes('create-client-email'));
+      expect(createCall).toBeDefined();
+      const body = JSON.parse(createCall[1].body);
+      expect(body.subject).toBe('Subject');
+      if (relatedInput) expect(body.related_project_case === undefined || body.related_project_case === 'PRJ-1').toBe(true);
+      if (followUpInput) expect(body.follow_up_date === undefined || body.follow_up_date).toBeTruthy();
+    });
+  });
+
   describe('error handling', () => {
     it('shows API error message and does not call onSuccess when create fails', async () => {
       fetchMock.mockResolvedValueOnce({

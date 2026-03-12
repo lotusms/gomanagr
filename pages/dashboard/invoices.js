@@ -5,12 +5,15 @@ import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
 import { PageHeader, ConfirmationDialog, Paginator } from '@/components/ui';
-import { PrimaryButton } from '@/components/ui/buttons';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import InvoicesPageSkeleton from '@/components/dashboard/InvoicesPageSkeleton';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
 import InvoiceCardServiceStyle from '@/components/dashboard/InvoiceCardServiceStyle';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
-import { HiPlus } from 'react-icons/hi';
+import { HiOutlineInformationCircle, HiPlus } from 'react-icons/hi';
+import { formatCurrency } from '@/utils/formatCurrency';
+
+const PAYOUT_AMOUNT = 1000;
 
 function InvoicesContent() {
   const router = useRouter();
@@ -25,6 +28,7 @@ function InvoicesContent() {
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [showPayoutInfo, setShowPayoutInfo] = useState(false);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
@@ -35,6 +39,8 @@ function InvoicesContent() {
   const invoiceTermPluralLower = (invoiceTermPlural || 'invoices').toLowerCase();
   const invoiceTermSingularLower = invoiceTermSingular.toLowerCase();
   const unnamedClientLabel = `Unnamed ${clientTermSingularLower}`;
+
+  const payoutTotal = PAYOUT_AMOUNT;
 
   const paginatedInvoices = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -102,6 +108,11 @@ function InvoicesContent() {
       .catch(() => setInvoices([]))
       .finally(() => setLoading(false));
   }, [currentUser?.uid, orgResolved, organization?.id]);
+
+  useEffect(() => {
+    //if stripe reports that there is a balance that can be transferred to the user's bank account, show the payout info
+    
+  }, []);
 
   const clientNameByClientId = useMemo(() => {
     const map = {};
@@ -190,14 +201,37 @@ function InvoicesContent() {
           title={invoiceTermPlural}
           description={`${invoiceTermPlural} created for your ${clientTermPluralLower}. Add from here or from a ${clientTermSingularLower}'s Documents section.`}
           actions={
-            <PrimaryButton
-              type="button"
-              className="gap-2"
-              onClick={() => router.push('/dashboard/invoices/new')}
-            >
-              <HiPlus className="w-5 h-5" />
-              Create {invoiceTermSingularLower}
-            </PrimaryButton>
+            <>
+              <PrimaryButton
+                type="button"
+                className="gap-2"
+                onClick={() => router.push('/dashboard/invoices/new')}
+              >
+                <HiPlus className="w-5 h-5" />
+                Create {invoiceTermSingularLower}
+              </PrimaryButton>
+
+              {showPayoutInfo && (
+                <div className="relative flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                  <div classNAme="relative top-0 right-0">
+                    <HiOutlineInformationCircle className="absolute top-1 right-1 size-4 text-gray-500 dark:text-gray-300" />
+                  </div>
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xl font-bold text-primary-500 dark:text-primary-400">{formatCurrency(payoutTotal, defaultCurrency)}</p>
+                    </div>
+                    <SecondaryButton
+                      type="button"
+                      className="gap-2"
+                      size="mini"
+                      onClick={() => alert('Coming soon!')}
+                    >
+                      Pay out now
+                    </SecondaryButton>
+                  </div>
+                </div>
+              )}
+            </>
           }
         />
 

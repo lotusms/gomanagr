@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AttachmentLogCards from '@/components/clients/add-client/AttachmentLogCards';
 
@@ -124,5 +124,59 @@ describe('AttachmentLogCards', () => {
     ];
     render(<AttachmentLogCards attachments={withUrlOnly} onSelect={() => {}} onDelete={() => {}} />);
     expect(screen.getByText('Report.pdf')).toBeInTheDocument();
+  });
+
+  it('falls back to Unnamed file when file_url is invalid and throws in URL parse', () => {
+    const invalidUrl = [
+      { id: 'a1', file_name: '', file_url: 'http://', file_type: 'pdf' },
+    ];
+    render(<AttachmentLogCards attachments={invalidUrl} onSelect={() => {}} onDelete={() => {}} />);
+    expect(screen.getByText('Unnamed file')).toBeInTheDocument();
+  });
+
+  it('uses file_url as string when it does not start with http', () => {
+    const withRelativeUrl = [
+      { id: 'a1', file_name: '', file_url: '/uploads/doc.pdf', file_type: 'PDF' },
+    ];
+    render(<AttachmentLogCards attachments={withRelativeUrl} onSelect={() => {}} onDelete={() => {}} />);
+    expect(screen.getByText('/uploads/doc.pdf')).toBeInTheDocument();
+  });
+
+  it('calls onSelect when card receives Enter key', () => {
+    const onSelect = jest.fn();
+    render(<AttachmentLogCards attachments={attachments} onSelect={onSelect} onDelete={() => {}} />);
+    const card = screen.getByText('contract-signed.pdf').closest('[role="button"]');
+    fireEvent.keyDown(card, { key: 'Enter', preventDefault: jest.fn() });
+    expect(onSelect).toHaveBeenCalledWith('a1');
+  });
+
+  it('calls onSelect when card receives Space key', () => {
+    const onSelect = jest.fn();
+    render(<AttachmentLogCards attachments={attachments} onSelect={onSelect} onDelete={() => {}} />);
+    const card = screen.getByText('logo.png').closest('[role="button"]');
+    fireEvent.keyDown(card, { key: ' ', preventDefault: jest.fn() });
+    expect(onSelect).toHaveBeenCalledWith('a2');
+  });
+
+  it('uses contractTermSingularLower in linked contract label', () => {
+    const withContract = [
+      {
+        id: 'a1',
+        file_name: 'x.pdf',
+        linked_contract_id: 'cid-1',
+        linked_contract: { contract_number: '', contract_title: '' },
+      },
+    ];
+    render(
+      <AttachmentLogCards
+        attachments={withContract}
+        onSelect={() => {}}
+        onDelete={() => {}}
+        clientId="c1"
+        contractTermSingularLower="agreement"
+      />
+    );
+    const link = screen.getByRole('link', { name: /View agreement/i });
+    expect(link).toBeInTheDocument();
   });
 });

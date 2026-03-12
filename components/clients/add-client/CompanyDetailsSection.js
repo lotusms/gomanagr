@@ -4,7 +4,7 @@ import { AddressAutocomplete, PhoneNumberInput } from '@/components/ui';
 import Dropdown from '@/components/ui/Dropdown';
 import { INDUSTRIES, COMPANY_SIZES, TIMEZONES, LANGUAGES } from '../clientProfileConstants';
 
-function normalizeCountryValue(value) {
+export function normalizeCountryValue(value) {
   if (!value) return '';
   if (value.length === 2 && /^[A-Z]{2}$/i.test(value)) return value.toUpperCase();
   return value;

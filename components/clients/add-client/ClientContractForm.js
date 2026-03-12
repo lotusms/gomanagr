@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, forwardRef } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
@@ -36,7 +36,7 @@ const CONTRACT_TYPE_OPTIONS = [
   { value: 'vendor_agreement', label: 'Vendor agreement' },
 ];
 
-export default function ClientContractForm({
+const ClientContractForm = forwardRef(function ClientContractForm({
   initial = {},
   clientId: clientIdProp,
   userId,
@@ -48,7 +48,8 @@ export default function ClientContractForm({
   industry,
   onSuccess,
   onCancel,
-}) {
+  onHasChangesChange,
+}, ref) {
   const clientTermPlural = getTermForIndustry(industry, 'client');
   const clientTermSingular = getTermSingular(clientTermPlural) || 'Client';
   const clientTermSingularLower = clientTermSingular.toLowerCase();
@@ -102,6 +103,9 @@ export default function ClientContractForm({
   const [hasChanges, setHasChanges] = useState(false);
   const markDirty = useCallback(() => setHasChanges(true), []);
   const { handleCancel, discardDialog } = useCancelWithConfirm(onCancel, hasChanges);
+  useEffect(() => {
+    onHasChangesChange?.(hasChanges);
+  }, [hasChanges, onHasChangesChange]);
 
   const clientId = showClientDropdown ? selectedClientId : clientIdProp;
   const effectiveClientId = (clientId && String(clientId).trim()) || null;
@@ -329,7 +333,7 @@ export default function ClientContractForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={ref} onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -507,4 +511,5 @@ export default function ClientContractForm({
       {discardDialog}
     </form>
   );
-}
+});
+export default ClientContractForm;

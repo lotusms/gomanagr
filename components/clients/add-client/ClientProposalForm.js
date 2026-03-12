@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, forwardRef } from 'react';
 import InputField from '@/components/ui/InputField';
 import TextareaField from '@/components/ui/TextareaField';
 import DateField from '@/components/ui/DateField';
@@ -51,7 +51,7 @@ const STATUS_OPTIONS = [
   { value: 'expired', label: 'Expired' },
 ];
 
-export default function ClientProposalForm({
+const ClientProposalForm = forwardRef(function ClientProposalForm({
   initial = {},
   clientId: clientIdProp,
   userId,
@@ -63,7 +63,8 @@ export default function ClientProposalForm({
   industry,
   onSuccess,
   onCancel,
-}) {
+  onHasChangesChange,
+}, ref) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [selectedClientId, setSelectedClientId] = useState(
@@ -106,6 +107,9 @@ export default function ClientProposalForm({
   const selectProjectPlaceholder = `Select ${(projectTermSingular || 'project').toLowerCase()}`;
   const [teamMembers, setTeamMembers] = useState([]);
   const [hasUserEdited, setHasUserEdited] = useState(false);
+  useEffect(() => {
+    onHasChangesChange?.(hasUserEdited);
+  }, [hasUserEdited, onHasChangesChange]);
   const toast = useToast();
 
   const everSent = Boolean(initial.ever_sent);
@@ -396,7 +400,7 @@ export default function ClientProposalForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={ref} onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -545,4 +549,5 @@ export default function ClientProposalForm({
       />
     </form>
   );
-}
+});
+export default ClientProposalForm;

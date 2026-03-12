@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, forwardRef } from 'react';
 import InputField from '@/components/ui/InputField';
 import DateField from '@/components/ui/DateField';
 import Dropdown from '@/components/ui/Dropdown';
@@ -71,7 +71,7 @@ const PAYMENT_TERMS_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-export default function ClientInvoiceForm({
+const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
   initial = {},
   clientId: clientIdProp,
   userId,
@@ -83,7 +83,8 @@ export default function ClientInvoiceForm({
   clientEmail: clientEmailProp = '',
   onSuccess,
   onCancel,
-}) {
+  onHasChangesChange,
+}, ref) {
   const projectTermPlural = getTermForIndustry(industry, 'project');
   const projectTermSingular = getTermSingular(projectTermPlural) || 'project';
   const projectTermSingularLower = projectTermSingular.toLowerCase();
@@ -160,6 +161,9 @@ export default function ClientInvoiceForm({
   const [services, setServices] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [hasUserEdited, setHasUserEdited] = useState(false);
+  useEffect(() => {
+    onHasChangesChange?.(hasUserEdited);
+  }, [hasUserEdited, onHasChangesChange]);
   const [hasBeenSentThisSession, setHasBeenSentThisSession] = useState(false);
 
   const everSent = Boolean(initial.ever_sent) || hasBeenSentThisSession;
@@ -608,7 +612,7 @@ export default function ClientInvoiceForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={ref} onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
           {error}
@@ -815,4 +819,5 @@ export default function ClientInvoiceForm({
       />
     </form>
   );
-}
+});
+export default ClientInvoiceForm;

@@ -1,13 +1,13 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount } from '@/services/userService';
-import { PageHeader } from '@/components/ui';
-import { SecondaryButton } from '@/components/ui/buttons';
+import { PageHeader, UnsavedChangesPaginationDialog } from '@/components/ui';
+import { SecondaryButton, IconButton } from '@/components/ui/buttons';
 import Link from 'next/link';
-import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
+import { HiArrowLeft, HiChevronLeft, HiChevronRight, HiDocumentText } from 'react-icons/hi';
 import ClientProjectForm from '@/components/clients/add-client/ClientProjectForm';
 import { getProjectTermForIndustry, getProjectTermSingular, getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
@@ -21,6 +21,13 @@ export default function EditProjectPage() {
   const [userAccount, setUserAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [formHasChanges, setFormHasChanges] = useState(false);
+  const [ids, setIds] = useState([]);
+  const [pendingNavigateToId, setPendingNavigateToId] = useState(null);
+  const [paginationDialogOpen, setPaginationDialogOpen] = useState(false);
+  const [paginationTargetId, setPaginationTargetId] = useState(null);
+  const [paginationDirection, setPaginationDirection] = useState('next');
+  const formRef = useRef(null);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const projectTermPlural = getProjectTermForIndustry(accountIndustry);
@@ -69,7 +76,72 @@ export default function EditProjectPage() {
       .finally(() => setLoading(false));
   }, [orgReady, currentUser?.uid, projectId, organization?.id]);
 
+  useEffect(() => {
+    if (!orgReady || !currentUser?.uid) return;
+    fetch('/api/get-projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.uid,
+        organizationId: organization?.id ?? undefined,
+      }),
+    })
+      .then((res) => res.ok ? res.json() : { projects: [] })
+      .then((data) => setIds((data.projects || []).map((p) => p.id)))
+      .catch(() => setIds([]));
+  }, [orgReady, currentUser?.uid, organization?.id]);
+
+  const currentIndex = projectId ? ids.indexOf(projectId) : -1;
+  const prevId = currentIndex > 0 ? ids[currentIndex - 1] : null;
+  const nextId = currentIndex >= 0 && currentIndex < ids.length - 1 ? ids[currentIndex + 1] : null;
+  const editPath = (id) => `/dashboard/projects/${id}/edit`;
+
+  const handleSaveAndGoToPagination = useCallback(() => {
+    if (paginationTargetId) {
+      setPendingNavigateToId(paginationTargetId);
+      setPaginationDialogOpen(false);
+      setPaginationTargetId(null);
+      if (formRef.current && typeof formRef.current.requestSubmit === 'function') {
+        formRef.current.requestSubmit();
+      }
+    }
+  }, [paginationTargetId]);
+
+  const handleDiscardAndGoToPagination = useCallback(() => {
+    if (paginationTargetId) {
+      setPaginationDialogOpen(false);
+      setPaginationTargetId(null);
+      router.push(editPath(paginationTargetId));
+    }
+  }, [paginationTargetId, router]);
+
+  const openPaginationDialog = (direction, targetId) => {
+    setPaginationDirection(direction);
+    setPaginationTargetId(targetId);
+    setPaginationDialogOpen(true);
+  };
+
+  const goToPrev = () => {
+    if (!prevId) return;
+    if (formHasChanges) openPaginationDialog('previous', prevId);
+    else router.push(editPath(prevId));
+  };
+
+  const goToNext = () => {
+    if (!nextId) return;
+    if (formHasChanges) openPaginationDialog('next', nextId);
+    else router.push(editPath(nextId));
+  };
+
   const backUrl = '/dashboard/projects';
+  const handleSuccess = useCallback(() => {
+    if (pendingNavigateToId) {
+      router.push(editPath(pendingNavigateToId));
+      setPendingNavigateToId(null);
+    } else {
+      router.push(backUrl);
+    }
+  }, [pendingNavigateToId, router]);
 
   if (!currentUser?.uid || !projectId) return null;
 
@@ -141,16 +213,34 @@ export default function EditProjectPage() {
           title={`Edit ${projectTermSingularLower}`}
           description={`Update the details of this ${projectTermSingularLower}.`}
           actions={
-            <Link href={backUrl}>
-              <SecondaryButton type="button" className="gap-2">
-                <HiArrowLeft className="w-5 h-5" />
-                Back to {projectTermPlural?.toLowerCase() || 'projects'}
-              </SecondaryButton>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={backUrl}>
+                <SecondaryButton type="button" className="gap-2">
+                  <HiArrowLeft className="w-5 h-5" />
+                  Back to {projectTermPlural?.toLowerCase() || 'projects'}
+                </SecondaryButton>
+              </Link>
+              <div className="flex items-center border-l-2 border-primary-900/10 dark:border-primary-300/30 h-6 -ps-2"/>
+              <IconButton onClick={goToPrev} disabled={!prevId} aria-label={`Previous ${projectTermSingularLower}`} title={`Previous ${projectTermSingularLower}`}>
+                <HiChevronLeft className="w-5 h-5" />
+              </IconButton>
+              <IconButton onClick={goToNext} disabled={!nextId} aria-label={`Next ${projectTermSingularLower}`} title={`Next ${projectTermSingularLower}`}>
+                <HiChevronRight className="w-5 h-5" />
+              </IconButton>
+            </div>
           }
+        />
+        <UnsavedChangesPaginationDialog
+          isOpen={paginationDialogOpen}
+          onClose={() => { setPaginationDialogOpen(false); setPaginationTargetId(null); }}
+          onSaveAndGo={handleSaveAndGoToPagination}
+          onDiscardAndGo={handleDiscardAndGoToPagination}
+          direction={paginationDirection}
+          itemNameSingular={projectTermSingularLower}
         />
         <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
           <ClientProjectForm
+            ref={formRef}
             initial={project}
             clientId={project.client_id}
             userId={currentUser.uid}
@@ -158,8 +248,9 @@ export default function EditProjectPage() {
             projectId={projectId}
             industry={accountIndustry}
             showClientDropdown={true}
-            onSuccess={() => router.push(backUrl)}
+            onSuccess={handleSuccess}
             onCancel={() => router.push(backUrl)}
+            onHasChangesChange={setFormHasChanges}
           />
         </div>
       </div>

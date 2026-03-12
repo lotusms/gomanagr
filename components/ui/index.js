@@ -9,6 +9,7 @@ export { default as DateField } from './DateField';
 export { default as DocumentFormHeader } from './DocumentFormHeader';
 export { default as DateTimeField } from './DateTimeField';
 export { default as DiscardChangesDialog, useCancelWithConfirm } from './DiscardChangesDialog';
+export { default as UnsavedChangesPaginationDialog } from './UnsavedChangesPaginationDialog';
 export { default as Drawer } from './Drawer';
 export { default as Dropdown } from './Dropdown';
 export { default as EmptyState } from './EmptyState';

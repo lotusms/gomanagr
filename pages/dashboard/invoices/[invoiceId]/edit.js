@@ -4,10 +4,10 @@ import { useAuth } from '@/lib/AuthContext';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount } from '@/services/userService';
-import { PageHeader } from '@/components/ui';
-import { SecondaryButton } from '@/components/ui/buttons';
+import { PageHeader, UnsavedChangesPaginationDialog } from '@/components/ui';
+import { SecondaryButton, IconButton } from '@/components/ui/buttons';
 import Link from 'next/link';
-import { HiArrowLeft, HiDocumentText } from 'react-icons/hi';
+import { HiArrowLeft, HiChevronLeft, HiChevronRight, HiDocumentText } from 'react-icons/hi';
 import ClientInvoiceForm from '@/components/clients/add-client/ClientInvoiceForm';
 import InvoicePaymentSummary from '@/components/invoices/InvoicePaymentSummary';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
@@ -25,6 +25,13 @@ export default function EditInvoicePage() {
   const [clientName, setClientName] = useState('');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [formHasChanges, setFormHasChanges] = useState(false);
+  const [ids, setIds] = useState([]);
+  const [pendingNavigateToId, setPendingNavigateToId] = useState(null);
+  const [paginationDialogOpen, setPaginationDialogOpen] = useState(false);
+  const [paginationTargetId, setPaginationTargetId] = useState(null);
+  const [paginationDirection, setPaginationDirection] = useState('next');
+  const formRef = useRef(null);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermPluralLower = (getTermForIndustry(accountIndustry, 'client') || 'clients').toLowerCase();
@@ -159,7 +166,72 @@ export default function EditInvoicePage() {
     }
   }, [invoice?.client_id, currentUser?.uid, organization?.id]);
 
+  useEffect(() => {
+    if (!orgReady || !currentUser?.uid) return;
+    fetch('/api/get-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser.uid,
+        organizationId: organization?.id ?? undefined,
+      }),
+    })
+      .then((res) => res.ok ? res.json() : { invoices: [] })
+      .then((data) => setIds((data.invoices || []).map((i) => i.id)))
+      .catch(() => setIds([]));
+  }, [orgReady, currentUser?.uid, organization?.id]);
+
+  const currentIndex = invoiceId ? ids.indexOf(invoiceId) : -1;
+  const prevId = currentIndex > 0 ? ids[currentIndex - 1] : null;
+  const nextId = currentIndex >= 0 && currentIndex < ids.length - 1 ? ids[currentIndex + 1] : null;
+  const editPath = (id) => `/dashboard/invoices/${id}/edit`;
+
+  const handleSaveAndGoToPagination = useCallback(() => {
+    if (paginationTargetId) {
+      setPendingNavigateToId(paginationTargetId);
+      setPaginationDialogOpen(false);
+      setPaginationTargetId(null);
+      if (formRef.current && typeof formRef.current.requestSubmit === 'function') {
+        formRef.current.requestSubmit();
+      }
+    }
+  }, [paginationTargetId]);
+
+  const handleDiscardAndGoToPagination = useCallback(() => {
+    if (paginationTargetId) {
+      setPaginationDialogOpen(false);
+      setPaginationTargetId(null);
+      router.push(editPath(paginationTargetId));
+    }
+  }, [paginationTargetId, router]);
+
+  const openPaginationDialog = (direction, targetId) => {
+    setPaginationDirection(direction);
+    setPaginationTargetId(targetId);
+    setPaginationDialogOpen(true);
+  };
+
+  const goToPrev = () => {
+    if (!prevId) return;
+    if (formHasChanges) openPaginationDialog('previous', prevId);
+    else router.push(editPath(prevId));
+  };
+
+  const goToNext = () => {
+    if (!nextId) return;
+    if (formHasChanges) openPaginationDialog('next', nextId);
+    else router.push(editPath(nextId));
+  };
+
   const backUrl = '/dashboard/invoices';
+  const handleSuccess = useCallback(() => {
+    if (pendingNavigateToId) {
+      router.push(editPath(pendingNavigateToId));
+      setPendingNavigateToId(null);
+    } else {
+      router.push(backUrl);
+    }
+  }, [pendingNavigateToId, router]);
 
   if (!currentUser?.uid || !invoiceId) return null;
 
@@ -229,13 +301,30 @@ export default function EditInvoicePage() {
           title={`Edit ${invoiceTermSingular}`}
           description={`Update the details of this ${invoiceTermSingularLower}. You can change the linked ${clientTermSingularLower} if needed.`}
           actions={
-            <Link href={backUrl}>
-              <SecondaryButton type="button" className="gap-2">
-                <HiArrowLeft className="w-5 h-5" />
-                Back to {invoiceTermPluralLower}
-              </SecondaryButton>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href={backUrl}>
+                <SecondaryButton type="button" className="gap-2">
+                  <HiArrowLeft className="w-5 h-5" />
+                  Back to {invoiceTermPluralLower}
+                </SecondaryButton>
+              </Link>
+              <div className="flex items-center border-l-2 border-primary-900/10 dark:border-primary-300/30 h-6 -ps-2"/>
+              <IconButton onClick={goToPrev} disabled={!prevId} aria-label={`Previous ${invoiceTermSingularLower}`} title={`Previous ${invoiceTermSingularLower}`}>
+                <HiChevronLeft className="w-5 h-5" />
+              </IconButton>
+              <IconButton onClick={goToNext} disabled={!nextId} aria-label={`Next ${invoiceTermSingularLower}`} title={`Next ${invoiceTermSingularLower}`}>
+                <HiChevronRight className="w-5 h-5" />
+              </IconButton>
+            </div>
           }
+        />
+        <UnsavedChangesPaginationDialog
+          isOpen={paginationDialogOpen}
+          onClose={() => { setPaginationDialogOpen(false); setPaginationTargetId(null); }}
+          onSaveAndGo={handleSaveAndGoToPagination}
+          onDiscardAndGo={handleDiscardAndGoToPagination}
+          direction={paginationDirection}
+          itemNameSingular={invoiceTermSingularLower}
         />
         <div className="space-y-6">
           <InvoicePaymentSummary
@@ -250,6 +339,7 @@ export default function EditInvoicePage() {
           />
           <div className="rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800/40 p-6 shadow-sm">
             <ClientInvoiceForm
+              ref={formRef}
               initial={invoice}
               clientId={invoice.client_id}
               userId={currentUser.uid}
@@ -258,8 +348,9 @@ export default function EditInvoicePage() {
               industry={accountIndustry}
               defaultCurrency={defaultCurrency}
               showClientDropdown={true}
-              onSuccess={() => router.push(backUrl)}
+              onSuccess={handleSuccess}
               onCancel={() => router.push(backUrl)}
+              onHasChangesChange={setFormHasChanges}
             />
           </div>
         </div>

@@ -11,6 +11,8 @@
 import Stripe from 'stripe';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
+import { buildInvoiceDocumentPayload } from '@/lib/buildDocumentPayload';
 
 async function sendEmail(to, subject, html) {
   const smtpHost = process.env.SMTP_HOST;
@@ -61,19 +63,12 @@ try {
   supabaseAdmin = null;
 }
 
-async function findSucceededPaymentIntentForInvoice(stripe, invoiceId, invoiceRow) {
-  const piId = invoiceRow?.stripe_payment_intent_id && String(invoiceRow.stripe_payment_intent_id).trim();
-  if (piId) {
-    try {
-      const pi = await stripe.paymentIntents.retrieve(piId);
-      if (pi.status === 'succeeded') return pi;
-    } catch (_) {}
-  }
+/** List all succeeded PaymentIntents for this invoice (multiple partial payments). */
+async function listSucceededPaymentIntentsForInvoice(stripe, invoiceId) {
   const list = await stripe.paymentIntents.list({ limit: 100 });
-  const match = list.data.find(
+  return list.data.filter(
     (pi) => pi.metadata?.invoice_id === invoiceId && pi.status === 'succeeded'
   );
-  return match || null;
 }
 
 export default async function handler(req, res) {
@@ -149,21 +144,56 @@ export default async function handler(req, res) {
 
   try {
     const stripe = new Stripe(secretKey);
-    const pi = await findSucceededPaymentIntentForInvoice(stripe, invoiceId, invoice);
-    if (!pi) {
+    const succeededPIs = await listSucceededPaymentIntentsForInvoice(stripe, invoiceId);
+    if (succeededPIs.length === 0) {
       return res.status(200).json({ ok: true, synced: false });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    // Sum all succeeded payments for this invoice (multiple partial payments) and use latest payment date.
+    let totalPaidCents = 0;
+    let latestCreated = 0;
+    for (const pi of succeededPIs) {
+      totalPaidCents += pi.amount ?? 0;
+      if (pi.created && pi.created > latestCreated) latestCreated = pi.created;
+    }
+    const totalPaid = totalPaidCents / 100;
+    if (totalPaid <= 0) {
+      return res.status(200).json({ ok: true, synced: false });
+    }
+
+    const { data: fullInvoice } = await supabaseAdmin
+      .from('client_invoices')
+      .select('outstanding_balance, total')
+      .eq('id', invoiceId)
+      .single();
+
+    const total = parseFloat(String(fullInvoice?.total ?? 0).replace(/[^\d.-]/g, '')) || 0;
+    const newBalance = Math.max(0, total - totalPaid);
+    const isFullyPaid = newBalance <= 0;
+    // paid_date = date of the most recent succeeded payment (so "date paid" reflects last payment).
+    const paidDate = latestCreated
+      ? new Date(latestCreated * 1000).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    const currentBalance = fullInvoice?.outstanding_balance != null && String(fullInvoice.outstanding_balance).trim() !== ''
+      ? parseFloat(String(fullInvoice.outstanding_balance).replace(/[^\d.-]/g, '')) || 0
+      : total;
+    const currentPaid = total - currentBalance;
+    // Skip update if our computed state matches (idempotent).
+    if (Math.abs(currentBalance - newBalance) < 0.01 && invoice.status === (isFullyPaid ? 'paid' : 'partially_paid')) {
+      return res.status(200).json({ ok: true, alreadySynced: true });
+    }
+
     const updatePayload = {
-      status: 'paid',
-      outstanding_balance: '0',
-      paid_date: today,
+      status: isFullyPaid ? 'paid' : 'partially_paid',
+      outstanding_balance: isFullyPaid ? '0' : newBalance.toFixed(2),
+      paid_date: paidDate,
       updated_at: new Date().toISOString(),
     };
-    if (pi.id !== (invoice.stripe_payment_intent_id || '').trim()) {
-      updatePayload.stripe_payment_intent_id = pi.id;
-    }
+    // Keep the most recent PI id on the invoice for reference (last one in list by created).
+    const latestPi = succeededPIs.reduce((a, b) => ((a.created ?? 0) >= (b.created ?? 0) ? a : b));
+    updatePayload.stripe_payment_intent_id = latestPi.id;
+
     const { error: updateError } = await supabaseAdmin
       .from('client_invoices')
       .update(updatePayload)
@@ -174,26 +204,20 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: 'Failed to update invoice' });
     }
 
-    console.log('[sync-invoice-paid] Supabase client_invoices updated to paid:', invoiceId);
+    console.log('[sync-invoice-paid] Supabase client_invoices updated (total paid from Stripe):', invoiceId, totalPaid);
 
     const { data: invoiceForEmail } = await supabaseAdmin
       .from('client_invoices')
-      .select('invoice_number, invoice_title, total, user_id, organization_id, client_snapshot')
+      .select('invoice_number, invoice_title, total, user_id, organization_id, client_id, client_snapshot')
       .eq('id', invoiceId)
       .single();
 
     if (invoiceForEmail) {
-      const amountStr = formatMoney(invoiceForEmail.total, 'USD');
+      const amountStr = formatMoney(totalPaid, 'USD');
       const invNum = invoiceForEmail.invoice_number || invoiceId;
       const invTitle = invoiceForEmail.invoice_title || 'Invoice';
       const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
 
-      const receiptHtml = `
-        <p>Your payment for <strong>${invTitle}</strong> (Invoice #${invNum}) has been received.</p>
-        <p><strong>Amount paid:</strong> ${amountStr}</p>
-        <p>Thank you for your business.</p>
-        <p>— ${appName}</p>
-      `;
       const notificationHtml = `
         <p>A payment has been received for an invoice.</p>
         <p><strong>Invoice:</strong> ${invTitle} (#${invNum})</p>
@@ -202,10 +226,105 @@ export default async function handler(req, res) {
       `;
 
       let customerEmail = invoiceForEmail.client_snapshot?.email && String(invoiceForEmail.client_snapshot.email).trim();
+      if (!customerEmail && invoiceForEmail.client_id && invoiceForEmail.user_id) {
+        const { data: creatorProfile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('clients')
+          .eq('id', invoiceForEmail.user_id)
+          .maybeSingle();
+        const clients = Array.isArray(creatorProfile?.clients) ? creatorProfile.clients : [];
+        const client = clients.find((c) => c.id === invoiceForEmail.client_id);
+        if (client?.email) customerEmail = String(client.email).trim();
+      }
       if (customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
         try {
-          await sendEmail(customerEmail, `Payment receipt – Invoice #${invNum}`, receiptHtml);
-          console.log('[sync-invoice-paid] Receipt email sent to:', customerEmail);
+          const { data: fullInvoice } = await supabaseAdmin
+            .from('client_invoices')
+            .select('*')
+            .eq('id', invoiceId)
+            .single();
+          if (fullInvoice) {
+            const { data: profile } = await supabaseAdmin
+              .from('user_profiles')
+              .select('company_name, company_logo, clients, profile')
+              .eq('id', fullInvoice.user_id)
+              .maybeSingle();
+            const profileJson = profile?.profile && typeof profile.profile === 'object' ? profile.profile : {};
+            let companyName = appName;
+            let companyLogoUrl = '';
+            let orgName = '';
+            let orgLogoUrl = '';
+            let orgAddressLines = [];
+            let orgPhone = '';
+            let orgWebsite = '';
+            if (profile?.company_name) companyName = String(profile.company_name).trim();
+            if (profile?.company_logo) companyLogoUrl = String(profile.company_logo).trim();
+            if (fullInvoice.organization_id) {
+              const { data: org } = await supabaseAdmin
+                .from('organizations')
+                .select('name, logo_url, address_line_1, address_line_2, city, state, postal_code, country, phone, website')
+                .eq('id', fullInvoice.organization_id)
+                .maybeSingle();
+              if (org?.name) orgName = String(org.name).trim();
+              if (org?.logo_url) orgLogoUrl = String(org.logo_url).trim();
+              if (org?.address_line_1?.trim()) {
+                orgAddressLines = [org.address_line_1.trim()];
+                if (org.address_line_2?.trim()) orgAddressLines.push(org.address_line_2.trim());
+                const cityStateZip = [org.city, org.state, org.postal_code].filter(Boolean).map((s) => String(s).trim()).join(', ');
+                if (cityStateZip) orgAddressLines.push(cityStateZip);
+                if (org.country?.trim()) orgAddressLines.push(org.country.trim());
+              }
+              if (org?.phone?.trim()) orgPhone = String(org.phone).trim();
+              if (org?.website?.trim()) orgWebsite = String(org.website).trim();
+            }
+            const displayName = orgName || companyName;
+            const displayLogo = orgLogoUrl || companyLogoUrl;
+            const profileAddressLines = Array.isArray(profileJson.companyAddressLines) ? profileJson.companyAddressLines.filter(Boolean) : (profileJson.companyAddress ? [String(profileJson.companyAddress).trim()].filter(Boolean) : []);
+            const companyAddressLines = orgAddressLines.length > 0 ? orgAddressLines : profileAddressLines;
+            let clientName = (fullInvoice.client_snapshot?.name && String(fullInvoice.client_snapshot.name).trim()) || 'Customer';
+            let clientAddressLines = [];
+            if (fullInvoice.client_id && profile?.clients && Array.isArray(profile.clients)) {
+              const client = profile.clients.find((c) => c.id === fullInvoice.client_id);
+              if (client) {
+                clientName = (client.name || client.companyName || '').trim() || (client.firstName || client.lastName ? [client.firstName, client.lastName].filter(Boolean).join(' ') : '') || clientName;
+                const billing = client.billingAddress || {};
+                const companyAddr = client.companyAddress || {};
+                const line1 = billing.address1 || billing.address || companyAddr.address1 || companyAddr.address || '';
+                const line2 = billing.address2 || companyAddr.address2 || '';
+                clientAddressLines = [line1, line2].filter(Boolean);
+              }
+            }
+            if (fullInvoice.client_snapshot?.addressLines && Array.isArray(fullInvoice.client_snapshot.addressLines)) {
+              clientAddressLines = fullInvoice.client_snapshot.addressLines.filter(Boolean);
+            }
+            const docPayload = buildInvoiceDocumentPayload(fullInvoice);
+            docPayload.amountDue = newBalance;
+            docPayload.paidDate = paidDate;
+            const receiptHtml = renderDocumentToHtml({
+              type: 'receipt',
+              company: {
+                name: displayName,
+                ...(displayLogo && { logoUrl: displayLogo }),
+                ...(companyAddressLines.length > 0 && { addressLines: companyAddressLines }),
+                ...(orgPhone && { phone: orgPhone }),
+                ...(orgWebsite && { website: orgWebsite }),
+              },
+              client: {
+                name: clientName,
+                email: customerEmail,
+                ...(clientAddressLines.length > 0 && { addressLines: clientAddressLines }),
+              },
+              document: docPayload,
+              currency: 'USD',
+              amountPaid: totalPaid,
+            });
+            await sendEmail(customerEmail, `Payment receipt – Receipt #${invNum}`, receiptHtml);
+            console.log('[sync-invoice-paid] Receipt email sent to client:', customerEmail);
+          } else {
+            const fallbackReceiptHtml = `<p>Your payment for <strong>${invTitle}</strong> (Receipt #${invNum}) has been received.</p><p><strong>Amount paid:</strong> ${amountStr}</p><p>Thank you for your business.</p><p>— ${appName}</p>`;
+            await sendEmail(customerEmail, `Payment receipt – Receipt #${invNum}`, fallbackReceiptHtml);
+            console.log('[sync-invoice-paid] Receipt email (fallback) sent to client:', customerEmail);
+          }
         } catch (e) {
           console.error('[sync-invoice-paid] Failed to send receipt to customer:', e.message);
         }
@@ -213,41 +332,46 @@ export default async function handler(req, res) {
         console.warn('[sync-invoice-paid] No customer email for receipt (invoice', invoiceId, ')');
       }
 
-      let ownerEmail = null;
+      const adminEmails = new Set();
       if (invoiceForEmail.organization_id) {
-        const { data: superadmin } = await supabaseAdmin
+        const { data: orgAdmins } = await supabaseAdmin
           .from('org_members')
           .select('user_id')
           .eq('organization_id', invoiceForEmail.organization_id)
-          .eq('role', 'superadmin')
-          .limit(1)
-          .maybeSingle();
-        if (superadmin?.user_id) {
-          const { data: profile } = await supabaseAdmin
+          .in('role', ['superadmin', 'admin']);
+        const userIds = (orgAdmins || []).map((r) => r.user_id).filter(Boolean);
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabaseAdmin
             .from('user_profiles')
             .select('email')
-            .eq('id', superadmin.user_id)
-            .maybeSingle();
-          if (profile?.email) ownerEmail = profile.email.trim();
+            .in('id', userIds);
+          (profiles || []).forEach((p) => {
+            if (p?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(p.email).trim())) {
+              adminEmails.add(String(p.email).trim());
+            }
+          });
         }
       }
-      if (!ownerEmail && invoiceForEmail.user_id) {
+      if (adminEmails.size === 0 && invoiceForEmail.user_id) {
         const { data: profile } = await supabaseAdmin
           .from('user_profiles')
           .select('email')
           .eq('id', invoiceForEmail.user_id)
           .maybeSingle();
-        if (profile?.email) ownerEmail = profile.email.trim();
-      }
-      if (ownerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
-        try {
-          await sendEmail(ownerEmail, `Payment received – Invoice #${invNum} (${amountStr})`, notificationHtml);
-          console.log('[sync-invoice-paid] Payment notification sent to owner/superadmin:', ownerEmail);
-        } catch (e) {
-          console.error('[sync-invoice-paid] Failed to send payment notification to owner:', e.message);
+        if (profile?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(profile.email).trim())) {
+          adminEmails.add(String(profile.email).trim());
         }
-      } else {
-        console.warn('[sync-invoice-paid] No owner/superadmin email for notification (invoice', invoiceId, ')');
+      }
+      for (const adminEmail of adminEmails) {
+        try {
+          await sendEmail(adminEmail, `Payment received – Invoice #${invNum} (${amountStr})`, notificationHtml);
+          console.log('[sync-invoice-paid] Payment notification sent to org admin:', adminEmail);
+        } catch (e) {
+          console.error('[sync-invoice-paid] Failed to send payment notification to', adminEmail, e.message);
+        }
+      }
+      if (adminEmails.size === 0) {
+        console.warn('[sync-invoice-paid] No org admin or owner email for notification (invoice', invoiceId, ')');
       }
     }
 

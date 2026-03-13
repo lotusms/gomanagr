@@ -42,17 +42,21 @@ const cellStyle = {
   fontSize: '10pt',
 };
 
-export default function ProposalInvoiceDocument({ type, documentTypeLabel, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services', payUrl }) {
+export default function ProposalInvoiceDocument({ type, documentTypeLabel, company = {}, client = {}, document: doc = {}, currency = 'USD', lineItemsSectionLabel = 'Services', payUrl, amountPaid }) {
   const isProposal = type === 'proposal';
-  const title = isProposal ? (documentTypeLabel || 'Proposal') : (documentTypeLabel || 'Invoice');
+  const isReceipt = type === 'receipt';
+  const docLabel = isReceipt ? 'Receipt' : (isProposal ? (documentTypeLabel || 'Proposal') : (documentTypeLabel || 'Invoice'));
+  const title = isReceipt ? 'Receipt' : (isProposal ? (documentTypeLabel || 'Proposal') : (documentTypeLabel || 'Invoice'));
   const lineItems = Array.isArray(doc.lineItems) ? doc.lineItems : [];
   const subtotal = Number(doc.subtotal) || 0;
   const taxNum = Number(doc.tax) || 0;
   const discountNum = Number(doc.discount) || 0;
   const total = Number(doc.total) ?? (subtotal - discountNum + taxNum);
+  const amountDueNum = doc.amountDue != null ? Number(doc.amountDue) : total;
   const addressLines = Array.isArray(company.addressLines) ? company.addressLines : (company.address ? [company.address] : []);
   const clientAddressLines = Array.isArray(client.addressLines) ? client.addressLines.filter(Boolean) : [];
   const clientAddressSingle = clientAddressLines.length === 0 && client.address ? client.address : null;
+  const showPaidStamp = isReceipt && amountDueNum === 0;
 
   const wrapperStyle = {
     width: '8.5in',
@@ -70,6 +74,7 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
     fontSize: '11pt',
     color: TEXT_COLOR,
     lineHeight: 1.4,
+    position: 'relative',
   };
 
   const headerStyle = {
@@ -175,6 +180,24 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
 
   return (
     <div style={wrapperStyle}>
+      {showPaidStamp && (
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%) rotate(-18deg)',
+            fontSize: '72pt',
+            fontWeight: 700,
+            color: 'rgba(34, 197, 94, 0.28)',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            letterSpacing: '0.05em',
+          }}
+        >
+          PAID
+        </div>
+      )}
       <header style={headerStyle}>
         <div style={companyColumnStyle}>
           {company.logoUrl && (
@@ -217,7 +240,7 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
         </div>
         <div style={metaStyle}>
           <div style={{ marginBottom: '4px' }}>
-            <strong>{isProposal ? `${documentTypeLabel || 'Proposal'} number:` : `${documentTypeLabel || 'Invoice'} number:`}</strong> {doc.number || '—'}
+            <strong>{docLabel} number:</strong> {doc.number || '—'}
           </div>
           {isProposal && (
             <>
@@ -232,19 +255,39 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
               )}
             </>
           )}
-          {!isProposal && (
+          {!isProposal && !isReceipt && (
             <>
               {doc.dateIssued && (
-                <div style={{ marginBottom: '2px' }}><strong>{documentTypeLabel || 'Invoice'} date:</strong> {formatDate(doc.dateIssued)}</div>
+                <div style={{ marginBottom: '2px' }}><strong>{docLabel} date:</strong> {formatDate(doc.dateIssued)}</div>
               )}
               {doc.dueDate && (
                 <div style={{ marginBottom: '2px' }}><strong>Payment due:</strong> {formatDate(doc.dueDate)}</div>
               )}
             </>
           )}
-          <div style={{ marginTop: '8px' }}>
-            <strong>Amount due ({currency}):</strong> {formatMoney(doc.amountDue ?? total, currency)}
-          </div>
+          {isReceipt && (
+            <>
+              {doc.dateIssued && (
+                <div style={{ marginBottom: '2px' }}><strong>Receipt date:</strong> {formatDate(doc.dateIssued)}</div>
+              )}
+              {doc.dueDate && (
+                <div style={{ marginBottom: '2px' }}><strong>Payment due:</strong> {formatDate(doc.dueDate)}</div>
+              )}
+              {amountPaid != null && Number(amountPaid) >= 0 && (
+                <div style={{ marginTop: '6px' }}>
+                  <strong>Amount paid ({currency}):</strong> {formatMoney(amountPaid, currency)}
+                </div>
+              )}
+              <div style={{ marginTop: '4px' }}>
+                <strong>Remaining balance ({currency}):</strong> {formatMoney(doc.amountDue ?? 0, currency)}
+              </div>
+            </>
+          )}
+          {!isProposal && !isReceipt && (
+            <div style={{ marginTop: '8px' }}>
+              <strong>Amount due ({currency}):</strong> {formatMoney(doc.amountDue ?? total, currency)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -304,8 +347,8 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
         </>
       )}
 
-      {/* Pay now CTA: email only (payUrl is only passed when rendering for invoice email, not for print/preview) */}
-      {!isProposal && payUrl && (doc.amountDue == null || Number(doc.amountDue) > 0) && (
+      {/* Pay now CTA: email only (payUrl is only passed when rendering for invoice email, not for print/preview). Never show for receipt. */}
+      {!isProposal && !isReceipt && payUrl && (doc.amountDue == null || Number(doc.amountDue) > 0) && (
         <div style={{ marginTop: '24px', padding: '16px', textAlign: 'center', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
           <p style={{ margin: '0 0 12px 0', fontSize: '12pt', fontWeight: 600, color: TEXT_COLOR }}>
             Pay this invoice online
@@ -332,10 +375,10 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
         </div>
       )}
 
-      {!isProposal && (doc.paymentMethod || doc.paidDate) && (
+      {(!isProposal || isReceipt) && (doc.paymentMethod || doc.paidDate || (isReceipt && amountDueNum === 0)) && (
         <div style={{ marginTop: '16px', textAlign: 'right', fontSize: '10pt', color: MUTED_COLOR }}>
           {doc.paidDate && <div>Payment on {formatDate(doc.paidDate)}{doc.paymentMethod ? ` using ${doc.paymentMethod}` : ''}</div>}
-          {doc.amountDue != null && Number(doc.amountDue) === 0 && <div><strong>Amount due: {formatMoney(0, currency)}</strong></div>}
+          {(isReceipt || (doc.amountDue != null && Number(doc.amountDue) === 0)) && <div><strong>Amount due: {formatMoney(amountDueNum, currency)}</strong></div>}
         </div>
       )}
     </div>

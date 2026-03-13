@@ -5,7 +5,7 @@
  * Balance due remains the amount owed until payment processing updates it.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   HiCheckCircle,
   HiClock,
@@ -20,8 +20,11 @@ import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import * as Dialog from '@radix-ui/react-dialog';
+import { HiX } from 'react-icons/hi';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import SendInvoiceDialog from './SendInvoiceDialog';
+import InputField from '@/components/ui/InputField';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 function parseNum(v) {
@@ -50,6 +53,12 @@ export default function InvoicePaymentSummary({
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [sendDialogReminder, setSendDialogReminder] = useState(false);
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [correctBalanceDialogOpen, setCorrectBalanceDialogOpen] = useState(false);
+  const [correctBalanceValue, setCorrectBalanceValue] = useState('');
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [receiptEmail, setReceiptEmail] = useState('');
+  const [receiptSending, setReceiptSending] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const status = (invoice?.status || 'draft').toLowerCase();
@@ -114,9 +123,86 @@ export default function InvoicePaymentSummary({
     }
   };
 
+  useEffect(() => {
+    if (correctBalanceDialogOpen) {
+      setCorrectBalanceValue(balanceDue === total ? String(total) : String(balanceDue));
+    }
+  }, [correctBalanceDialogOpen, balanceDue, total]);
+
+  const handleCorrectBalanceApply = async () => {
+    if (!userId || !invoice?.id) return;
+    const num = parseNum(correctBalanceValue);
+    if (num < 0 || num > total) return;
+    try {
+      const res = await fetch('/api/undo-invoice-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          invoiceId: invoice.id,
+          organizationId: organizationId || undefined,
+          balanceDue: num,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update balance');
+      }
+      setCorrectBalanceDialogOpen(false);
+      onInvoiceUpdated?.();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const canCorrectBalance = everSent && status !== 'void' && total > 0;
+
   const canSend = status !== 'void';
-  const isPaid = status === 'paid' || status === 'partially_paid';
+  const isFullyPaid = status === 'paid';
+  const isPartiallyPaidOrPaid = status === 'partially_paid' || status === 'paid';
   const canVoid = status !== 'void';
+
+  useEffect(() => {
+    if (receiptDialogOpen) {
+      setReceiptEmail(clientEmail || '');
+      setReceiptError('');
+    }
+  }, [receiptDialogOpen, clientEmail]);
+
+  const handleSendReceipt = async () => {
+    const to = (receiptEmail || '').trim();
+    if (!to) {
+      setReceiptError('Enter the recipient email address.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      setReceiptError('Enter a valid email address.');
+      return;
+    }
+    if (!userId || !invoice?.id) return;
+    setReceiptError('');
+    setReceiptSending(true);
+    try {
+      const res = await fetch('/api/send-receipt-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          organizationId: organizationId || undefined,
+          invoiceId: invoice.id,
+          to,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to send receipt');
+      setReceiptDialogOpen(false);
+      onInvoiceUpdated?.();
+    } catch (err) {
+      setReceiptError(err.message || 'Failed to send receipt');
+    } finally {
+      setReceiptSending(false);
+    }
+  };
 
   // Paid: light green bg + darker green border (like receipt/success). Partially paid: amber. Overdue: red. Draft/sent: blue. Void: gray.
   const cardTheme =
@@ -213,9 +299,18 @@ export default function InvoicePaymentSummary({
                 Void / Refund
               </SecondaryButton>
             )}
-            {canSend && (
+            {canCorrectBalance && (
+              <SecondaryButton
+                type="button"
+                className="gap-2 px-4 py-1.5 min-w-0 text-sm"
+                onClick={() => setCorrectBalanceDialogOpen(true)}
+              >
+                Correct balance due
+              </SecondaryButton>
+            )}
+            {canSend && !isFullyPaid && (
               <>
-                {everSent && !isPaid && (
+                {everSent && (
                   <SecondaryButton
                     type="button"
                     className="gap-2 px-4 py-1.5 min-w-0 text-sm"
@@ -231,9 +326,19 @@ export default function InvoicePaymentSummary({
                   onClick={() => { setSendDialogReminder(false); setSendDialogOpen(true); }}
                 >
                   <HiMail className="w-4 h-4" />
-                  {isPaid ? `Email receipt` : everSent ? `Resend ${invoiceTermSingularLower}` : `Send ${invoiceTermSingularLower}`}
+                  Send {invoiceTermSingularLower}
                 </PrimaryButton>
               </>
+            )}
+            {isPartiallyPaidOrPaid && (
+              <PrimaryButton
+                type="button"
+                className="gap-2 px-4 py-1.5 min-w-0 text-sm"
+                onClick={() => setReceiptDialogOpen(true)}
+              >
+                <HiMail className="w-4 h-4" />
+                Email receipt
+              </PrimaryButton>
             )}
           </div>
         </div>
@@ -264,6 +369,98 @@ export default function InvoicePaymentSummary({
         confirmationWord="void"
         variant="danger"
       />
+
+      <Dialog.Root open={correctBalanceDialogOpen} onOpenChange={(open) => !open && setCorrectBalanceDialogOpen(false)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] data-[state=open]:animate-[fadeIn_150ms_ease-out] data-[state=closed]:animate-[fadeOut_150ms_ease-out]" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[201] w-full max-w-md p-0 focus:outline-none overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-center justify-between mb-4">
+                <Dialog.Title className="text-xl font-bold text-gray-900 dark:text-white">
+                  Correct balance due
+                </Dialog.Title>
+                <Dialog.Close asChild>
+                  <button type="button" className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
+                    <HiX className="w-5 h-5" />
+                  </button>
+                </Dialog.Close>
+              </div>
+              <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Set the balance due to match what was actually paid (e.g. after undoing an incorrect payment but a real payment remains). Total: {formatCurrency(total, defaultCurrency)}.
+              </Dialog.Description>
+              <InputField
+                id="correct-balance-due"
+                label="Balance due"
+                value={correctBalanceValue}
+                onChange={(e) => setCorrectBalanceValue(e.target.value)}
+                variant="light"
+                inputProps={{
+                  type: 'number',
+                  min: 0,
+                  max: total,
+                  step: 0.01,
+                  'aria-describedby': 'correct-balance-hint',
+                }}
+              />
+              <p id="correct-balance-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Enter 0 to mark as fully paid. Max: {formatCurrency(total, defaultCurrency)}.
+              </p>
+            </div>
+            <div className="px-6 pb-6 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+              <SecondaryButton type="button" onClick={() => setCorrectBalanceDialogOpen(false)}>
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton
+                type="button"
+                onClick={handleCorrectBalanceApply}
+                disabled={parseNum(correctBalanceValue) < 0 || parseNum(correctBalanceValue) > total}
+              >
+                Apply
+              </PrimaryButton>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={receiptDialogOpen} onOpenChange={(open) => !open && setReceiptDialogOpen(false)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] data-[state=open]:animate-[fadeIn_150ms_ease-out] data-[state=closed]:animate-[fadeOut_150ms_ease-out]" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl z-[201] w-full max-w-md p-0 focus:outline-none overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div className="px-6 pt-6 pb-4">
+              <div className="flex items-center justify-between mb-4">
+                <Dialog.Title className="text-xl font-bold text-gray-900 dark:text-white">
+                  Email receipt
+                </Dialog.Title>
+                <Dialog.Close asChild>
+                  <button type="button" className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close">
+                    <HiX className="w-5 h-5" />
+                  </button>
+                </Dialog.Close>
+              </div>
+              <Dialog.Description className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Send a receipt for the payment(s) on this {invoiceTermSingularLower} to the client.
+              </Dialog.Description>
+              <InputField
+                id="receipt-email"
+                label="Recipient email"
+                value={receiptEmail}
+                onChange={(e) => { setReceiptEmail(e.target.value); setReceiptError(''); }}
+                variant="light"
+                inputProps={{ type: 'email', autoComplete: 'email' }}
+                error={receiptError}
+              />
+            </div>
+            <div className="px-6 pb-6 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
+              <SecondaryButton type="button" onClick={() => setReceiptDialogOpen(false)} disabled={receiptSending}>
+                Cancel
+              </SecondaryButton>
+              <PrimaryButton type="button" onClick={handleSendReceipt} disabled={receiptSending}>
+                {receiptSending ? 'Sending…' : 'Send receipt'}
+              </PrimaryButton>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }

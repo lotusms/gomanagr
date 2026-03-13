@@ -255,7 +255,8 @@ function InvoicesContent() {
 
   const handleSelectInvoice = (invoiceId) => {
     const inv = invoices.find((i) => i.id === invoiceId);
-    if (inv && (inv.status === 'paid' || inv.status === 'partially_paid')) {
+    // Only fully paid (balance 0) invoices open as receipt; partially paid still open in edit form
+    if (inv && inv.status === 'paid') {
       router.push(`/dashboard/receipts?open=${encodeURIComponent(invoiceId)}`);
     } else {
       router.push(`/dashboard/invoices/${invoiceId}/edit`);

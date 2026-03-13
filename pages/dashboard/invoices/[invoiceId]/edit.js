@@ -224,6 +224,13 @@ export default function EditInvoicePage() {
   };
 
   const backUrl = '/dashboard/invoices';
+  const total = invoice ? (parseFloat(String(invoice.total ?? invoice.amount).replace(/[^\d.-]/g, '')) || 0) : 0;
+  const rawBalance = invoice?.outstanding_balance;
+  const hasBalanceSet = rawBalance != null && String(rawBalance).trim() !== '';
+  const balanceDue = hasBalanceSet ? (parseFloat(String(rawBalance).replace(/[^\d.-]/g, '')) || 0) : total;
+  const amountPaid = total - balanceDue;
+  const showPartialReceiptLink = amountPaid > 0;
+
   const handleSuccess = useCallback(() => {
     if (pendingNavigateToId) {
       router.push(editPath(pendingNavigateToId));

@@ -89,7 +89,7 @@ function ReceiptsContent() {
         body: JSON.stringify({
           userId: currentUser.uid,
           organizationId: orgId,
-          statuses: ['paid', 'partially_paid'],
+          statuses: ['paid'],
         }),
       }).then((r) => r.json().then((d) => d.invoices || [])),
       fetch('/api/get-org-clients', {
@@ -140,7 +140,7 @@ function ReceiptsContent() {
       body: JSON.stringify({
         userId: currentUser.uid,
         organizationId: orgId,
-        statuses: ['paid', 'partially_paid'],
+        statuses: ['paid'],
       }),
     })
       .then((r) => r.json().then((d) => d.invoices || []))

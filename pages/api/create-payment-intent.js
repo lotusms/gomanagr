@@ -66,7 +66,7 @@ export default async function handler(req, res) {
   }
   if (!supabaseAdmin) return res.status(503).json({ error: 'Service unavailable' });
 
-  const { invoiceId, token } = req.body || {};
+  const { invoiceId, token, amount: requestedAmount } = req.body || {};
   if (!invoiceId || !token || typeof token !== 'string' || !token.trim()) {
     return res.status(400).json({ error: 'Missing invoiceId or token' });
   }
@@ -92,7 +92,16 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'This invoice is already paid' });
       }
 
-      const amountCents = Math.round(balance * 100);
+      // Optional partial payment: amount in dollars; clamp to (0, balance]
+      let payAmount = balance;
+      if (requestedAmount != null && requestedAmount !== '') {
+        const parsed = parseNum(requestedAmount);
+        if (parsed <= 0) return res.status(400).json({ error: 'Payment amount must be greater than zero' });
+        if (parsed > balance) return res.status(400).json({ error: 'Payment amount cannot exceed the balance due' });
+        payAmount = parsed;
+      }
+
+      const amountCents = Math.round(payAmount * 100);
       if (amountCents < 50) {
         return res.status(400).json({ error: 'Amount due is too small to pay by card' });
       }

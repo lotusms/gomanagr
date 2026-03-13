@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import * as Slot from '@radix-ui/react-slot';
+import { Slot } from '@radix-ui/react-slot';
 
 /**
  * Primary Button Component

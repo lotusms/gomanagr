@@ -30,6 +30,8 @@ export default function ReceiptViewContent({
   const discountNum = Number(doc.discount) || 0;
   const total = Number(doc.total) ?? subtotal - discountNum + taxNum;
   const amountDue = doc.amountDue != null ? Number(doc.amountDue) : total;
+  const amountPaid = total - amountDue;
+  const isFullyPaid = amountDue === 0;
   const addressLines = Array.isArray(company.addressLines) ? company.addressLines : (company.address ? [company.address] : []);
 
   const formatMoney = (value) => {
@@ -40,7 +42,21 @@ export default function ReceiptViewContent({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      {isFullyPaid && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
+          aria-hidden
+        >
+          <span
+            className="text-6xl sm:text-8xl font-bold text-emerald-400/30 dark:text-emerald-500/25"
+            style={{ transform: 'rotate(-18deg)' }}
+          >
+            PAID
+          </span>
+        </div>
+      )}
+      <div className="relative z-0">
       {/* Header: company + Receipt title */}
       {showHeader && (
         <header className="flex flex-wrap justify-between items-start gap-4 p-6 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600">
@@ -94,8 +110,14 @@ export default function ReceiptViewContent({
                 <span className="font-semibold text-gray-900 dark:text-white">{formatDocDate(doc.dueDate)}</span>
               </div>
             )}
+            {amountPaid > 0 && (
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Amount paid ({currency}): </span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatMoney(amountPaid)}</span>
+              </div>
+            )}
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Amount due ({currency}): </span>
+              <span className="text-gray-600 dark:text-gray-400">Remaining balance ({currency}): </span>
               <span className="font-semibold text-gray-900 dark:text-white">{formatMoney(amountDue)}</span>
             </div>
           </div>
@@ -170,14 +192,17 @@ export default function ReceiptViewContent({
         )}
 
         {/* Payment footer */}
-        {(doc.paidDate != null || amountDue === 0) && (
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-600 text-right text-sm text-gray-500 dark:text-gray-400">
+        {(doc.paidDate != null || amountDue === 0 || amountPaid > 0) && (
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-600 text-right text-sm text-gray-500 dark:text-gray-400 space-y-1">
             {doc.paidDate && (
               <div>Payment on {formatDateFromISO(doc.paidDate, dateFormat, timezone)}</div>
             )}
+            {amountPaid > 0 && <div>Amount paid: {formatMoney(amountPaid)}</div>}
+            <div>Remaining balance: {formatMoney(amountDue)}</div>
             {amountDue === 0 && <div>Amount due: {formatMoney(0)}</div>}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

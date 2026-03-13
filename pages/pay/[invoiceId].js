@@ -51,8 +51,6 @@ const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
-// Cache key: bump to force new PI after Dashboard config changes (e.g. disable ACH/Bank).
-const PAY_SESSION_KEY = 'gomanagr_pay_secret_cardonly_v4';
 // Fireworks from LottieFiles – file in public/Fireworks.json (served as /Fireworks.json)
 const LOTTIE_FIREWORKS_URL = '/Fireworks.json';
 
@@ -141,6 +139,8 @@ function CardPaymentForm({ clientSecret, returnUrl, onError, onTerminalStateErro
       if (confirmError) {
         onError(confirmError.message || 'Payment failed');
         submittedRef.current = false;
+        // PaymentIntent may already be succeeded (e.g. reused cached client_secret). Clear it so user can get a fresh PI.
+        onTerminalStateError?.();
       } else if (paymentIntent?.status === 'succeeded') {
         window.location.href = returnUrl;
       }
@@ -246,18 +246,58 @@ export default function PayInvoicePage() {
   const [intentError, setIntentError] = useState('');
   const [intentLoading, setIntentLoading] = useState(false);
   const [returnUrl, setReturnUrl] = useState('');
+  const [amountToPay, setAmountToPay] = useState(null);
   const intentRequestedRef = useRef(false);
 
-  // When Stripe reports terminal state (e.g. cached PI already succeeded/canceled), clear cache and request a fresh PI.
+  // When Stripe reports terminal state (e.g. PI already succeeded), clear form so user can request a fresh PI.
   const handleTerminalStateError = useCallback(() => {
-    if (typeof window !== 'undefined' && invoiceId) {
-      try {
-        sessionStorage.removeItem(`${PAY_SESSION_KEY}_${invoiceId}`);
-      } catch (_) {}
-    }
     intentRequestedRef.current = false;
     setClientSecret(null);
-  }, [invoiceId]);
+  }, []);
+
+  const maxAmount = invoice?.amountDue != null ? Number(invoice.amountDue) : 0;
+  const handleAmountChange = useCallback((e) => {
+    const raw = e.target.value;
+    const n = parseFloat(String(raw).replace(/[^\d.-]/g, ''));
+    if (raw === '' || Number.isNaN(n)) {
+      setAmountToPay(null);
+      setClientSecret(null);
+      intentRequestedRef.current = false;
+      return;
+    }
+    const clamped = Math.max(0.01, Math.min(maxAmount, n));
+    setAmountToPay(clamped);
+    setClientSecret(null);
+    intentRequestedRef.current = false;
+  }, [maxAmount]);
+
+  // Create PaymentIntent only when user clicks "Continue to payment". Always call the API (no cache) so we never reuse a PI that already succeeded.
+  const handleContinueToPayment = useCallback(() => {
+    if (!invoiceId || !token || !invoice || invoice.alreadyPaid || amountToPay == null || amountToPay <= 0) return;
+    if (intentRequestedRef.current) return;
+    intentRequestedRef.current = true;
+    setIntentError('');
+    setIntentLoading(true);
+    fetch('/api/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId, token, amount: amountToPay }),
+    })
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (ok && data.clientSecret) {
+          setClientSecret(data.clientSecret);
+        } else {
+          setIntentError(data.error || 'Could not load payment form');
+          intentRequestedRef.current = false;
+        }
+      })
+      .catch(() => {
+        setIntentError('Could not load payment form');
+        intentRequestedRef.current = false;
+      })
+      .finally(() => setIntentLoading(false));
+  }, [invoiceId, token, invoice, amountToPay]);
 
   const clearPaymentError = useCallback(() => {
     setError('');
@@ -285,7 +325,12 @@ export default function PayInvoicePage() {
           return;
         }
         if (data?.ok && data?.invoice) {
-          setInvoice(data.invoice);
+          const inv = data.invoice;
+          setInvoice(inv);
+          const doc = inv.document || {};
+          const total = typeof doc.total === 'number' ? doc.total : parseFloat(String(inv.total || 0).replace(/[^\d.-]/g, '')) || 0;
+          const due = doc.amountDue != null ? Number(doc.amountDue) : (inv.amountDue != null ? Number(inv.amountDue) : total);
+          setAmountToPay(due);
           setError('');
         } else {
           setError(data?.error || 'Invoice not found');
@@ -304,56 +349,8 @@ export default function PayInvoicePage() {
     return () => { cancelled = true; };
   }, [invoiceId, token]);
 
-  // Create PaymentIntent when invoice is ready. Use sessionStorage to avoid duplicate requests on remount (fixes Incompletes).
-  useEffect(() => {
-    if (!invoiceId || !token || !invoice || invoice.alreadyPaid) return;
-    const storageKey = `${PAY_SESSION_KEY}_${invoiceId}`;
-    if (typeof window !== 'undefined') {
-      const cached = sessionStorage.getItem(storageKey);
-      if (cached && cached.trim()) {
-        setClientSecret(cached.trim());
-        return;
-      }
-    }
-    if (clientSecret) return;
-    if (intentRequestedRef.current) return;
-    intentRequestedRef.current = true;
-    let cancelled = false;
-    setIntentError('');
-    setIntentLoading(true);
-    fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoiceId, token }),
-    })
-      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
-      .then(({ ok, data }) => {
-        if (cancelled) return;
-        if (ok && data.clientSecret) {
-          setClientSecret(data.clientSecret);
-          if (typeof window !== 'undefined') sessionStorage.setItem(storageKey, data.clientSecret);
-        } else {
-          setIntentError(data.error || 'Could not load payment form');
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setIntentError('Could not load payment form');
-      })
-      .finally(() => {
-        if (!cancelled) setIntentLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [invoiceId, token, invoice, clientSecret]);
-
   const paymentSuccess = router.query.paid === '1' || router.query.redirect_status === 'succeeded';
   const syncRequestedRef = useRef(false);
-  useEffect(() => {
-    if (paymentSuccess && invoiceId && typeof window !== 'undefined') {
-      try {
-        sessionStorage.removeItem(`${PAY_SESSION_KEY}_${invoiceId}`);
-      } catch (_) {}
-    }
-  }, [paymentSuccess, invoiceId]);
 
   // When Stripe redirects the customer here after payment (return_url has ?paid=1), sync invoice to paid in Supabase
   // if the webhook did not run. The org admin never visits this URL; they see paid status on the invoices list and
@@ -427,7 +424,7 @@ export default function PayInvoicePage() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">Thank you!</h1>
               <p className="text-gray-700 dark:text-gray-300 mb-1">Your payment was successful.</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                A receipt has been sent to your email. This invoice is now marked as paid.
+                A receipt has been sent to your email. Your payment has been recorded.
               </p>
             </div>
           </div>
@@ -612,9 +609,28 @@ export default function PayInvoicePage() {
               <div className="text-base font-bold mt-2">Total: {formatMoney(total, currency)}</div>
             </div>
 
-            {/* DO NOT REVERT: Show only "Loading payment form…" then the card form. Never a "Pay now" / "Pay with card" button to reveal the form. */}
+            {/* Amount to pay: default remaining balance, editable for partial payments (max = balance). */}
             <div className="mt-6 p-4 rounded-lg border bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600">
               <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3 text-center">Pay this invoice online</p>
+              <div className="mb-4">
+                <label htmlFor="pay-amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Amount to pay ({currency})
+                </label>
+                <input
+                  id="pay-amount"
+                  type="number"
+                  min="0.01"
+                  max={maxAmount}
+                  step="0.01"
+                  value={amountToPay != null ? String(amountToPay) : ''}
+                  onChange={handleAmountChange}
+                  className="w-full px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  aria-describedby="pay-amount-hint"
+                />
+                <p id="pay-amount-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Maximum: {formatMoney(maxAmount, currency)}. You can pay the full balance or a partial amount.
+                </p>
+              </div>
               {stripePublishableKey ? (
                 <>
                   {(intentError || error) && (
@@ -627,9 +643,18 @@ export default function PayInvoicePage() {
                       onError={setError}
                       onTerminalStateError={handleTerminalStateError}
                     />
-                  ) : !intentError ? (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Loading payment form…</p>
-                  ) : null}
+                  ) : amountToPay == null || amountToPay < 0.01 ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Enter an amount to pay (max {formatMoney(maxAmount, currency)}), then click Continue to payment.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleContinueToPayment}
+                      disabled={intentLoading}
+                      className="w-full mt-2 inline-flex items-center justify-center px-4 py-3 rounded-lg font-semibold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {intentLoading ? 'Loading payment form…' : `Continue to payment — ${formatMoney(amountToPay, currency)}`}
+                    </button>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-gray-700 dark:text-gray-300">

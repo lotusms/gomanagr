@@ -24,6 +24,9 @@ export default function ReceiptViewInPage({
   lineItemsSectionLabel = 'Services',
   dateFormat = 'MMMM d, yyyy',
   timezone = 'UTC',
+  isPartialReceipt = false,
+  partialAmountPaid,
+  partialBalanceRemaining,
 }) {
   const lineItems = Array.isArray(doc.lineItems) ? doc.lineItems : [];
   const subtotal = Number(doc.subtotal) || 0;
@@ -31,6 +34,8 @@ export default function ReceiptViewInPage({
   const discountNum = Number(doc.discount) || 0;
   const total = Number(doc.total) ?? subtotal - discountNum + taxNum;
   const amountDue = doc.amountDue != null ? Number(doc.amountDue) : total;
+  const amountPaid = total - amountDue;
+  const isFullyPaid = amountDue === 0;
 
   const formatMoney = (value) => {
     if (value === null || value === undefined || value === '') return '—';
@@ -40,8 +45,21 @@ export default function ReceiptViewInPage({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0">
-      <div className="p-4 sm:p-6 space-y-6">
+    <div className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0">
+      {isFullyPaid && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10"
+          aria-hidden
+        >
+          <span
+            className="text-6xl sm:text-9xl font-bold text-rose-400/30 dark:text-rose-500/25"
+            style={{ transform: 'rotate(-18deg)' }}
+          >
+            PAID
+          </span>
+        </div>
+      )}
+      <div className="p-4 sm:p-6 space-y-6 relative z-0">
         {/* Bill to + receipt details: stack on small, row on sm+ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="min-w-0">
@@ -68,8 +86,14 @@ export default function ReceiptViewInPage({
                 <span className="font-semibold text-gray-900 dark:text-white">{formatDocDate(doc.dueDate)}</span>
               </div>
             )}
+            {amountPaid > 0 && (
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Amount paid ({currency}): </span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatMoney(amountPaid)}</span>
+              </div>
+            )}
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Amount due ({currency}): </span>
+              <span className="text-gray-600 dark:text-gray-400">Remaining balance ({currency}): </span>
               <span className="font-semibold text-gray-900 dark:text-white">{formatMoney(amountDue)}</span>
             </div>
           </div>
@@ -129,12 +153,18 @@ export default function ReceiptViewInPage({
           </div>
         )}
 
-        {(doc.paidDate != null || amountDue === 0) && (
-          <div className="pt-4 border-t border-gray-200 dark:border-gray-600 text-right text-sm text-gray-500 dark:text-gray-400">
+        {(doc.paidDate != null || amountDue === 0 || isPartialReceipt || amountPaid > 0) && (
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-600 text-right text-sm text-gray-500 dark:text-gray-400 space-y-1">
             {doc.paidDate && (
               <div>Payment on {formatDateFromISO(doc.paidDate, dateFormat, timezone)}</div>
             )}
-            {amountDue === 0 && <div>Amount due: {formatMoney(0)}</div>}
+            {(isPartialReceipt ? partialAmountPaid != null : amountPaid > 0) && (
+              <div>Amount paid: {formatMoney(isPartialReceipt ? partialAmountPaid : amountPaid)}</div>
+            )}
+            {(isPartialReceipt ? partialBalanceRemaining != null : true) && (
+              <div className="font-medium text-gray-700 dark:text-gray-300">Remaining balance: {formatMoney(isPartialReceipt ? partialBalanceRemaining : amountDue)}</div>
+            )}
+            {!isPartialReceipt && amountDue === 0 && <div>Amount due: {formatMoney(0)}</div>}
           </div>
         )}
       </div>

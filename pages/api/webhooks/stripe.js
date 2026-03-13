@@ -7,6 +7,8 @@ import Stripe from 'stripe';
 import getRawBody from 'raw-body';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
+import { buildInvoiceDocumentPayload } from '@/lib/buildDocumentPayload';
 
 export const config = {
   api: { bodyParser: false },
@@ -91,9 +93,11 @@ export default async function handler(req, res) {
   try {
     let invoiceId = null;
     let paymentIntentObject = null;
+    let paymentAmountCents = 0;
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       invoiceId = session.metadata?.invoice_id;
+      paymentAmountCents = session.amount_total ?? 0;
       if (!invoiceId) {
         console.warn('[webhooks/stripe] checkout.session.completed missing metadata.invoice_id');
         return res.status(200).json({ received: true });
@@ -103,6 +107,7 @@ export default async function handler(req, res) {
       }
     } else if (event.type === 'payment_intent.succeeded') {
       paymentIntentObject = event.data.object;
+      paymentAmountCents = paymentIntentObject.amount ?? 0;
       invoiceId = paymentIntentObject.metadata?.invoice_id;
       if (!invoiceId && paymentIntentObject.id) {
         const { data: row } = await supabaseAdmin
@@ -123,10 +128,10 @@ export default async function handler(req, res) {
 
     console.log('[webhooks/stripe] Processing payment for invoice:', invoiceId);
 
-    // Update Supabase client_invoices so the invoice shows as paid in GoManagr (status, balance, paid_date).
+    // Update Supabase client_invoices: partial or full payment (status, balance, paid_date).
     const { data: existingInvoice } = await supabaseAdmin
       .from('client_invoices')
-      .select('id, status')
+      .select('id, status, outstanding_balance, total, stripe_payment_intent_id')
       .eq('id', invoiceId)
       .single();
 
@@ -138,13 +143,31 @@ export default async function handler(req, res) {
       console.log('[webhooks/stripe] Invoice already marked paid (idempotent):', invoiceId);
       return res.status(200).json({ received: true });
     }
+    // Idempotency: do not re-apply the same payment. Stripe may retry webhooks. We have already
+    // applied this PaymentIntent if it is the one on the invoice and status is already partially_paid/paid
+    // (stripe_payment_intent_id is set by create-payment-intent before pay, so we skip only when we
+    // previously applied this PI — i.e. status was updated by a prior webhook or sync).
+    const existingPiId = (existingInvoice.stripe_payment_intent_id && String(existingInvoice.stripe_payment_intent_id).trim()) || '';
+    const thisPiId = paymentIntentObject ? paymentIntentObject.id : null;
+    const alreadyApplied = thisPiId && existingPiId === thisPiId && (existingInvoice.status === 'partially_paid' || existingInvoice.status === 'paid');
+    if (alreadyApplied) {
+      console.log('[webhooks/stripe] PaymentIntent already applied (idempotent):', invoiceId);
+      return res.status(200).json({ received: true });
+    }
 
+    const paymentAmount = paymentAmountCents / 100;
+    const currentBalance = existingInvoice.outstanding_balance != null && String(existingInvoice.outstanding_balance).trim() !== ''
+      ? parseFloat(String(existingInvoice.outstanding_balance).replace(/[^\d.-]/g, '')) || 0
+      : parseFloat(String(existingInvoice.total).replace(/[^\d.-]/g, '')) || 0;
+    const newBalance = Math.max(0, currentBalance - paymentAmount);
+    const isFullyPaid = newBalance <= 0;
     const today = new Date().toISOString().slice(0, 10);
+
     const { error: updateError } = await supabaseAdmin
       .from('client_invoices')
       .update({
-        status: 'paid',
-        outstanding_balance: '0',
+        status: isFullyPaid ? 'paid' : 'partially_paid',
+        outstanding_balance: String(isFullyPaid ? '0' : newBalance.toFixed(2)),
         paid_date: today,
         updated_at: new Date().toISOString(),
       })
@@ -159,23 +182,18 @@ export default async function handler(req, res) {
 
     const { data: invoice } = await supabaseAdmin
       .from('client_invoices')
-      .select('invoice_number, invoice_title, total, user_id, organization_id, client_snapshot')
+      .select('invoice_number, invoice_title, total, user_id, organization_id, client_id, client_snapshot')
       .eq('id', invoiceId)
       .single();
 
     if (!invoice) return res.status(200).json({ received: true });
 
-    const amountStr = formatMoney(invoice.total, 'USD');
+    const paymentAmount = paymentAmountCents / 100;
+    const amountStr = formatMoney(paymentAmount || invoice.total, 'USD');
     const invNum = invoice.invoice_number || invoiceId;
     const invTitle = invoice.invoice_title || 'Invoice';
     const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
 
-    const receiptHtml = `
-      <p>Your payment for <strong>${invTitle}</strong> (Invoice #${invNum}) has been received.</p>
-      <p><strong>Amount paid:</strong> ${amountStr}</p>
-      <p>Thank you for your business.</p>
-      <p>— ${appName}</p>
-    `;
     const notificationHtml = `
       <p>A payment has been received for an invoice.</p>
       <p><strong>Invoice:</strong> ${invTitle} (#${invNum})</p>
@@ -183,6 +201,7 @@ export default async function handler(req, res) {
       <p>— ${appName}</p>
     `;
 
+    // Resolve client email so we can send them a receipt (every payment: client + org notification).
     let customerEmail = invoice.client_snapshot?.email && String(invoice.client_snapshot.email).trim();
     if (!customerEmail && paymentIntentObject) {
       const email = paymentIntentObject.receipt_email || paymentIntentObject.charges?.data?.[0]?.billing_details?.email;
@@ -198,14 +217,106 @@ export default async function handler(req, res) {
         }
       }
     }
+    if (!customerEmail && invoice.client_id && invoice.user_id) {
+      const { data: creatorProfile } = await supabaseAdmin
+        .from('user_profiles')
+        .select('clients')
+        .eq('id', invoice.user_id)
+        .maybeSingle();
+      const clients = Array.isArray(creatorProfile?.clients) ? creatorProfile.clients : [];
+      const client = clients.find((c) => c.id === invoice.client_id);
+      if (client?.email) customerEmail = String(client.email).trim();
+    }
+    // Send receipt to client (every payment).
     if (customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
       try {
-        await sendEmail(
-          customerEmail,
-          `Payment receipt – Invoice #${invNum}`,
-          receiptHtml
-        );
-        console.log('[webhooks/stripe] Receipt email sent to:', customerEmail);
+        const { data: fullInvoice } = await supabaseAdmin
+          .from('client_invoices')
+          .select('*')
+          .eq('id', invoiceId)
+          .single();
+        if (fullInvoice) {
+          const { data: profile } = await supabaseAdmin
+            .from('user_profiles')
+            .select('company_name, company_logo, clients, profile')
+            .eq('id', fullInvoice.user_id)
+            .maybeSingle();
+          const profileJson = profile?.profile && typeof profile.profile === 'object' ? profile.profile : {};
+          let companyName = appName;
+          let companyLogoUrl = '';
+          let orgName = '';
+          let orgLogoUrl = '';
+          let orgAddressLines = [];
+          let orgPhone = '';
+          let orgWebsite = '';
+          if (profile?.company_name) companyName = String(profile.company_name).trim();
+          if (profile?.company_logo) companyLogoUrl = String(profile.company_logo).trim();
+          if (fullInvoice.organization_id) {
+            const { data: org } = await supabaseAdmin
+              .from('organizations')
+              .select('name, logo_url, address_line_1, address_line_2, city, state, postal_code, country, phone, website')
+              .eq('id', fullInvoice.organization_id)
+              .maybeSingle();
+            if (org?.name) orgName = String(org.name).trim();
+            if (org?.logo_url) orgLogoUrl = String(org.logo_url).trim();
+            if (org?.address_line_1?.trim()) {
+              orgAddressLines = [org.address_line_1.trim()];
+              if (org.address_line_2?.trim()) orgAddressLines.push(org.address_line_2.trim());
+              const cityStateZip = [org.city, org.state, org.postal_code].filter(Boolean).map((s) => String(s).trim()).join(', ');
+              if (cityStateZip) orgAddressLines.push(cityStateZip);
+              if (org.country?.trim()) orgAddressLines.push(org.country.trim());
+            }
+            if (org?.phone?.trim()) orgPhone = String(org.phone).trim();
+            if (org?.website?.trim()) orgWebsite = String(org.website).trim();
+          }
+          const displayName = orgName || companyName;
+          const displayLogo = orgLogoUrl || companyLogoUrl;
+          const profileAddressLines = Array.isArray(profileJson.companyAddressLines) ? profileJson.companyAddressLines.filter(Boolean) : (profileJson.companyAddress ? [String(profileJson.companyAddress).trim()].filter(Boolean) : []);
+          const companyAddressLines = orgAddressLines.length > 0 ? orgAddressLines : profileAddressLines;
+          let clientName = (fullInvoice.client_snapshot?.name && String(fullInvoice.client_snapshot.name).trim()) || 'Customer';
+          let clientAddressLines = [];
+          if (fullInvoice.client_id && profile?.clients && Array.isArray(profile.clients)) {
+            const client = profile.clients.find((c) => c.id === fullInvoice.client_id);
+            if (client) {
+              clientName = (client.name || client.companyName || '').trim() || (client.firstName || client.lastName ? [client.firstName, client.lastName].filter(Boolean).join(' ') : '') || clientName;
+              const billing = client.billingAddress || {};
+              const companyAddr = client.companyAddress || {};
+              const line1 = billing.address1 || billing.address || companyAddr.address1 || companyAddr.address || '';
+              const line2 = billing.address2 || companyAddr.address2 || '';
+              clientAddressLines = [line1, line2].filter(Boolean);
+            }
+          }
+          if (fullInvoice.client_snapshot?.addressLines && Array.isArray(fullInvoice.client_snapshot.addressLines)) {
+            clientAddressLines = fullInvoice.client_snapshot.addressLines.filter(Boolean);
+          }
+          const docPayload = buildInvoiceDocumentPayload(fullInvoice);
+          docPayload.amountDue = newBalance;
+          docPayload.paidDate = today;
+          const receiptHtml = renderDocumentToHtml({
+            type: 'receipt',
+            company: {
+              name: displayName,
+              ...(displayLogo && { logoUrl: displayLogo }),
+              ...(companyAddressLines.length > 0 && { addressLines: companyAddressLines }),
+              ...(orgPhone && { phone: orgPhone }),
+              ...(orgWebsite && { website: orgWebsite }),
+            },
+            client: {
+              name: clientName,
+              email: customerEmail,
+              ...(clientAddressLines.length > 0 && { addressLines: clientAddressLines }),
+            },
+            document: docPayload,
+            currency: 'USD',
+            amountPaid: paymentAmount,
+          });
+          await sendEmail(customerEmail, `Payment receipt – Receipt #${invNum}`, receiptHtml);
+          console.log('[webhooks/stripe] Receipt email sent to client:', customerEmail);
+        } else {
+          const fallbackReceiptHtml = `<p>Your payment for <strong>${invTitle}</strong> (Receipt #${invNum}) has been received.</p><p><strong>Amount paid:</strong> ${amountStr}</p><p>Thank you for your business.</p><p>— ${appName}</p>`;
+          await sendEmail(customerEmail, `Payment receipt – Receipt #${invNum}`, fallbackReceiptHtml);
+          console.log('[webhooks/stripe] Receipt email (fallback) sent to client:', customerEmail);
+        }
       } catch (e) {
         console.error('[webhooks/stripe] Failed to send receipt to customer:', e.message);
       }
@@ -213,45 +324,51 @@ export default async function handler(req, res) {
       console.warn('[webhooks/stripe] No customer email for receipt (invoice', invoiceId, ')');
     }
 
-    let ownerEmail = null;
+    // Send payment notification to org member(s).
+    const adminEmails = new Set();
     if (invoice.organization_id) {
-      const { data: superadmin } = await supabaseAdmin
+      const { data: orgAdmins } = await supabaseAdmin
         .from('org_members')
         .select('user_id')
         .eq('organization_id', invoice.organization_id)
-        .eq('role', 'superadmin')
-        .limit(1)
-        .maybeSingle();
-      if (superadmin?.user_id) {
-        const { data: profile } = await supabaseAdmin
+        .in('role', ['superadmin', 'admin']);
+      const userIds = (orgAdmins || []).map((r) => r.user_id).filter(Boolean);
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabaseAdmin
           .from('user_profiles')
           .select('email')
-          .eq('id', superadmin.user_id)
-          .maybeSingle();
-        if (profile?.email) ownerEmail = profile.email.trim();
+          .in('id', userIds);
+        (profiles || []).forEach((p) => {
+          if (p?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(p.email).trim())) {
+            adminEmails.add(String(p.email).trim());
+          }
+        });
       }
     }
-    if (!ownerEmail && invoice.user_id) {
+    if (adminEmails.size === 0 && invoice.user_id) {
       const { data: profile } = await supabaseAdmin
         .from('user_profiles')
         .select('email')
         .eq('id', invoice.user_id)
         .maybeSingle();
-      if (profile?.email) ownerEmail = profile.email.trim();
+      if (profile?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(profile.email).trim())) {
+        adminEmails.add(String(profile.email).trim());
+      }
     }
-    if (ownerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
+    for (const adminEmail of adminEmails) {
       try {
         await sendEmail(
-          ownerEmail,
+          adminEmail,
           `Payment received – Invoice #${invNum} (${amountStr})`,
           notificationHtml
         );
-        console.log('[webhooks/stripe] Payment notification sent to owner/superadmin:', ownerEmail);
+        console.log('[webhooks/stripe] Payment notification sent to org admin:', adminEmail);
       } catch (e) {
-        console.error('[webhooks/stripe] Failed to send payment notification to owner:', e.message);
+        console.error('[webhooks/stripe] Failed to send payment notification to', adminEmail, e.message);
       }
-    } else {
-      console.warn('[webhooks/stripe] No owner/superadmin email for notification (invoice', invoiceId, ')');
+    }
+    if (adminEmails.size === 0) {
+      console.warn('[webhooks/stripe] No org admin or owner email for notification (invoice', invoiceId, ')');
     }
 
     return res.status(200).json({ received: true });

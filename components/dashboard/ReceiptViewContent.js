@@ -49,7 +49,7 @@ export default function ReceiptViewContent({
           aria-hidden
         >
           <span
-            className="text-6xl sm:text-8xl font-bold text-emerald-400/30 dark:text-emerald-500/25"
+            className="text-6xl sm:text-8xl font-bold text-rose-400/30 dark:text-rose-500/25"
             style={{ transform: 'rotate(-18deg)' }}
           >
             PAID

@@ -188,7 +188,6 @@ export default async function handler(req, res) {
 
     if (!invoice) return res.status(200).json({ received: true });
 
-    const paymentAmount = paymentAmountCents / 100;
     const amountStr = formatMoney(paymentAmount || invoice.total, 'USD');
     const invNum = invoice.invoice_number || invoiceId;
     const invTitle = invoice.invoice_title || 'Invoice';

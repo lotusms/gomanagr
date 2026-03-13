@@ -26,6 +26,7 @@ const customJestConfig = {
     'utils/**/*.js',
     'lib/**/*.js',
     'services/**/*.js',
+    'pages/api/**/*.js',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/.next/**',

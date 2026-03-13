@@ -48,7 +48,8 @@
     "recharts": "^3.8.0",
     "resend": "^6.9.2",
     "sass": "^1.97.3",
-    "stripe": "^20.4.1"
+    "stripe": "^20.4.1",
+    "styled-jsx": "^5.1.6"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

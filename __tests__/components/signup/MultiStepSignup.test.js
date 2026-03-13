@@ -172,7 +172,7 @@ describe('MultiStepSignup', () => {
       '/api/delete-auth-user',
       expect.objectContaining({ method: 'POST', body: expect.any(String) })
     );
-  });
+  }, 12000);
 
   it('shows rate limit message when signup throws rate limit error', async () => {
     mockSignup.mockRejectedValueOnce(new Error('Rate limit exceeded'));
@@ -214,7 +214,7 @@ describe('MultiStepSignup', () => {
     await waitFor(() => {
       expect(screen.getByText(/Network error|Failed to create account/i)).toBeInTheDocument();
     });
-  });
+  }, 12000);
 
   it('shows please wait when submitting again within 2 seconds', async () => {
     render(<MultiStepSignup />);

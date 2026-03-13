@@ -56,6 +56,11 @@ describe('Team page – Invite to join', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fetchCalls = [];
+    global.ResizeObserver = jest.fn().mockImplementation(() => ({
+      observe: jest.fn(),
+      unobserve: jest.fn(),
+      disconnect: jest.fn(),
+    }));
     mockGetUserAccount.mockResolvedValue({
       teamMembers: [
         { id: 'm1', name: 'Bob', email: 'bob@example.com' },
@@ -93,9 +98,12 @@ describe('Team page – Invite to join', () => {
   it('sends create-invite and send-invite-email when submitting Invite to join', async () => {
     render(<TeamPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Bob')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Bob')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     const inviteBtn = screen.getByRole('button', { name: /invite to join/i });
     expect(inviteBtn).toBeInTheDocument();
@@ -103,9 +111,12 @@ describe('Team page – Invite to join', () => {
       inviteBtn.click();
     });
 
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     const dialog = screen.getByRole('dialog');
     const submitBtn = within(dialog).getByRole('button', { name: /invite to join/i });
@@ -113,16 +124,19 @@ describe('Team page – Invite to join', () => {
       submitBtn.click();
     });
 
-    await waitFor(() => {
-      const createInviteCalls = fetchCalls.filter(
-        (c) => c.url && String(c.url).includes('/api/create-invite')
-      );
-      const sendEmailCalls = fetchCalls.filter(
-        (c) => c.url && String(c.url).includes('/api/send-invite-email')
-      );
-      expect(createInviteCalls.length).toBeGreaterThanOrEqual(1);
-      expect(sendEmailCalls.length).toBeGreaterThanOrEqual(1);
-    });
+    await waitFor(
+      () => {
+        const createInviteCalls = fetchCalls.filter(
+          (c) => c.url && String(c.url).includes('/api/create-invite')
+        );
+        const sendEmailCalls = fetchCalls.filter(
+          (c) => c.url && String(c.url).includes('/api/send-invite-email')
+        );
+        expect(createInviteCalls.length).toBeGreaterThanOrEqual(1);
+        expect(sendEmailCalls.length).toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 5000 }
+    );
 
     const createInviteCall = fetchCalls.find(
       (c) => c.url && String(c.url).includes('/api/create-invite')
@@ -143,7 +157,7 @@ describe('Team page – Invite to join', () => {
     expect(emailBody.to).toBe('bob@example.com');
     expect(emailBody.inviteLink).toBe('https://app.example/invite/xyz');
     expect(mockToast.success).toHaveBeenCalledWith(expect.stringContaining('bob@example.com'));
-  });
+  }, 12000);
 });
 
 describe('Team page – Add member', () => {

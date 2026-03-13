@@ -4,11 +4,9 @@
  * - POST: requires invoiceId and userId; 403 when not org member; 404 not found; 200 alreadyPaid; 200 synced: true and updates invoice
  */
 
-const mockPaymentIntentsRetrieve = jest.fn();
 const mockPaymentIntentsList = jest.fn();
 const mockStripe = {
   paymentIntents: {
-    retrieve: mockPaymentIntentsRetrieve,
     list: mockPaymentIntentsList,
   },
 };
@@ -16,6 +14,18 @@ const mockStripe = {
 jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => mockStripe);
 });
+
+jest.mock('@/lib/renderDocumentToHtml', () => ({
+  renderDocumentToHtml: jest.fn().mockResolvedValue('<html><body>Receipt</body></html>'),
+}));
+jest.mock('@/lib/buildDocumentPayload', () => ({
+  buildInvoiceDocumentPayload: jest.fn().mockReturnValue({}),
+}));
+
+const mockSendMail = jest.fn().mockResolvedValue(undefined);
+jest.mock('nodemailer', () => ({
+  createTransport: () => ({ sendMail: mockSendMail }),
+}));
 
 const mockFrom = jest.fn();
 const mockCreateClient = jest.fn(() => ({ from: mockFrom }));
@@ -108,11 +118,15 @@ function setupSupabaseForPost(data = invoiceRow, orgId = null) {
   return () => updatePayload;
 }
 
+// List returns PIs with amount (cents) and created (unix) for multi-PI / partial payment logic
+const singleSucceededPI = [
+  { id: 'pi_123', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 1234567890 },
+];
+
 describe('sync-invoice-paid API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPaymentIntentsRetrieve.mockResolvedValue({ status: 'succeeded', id: 'pi_123' });
-    mockPaymentIntentsList.mockResolvedValue({ data: [{ id: 'pi_123', status: 'succeeded', metadata: { invoice_id: 'inv-1' } }] });
+    mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
   });
 
   it('returns 503 when Stripe or Supabase is unavailable', async () => {
@@ -129,6 +143,20 @@ describe('sync-invoice-paid API', () => {
     process.env.STRIPE_SECRET_KEY = orig;
   });
 
+  it('returns 503 when STRIPE_SECRET_KEY does not start with sk_', async () => {
+    const orig = process.env.STRIPE_SECRET_KEY;
+    process.env.STRIPE_SECRET_KEY = 'invalid_key';
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Service unavailable' });
+    process.env.STRIPE_SECRET_KEY = orig;
+  });
+
   it('GET returns 400 when invoiceId or token missing', async () => {
     const handler = (await import('@/pages/api/sync-invoice-paid')).default;
     const res = mockRes();
@@ -137,6 +165,12 @@ describe('sync-invoice-paid API', () => {
     expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Missing invoiceId or token' });
 
     await handler({ method: 'GET', query: { invoiceId: 'inv-1' } }, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+
+    await handler({ method: 'GET', query: { invoiceId: 'inv-1', token: '' } }, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+
+    await handler({ method: 'GET', query: { invoiceId: 'inv-1', token: '   ' } }, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
@@ -183,7 +217,7 @@ describe('sync-invoice-paid API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ ok: true, alreadyPaid: true });
-    expect(mockPaymentIntentsRetrieve).not.toHaveBeenCalled();
+    expect(mockPaymentIntentsList).not.toHaveBeenCalled();
   });
 
   it('GET returns 200 synced: false when no succeeded PaymentIntent found', async () => {
@@ -202,11 +236,12 @@ describe('sync-invoice-paid API', () => {
   it('GET returns 200 synced: true and updates invoice when PaymentIntent succeeded', async () => {
     let capturedUpdate = null;
     let selectCallCount = 0;
+    const fullInvoiceData = { outstanding_balance: '100', total: '100' };
     const invoiceForEmail = { invoice_number: 'INV-001', invoice_title: 'Test', total: '100', user_id: 'u1', organization_id: null, client_snapshot: null };
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
         return {
-          select: () => {
+          select: (cols) => {
             selectCallCount += 1;
             if (selectCallCount === 1) {
               return {
@@ -214,6 +249,13 @@ describe('sync-invoice-paid API', () => {
                   limit: () => ({
                     single: () => Promise.resolve({ data: invoiceRow, error: null }),
                   }),
+                }),
+              };
+            }
+            if (cols && cols.includes('outstanding_balance')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({ data: fullInvoiceData, error: null }),
                 }),
               };
             }
@@ -248,6 +290,120 @@ describe('sync-invoice-paid API', () => {
     expect(capturedUpdate.status).toBe('paid');
     expect(capturedUpdate.outstanding_balance).toBe('0');
     expect(capturedUpdate.paid_date).toBeDefined();
+    expect(capturedUpdate.stripe_payment_intent_id).toBe('pi_123');
+  });
+
+  it('GET returns 200 alreadySynced when computed state matches (idempotent)', async () => {
+    mockPaymentIntentsList.mockResolvedValue({
+      data: [
+        { id: 'pi_1', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 100 },
+        { id: 'pi_2', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 200 },
+      ],
+    });
+    let selectCallCount = 0;
+    const fullInvoiceData = { outstanding_balance: '550', total: '750' };
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                eq: () => ({
+                  limit: () => ({
+                    single: () => Promise.resolve({ data: { ...invoiceRow, status: 'partially_paid' }, error: null }),
+                  }),
+                }),
+              };
+            }
+            if (cols && cols.includes('outstanding_balance')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({ data: fullInvoiceData, error: null }),
+                }),
+              };
+            }
+            return { eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) };
+          },
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, alreadySynced: true });
+  });
+
+  it('GET sums multiple succeeded PIs and sets partially_paid when balance remains', async () => {
+    mockPaymentIntentsList.mockResolvedValue({
+      data: [
+        { id: 'pi_1', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 100 },
+        { id: 'pi_2', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 200 },
+      ],
+    });
+    let capturedUpdate = null;
+    let selectCallCount = 0;
+    const fullInvoiceData = { outstanding_balance: '750', total: '750' };
+    const invoiceForEmail = { invoice_number: 'INV-002', invoice_title: 'Test', total: '750', user_id: 'u1', organization_id: null, client_snapshot: null };
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                eq: () => ({
+                  limit: () => ({
+                    single: () => Promise.resolve({ data: invoiceRow, error: null }),
+                  }),
+                }),
+              };
+            }
+            if (cols && cols.includes('outstanding_balance')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({ data: fullInvoiceData, error: null }),
+                }),
+              };
+            }
+            return {
+              eq: () => ({
+                single: () => Promise.resolve({ data: invoiceForEmail, error: null }),
+              }),
+            };
+          },
+          update: (payload) => {
+            capturedUpdate = payload;
+            return { eq: () => Promise.resolve({ error: null }) };
+          },
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, synced: true });
+    expect(capturedUpdate).not.toBeNull();
+    expect(capturedUpdate.status).toBe('partially_paid');
+    expect(capturedUpdate.outstanding_balance).toBe('550.00');
+    expect(capturedUpdate.stripe_payment_intent_id).toBe('pi_2');
+    expect(capturedUpdate.paid_date).toBe('1970-01-01');
   });
 
   it('POST returns 400 when invoiceId or userId missing', async () => {
@@ -259,6 +415,33 @@ describe('sync-invoice-paid API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Missing invoiceId or userId' });
+  });
+
+  it('POST returns 403 when organizationId provided but user is not org member', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: (col, val) => ({
+              eq: (c2, v2) => ({
+                limit: () => ({
+                  single: () => Promise.resolve({ data: null, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { userId: 'u1', invoiceId: 'inv-1', organizationId: 'org-1' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Access denied' });
   });
 
   it('POST returns 404 when invoice not found', async () => {
@@ -298,22 +481,112 @@ describe('sync-invoice-paid API', () => {
     expect(res.json).toHaveBeenCalledWith({ ok: true, alreadyPaid: true });
   });
 
+  it('POST returns 200 synced: true with organizationId when user is org member', async () => {
+    let capturedUpdate = null;
+    let selectCallCount = 0;
+    const fullInvoiceData = { outstanding_balance: '100', total: '100' };
+    const invoiceForEmail = { invoice_number: 'INV-001', invoice_title: 'Test', total: '100', user_id: 'u1', organization_id: 'org-1', client_snapshot: null };
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                eq: () => ({
+                  limit: () => ({
+                    eq: () => ({
+                      maybeSingle: () => Promise.resolve({ data: invoiceRow, error: null }),
+                    }),
+                  }),
+                }),
+              };
+            }
+            if (cols && cols.includes('outstanding_balance')) {
+              return { eq: () => ({ single: () => Promise.resolve({ data: fullInvoiceData, error: null }) }) };
+            }
+            if (cols && cols.includes('invoice_number')) {
+              return { eq: () => ({ single: () => Promise.resolve({ data: invoiceForEmail, error: null }) }) };
+            }
+            return { eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) };
+          },
+          update: (payload) => {
+            capturedUpdate = payload;
+            return { eq: () => Promise.resolve({ error: null }) };
+          },
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: (cols) => {
+            if (cols === 'organization_id') {
+              return {
+                eq: () => ({
+                  eq: () => ({
+                    limit: () => ({
+                      single: () => Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+                    }),
+                  }),
+                }),
+              };
+            }
+            return {
+              eq: () => ({
+                in: () => Promise.resolve({ data: [{ user_id: 'admin-1' }], error: null }),
+              }),
+            };
+          },
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: (c) => {
+            if (c && (c.includes('email') || c === 'email')) {
+              return { in: () => Promise.resolve({ data: [{ email: 'admin@org.com' }], error: null }) };
+            }
+            return { eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) };
+          },
+        };
+      }
+      return {};
+    });
+    mockPaymentIntentsList.mockResolvedValue({
+      data: [{ id: 'pi_123', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 1234567890 }],
+    });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { userId: 'u1', invoiceId: 'inv-1', organizationId: 'org-1' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, synced: true });
+    expect(capturedUpdate).not.toBeNull();
+    expect(capturedUpdate.status).toBe('paid');
+  });
+
   it('POST returns 200 synced: true and updates invoice when PI succeeded', async () => {
     let capturedUpdate = null;
     let selectCallCount = 0;
+    const fullInvoiceData = { outstanding_balance: '100', total: '100' };
     const invoiceForEmail = { invoice_number: 'INV-001', invoice_title: 'Test', total: '100', user_id: 'u1', organization_id: null, client_snapshot: null };
-    const postSelectChain = {
-      eq: (col, val) => postSelectChain,
-      limit: () => postSelectChain,
-      is: () => postSelectChain,
+    const firstChain = {
+      eq: () => firstChain,
+      limit: () => firstChain,
+      is: () => firstChain,
       maybeSingle: () => Promise.resolve({ data: invoiceRow, error: null }),
     };
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
         return {
-          select: () => {
+          select: (cols) => {
             selectCallCount += 1;
-            if (selectCallCount === 1) return postSelectChain;
+            if (selectCallCount === 1) return firstChain;
+            if (cols && cols.includes('outstanding_balance')) {
+              return {
+                eq: () => ({ single: () => Promise.resolve({ data: fullInvoiceData, error: null }) }),
+              };
+            }
             return {
               eq: () => ({ single: () => Promise.resolve({ data: invoiceForEmail, error: null }) }),
             };
@@ -332,7 +605,7 @@ describe('sync-invoice-paid API', () => {
       return {};
     });
     mockPaymentIntentsList.mockResolvedValue({
-      data: [{ id: 'pi_123', status: 'succeeded', metadata: { invoice_id: 'inv-1' } }],
+      data: [{ id: 'pi_123', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 1234567890 }],
     });
     const handler = (await import('@/pages/api/sync-invoice-paid')).default;
     const res = mockRes();
@@ -345,6 +618,407 @@ describe('sync-invoice-paid API', () => {
     expect(capturedUpdate).not.toBeNull();
     expect(capturedUpdate.status).toBe('paid');
     expect(capturedUpdate.outstanding_balance).toBe('0');
+  });
+
+  it('returns 200 synced: false when totalPaid <= 0 (PIs have zero amount)', async () => {
+    setupSupabaseForGet(invoiceRow);
+    mockPaymentIntentsList.mockResolvedValue({
+      data: [{ id: 'pi_1', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 0, created: 0 }],
+    });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, synced: false });
+  });
+
+  it('returns 500 when client_invoices update fails', async () => {
+    let selectCallCount = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                eq: () => ({
+                  limit: () => ({
+                    single: () => Promise.resolve({ data: invoiceRow, error: null }),
+                  }),
+                }),
+              };
+            }
+            if (cols && cols.includes('outstanding_balance')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({ data: { outstanding_balance: '100', total: '100' }, error: null }),
+                }),
+              };
+            }
+            return { eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) };
+          },
+          update: () => ({ eq: () => Promise.resolve({ error: { message: 'update failed' } }) }),
+        };
+      }
+      return {};
+    });
+    mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Failed to update invoice' });
+  });
+
+  it('sends receipt to customer when client_snapshot has email and full invoice exists', async () => {
+    process.env.SMTP_HOST = 'smtp.test.com';
+    process.env.SMTP_USER = 'u';
+    process.env.SMTP_PASSWORD = 'p';
+    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
+    let selectCallCount = 0;
+    const fullInvoiceForReceipt = {
+      id: 'inv-1',
+      user_id: 'u1',
+      organization_id: null,
+      client_id: null,
+      client_snapshot: { email: 'customer@example.com', name: 'Customer' },
+      invoice_number: 'INV-001',
+      invoice_title: 'Test Invoice',
+      total: '100',
+    };
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                eq: () => ({
+                  limit: () => ({
+                    single: () => Promise.resolve({ data: invoiceRow, error: null }),
+                  }),
+                }),
+              };
+            }
+            if (cols && cols.includes('outstanding_balance')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({ data: { outstanding_balance: '100', total: '100' }, error: null }),
+                }),
+              };
+            }
+            if (cols && cols.includes('invoice_number')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({
+                    data: {
+                      invoice_number: 'INV-001',
+                      invoice_title: 'Test',
+                      total: '100',
+                      user_id: 'u1',
+                      organization_id: null,
+                      client_id: null,
+                      client_snapshot: { email: 'customer@example.com' },
+                    },
+                    error: null,
+                  }),
+                }),
+              };
+            }
+            if (cols && cols === '*') {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({ data: fullInvoiceForReceipt, error: null }),
+                }),
+              };
+            }
+            return { eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) };
+          },
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({
+                data: { company_name: 'Co', company_logo: '', clients: [], profile: {} },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, synced: true });
+    expect(mockSendMail).toHaveBeenCalled();
+    const sendMailCall = mockSendMail.mock.calls.find((c) => c[0]?.to === 'customer@example.com');
+    expect(sendMailCall).toBeDefined();
+    delete process.env.SMTP_HOST;
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASSWORD;
+    delete process.env.SMTP_FROM_EMAIL;
+  });
+
+  it('sends fallback receipt when full invoice select returns null', async () => {
+    process.env.SMTP_HOST = 'smtp.test.com';
+    process.env.SMTP_USER = 'u';
+    process.env.SMTP_PASSWORD = 'p';
+    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
+    let selectCallCount = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                eq: () => ({
+                  limit: () => ({
+                    single: () => Promise.resolve({ data: invoiceRow, error: null }),
+                  }),
+                }),
+              };
+            }
+            if (cols && cols.includes('outstanding_balance')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({ data: { outstanding_balance: '100', total: '100' }, error: null }),
+                }),
+              };
+            }
+            if (cols && cols.includes('invoice_number')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({
+                    data: {
+                      invoice_number: 'INV-001',
+                      invoice_title: 'Test',
+                      total: '100',
+                      user_id: 'u1',
+                      organization_id: null,
+                      client_id: null,
+                      client_snapshot: { email: 'customer@example.com' },
+                    },
+                    error: null,
+                  }),
+                }),
+              };
+            }
+            if (cols && cols === '*') {
+              return {
+                eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }),
+              };
+            }
+            return { eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) };
+          },
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+        };
+      }
+      return {};
+    });
+    mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockSendMail).toHaveBeenCalled();
+    const fallbackCall = mockSendMail.mock.calls.find(
+      (c) => c[0]?.subject?.includes('Payment receipt') && c[0]?.html?.includes('Amount paid')
+    );
+    expect(fallbackCall).toBeDefined();
+    delete process.env.SMTP_HOST;
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASSWORD;
+    delete process.env.SMTP_FROM_EMAIL;
+  });
+
+  it('resolves customer email from profile.clients when client_snapshot has no email', async () => {
+    process.env.SMTP_HOST = 'smtp.test.com';
+    process.env.SMTP_USER = 'u';
+    process.env.SMTP_PASSWORD = 'p';
+    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
+    let profileSelectCount = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            const first = { eq: () => ({ limit: () => ({ single: () => Promise.resolve({ data: invoiceRow, error: null }) }) }) };
+            if (cols && cols.includes('outstanding_balance')) {
+              return { eq: () => ({ single: () => Promise.resolve({ data: { outstanding_balance: '100', total: '100' }, error: null }) }) };
+            }
+            if (cols && cols.includes('invoice_number')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({
+                    data: {
+                      invoice_number: 'INV-001',
+                      invoice_title: 'Test',
+                      total: '100',
+                      user_id: 'u1',
+                      organization_id: null,
+                      client_id: 'client-1',
+                      client_snapshot: null,
+                    },
+                    error: null,
+                  }),
+                }),
+              };
+            }
+            if (cols && cols === '*') {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({
+                    data: {
+                      id: 'inv-1',
+                      user_id: 'u1',
+                      client_id: 'client-1',
+                      client_snapshot: null,
+                      invoice_number: 'INV-001',
+                      invoice_title: 'Test',
+                      total: '100',
+                    },
+                    error: null,
+                  }),
+                }),
+              };
+            }
+            return first;
+          },
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: (c) => {
+            profileSelectCount += 1;
+            if (profileSelectCount === 1) {
+              return {
+                eq: () => ({
+                  maybeSingle: () => Promise.resolve({
+                    data: { clients: [{ id: 'client-1', email: 'client@billing.com' }] },
+                    error: null,
+                  }),
+                }),
+              };
+            }
+            return { eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) };
+          },
+        };
+      }
+      return {};
+    });
+    mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    const receiptToClient = mockSendMail.mock.calls.find((c) => c[0]?.to === 'client@billing.com');
+    expect(receiptToClient).toBeDefined();
+    delete process.env.SMTP_HOST;
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASSWORD;
+    delete process.env.SMTP_FROM_EMAIL;
+  });
+
+  it('sends payment notification to org admins and owner fallback', async () => {
+    process.env.SMTP_HOST = 'smtp.test.com';
+    process.env.SMTP_USER = 'u';
+    process.env.SMTP_PASSWORD = 'p';
+    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
+    let orgMembersCalls = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_invoices') {
+        return {
+          select: (cols) => {
+            const first = { eq: () => ({ limit: () => ({ single: () => Promise.resolve({ data: invoiceRow, error: null }) }) }) };
+            if (cols && cols.includes('outstanding_balance')) {
+              return { eq: () => ({ single: () => Promise.resolve({ data: { outstanding_balance: '100', total: '100' }, error: null }) }) };
+            }
+            if (cols && cols.includes('invoice_number')) {
+              return {
+                eq: () => ({
+                  single: () => Promise.resolve({
+                    data: {
+                      invoice_number: 'INV-001',
+                      invoice_title: 'Test',
+                      total: '100',
+                      user_id: 'owner-1',
+                      organization_id: 'org-1',
+                      client_snapshot: null,
+                    },
+                    error: null,
+                  }),
+                }),
+              };
+            }
+            return first;
+          },
+          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === 'org_members') {
+        orgMembersCalls += 1;
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ user_id: 'admin-1' }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: (c) => ({
+            eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
+            in: () => Promise.resolve({ data: [{ email: 'admin@org.com' }], error: null }),
+          }),
+        };
+      }
+      return {};
+    });
+    mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    const adminNotification = mockSendMail.mock.calls.find(
+      (c) => c[0]?.to === 'admin@org.com' && c[0]?.subject?.includes('Payment received')
+    );
+    expect(adminNotification).toBeDefined();
+    delete process.env.SMTP_HOST;
+    delete process.env.SMTP_USER;
+    delete process.env.SMTP_PASSWORD;
+    delete process.env.SMTP_FROM_EMAIL;
   });
 
   it('returns 405 for unsupported method', async () => {

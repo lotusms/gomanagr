@@ -82,7 +82,7 @@ describe('InvoicePaymentSummary', () => {
         }}
       />
     );
-    expect(screen.getByRole('button', { name: /resend invoice/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send invoice/i })).toBeInTheDocument();
   });
 
   it('void button opens confirmation and on confirm calls update-client-invoice', async () => {

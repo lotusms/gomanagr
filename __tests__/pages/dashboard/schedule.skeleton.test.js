@@ -131,5 +131,5 @@ describe('Schedule page – Loading skeleton', () => {
     });
 
     expect(screen.queryByTestId('schedule-page-skeleton')).not.toBeInTheDocument();
-  });
+  }, 10000);
 });

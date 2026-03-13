@@ -71,11 +71,10 @@ export default async function handler(req, res) {
       .from('org_members')
       .select('role')
       .eq('user_id', userId)
-      .eq('role', 'superadmin')
       .limit(1)
       .maybeSingle();
-    if (!membership) {
-      return res.status(403).json({ error: 'Forbidden', message: 'Only organization owner (superadmin) can run cleanup' });
+    if (!membership || !['superadmin', 'developer'].includes(membership.role)) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Only organization owner (superadmin) or developer can run cleanup' });
     }
   }
 

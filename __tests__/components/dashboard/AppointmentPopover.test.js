@@ -162,4 +162,91 @@ describe('AppointmentPopover', () => {
 
     expect(screen.getByText('Team standup')).toBeInTheDocument();
   });
+
+  it('positions popover above trigger when there is not enough space below', async () => {
+    const triggerBottom = 700;
+    const triggerTop = 650;
+    const triggerLeft = 100;
+    const triggerWidth = 200;
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: 720, configurable: true });
+
+    render(
+      <AppointmentPopover
+        appointment={defaultAppointment}
+        teamMembers={teamMembers}
+        clients={clients}
+        onOpenEdit={jest.fn()}
+      />
+    );
+
+    const trigger = screen.getByText('Team standup').closest('div');
+    trigger.getBoundingClientRect = () => ({
+      top: triggerTop,
+      bottom: triggerBottom,
+      left: triggerLeft,
+      width: triggerWidth,
+      right: triggerLeft + triggerWidth,
+      height: triggerBottom - triggerTop,
+      x: triggerLeft,
+      y: triggerTop,
+      toJSON: () => {},
+    });
+
+    fireEvent.mouseEnter(trigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: /appointment details/i })).toBeInTheDocument();
+    });
+
+    const dialog = screen.getByRole('dialog', { name: /appointment details/i });
+    const top = parseInt(dialog.style.top, 10);
+    expect(top).toBeLessThan(triggerBottom);
+    expect(top).toBeLessThanOrEqual(triggerTop);
+
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+  });
+
+  it('positions popover below trigger when there is enough space below', async () => {
+    const triggerTop = 100;
+    const triggerBottom = 150;
+    const triggerLeft = 100;
+    const triggerWidth = 200;
+    const originalInnerHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+
+    render(
+      <AppointmentPopover
+        appointment={defaultAppointment}
+        teamMembers={teamMembers}
+        clients={clients}
+        onOpenEdit={jest.fn()}
+      />
+    );
+
+    const trigger = screen.getByText('Team standup').closest('div');
+    trigger.getBoundingClientRect = () => ({
+      top: triggerTop,
+      bottom: triggerBottom,
+      left: triggerLeft,
+      width: triggerWidth,
+      right: triggerLeft + triggerWidth,
+      height: triggerBottom - triggerTop,
+      x: triggerLeft,
+      y: triggerTop,
+      toJSON: () => {},
+    });
+
+    fireEvent.mouseEnter(trigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: /appointment details/i })).toBeInTheDocument();
+    });
+
+    const dialog = screen.getByRole('dialog', { name: /appointment details/i });
+    const top = parseInt(dialog.style.top, 10);
+    expect(top).toBeGreaterThanOrEqual(triggerBottom);
+
+    Object.defineProperty(window, 'innerHeight', { value: originalInnerHeight, configurable: true });
+  });
 });

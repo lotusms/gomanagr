@@ -10,7 +10,7 @@ import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
 import { PageHeader, ConfirmationDialog } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
-import { isOwnerRole, isAdminRole, ORG_ROLE } from '@/config/rolePermissions';
+import { isOwnerRole, isAdminRole, isOwnerOrDeveloperRole, ORG_ROLE } from '@/config/rolePermissions';
 import { getInviteAvailability } from '@/lib/teamInviteUtils';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import Link from 'next/link';
@@ -46,7 +46,7 @@ export default function EditTeamMemberPage() {
     () =>
       organization?.membership?.role != null &&
       isAdminRole(organization.membership.role) &&
-      !isOwnerRole(organization.membership.role),
+      !isOwnerOrDeveloperRole(organization.membership.role),
     [organization?.membership?.role]
   );
 
@@ -126,7 +126,7 @@ export default function EditTeamMemberPage() {
     const map = {};
     (orgMembers || []).forEach((om) => {
       if (om.user_id === currentUser?.uid) return;
-      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN) return;
+      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN || om.role === ORG_ROLE.DEVELOPER) return;
       const email = (om.user?.email || '').toLowerCase().trim();
       if (email) map[email] = om.user_id;
     });
@@ -137,7 +137,7 @@ export default function EditTeamMemberPage() {
     const set = new Set();
     (orgMembers || []).forEach((om) => {
       if (om.user_id === currentUser?.uid) return;
-      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN) return;
+      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN || om.role === ORG_ROLE.DEVELOPER) return;
       set.add(om.user_id);
     });
     return set;
@@ -158,7 +158,7 @@ export default function EditTeamMemberPage() {
   );
 
   const currentUserIsOwner = useMemo(
-    () => isOwnerRole(organization?.membership?.role) || team.some((m) => m.id === `owner-${currentUser?.uid}`),
+    () => isOwnerOrDeveloperRole(organization?.membership?.role) || team.some((m) => m.id === `owner-${currentUser?.uid}`),
     [organization?.membership?.role, team, currentUser?.uid]
   );
 

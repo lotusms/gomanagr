@@ -58,16 +58,29 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Not a member of this organization' });
       }
 
-      const { data: ownerRow, error: ownerErr } = await supabaseAdmin
+      const { data: superadminRow } = await supabaseAdmin
         .from('org_members')
         .select('user_id')
         .eq('organization_id', organizationId)
         .eq('role', 'superadmin')
         .limit(1)
         .maybeSingle();
+      const { data: developerRows } = await supabaseAdmin
+        .from('org_members')
+        .select('user_id')
+        .eq('organization_id', organizationId)
+        .eq('role', 'developer')
+        .limit(1);
+      const { data: adminRows } = await supabaseAdmin
+        .from('org_members')
+        .select('user_id')
+        .eq('organization_id', organizationId)
+        .eq('role', 'admin')
+        .limit(1);
 
-      if (!ownerErr && ownerRow?.user_id) {
-        ownerUserId = ownerRow.user_id;
+      const resolvedOwnerId = superadminRow?.user_id || (developerRows?.[0]?.user_id) || (adminRows?.[0]?.user_id);
+      if (resolvedOwnerId) {
+        ownerUserId = resolvedOwnerId;
         const { data: org } = await supabaseAdmin
           .from('organizations')
           .select('id_prefix, name')

@@ -23,7 +23,7 @@ try {
   supabaseAdmin = null;
 }
 
-/** Resolve the user_id whose profile holds teamMemberSections for this org (superadmin first, else first admin). */
+/** Resolve the user_id whose profile holds teamMemberSections (superadmin first, then developer, then admin). */
 async function getConfigOwnerUserId(supabase, orgId) {
   const { data: ownerRows } = await supabase
     .from('org_members')
@@ -32,6 +32,13 @@ async function getConfigOwnerUserId(supabase, orgId) {
     .eq('role', 'superadmin')
     .limit(1);
   if (ownerRows?.length) return ownerRows[0].user_id;
+  const { data: developerRows } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('organization_id', orgId)
+    .eq('role', 'developer')
+    .limit(1);
+  if (developerRows?.length) return developerRows[0].user_id;
   const { data: adminRows } = await supabase
     .from('org_members')
     .select('user_id')

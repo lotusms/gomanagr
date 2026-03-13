@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       .from('org_members')
       .select('user_id')
       .eq('organization_id', orgId)
-      .in('role', ['superadmin', 'admin'])
+      .in('role', ['superadmin', 'admin', 'developer'])
       .limit(1);
 
     let member = null;

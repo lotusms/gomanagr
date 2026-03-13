@@ -47,15 +47,28 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Not a member of this organization' });
     }
 
-    const { data: ownerRow, error: ownerErr } = await supabaseAdmin
+    const { data: superadminRow } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
       .eq('organization_id', organizationId)
       .eq('role', 'superadmin')
       .limit(1)
       .maybeSingle();
+    const { data: developerRows } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+      .eq('role', 'developer')
+      .limit(1);
+    const { data: adminRows } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+      .eq('role', 'admin')
+      .limit(1);
 
-    if (ownerErr || !ownerRow?.user_id) {
+    const ownerUserId = superadminRow?.user_id || (developerRows?.[0]?.user_id) || (adminRows?.[0]?.user_id);
+    if (!ownerUserId) {
       return res.status(200).json({
         ownerUserId: null,
         services: [],
@@ -66,12 +79,12 @@ export default async function handler(req, res) {
     const { data: profile, error: profileErr } = await supabaseAdmin
       .from('user_profiles')
       .select('services, team_members')
-      .eq('id', ownerRow.user_id)
+      .eq('id', ownerUserId)
       .single();
 
     if (profileErr || !profile) {
       return res.status(200).json({
-        ownerUserId: ownerRow.user_id,
+        ownerUserId,
         services: [],
         teamMembers: [],
       });
@@ -81,7 +94,7 @@ export default async function handler(req, res) {
     const teamMembers = Array.isArray(profile.team_members) ? profile.team_members : [];
 
     return res.status(200).json({
-      ownerUserId: ownerRow.user_id,
+      ownerUserId,
       services,
       teamMembers,
     });

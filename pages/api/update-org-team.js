@@ -47,15 +47,28 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Only org admins can update the org team' });
     }
 
-    const { data: ownerRow, error: ownerErr } = await supabaseAdmin
+    const { data: superadminRow } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
       .eq('organization_id', organizationId)
       .eq('role', 'superadmin')
       .limit(1)
       .maybeSingle();
+    const { data: developerRows } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+      .eq('role', 'developer')
+      .limit(1);
+    const { data: adminRows } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+      .eq('role', 'admin')
+      .limit(1);
 
-    if (ownerErr || !ownerRow?.user_id) {
+    const ownerUserId = superadminRow?.user_id || (developerRows?.[0]?.user_id) || (adminRows?.[0]?.user_id);
+    if (!ownerUserId) {
       return res.status(404).json({ error: 'Org owner not found' });
     }
 
@@ -65,7 +78,7 @@ export default async function handler(req, res) {
         team_members: teamMembers,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', ownerRow.user_id);
+      .eq('id', ownerUserId);
 
     if (updateErr) {
       console.error('[update-org-team]', updateErr);

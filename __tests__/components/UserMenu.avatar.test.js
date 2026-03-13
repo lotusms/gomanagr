@@ -4,6 +4,9 @@ import UserMenu from '@/components/layouts/UserMenu';
 
 const mockOnLogout = jest.fn();
 
+jest.mock('next/router', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), reload: jest.fn(), pathname: '/dashboard' }),
+}));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/AuthContext', () => ({ useAuth: () => ({}), AuthProvider: ({ children }) => children }));
 jest.mock('@/services/userService', () => ({ getUserAccount: () => Promise.resolve(null) }));
@@ -11,6 +14,8 @@ jest.mock('@/config/rolePermissions', () => ({
   isOwnerRole: () => false,
   isAdminRole: () => false,
   isMemberRole: () => false,
+  isDeveloperRole: () => false,
+  isOwnerOrDeveloperRole: () => false,
 }));
 
 jest.mock('@/lib/userPermissions', () => ({

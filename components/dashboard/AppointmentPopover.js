@@ -14,7 +14,7 @@
  * @param {React.ReactNode} children - Trigger content (optional; default is title + time)
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { formatTime } from '@/utils/dateTimeFormatters';
 import { HiTrash } from 'react-icons/hi';
@@ -23,6 +23,8 @@ import { getTermForIndustry, getTermSingular } from '@/components/clients/client
 const POPOVER_OFFSET = 8;
 const NOTES_LINE_CLAMP = 3;
 const CLOSE_DELAY_MS = 150;
+const VIEWPORT_MARGIN = 16;
+const POPOVER_ESTIMATED_HEIGHT = 280;
 
 export default function AppointmentPopover({
   appointment,
@@ -41,6 +43,7 @@ export default function AppointmentPopover({
   const serviceTermLabel = getTermSingular(getTermForIndustry(industry, 'services')) || 'Service';
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [openUp, setOpenUp] = useState(false);
   const triggerRef = useRef(null);
   const popoverRef = useRef(null);
   const closeTimeoutRef = useRef(null);
@@ -54,7 +57,10 @@ export default function AppointmentPopover({
 
   const scheduleClose = () => {
     clearCloseTimeout();
-    closeTimeoutRef.current = setTimeout(() => setVisible(false), CLOSE_DELAY_MS);
+    closeTimeoutRef.current = setTimeout(() => {
+      setVisible(false);
+      setOpenUp(false);
+    }, CLOSE_DELAY_MS);
   };
 
   const appointmentStaffIds = Array.isArray(appointment?.staffIds) && appointment.staffIds.length > 0
@@ -80,10 +86,21 @@ export default function AppointmentPopover({
   const updatePosition = () => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setPosition({
-      top: rect.bottom + POPOVER_OFFSET,
-      left: rect.left + rect.width / 2,
-    });
+    const left = rect.left + rect.width / 2;
+    const spaceBelow = window.innerHeight - rect.bottom - POPOVER_OFFSET - VIEWPORT_MARGIN;
+    if (spaceBelow < POPOVER_ESTIMATED_HEIGHT) {
+      setOpenUp(true);
+      setPosition({
+        left,
+        top: rect.top - POPOVER_ESTIMATED_HEIGHT - POPOVER_OFFSET,
+      });
+    } else {
+      setOpenUp(false);
+      setPosition({
+        left,
+        top: rect.bottom + POPOVER_OFFSET,
+      });
+    }
   };
 
   const handleTriggerMouseEnter = () => {
@@ -124,6 +141,20 @@ export default function AppointmentPopover({
 
   useEffect(() => {
     if (visible && triggerRef.current) updatePosition();
+  }, [visible]);
+
+  useLayoutEffect(() => {
+    if (!visible || !triggerRef.current || !popoverRef.current) return;
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    const popoverRect = popoverRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - triggerRect.bottom - POPOVER_OFFSET;
+    if (popoverRect.height > spaceBelow - VIEWPORT_MARGIN) {
+      setOpenUp(true);
+      setPosition({
+        left: triggerRect.left + triggerRect.width / 2,
+        top: triggerRect.top - popoverRect.height - POPOVER_OFFSET,
+      });
+    }
   }, [visible]);
 
   useEffect(() => {

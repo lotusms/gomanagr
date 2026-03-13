@@ -16,6 +16,7 @@ import {
   isOwnerRole,
   isAdminRole,
   isMemberRole,
+  isOwnerOrDeveloperRole,
   MEMBER_HIDDEN_SETTINGS,
   ADMIN_NON_OWNER_HIDDEN_SETTINGS,
 } from '@/config/rolePermissions';
@@ -56,7 +57,8 @@ function SettingsContent() {
   }, [currentUser?.uid, memberRole, userAccount]);
 
   const isTeamMember = isMemberRole(memberRole);
-  const isAdminNonOwner = isAdminRole(memberRole) && !isOwner;
+  const isOwnerOrDeveloper = isOwnerOrDeveloperRole(memberRole);
+  const isAdminNonOwner = isAdminRole(memberRole) && !isOwner && !isOwnerOrDeveloper;
   const hiddenSections = isTeamMember ? MEMBER_HIDDEN_SETTINGS : isAdminNonOwner ? ADMIN_NON_OWNER_HIDDEN_SETTINGS : [];
 
   useEffect(() => {

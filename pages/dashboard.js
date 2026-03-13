@@ -24,7 +24,7 @@ import ProposalsPipelineCard from '@/components/dashboard/ProposalsPipelineCard'
 import RecentlyUpdatedCard from '@/components/dashboard/RecentlyUpdatedCard';
 import WebsiteConsultationDialog from '@/components/dashboard/WebsiteConsultationDialog';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
-import { isAdminRole, isOwnerRole } from '@/config/rolePermissions';
+import { isAdminRole, isOwnerOrDeveloperRole } from '@/config/rolePermissions';
 import {
   buildFollowUps,
   getInvoicesSummary,
@@ -116,7 +116,7 @@ function DashboardContent() {
 
   useEffect(() => {
     const role = organization?.membership?.role;
-    if (role !== undefined && role !== null && !isOwnerRole(role)) {
+    if (role !== undefined && role !== null && !isOwnerOrDeveloperRole(role)) {
       router.replace('/dashboard/team-member');
     }
   }, [organization?.membership?.role, router]);
@@ -352,8 +352,8 @@ function DashboardContent() {
       .replace(/\bclient portal\b/gi, `${clientTermSingularLower} portal`),
   }));
 
-  const isSuperadmin = isOwnerRole(organization?.membership?.role);
-  const showLoader = currentUser?.uid && (!organization || !isSuperadmin);
+  const isOwnerOrDeveloper = isOwnerOrDeveloperRole(organization?.membership?.role);
+  const showLoader = currentUser?.uid && (!organization || !isOwnerOrDeveloper);
   if (showLoader) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">

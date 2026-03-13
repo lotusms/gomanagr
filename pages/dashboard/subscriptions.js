@@ -3,7 +3,9 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
 import { getTrialStatus } from '@/lib/trialUtils';
+import { isDeveloperRole } from '@/config/rolePermissions';
 import { PageHeader } from '@/components/ui';
 import { HiLockClosed } from 'react-icons/hi';
 import SubscriptionPlansGrid from '@/components/subscriptions/SubscriptionPlansGrid';
@@ -12,6 +14,7 @@ function SubscriptionsContent() {
   const { currentUser } = useAuth();
   const router = useRouter();
   const [userAccount, setUserAccount] = useState(null);
+  const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [trialStatus, setTrialStatus] = useState({
     isActive: false,
@@ -22,10 +25,13 @@ function SubscriptionsContent() {
 
   useEffect(() => {
     if (currentUser?.uid) {
-      getUserAccount(currentUser.uid)
-        .then((data) => {
+      Promise.all([
+        getUserAccount(currentUser.uid),
+        getUserOrganization(currentUser.uid),
+      ])
+        .then(([data, org]) => {
           setUserAccount(data || null);
-          
+          setOrganization(org || null);
           const status = getTrialStatus(data);
           setTrialStatus({
             isActive: data?.trial === true && !status.expired,
@@ -34,7 +40,10 @@ function SubscriptionsContent() {
             trialEndsAt: status.trialEndsAt?.toISOString() || null,
           });
         })
-        .catch(() => setUserAccount(null))
+        .catch(() => {
+          setUserAccount(null);
+          setOrganization(null);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -82,7 +91,17 @@ function SubscriptionsContent() {
         />
 
         {/* Trial Status Card */}
-        {trialStatus.isActive && (
+        {isDeveloperRole(organization?.membership?.role) ? (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Free Trial Inactive
+                </h3>
+              </div>
+            </div>
+          </div>
+        ) : trialStatus.isActive ? (
           <div className="bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border border-primary-200 dark:border-primary-800 rounded-lg p-6">
             <div className="flex items-start justify-between">
               <div>
@@ -100,9 +119,9 @@ function SubscriptionsContent() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
-        {trialStatus.expired && (
+        {!isDeveloperRole(organization?.membership?.role) && trialStatus.expired && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
             <div className="flex items-start">
               <HiLockClosed className="w-6 h-6 text-red-600 dark:text-red-400 mr-3 mt-1" />
@@ -119,7 +138,7 @@ function SubscriptionsContent() {
         )}
 
         {/* Current Subscription (if any) */}
-        {!trialStatus.isActive && !trialStatus.expired && (
+        {!isDeveloperRole(organization?.membership?.role) && !trialStatus.isActive && !trialStatus.expired && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
               Current Subscription

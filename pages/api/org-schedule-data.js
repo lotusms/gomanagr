@@ -82,7 +82,15 @@ export default async function handler(req, res) {
       .eq('role', 'admin')
       .limit(1);
 
-    const profileUserId = superadminRow?.user_id || (adminRows?.[0]?.user_id);
+    const { data: developerRows } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', orgId)
+      .eq('role', 'developer')
+      .limit(1);
+
+    // Use superadmin first; then developer (so when the only superadmin toggles to developer we keep using their profile); then admin.
+    const profileUserId = superadminRow?.user_id || (developerRows?.[0]?.user_id) || (adminRows?.[0]?.user_id);
     if (adminErr || !profileUserId) {
       return res.status(200).json({ schedule: null });
     }

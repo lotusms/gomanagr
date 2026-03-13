@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useEffect, useState } from 'react';
 import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount, getOrgServices, updateServices, updateOrgServices } from '@/services/userService';
-import { isOwnerRole } from '@/config/rolePermissions';
+import { isOwnerOrDeveloperRole } from '@/config/rolePermissions';
 import { PageHeader } from '@/components/ui';
 import AddServiceForm from '@/components/services/AddServiceForm';
 import { SecondaryButton } from '@/components/ui/buttons';
@@ -37,7 +37,7 @@ export default function NewServicePage() {
   useEffect(() => {
     if (!currentUser?.uid) return;
     const org = organization;
-    if (org?.id && !isOwnerRole(org?.membership?.role)) {
+    if (org?.id && !isOwnerOrDeveloperRole(org?.membership?.role)) {
       getOrgServices(org.id, currentUser.uid)
         .then((data) => {
           setServices(data.services || []);

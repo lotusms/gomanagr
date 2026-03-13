@@ -10,7 +10,7 @@ import AddTeamMemberForm from '@/components/dashboard/AddTeamMemberForm';
 import { PageHeader } from '@/components/ui';
 import { SecondaryButton } from '@/components/ui/buttons';
 import { useToast } from '@/components/ui/Toast';
-import { isOwnerRole, isAdminRole } from '@/config/rolePermissions';
+import { isOwnerRole, isAdminRole, isOwnerOrDeveloperRole } from '@/config/rolePermissions';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import Link from 'next/link';
 import { HiArrowLeft } from 'react-icons/hi';
@@ -38,7 +38,7 @@ export default function NewTeamMemberPage() {
     () =>
       organization?.membership?.role != null &&
       isAdminRole(organization.membership.role) &&
-      !isOwnerRole(organization.membership.role),
+      !isOwnerOrDeveloperRole(organization.membership.role),
     [organization?.membership?.role]
   );
 
@@ -84,7 +84,7 @@ export default function NewTeamMemberPage() {
   const teamMemberSingularLower = teamMemberSingular.toLowerCase();
   const teamTermLower = teamTerm.toLowerCase();
   const currentUserIsOwner = useMemo(
-    () => isOwnerRole(organization?.membership?.role) || team.some((m) => m.id === `owner-${currentUser?.uid}`),
+    () => isOwnerOrDeveloperRole(organization?.membership?.role) || team.some((m) => m.id === `owner-${currentUser?.uid}`),
     [organization?.membership?.role, team, currentUser?.uid]
   );
 

@@ -94,13 +94,12 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('developer role: shows same admin nav as admin (including Proposals)', () => {
+  it('developer role: shows same owner nav as superadmin (full access, trial not applied)', () => {
     renderSidebar({ memberRole: 'developer', isOwner: false });
 
     const items = getNavLinkNamesAndHrefs();
     const expected = [
-      { name: 'Home', href: '/dashboard/team-member' },
-      { name: 'My Profile', href: '/dashboard/team-member/profile' },
+      { name: 'Home', href: '/dashboard' },
       { name: 'Team', href: '/dashboard/team' },
       { name: 'Schedule', href: '/dashboard/schedule' },
       { name: 'Clients', href: '/dashboard/clients' },
@@ -111,6 +110,9 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Invoices', href: '/dashboard/invoices' },
       { name: 'Receipts', href: '/dashboard/receipts' },
       { name: 'Tasks', href: '/dashboard/tasks' },
+      { name: 'Marketing', href: '/dashboard/marketing' },
+      { name: 'Insights', href: '/dashboard/insights' },
+      { name: 'Timesheets', href: '/dashboard/timesheets' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];
     expect(items).toHaveLength(expected.length);

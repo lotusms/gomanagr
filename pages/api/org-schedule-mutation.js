@@ -67,6 +67,12 @@ export default async function handler(req, res) {
       .eq('role', 'superadmin')
       .limit(1)
       .maybeSingle();
+    const { data: developerRows } = await supabaseAdmin
+      .from('org_members')
+      .select('user_id')
+      .eq('organization_id', orgId)
+      .eq('role', 'developer')
+      .limit(1);
     const { data: adminRows } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
@@ -74,7 +80,7 @@ export default async function handler(req, res) {
       .eq('role', 'admin')
       .limit(1);
 
-    const profileUserId = superadminRow?.user_id || adminRows?.[0]?.user_id;
+    const profileUserId = superadminRow?.user_id || (developerRows?.[0]?.user_id) || (adminRows?.[0]?.user_id);
     if (!profileUserId) {
       return res.status(500).json({ error: 'No admin found for organization' });
     }

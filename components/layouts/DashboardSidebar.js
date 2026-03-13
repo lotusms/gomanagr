@@ -22,7 +22,7 @@ import {
 } from 'react-icons/hi';
 import SidebarToggle from '@/components/layouts/SidebarToggle';
 import { getProjectTermForIndustry, getTermForIndustry } from '@/components/clients/clientProfileConstants';
-import { isOwnerRole, isAdminRole, isMemberRole } from '@/config/rolePermissions';
+import { isOwnerRole, isAdminRole, isMemberRole, isOwnerOrDeveloperRole } from '@/config/rolePermissions';
 import { PATH_TO_SECTION } from '@/config/teamMemberAccess';
 
 function getOwnerNavItems(accountIndustry) {
@@ -120,7 +120,8 @@ function getMemberNavItems(memberAccess, accountIndustry) {
     { divider: true },
     { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
   ];
-  if (memberAccess == null) return all;
+  // Show all items when access config not yet loaded or empty (avoid stripped nav before API returns)
+  if (memberAccess == null || (typeof memberAccess === 'object' && Object.keys(memberAccess).length === 0)) return all;
   return all.filter((item) => {
     if (item.divider) return true;
     const sectionKey = PATH_TO_SECTION[item.href];
@@ -151,7 +152,7 @@ export default function DashboardSidebar({ open, onToggle, userAccount, organiza
   const navigationItems = useMemo(() => {
     if (!orgLoaded) return placeholderNav;
     if (isMemberRole(memberRole)) return getMemberNavItems(memberAccess, accountIndustry);
-    if (isOwnerRole(memberRole)) return getOwnerNavItems(accountIndustry);
+    if (isOwnerOrDeveloperRole(memberRole)) return getOwnerNavItems(accountIndustry);
     if (isAdminRole(memberRole)) return getAdminNavItems(accountIndustry);
     return getAdminNavItems(accountIndustry);
   }, [orgLoaded, memberRole, memberAccess, accountIndustry, placeholderNav]);

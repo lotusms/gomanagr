@@ -11,6 +11,15 @@ import Script from 'next/script';
 function AppContent({ Component, pageProps }) {
   const router = useRouter();
   const isDashboard = router.pathname.startsWith('/dashboard');
+  const isPaywall = router.pathname === '/paywall';
+
+  if (isPaywall) {
+    return (
+      <ProtectedRoute>
+        <Component {...pageProps} />
+      </ProtectedRoute>
+    );
+  }
 
   if (isDashboard) {
     return (

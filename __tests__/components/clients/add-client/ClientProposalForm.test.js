@@ -14,7 +14,7 @@ jest.mock('next/router', () => ({
 jest.mock('@/components/ui', () => {
   const React = require('react');
   return {
-    useToast: () => ({ toast: { success: jest.fn(), error: jest.fn() } }),
+    useToast: () => ({ success: jest.fn(), error: jest.fn() }),
     FormStepContent: ({ children }) => React.createElement(React.Fragment, null, children),
     FormStepSection: ({ children }) => React.createElement(React.Fragment, null, children),
     FormStepNav: ({ steps, currentStep, onStepChange, ariaLabel }) =>
@@ -30,11 +30,15 @@ jest.mock('@/components/ui', () => {
         )
       ),
     FormStepFooter: (props) => {
-      const { onSubmitClick, onCancel, submitLabel, saving } = props;
-      return React.createElement(React.Fragment, null, [
+      const { onSubmitClick, onCancel, submitLabel, saving, secondarySubmitLabel, onSecondarySubmitClick } = props;
+      const buttons = [
         React.createElement('button', { key: 'cancel', type: 'button', onClick: onCancel }, 'Cancel'),
         React.createElement('button', { key: 'submit', type: 'button', onClick: onSubmitClick, disabled: saving }, saving ? 'Saving...' : submitLabel),
-      ]);
+      ];
+      if (secondarySubmitLabel && onSecondarySubmitClick) {
+        buttons.push(React.createElement('button', { key: 'secondary', type: 'button', onClick: onSecondarySubmitClick, disabled: saving }, secondarySubmitLabel));
+      }
+      return React.createElement(React.Fragment, null, buttons);
     },
     DocumentFormHeader: (props) => {
       const { titleLabel, titleValue, onTitleChange } = props;
@@ -69,7 +73,7 @@ function mockFetch() {
   return jest.fn((url) => {
     const u = typeof url === 'string' ? url : '';
     if (u.includes('get-next-document-id')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ nextId: '1' }) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'PROP-2026-001' }) });
     }
     if (u.includes('get-org-clients')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ clients: [] }) });
@@ -138,6 +142,81 @@ describe('ClientProposalForm', () => {
     );
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /save proposal/i })).toBeInTheDocument();
+    });
+  });
+
+  it('shows error and does not submit when proposal title is empty', async () => {
+    render(<ClientProposalForm {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toBeInTheDocument();
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/title is required/i)).toBeInTheDocument();
+    });
+    const createCalls = global.fetch.mock.calls.filter((c) => String(c[0]).includes('create-client-proposal'));
+    expect(createCalls.length).toBe(0);
+  });
+
+  it('calls update-client-proposal when proposalId provided and submit succeeds', async () => {
+    render(
+      <ClientProposalForm
+        {...defaultProps}
+        proposalId="prop-99"
+        initial={{ proposal_title: 'Existing Proposal' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Existing Proposal');
+    });
+    await userEvent.click(screen.getByRole('button', { name: /save proposal/i }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const updateCall = Array.from(global.fetch.mock.calls).find((c) => String(c[0]).includes('update-client-proposal'));
+    expect(updateCall).toBeDefined();
+    const body = JSON.parse(updateCall[1].body);
+    expect(body.proposalId).toBe('prop-99');
+    expect(body.proposal_title).toBe('Existing Proposal');
+    await waitFor(() => expect(defaultProps.onSuccess).toHaveBeenCalled());
+  });
+
+  it('shows error when update-client-proposal returns not ok', async () => {
+    const mockFetchImpl = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('update-client-proposal')) {
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Update failed' }) });
+      }
+      return mockFetch()(url);
+    });
+    global.fetch = mockFetchImpl;
+    render(
+      <ClientProposalForm
+        {...defaultProps}
+        proposalId="prop-1"
+        initial={{ proposal_title: 'Existing' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toBeInTheDocument();
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Update failed/)).toBeInTheDocument();
+    });
+  });
+
+  it('calls onHasChangesChange when form is edited', async () => {
+    const onHasChangesChange = jest.fn();
+    render(<ClientProposalForm {...defaultProps} onHasChangesChange={onHasChangesChange} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toBeInTheDocument();
+    });
+    await userEvent.type(screen.getByLabelText(/proposal title/i), 'X');
+    await waitFor(() => {
+      expect(onHasChangesChange).toHaveBeenCalledWith(true);
     });
   });
 });

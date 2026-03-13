@@ -375,6 +375,12 @@ export default async function handler(req, res) {
         membershipRole = 'admin';
         userAlreadyInOrg = true;
       } else {
+        const trialActive = userData.trial !== undefined ? userData.trial : true;
+        const trialEndsAt =
+          userData.trialEndsAt ||
+          (trialActive
+            ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+            : null);
         const orgData = {
           name: userData.companyName || 'My Organization',
           logo_url: '',
@@ -383,8 +389,8 @@ export default async function handler(req, res) {
           company_locations: userData.companyLocations || '',
           team_size: userData.teamSize || '',
           sections_to_track: userData.sectionsToTrack || [],
-          trial: userData.trial !== undefined ? userData.trial : true,
-          trial_ends_at: userData.trialEndsAt || null,
+          trial: trialActive,
+          trial_ends_at: trialEndsAt,
           selected_palette: userData.selectedPalette || 'palette1',
           created_at: now,
           updated_at: now,

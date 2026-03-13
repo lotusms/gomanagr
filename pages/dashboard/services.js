@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, updateServices, updateTeamMembers, getOrgServices, updateOrgServices } from '@/services/userService';
 import { getUserOrganization } from '@/services/organizationService';
-import { isOwnerRole } from '@/config/rolePermissions';
+import { isOwnerOrDeveloperRole } from '@/config/rolePermissions';
 import { PageHeader, EmptyState, ConfirmationDialog, Paginator } from '@/components/ui';
 import ServicesPageSkeleton from '@/components/dashboard/ServicesPageSkeleton';
 import { HiPlus, HiTrash, HiTag, HiUserGroup } from 'react-icons/hi';
@@ -65,7 +65,7 @@ function ServicesContent() {
       .then(([org, account]) => {
         setOrganization(org || null);
         const role = org?.membership?.role;
-        if (isOwnerRole(role)) {
+        if (isOwnerOrDeveloperRole(role)) {
           setOwnerUserId(null);
           setUserAccount(account || null);
           setServices(account?.services || []);

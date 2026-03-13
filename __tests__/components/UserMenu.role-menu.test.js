@@ -4,6 +4,9 @@ import UserMenu from '@/components/layouts/UserMenu';
 
 const mockOnLogout = jest.fn();
 
+jest.mock('next/router', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), reload: jest.fn(), pathname: '/dashboard' }),
+}));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/AuthContext', () => ({ useAuth: () => ({}), AuthProvider: ({ children }) => children }));
 jest.mock('@/services/userService', () => ({ getUserAccount: () => Promise.resolve(null) }));
@@ -120,20 +123,28 @@ describe('UserMenu role-based menu items', () => {
     expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings', '/dashboard/backups']);
   });
 
-  it('developer role: exactly Admin badge, My Account, Settings, Logout (same as admin)', () => {
+  it('developer role: Developer badge (code icon), My Account, Subscriptions, Settings, Developer, Backups, Logout', () => {
     renderUserMenu({
       organization: { membership: { role: 'developer' } },
       isOwner: false,
     });
     openMenu();
 
-    expect(screen.getByText('Admin')).toBeInTheDocument();
+    expect(screen.getAllByText('Developer')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: /developer/i })).toHaveAttribute('href', '/dashboard/developer');
     expect(screen.getByRole('link', { name: /my account/i })).toHaveAttribute('href', '/account');
+    expect(screen.getByRole('link', { name: /subscriptions/i })).toHaveAttribute('href', '/dashboard/subscriptions');
     expect(screen.getByRole('link', { name: /settings/i })).toHaveAttribute('href', '/dashboard/settings');
-    expect(screen.queryByRole('link', { name: /subscriptions/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /developer/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Super Admin')).not.toBeInTheDocument();
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument();
 
-    expectExactlyTheseLinksAndLogout(['/account', '/dashboard/settings', '/dashboard/backups']);
+    expectExactlyTheseLinksAndLogout([
+      '/account',
+      '/dashboard/subscriptions',
+      '/dashboard/settings',
+      '/dashboard/developer',
+      '/dashboard/backups',
+    ]);
   });
 
   it('member: exactly My Account, Settings, Logout (no badge, no Subscriptions, no Developer)', () => {

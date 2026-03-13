@@ -533,4 +533,174 @@ describe('CommunicationLogSection', () => {
     const messagesBtn = within(nav).getByText('Messages').closest('button');
     expect(messagesBtn).toHaveTextContent('2');
   });
+
+  it('MessagesBlock with data shows cards and Add message button navigates to new', async () => {
+    const messages = [
+      { id: 'm1', direction: 'outbound', body: 'Msg body', created_at: '2026-02-27T14:00:00Z' },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-messages'))
+        return Promise.resolve({ ok: true, json: async () => ({ messages }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Messages'));
+    await waitFor(() => expect(screen.getByText('Msg body')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Add/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/messages/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('CallsBlock with data shows cards and Add call button navigates to new', async () => {
+    const calls = [
+      { id: 'call1', summary: 'Call summary', call_date: '2026-02-27', duration_minutes: 5 },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-calls'))
+        return Promise.resolve({ ok: true, json: async () => ({ calls }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Calls'));
+    await waitFor(() => expect(screen.getByText(/Call summary/)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Add/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/calls/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('MeetingNotesBlock with data shows cards and Add meeting note button navigates', async () => {
+    const notes = [
+      { id: 'n1', title: 'Kickoff', content: 'Notes content', meeting_date: '2026-02-27' },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-meeting-notes'))
+        return Promise.resolve({ ok: true, json: async () => ({ notes }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Meeting notes'));
+    await waitFor(() => expect(screen.getByText(/Kickoff|Notes content/)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Add/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/meeting-notes/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('InternalNotesBlock with data shows cards and Add internal note button navigates', async () => {
+    const notes = [
+      { id: 'in1', content: 'Internal note content', created_at: '2026-02-27T14:00:00Z' },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-internal-notes'))
+        return Promise.resolve({ ok: true, json: async () => ({ notes }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        internalNotes=""
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+        onInternalNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Internal notes'));
+    await waitFor(() => expect(screen.getByText(/Internal note content/)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Add/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/internal-notes/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('legacy mode: LogBlock with calls items renders entries and onRemove removes item', async () => {
+    const onCallsChange = jest.fn();
+    render(
+      <CommunicationLogSection
+        messages={[]}
+        calls={['call one', 'call two']}
+        meetingNotes={[]}
+        onMessagesChange={() => {}}
+        onCallsChange={onCallsChange}
+        onMeetingNotesChange={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByText('Calls'));
+    expect(screen.getByDisplayValue('call one')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('call two')).toBeInTheDocument();
+    const removeButtons = screen.getAllByTitle('Remove entry');
+    await userEvent.click(removeButtons[0]);
+    expect(onCallsChange).toHaveBeenCalledWith(['call two']);
+  });
+
+  it('legacy mode: LogBlock with meeting notes onEdit updates entry', async () => {
+    const onMeetingNotesChange = jest.fn();
+    render(
+      <CommunicationLogSection
+        messages={[]}
+        calls={[]}
+        meetingNotes={['note one']}
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={onMeetingNotesChange}
+      />
+    );
+    await userEvent.click(screen.getByText('Meeting notes'));
+    const input = screen.getByDisplayValue('note one');
+    await userEvent.type(input, 'x');
+    expect(onMeetingNotesChange).toHaveBeenCalled();
+    const lastCall = onMeetingNotesChange.mock.calls[onMeetingNotesChange.mock.calls.length - 1][0];
+    expect(lastCall[0]).toBe('note onex');
+  });
 });

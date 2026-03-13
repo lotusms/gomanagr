@@ -57,18 +57,28 @@ describe('get-org-team-list API', () => {
                 error: null,
               });
               const chain = {
-                eq: (col, val) =>
-                  col === 'role' && val === 'superadmin'
-                    ? {
-                        limit: () => ({
-                          maybeSingle: () =>
-                            Promise.resolve({
-                              data: { user_id: 'owner-1' },
-                              error: null,
-                            }),
-                        }),
-                      }
-                    : Promise.resolve({ data: null, error: null }),
+                eq: (col, val) => {
+                  if (col !== 'role') return Promise.resolve({ data: null, error: null });
+                  if (val === 'superadmin') {
+                    return {
+                      limit: () => ({
+                        maybeSingle: () =>
+                          Promise.resolve({
+                            data: { user_id: 'owner-1' },
+                            error: null,
+                          }),
+                      }),
+                    };
+                  }
+                  // developer / admin: API calls .limit(1); return object with limit returning Promise
+                  return {
+                    limit: () =>
+                      Promise.resolve({
+                        data: val === 'developer' ? [{ user_id: 'owner-1' }] : [],
+                        error: null,
+                      }),
+                  };
+                },
               };
               return {
                 eq: (col) =>

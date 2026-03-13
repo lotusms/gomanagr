@@ -3,10 +3,12 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
 import { PageHeader } from '@/components/ui';
 import Switch from '@/components/ui/Switch';
 import { HiCode, HiCheckCircle, HiXCircle, HiLockClosed } from 'react-icons/hi';
 import { isAdminOrDeveloper } from '@/lib/userPermissions';
+import { isDeveloperRole } from '@/config/rolePermissions';
 
 function DeveloperContent() {
   const { currentUser } = useAuth();
@@ -19,14 +21,19 @@ function DeveloperContent() {
 
   useEffect(() => {
     if (currentUser?.uid) {
-      getUserAccount(currentUser.uid)
-        .then((data) => {
+      Promise.all([
+        getUserAccount(currentUser.uid),
+        getUserOrganization(currentUser.uid),
+      ])
+        .then(([data, org]) => {
           setUserAccount(data || null);
           setDeveloperMode(data?.developerMode === true);
-          
-          const access = isAdminOrDeveloper(data, currentUser.uid);
+
+          const accountAccess = isAdminOrDeveloper(data, currentUser.uid);
+          const orgRoleDeveloper = isDeveloperRole(org?.membership?.role);
+          const access = accountAccess || orgRoleDeveloper;
           setHasAccess(access);
-          
+
           if (!access && process.env.NODE_ENV === 'production') {
             router.replace('/dashboard');
           }

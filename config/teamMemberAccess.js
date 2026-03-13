@@ -36,8 +36,9 @@ export function getTeamMemberSectionLabels(industry) {
   };
 }
 
+/** All sections enabled by default so members see full nav; admin can turn off in Team Access. */
 export const DEFAULT_TEAM_MEMBER_SECTIONS = Object.fromEntries(
-  TEAM_MEMBER_SECTION_KEYS.map((key) => [key, key === 'tasks']) // tasks enabled by default for members; others off
+  TEAM_MEMBER_SECTION_KEYS.map((key) => [key, true])
 );
 
 /** Paths that require a section to be enabled (for members). Dashboard and My Profile are always allowed. */

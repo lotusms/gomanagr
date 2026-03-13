@@ -19,6 +19,16 @@ export function isOwnerRole(role) {
   return role === ORG_ROLE.SUPERADMIN;
 }
 
+/** True if role is developer (same nav/powers as superadmin but trial is never applied). */
+export function isDeveloperRole(role) {
+  return role === ORG_ROLE.DEVELOPER;
+}
+
+/** True if role has owner-level menu access (Subscriptions, all Settings, Developer link, Backups). */
+export function isOwnerOrDeveloperRole(role) {
+  return role === ORG_ROLE.SUPERADMIN || role === ORG_ROLE.DEVELOPER;
+}
+
 /** True if role can perform admin-level actions (list members, invite, revoke, manage org schedule, etc.). */
 export function isAdminRole(role) {
   return [ORG_ROLE.SUPERADMIN, ORG_ROLE.ADMIN, ORG_ROLE.DEVELOPER].includes(role);
@@ -34,9 +44,9 @@ export function isAdminNonOwnerRole(role) {
   return (role === ORG_ROLE.ADMIN || role === ORG_ROLE.DEVELOPER);
 }
 
-/** True if role can export org backup (owner or admin only; developer cannot export full org data). */
+/** True if role can export org backup (owner, developer, or admin). */
 export function isOrgBackupAllowedRole(role) {
-  return role === ORG_ROLE.SUPERADMIN || role === ORG_ROLE.ADMIN;
+  return role === ORG_ROLE.SUPERADMIN || role === ORG_ROLE.ADMIN || role === ORG_ROLE.DEVELOPER;
 }
 
 /** Settings tab IDs that admin (non-owner) cannot see; only General and Theme are visible. */

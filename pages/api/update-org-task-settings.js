@@ -84,6 +84,13 @@ async function getConfigOwnerUserId(supabase, orgId) {
     .eq('role', 'superadmin')
     .limit(1);
   if (ownerRows?.length) return ownerRows[0].user_id;
+  const { data: developerRows } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('organization_id', orgId)
+    .eq('role', 'developer')
+    .limit(1);
+  if (developerRows?.length) return developerRows[0].user_id;
   const { data: adminRows } = await supabase
     .from('org_members')
     .select('user_id')

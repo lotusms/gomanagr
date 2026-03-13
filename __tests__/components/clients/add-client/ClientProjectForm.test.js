@@ -24,7 +24,7 @@ function mockFetch() {
   return jest.fn((url) => {
     const u = typeof url === 'string' ? url : '';
     if (u.includes('get-next-document-id')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ nextId: '1' }) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'PROJ-2026-001' }) });
     }
     if (u.includes('get-org-clients')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ clients: [] }) });
@@ -99,5 +99,128 @@ describe('ClientProjectForm', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /^update project$/i })).toBeInTheDocument();
     });
+  });
+
+  it('shows error and does not submit when project title is empty', async () => {
+    render(<ClientProjectForm {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/project title/i)).toBeInTheDocument();
+    });
+    const submitBtn = screen.getByRole('button', { name: /^add project$/i });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/title is required/i)).toBeInTheDocument();
+    });
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('create-client-project'),
+      expect.any(Object)
+    );
+  });
+
+  it('calls update-client-project when projectId provided and submit succeeds', async () => {
+    render(
+      <ClientProjectForm
+        {...defaultProps}
+        projectId="proj-99"
+        initial={{ project_name: 'Existing Project' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText(/project title/i)).toHaveValue('Existing Project');
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const updateCall = Array.from(global.fetch.mock.calls).find((c) => String(c[0]).includes('update-client-project'));
+    expect(updateCall).toBeDefined();
+    const body = JSON.parse(updateCall[1].body);
+    expect(body.projectId).toBe('proj-99');
+    expect(body.project_name).toBe('Existing Project');
+    expect(defaultProps.onSuccess).toHaveBeenCalled();
+  });
+
+  it('shows error when update-client-project returns not ok', async () => {
+    const mockFetchImpl = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('update-client-project')) {
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Update failed' }) });
+      }
+      return mockFetch()(url);
+    });
+    global.fetch = mockFetchImpl;
+    render(
+      <ClientProjectForm
+        {...defaultProps}
+        projectId="proj-1"
+        initial={{ project_name: 'Existing' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText(/project title/i)).toBeInTheDocument();
+    });
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Update failed/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error when create-client-project returns not ok', async () => {
+    const mockFetchImpl = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('create-client-project')) {
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Create failed' }) });
+      }
+      return mockFetch()(url);
+    });
+    global.fetch = mockFetchImpl;
+    render(<ClientProjectForm {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/project title/i)).toBeInTheDocument();
+    });
+    await userEvent.type(screen.getByLabelText(/project title/i), 'New Project');
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Create failed/)).toBeInTheDocument();
+    });
+  });
+
+  it('calls onHasChangesChange when form becomes dirty', async () => {
+    const onHasChangesChange = jest.fn();
+    render(<ClientProjectForm {...defaultProps} onHasChangesChange={onHasChangesChange} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/project title/i)).toBeInTheDocument();
+    });
+    await userEvent.type(screen.getByLabelText(/project title/i), 'X');
+    await waitFor(() => {
+      expect(onHasChangesChange).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it('when showClientDropdown renders client dropdown and submit is disabled without client', async () => {
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('get-org-clients')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ clients: [{ id: 'c1', name: 'Client One' }] }) });
+      }
+      return mockFetch()(url);
+    });
+    render(<ClientProjectForm {...defaultProps} showClientDropdown clientId="" />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/client/i)).toBeInTheDocument();
+    });
+    const addBtn = screen.getByRole('button', { name: /^add project$/i });
+    expect(addBtn).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    });
+    await userEvent.type(screen.getByLabelText(/project title/i), 'My Project');
+    expect(addBtn).toBeDisabled();
   });
 });

@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { HiShieldCheck } from 'react-icons/hi';
+import { useRouter } from 'next/router';
+import { HiShieldCheck, HiCode, HiSwitchHorizontal } from 'react-icons/hi';
 import Avatar from '@/components/ui/Avatar';
 import { getDisplayName } from '@/lib/UserAccountContext';
 import { isAdminOrDeveloper } from '@/lib/userPermissions';
-import { isAdminRole, isMemberRole, isOwnerRole } from '@/config/rolePermissions';
+import { isAdminRole, isMemberRole, isOwnerRole, isDeveloperRole, isOwnerOrDeveloperRole } from '@/config/rolePermissions';
+
+/** User ID allowed to toggle org role superadmin ↔ developer (for testing). */
+const ALLOWED_USER_ID_FOR_DEV_TOGGLE = 'd5107c55-56d1-480d-9274-30dd2d66665f';
 
 /**
  * User avatar button and dropdown menu (My Account, Settings, Logout).
@@ -18,7 +22,9 @@ import { isAdminRole, isMemberRole, isOwnerRole } from '@/config/rolePermissions
  * @param {boolean} [props.headerReady] - When true, account and org are loaded; show avatar. When false, show loading placeholder to avoid flash of initials before logo.
  */
 export default function UserMenu({ userAccount, previewAccount, currentUser, organization, isOwner, onLogout, headerReady = true }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [togglingRole, setTogglingRole] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -57,7 +63,34 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
   const isTeamMember = isMemberRole(memberRole);
   const isAdmin = isAdminRole(memberRole);
   const isSuperAdmin = isOwnerRole(memberRole);
-  const canAccessDeveloper = accountLoaded && isAdminOrDeveloper(account, currentUser?.uid);
+  const isDeveloper = isDeveloperRole(memberRole);
+  const isOwnerOrDeveloper = isOwnerOrDeveloperRole(memberRole);
+  const canAccessDeveloper = accountLoaded && (isAdminOrDeveloper(account, currentUser?.uid) || isDeveloper);
+
+  const canShowDevToggle =
+    currentUser?.uid === ALLOWED_USER_ID_FOR_DEV_TOGGLE &&
+    (memberRole === 'superadmin' || memberRole === 'developer');
+
+  const handleToggleDevRole = async () => {
+    if (!currentUser?.uid || !organization?.id || togglingRole) return;
+    setTogglingRole(true);
+    try {
+      const res = await fetch('/api/toggle-dev-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.uid, organizationId: organization.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to toggle role');
+      setOpen(false);
+      router.reload();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to toggle role');
+    } finally {
+      setTogglingRole(false);
+    }
+  };
 
   return (
     <div className="relative" ref={ref}>
@@ -83,7 +116,12 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
         <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-[100]">
           {isAdmin && (
             <div className="px-4 py-2 text-xs font-medium text-primary-600 dark:text-primary-400 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-              {isSuperAdmin ? (
+              {isDeveloper ? (
+                <>
+                  <HiCode className="w-4 h-4 text-primary-500 dark:text-primary-400 flex-shrink-0" aria-hidden />
+                  Developer
+                </>
+              ) : isSuperAdmin ? (
                 <>
                   <span className="flex items-center justify-center w-6 h-5 flex-shrink-0" aria-hidden>
                     <div className="relative inline-flex items-center justify-center">
@@ -103,6 +141,21 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
               )}
             </div>
           )}
+          {canShowDevToggle && (
+            <button
+              type="button"
+              onClick={handleToggleDevRole}
+              disabled={togglingRole}
+              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              <HiSwitchHorizontal className="w-4 h-4 text-primary-500 flex-shrink-0" aria-hidden />
+              {togglingRole
+                ? 'Switching…'
+                : memberRole === 'superadmin'
+                  ? 'Switch to Developer'
+                  : 'Switch to Super Admin'}
+            </button>
+          )}
           <Link
             href="/account"
             onClick={() => setOpen(false)}
@@ -110,7 +163,7 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
           >
             My Account
           </Link>
-          {isSuperAdmin && (
+          {isOwnerOrDeveloper && (
             <Link
               href="/dashboard/subscriptions"
               onClick={() => setOpen(false)}
@@ -128,7 +181,7 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
               Settings
             </Link>
           )}
-          {isSuperAdmin && process.env.NODE_ENV === 'development' && canAccessDeveloper && (
+          {((isSuperAdmin && process.env.NODE_ENV === 'development') || isDeveloper) && canAccessDeveloper && (
             <Link
               href="/dashboard/developer"
               onClick={() => setOpen(false)}

@@ -14,7 +14,7 @@ import { IconButton, PrimaryButton, SecondaryButton, DangerButton } from '@/comp
 import { useToast } from '@/components/ui/Toast';
 import * as Dialog from '@radix-ui/react-dialog';
 import { HiExclamationCircle, HiPlus, HiRefresh, HiTrash, HiX } from 'react-icons/hi';
-import { isOwnerRole, isAdminRole, ORG_ROLE } from '@/config/rolePermissions';
+import { isOwnerRole, isAdminRole, isOwnerOrDeveloperRole, ORG_ROLE } from '@/config/rolePermissions';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import { sortTeamMembersPinned } from '@/lib/teamMemberSort';
 import { getInviteAvailability } from '@/lib/teamInviteUtils';
@@ -98,7 +98,7 @@ function TeamContent() {
     () =>
       organization?.membership?.role != null &&
       isAdminRole(organization.membership.role) &&
-      !isOwnerRole(organization.membership.role),
+      !isOwnerOrDeveloperRole(organization.membership.role),
     [organization?.membership?.role]
   );
 
@@ -623,7 +623,7 @@ function TeamContent() {
     const map = {};
     (orgMembers || []).forEach((om) => {
       if (om.user_id === currentUser?.uid) return;
-      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN) return;
+      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN || om.role === ORG_ROLE.DEVELOPER) return;
       const email = (om.user?.email || '').toLowerCase().trim();
       if (email) map[email] = om.user_id;
     });
@@ -634,7 +634,7 @@ function TeamContent() {
     const set = new Set();
     (orgMembers || []).forEach((om) => {
       if (om.user_id === currentUser?.uid) return;
-      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN) return;
+      if (isOwnerRole(om.role) || om.role === ORG_ROLE.ADMIN || om.role === ORG_ROLE.DEVELOPER) return;
       set.add(om.user_id);
     });
     return set;
@@ -674,7 +674,7 @@ function TeamContent() {
   const currentUserIsOwner = useMemo(() => {
     const role = organization?.membership?.role;
     const team = userAccount?.teamMembers || [];
-    return isOwnerRole(role) || team.some((m) => m.id === `owner-${currentUser?.uid}`);
+    return isOwnerOrDeveloperRole(role) || team.some((m) => m.id === `owner-${currentUser?.uid}`);
   }, [organization?.membership?.role, userAccount?.teamMembers, currentUser?.uid]);
 
   const orgAndInvitesLoaded = orgMembersLoaded && pendingInvitesLoaded;

@@ -138,7 +138,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const stripeConfig = await getStripeConfig();
+  const stripeConfig = await getStripeConfig(invoice.organization_id || null);
   const secretKey = stripeConfig.secretKey;
   if (!secretKey || !secretKey.startsWith('sk_')) {
     return res.status(503).json({ ok: false, error: 'Stripe is not configured' });

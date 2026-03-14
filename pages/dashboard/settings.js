@@ -8,6 +8,7 @@ import OrganizationSettings from '@/components/settings/OrganizationSettings';
 import ThemeSettings from '@/components/settings/ThemeSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import APISettings from '@/components/settings/APISettings';
+import IntegrationsSettings from '@/components/settings/IntegrationsSettings';
 import BillingSettings from '@/components/settings/BillingSettings';
 import TeamAccessSettings from '@/components/settings/TeamAccessSettings';
 import { useAuth } from '@/lib/AuthContext';
@@ -17,9 +18,11 @@ import {
   isOwnerRole,
   isAdminRole,
   isMemberRole,
+  isDeveloperRole,
   isOwnerOrDeveloperRole,
   MEMBER_HIDDEN_SETTINGS,
   ADMIN_NON_OWNER_HIDDEN_SETTINGS,
+  OWNER_HIDDEN_SETTINGS,
 } from '@/config/rolePermissions';
 import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
@@ -62,7 +65,16 @@ function SettingsContent() {
   const isTeamMember = isMemberRole(memberRole);
   const isOwnerOrDeveloper = isOwnerOrDeveloperRole(memberRole);
   const isAdminNonOwner = isAdminRole(memberRole) && !isOwner && !isOwnerOrDeveloper;
-  const hiddenSections = isTeamMember ? MEMBER_HIDDEN_SETTINGS : isAdminNonOwner ? ADMIN_NON_OWNER_HIDDEN_SETTINGS : [];
+  // API = developer-only (platform Stripe/email). Integrations = superadmin + developer (per-org only).
+  const hiddenSections = isTeamMember
+    ? MEMBER_HIDDEN_SETTINGS
+    : isDeveloperRole(memberRole)
+      ? []
+      : isOwnerRole(memberRole)
+        ? OWNER_HIDDEN_SETTINGS
+        : isAdminNonOwner
+          ? ADMIN_NON_OWNER_HIDDEN_SETTINGS
+          : [];
 
   useEffect(() => {
     if (sectionFromQuery && sectionFromQuery !== activeSection && !hiddenSections.includes(sectionFromQuery)) {
@@ -91,6 +103,8 @@ function SettingsContent() {
         return <ThemeSettings />;
       case 'security':
         return <SecuritySettings />;
+      case 'integrations':
+        return <IntegrationsSettings />;
       case 'api':
         return <APISettings />;
       case 'billing':

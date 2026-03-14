@@ -106,7 +106,7 @@ export default function MarketingProviderSettings() {
         </div>
       </div>
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Configure email and SMS providers for campaigns. Set defaults per channel and test connections.
+        Platform providers: used by GoManagr to email tenants (invites, receipts). Not used for tenant org email/SMS (those use Integrations).
       </p>
 
       {saveError && (

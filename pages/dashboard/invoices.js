@@ -127,7 +127,10 @@ function InvoicesContent() {
     fetch('/api/stripe-balance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.uid }),
+      body: JSON.stringify({
+        userId: currentUser.uid,
+        ...(organization?.id && { organizationId: organization.id }),
+      }),
     })
       .then((r) => r.json())
       .then((data) => {
@@ -164,7 +167,7 @@ function InvoicesContent() {
         setPayoutError('Could not load balance');
       })
       .finally(() => setPayoutBalanceLoading(false));
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, organization?.id]);
 
   useEffect(() => {
     if (!currentUser?.uid || !orgResolved) return;
@@ -183,6 +186,7 @@ function InvoicesContent() {
           userId: currentUser.uid,
           amountCents: payoutBalance.availableCents,
           instant: !!instant,
+          ...(organization?.id && { organizationId: organization.id }),
         }),
       });
       const data = await res.json().catch(() => ({}));

@@ -109,7 +109,7 @@ export default function StripeSettings() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Stripe</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Payment and billing (invoices, checkout, webhooks). Stored securely and used by the app in place of environment variables when set.
+          Platform Stripe: used by GoManagr to charge tenants (subscriptions, billing). Not used for tenant-facing invoice payments (those use Integrations).
         </p>
       </div>
 

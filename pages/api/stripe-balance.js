@@ -1,6 +1,6 @@
 /**
- * Returns Stripe account balance (available and pending) for the platform.
- * POST body: { userId }. Requires Stripe to be configured.
+ * Returns Stripe account balance (available and pending).
+ * POST body: { userId }, optional { organizationId }. When organizationId is set, uses that org's Stripe config.
  * Response: { availableCents, pendingCents, currency, livemode } for the primary currency (USD).
  */
 
@@ -12,7 +12,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const stripeConfig = await getStripeConfig();
+  const orgId = (req.body?.organizationId != null && String(req.body.organizationId).trim()) ? String(req.body.organizationId).trim() : null;
+  const stripeConfig = await getStripeConfig(orgId);
   const secretKey = stripeConfig.secretKey;
   if (!secretKey || !secretKey.startsWith('sk_')) {
     return res.status(503).json({ error: 'Stripe is not configured' });

@@ -1,7 +1,7 @@
 /**
  * Creates a Stripe payout to the account's default bank (releases funds from Stripe to bank).
- * POST body: { userId, amountCents? }. If amountCents omitted, pays out full available balance.
- * Works in test mode (sandbox); no real funds move when using test keys.
+ * POST body: { userId, amountCents?, organizationId? }. When organizationId is set, uses that org's Stripe.
+ * If amountCents omitted, pays out full available balance.
  */
 
 import Stripe from 'stripe';
@@ -12,7 +12,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const stripeConfig = await getStripeConfig();
+  const orgId = (req.body?.organizationId != null && String(req.body.organizationId).trim()) ? String(req.body.organizationId).trim() : null;
+  const stripeConfig = await getStripeConfig(orgId);
   const secretKey = stripeConfig.secretKey;
   if (!secretKey || !secretKey.startsWith('sk_')) {
     return res.status(503).json({ error: 'Stripe is not configured' });

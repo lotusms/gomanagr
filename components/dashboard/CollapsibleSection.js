@@ -7,8 +7,9 @@ import { HiChevronDown } from 'react-icons/hi';
  * @param {() => void} onToggle - Toggle handler
  * @param {React.ReactNode} children - Content when open
  * @param {React.ReactNode} [icon] - Optional icon element shown before title
+ * @param {React.ReactNode} [trailing] - Optional element shown in header between title and chevron (e.g. status badge)
  */
-export default function CollapsibleSection({ title, isOpen, onToggle, children, icon }) {
+export default function CollapsibleSection({ title, isOpen, onToggle, children, icon, trailing }) {
   return (
     <div
       className={`
@@ -59,17 +60,20 @@ export default function CollapsibleSection({ title, isOpen, onToggle, children, 
             {title}
           </span>
         </div>
-        <span
-          className={`
-            flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-all duration-300 ease-out
-            ${isOpen
-              ? 'bg-primary-500 text-white rotate-180'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-            }
-          `}
-        >
-          <HiChevronDown className="w-5 h-5" />
-        </span>
+        <div className="flex items-center gap-3 shrink-0">
+          {trailing}
+          <span
+            className={`
+              flex items-center justify-center w-9 h-9 rounded-xl shrink-0 transition-all duration-300 ease-out
+              ${isOpen
+                ? 'bg-primary-500 text-white rotate-180'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+              }
+            `}
+          >
+            <HiChevronDown className="w-5 h-5" />
+          </span>
+        </div>
       </button>
 
       {isOpen && (

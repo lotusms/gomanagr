@@ -54,9 +54,13 @@ export const ADMIN_NON_OWNER_HIDDEN_SETTINGS = [
   'organization',
   'team-access',
   'api',
+  'integrations',
   'billing',
   'security',
 ];
+
+/** Settings tab IDs that owner (superadmin) cannot see. API is developer-only: platform Stripe/email for GoManagr to charge and email tenants. */
+export const OWNER_HIDDEN_SETTINGS = ['api'];
 
 /** Settings tab IDs that members cannot see. */
 export const MEMBER_HIDDEN_SETTINGS = [...ADMIN_NON_OWNER_HIDDEN_SETTINGS];

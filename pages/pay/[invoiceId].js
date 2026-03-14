@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+import { createClient } from '@supabase/supabase-js';
 import { getStripeConfig } from '@/lib/getStripeConfig';
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Logo from '@/components/Logo';
@@ -50,8 +51,26 @@ function FireworksLoopThree({ style }) {
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
 
-export async function getServerSideProps() {
-  const config = await getStripeConfig();
+export async function getServerSideProps(context) {
+  const invoiceId = context.params?.invoiceId;
+  let organizationId = null;
+  if (invoiceId && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      );
+      const { data } = await supabase
+        .from('client_invoices')
+        .select('organization_id')
+        .eq('id', invoiceId)
+        .limit(1)
+        .maybeSingle();
+      if (data?.organization_id) organizationId = data.organization_id;
+    } catch (_) {}
+  }
+  const config = await getStripeConfig(organizationId);
   return { props: { stripePublishableKey: config.publishableKey || '' } };
 }
 // Fireworks from LottieFiles – file in public/Fireworks.json (served as /Fireworks.json)

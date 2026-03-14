@@ -24,7 +24,7 @@ export default function APISettings() {
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">API</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          API keys and integrations for payments, marketing, and other services.
+          GoManagr platform keys only: used to charge tenants (subscriptions) and to email tenants (invites, receipts). Not used for tenant-facing payments or tenant org communication.
         </p>
       </div>
 

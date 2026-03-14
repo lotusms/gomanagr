@@ -1,4 +1,4 @@
-import { HiOfficeBuilding, HiColorSwatch, HiShieldCheck, HiCode, HiCreditCard, HiCog, HiUserGroup } from 'react-icons/hi';
+import { HiOfficeBuilding, HiColorSwatch, HiShieldCheck, HiCode, HiCreditCard, HiCog, HiUserGroup, HiPuzzle } from 'react-icons/hi';
 
 const SETTINGS_SECTIONS = [
   { id: 'general', label: 'General', icon: HiCog },
@@ -6,6 +6,7 @@ const SETTINGS_SECTIONS = [
   { id: 'team-access', label: 'Team Access', icon: HiUserGroup },
   { id: 'theme', label: 'Theme', icon: HiColorSwatch },
   { id: 'security', label: 'Security', icon: HiShieldCheck },
+  { id: 'integrations', label: 'Integrations', icon: HiPuzzle },
   { id: 'api', label: 'API', icon: HiCode },
   { id: 'billing', label: 'Billing', icon: HiCreditCard },
 ];

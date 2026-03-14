@@ -1,8 +1,11 @@
 /**
  * GET: return Stripe config for Settings UI (secrets masked).
  * POST: save Stripe config. Only superadmin or developer.
- * Body for both: { userId } (and optionally organizationId for POST).
+ * Body for both: { userId }.
  * POST body also: { publishableKey?, secretKey?, webhookSecret?, paymentMethodConfigId? }
+ *
+ * SECURITY: Never log req.body or any variable that may contain secretKey, webhookSecret,
+ * or other credentials. Secrets are stored in app_settings (Supabase); ensure DB has encryption at rest.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -21,18 +24,14 @@ function getAdmin() {
   return supabaseAdmin;
 }
 
-async function requireOwnerOrDeveloper(userId, organizationId = null) {
+async function requireOwnerOrDeveloper(userId) {
   const supabase = getAdmin();
   if (!supabase) return { error: 'Service unavailable', status: 503 };
 
-  let query = supabase
+  const { data: rows, error } = await supabase
     .from('org_members')
     .select('role')
     .eq('user_id', userId);
-
-  if (organizationId) query = query.eq('organization_id', organizationId);
-
-  const { data: rows, error } = await query;
 
   if (error) return { error: error.message, status: 500 };
   const allowed = (rows || []).some((r) => r.role === 'superadmin' || r.role === 'developer');
@@ -62,13 +61,12 @@ export default async function handler(req, res) {
   }
 
   const source = req.method === 'POST' ? req.body : req.query;
-  const { userId, organizationId, publishableKey, secretKey, webhookSecret, paymentMethodConfigId } = source || {};
-  const uid = typeof userId === 'string' ? userId.trim() : '';
+  const uid = (typeof source?.userId === 'string' ? source.userId.trim() : '') || '';
   if (!uid) {
     return res.status(400).json({ error: 'Missing userId' });
   }
 
-  const auth = await requireOwnerOrDeveloper(uid, organizationId || null);
+  const auth = await requireOwnerOrDeveloper(uid);
   if (auth.error) {
     return res.status(auth.status || 403).json({ error: auth.error });
   }
@@ -78,17 +76,17 @@ export default async function handler(req, res) {
       const config = await getStripeConfigForSettings();
       return res.status(200).json(config);
     } catch (e) {
-      console.error('[settings/stripe] GET', e);
+      console.error('[settings/stripe] GET', e?.message ?? 'Unknown error');
       return res.status(500).json({ error: 'Failed to load Stripe config' });
     }
   }
 
   // POST
   const updates = {};
-  if (publishableKey !== undefined) updates.publishableKey = publishableKey;
-  if (secretKey !== undefined) updates.secretKey = secretKey;
-  if (webhookSecret !== undefined) updates.webhookSecret = webhookSecret;
-  if (paymentMethodConfigId !== undefined) updates.paymentMethodConfigId = paymentMethodConfigId;
+  if (source?.publishableKey !== undefined) updates.publishableKey = source.publishableKey;
+  if (source?.secretKey !== undefined) updates.secretKey = source.secretKey;
+  if (source?.webhookSecret !== undefined) updates.webhookSecret = source.webhookSecret;
+  if (source?.paymentMethodConfigId !== undefined) updates.paymentMethodConfigId = source.paymentMethodConfigId;
 
   const validationError = validateStripeKeys(updates);
   if (validationError) {
@@ -103,7 +101,7 @@ export default async function handler(req, res) {
     }
     return res.status(200).json({ success: true });
   } catch (e) {
-    console.error('[settings/stripe] POST', e);
+    console.error('[settings/stripe] POST', e?.message ?? 'Unknown error');
     return res.status(500).json({ error: 'Failed to save Stripe config' });
   }
 }

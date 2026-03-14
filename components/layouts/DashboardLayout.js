@@ -104,17 +104,8 @@ export default function DashboardLayout({ children }) {
     return () => window.removeEventListener('organization-updated', onOrgUpdated);
   }, [currentUser?.uid]);
 
-  useEffect(() => {
-    if (!orgLoaded || orgFetchFailed || !currentUser?.uid || organization !== null) return;
-    (async () => {
-      await logout();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login?revoked=1';
-      } else {
-        router.replace('/login?revoked=1');
-      }
-    })();
-  }, [orgLoaded, orgFetchFailed, currentUser?.uid, organization, logout, router]);
+  // Allow dashboard with or without an organization (personal accounts can use dashboard).
+  // No redirect to login when organization is null.
 
   useEffect(() => {
     const orgId = organization?.id;
@@ -136,20 +127,15 @@ export default function DashboardLayout({ children }) {
   }, [organization?.id, currentUser?.uid]);
 
   useEffect(() => {
-    if (!currentUser?.uid || organization === null) return;
+    if (!currentUser?.uid) return;
     const interval = setInterval(async () => {
       try {
         const org = await getUserOrganization(currentUser.uid);
-        if (org == null) {
-          await logout();
-          if (typeof window !== 'undefined') window.location.href = '/login?revoked=1';
-        } else {
-          setOrganization(org);
-        }
+        setOrganization(org || null);
       } catch (_) {}
     }, 8 * 1000);
     return () => clearInterval(interval);
-  }, [currentUser?.uid, organization, logout]);
+  }, [currentUser?.uid]);
 
   const memberRole = organization?.membership?.role;
   const isOwner = useMemo(

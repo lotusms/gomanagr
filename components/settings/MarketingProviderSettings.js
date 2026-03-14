@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/AuthContext';
 import { Dropdown } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { getMarketingSettings, saveMarketingSettings } from '@/lib/marketing/marketingSettingsService';
@@ -12,16 +13,25 @@ import Table from '@/components/ui/Table';
 import { HiSpeakerphone } from 'react-icons/hi';
 
 export default function MarketingProviderSettings() {
+  const { currentUser } = useAuth();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const s = await getMarketingSettings();
+    setSaveError(null);
+    if (!currentUser?.uid) {
+      setSettings(null);
+      setLoading(false);
+      return;
+    }
+    const userId = currentUser.uid.trim();
+    const s = await getMarketingSettings(userId);
     setSettings(s);
     setLoading(false);
-  }, []);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     load();
@@ -38,8 +48,15 @@ export default function MarketingProviderSettings() {
   const handleSave = async () => {
     if (!settings) return;
     setSaving(true);
-    await saveMarketingSettings(settings);
-    setSaving(false);
+    setSaveError(null);
+    try {
+      const userId = currentUser?.uid?.trim() || null;
+      await saveMarketingSettings(settings, userId);
+    } catch (e) {
+      setSaveError(e.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const setDefaultEmail = (e) => {
@@ -91,6 +108,12 @@ export default function MarketingProviderSettings() {
       <p className="text-sm text-gray-600 dark:text-gray-400">
         Configure email and SMS providers for campaigns. Set defaults per channel and test connections.
       </p>
+
+      {saveError && (
+        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          {saveError}
+        </div>
+      )}
 
       <div>
         <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Default providers</h4>

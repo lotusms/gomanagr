@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserOrganization } from '@/services/organizationService';
 import InputField from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/buttons';
 import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
@@ -11,7 +10,6 @@ const PLACEHOLDER_SECRET = '••••••••••••';
 
 export default function StripeSettings() {
   const { currentUser } = useAuth();
-  const [organizationId, setOrganizationId] = useState(null);
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,9 +26,6 @@ export default function StripeSettings() {
     setLoading(true);
     setError(null);
     try {
-      const org = await getUserOrganization(currentUser.uid);
-      if (org?.id) setOrganizationId(org.id);
-
       const params = new URLSearchParams({ userId: currentUser.uid });
       const res = await fetch(`/api/settings/stripe?${params}`);
       if (!res.ok) {
@@ -65,7 +60,6 @@ export default function StripeSettings() {
         publishableKey: publishableKey.trim() || undefined,
         paymentMethodConfigId: paymentMethodConfigId.trim() || undefined,
       };
-      if (organizationId) body.organizationId = organizationId;
       if (secretKey.trim()) body.secretKey = secretKey.trim();
       if (webhookSecret.trim()) body.webhookSecret = webhookSecret.trim();
 

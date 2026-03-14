@@ -73,9 +73,7 @@ async function listSucceededPaymentIntentsForInvoice(stripe, invoiceId) {
 }
 
 export default async function handler(req, res) {
-  const stripeConfig = await getStripeConfig();
-  const secretKey = stripeConfig.secretKey;
-  if (!secretKey || !secretKey.startsWith('sk_') || !supabaseAdmin) {
+  if (!supabaseAdmin) {
     return res.status(503).json({ ok: false, error: 'Service unavailable' });
   }
 
@@ -90,7 +88,7 @@ export default async function handler(req, res) {
     }
     const { data, error } = await supabaseAdmin
       .from('client_invoices')
-      .select('id, payment_token, stripe_payment_intent_id, status')
+      .select('id, organization_id, payment_token, stripe_payment_intent_id, status')
       .eq('id', invoiceId)
       .limit(1)
       .single();
@@ -122,7 +120,7 @@ export default async function handler(req, res) {
     }
     let query = supabaseAdmin
       .from('client_invoices')
-      .select('id, payment_token, stripe_payment_intent_id, status')
+      .select('id, organization_id, payment_token, stripe_payment_intent_id, status')
       .eq('id', invoiceId)
       .limit(1);
     if (organizationId) {
@@ -138,6 +136,12 @@ export default async function handler(req, res) {
   } else {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const stripeConfig = await getStripeConfig();
+  const secretKey = stripeConfig.secretKey;
+  if (!secretKey || !secretKey.startsWith('sk_')) {
+    return res.status(503).json({ ok: false, error: 'Stripe is not configured' });
   }
 
   if (invoice.status === 'paid') {

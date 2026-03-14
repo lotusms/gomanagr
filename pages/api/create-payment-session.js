@@ -32,11 +32,6 @@ function parseNum(v) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const stripeConfig = await getStripeConfig();
-  const secretKey = stripeConfig.secretKey;
-  if (!secretKey || !secretKey.startsWith('sk_')) {
-    return res.status(503).json({ error: 'Stripe is not configured' });
-  }
   if (!supabaseAdmin) return res.status(503).json({ error: 'Service unavailable' });
 
   const { invoiceId, token } = req.body || {};
@@ -47,12 +42,18 @@ export default async function handler(req, res) {
   try {
     const { data: invoice, error } = await supabaseAdmin
       .from('client_invoices')
-      .select('id, invoice_title, invoice_number, total, outstanding_balance, status, payment_token')
+      .select('id, organization_id, invoice_title, invoice_number, total, outstanding_balance, status, payment_token')
       .eq('id', invoiceId)
       .limit(1)
       .single();
 
     if (error || !invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    const stripeConfig = await getStripeConfig();
+    const secretKey = stripeConfig.secretKey;
+    if (!secretKey || !secretKey.startsWith('sk_')) {
+      return res.status(503).json({ error: 'Stripe is not configured' });
+    }
     if (invoice.payment_token !== token.trim()) return res.status(403).json({ error: 'Invalid link' });
     if (invoice.status === 'void') return res.status(400).json({ error: 'This invoice is void' });
 

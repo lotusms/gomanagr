@@ -95,7 +95,7 @@ export default function TasksFormHeader({
           {onDurationDaysChange != null && (
             <InputField
               id={`${idPrefix}-duration-days`}
-              type="number"
+              type="text"
               min={1}
               label={durationDaysLabel}
               value={durationDaysValue ?? ''}

@@ -119,40 +119,40 @@ export default function ItemizedLineItems({
     <div className={className}>
       <div className="-mx-4 sm:mx-0 mt-4 sm:mt-0">
         <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border-collapse text-sm lg:table-fixed">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border-collapse text-sm xl:table-fixed">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-800/60">
                 <th
                   scope="col"
-                  className="py-3.5 pl-4 pr-3 text-left font-medium text-gray-700 dark:text-gray-300 w-full max-w-0 sm:pl-3 lg:max-w-none lg:w-[calc((100%-18.5rem)/2)]"
+                  className="py-3.5 pl-4 pr-3 text-left font-medium text-gray-700 dark:text-gray-300 w-full max-w-0 sm:pl-3 xl:max-w-none xl:w-[calc((100%-18.5rem)/2)]"
                 >
                   {itemLabel}
                 </th>
                 <th
                   scope="col"
-                  className="hidden px-3 py-3.5 text-left font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[calc((100%-18.5rem)/2)]"
+                  className="hidden px-3 py-3.5 text-left font-medium text-gray-700 dark:text-gray-300 xl:table-cell xl:w-[calc((100%-18.5rem)/2)]"
                 >
                   Description
                 </th>
                 <th
                   scope="col"
-                  className="hidden px-3 py-3.5 text-right font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[3rem] lg:shrink-0 w-[3rem] sm:w-20"
+                  className="hidden px-3 py-3.5 text-center font-medium text-gray-700 dark:text-gray-300 xl:table-cell xl:w-[6rem] xl:shrink-0 w-[3rem] sm:w-20"
                 >
-                  Quantity
+                  Qty
                 </th>
                 <th
                   scope="col"
-                  className="hidden px-3 py-3.5 text-right font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[6.5rem] lg:shrink-0 w-[6.5rem] sm:w-28"
+                  className="hidden px-3 py-3.5 text-left font-medium text-gray-700 dark:text-gray-300 xl:table-cell xl:w-[6.5rem] xl:shrink-0 w-[6.5rem] sm:w-28"
                 >
                   Price
                 </th>
                 <th
                   scope="col"
-                  className="hidden px-3 py-3.5 text-center font-medium text-gray-700 dark:text-gray-300 lg:table-cell lg:w-[4.5rem] lg:shrink-0 w-[4.5rem] sm:w-24"
+                  className="hidden px-3 py-3.5 text-center font-medium text-gray-700 dark:text-gray-300 xl:table-cell xl:w-[4.5rem] xl:shrink-0 w-[4.5rem] sm:w-24"
                 >
                   Amount
                 </th>
-                <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-3 lg:w-12 lg:shrink-0">
+                <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-3 xl:w-12 xl:shrink-0">
                   <span className="sr-only">Remove</span>
                 </th>
               </tr>
@@ -193,7 +193,7 @@ export default function ItemizedLineItems({
                           className="!mb-0"
                         />
                       )}
-                      <dl className="font-normal lg:hidden">
+                      <dl className="font-normal xl:hidden">
                         <dt className="sr-only">Description</dt>
                         <dd className="mt-1 truncate text-gray-600 dark:text-gray-400">
                           <InputField
@@ -215,6 +215,7 @@ export default function ItemizedLineItems({
                                 const v = e.target.value;
                                 updateItem(index, 'quantity', v === '' ? '' : parseFloat(v) || 0);
                               }}
+                              inputProps={{ onFocus: (e) => e.target.select() }}
                               min={0}
                               step={0.01}
                               variant="light"
@@ -230,6 +231,7 @@ export default function ItemizedLineItems({
                               variant="light"
                               placeholder="0.00"
                               className="!mb-0 w-full"
+                              selectOnFocus
                               inputProps={{ style: { textAlign: 'right' } }}
                             /> = 
                             <div className="text-center">
@@ -240,7 +242,7 @@ export default function ItemizedLineItems({
                         </dd>
                       </dl>
                     </td>
-                    <td className="hidden px-3 py-3 align-top min-w-0 lg:table-cell">
+                    <td className="hidden px-3 py-3 align-top min-w-0 xl:table-cell">
                       <InputField
                         id={`line-${index}-desc`}
                         value={item.description || ''}
@@ -250,7 +252,7 @@ export default function ItemizedLineItems({
                         className="!mb-0"
                       />
                     </td>
-                    <td className="hidden px-3 py-3 align-middle w-[4.5rem] sm:w-20 lg:table-cell lg:w-[4.5rem] lg:shrink-0">
+                    <td className="hidden px-3 py-3 align-middle w-[4.5rem] sm:w-20 xl:table-cell xl:w-[6rem] xl:shrink-0">
                       <div className="flex justify-center">
                         <NumberField
                           id={`line-${index}-qty`}
@@ -259,16 +261,17 @@ export default function ItemizedLineItems({
                             const v = e.target.value;
                             updateItem(index, 'quantity', v === '' ? '' : parseFloat(v) || 0);
                           }}
+                          inputProps={{ onFocus: (e) => e.target.select() }}
                           min={0}
                           step={0.01}
                           variant="light"
                           placeholder="0"
-                          className="!mb-0 w-full max-w-[3rem]"
+                          className="!mb-0 w-full max-w-[8rem]"
                           inputClassName="text-center"
                         />
                       </div>
                     </td>
-                    <td className="hidden px-3 py-3 align-middle min-w-[9rem] lg:table-cell lg:w-[9rem] lg:min-w-0 lg:shrink-0">
+                    <td className="hidden px-3 py-3 align-middle min-w-[9rem] xl:table-cell xl:w-[9rem] xl:min-w-0 xl:shrink-0">
                       <div className="flex justify-end">
                         <CurrencyInput
                           id={`line-${index}-price`}
@@ -278,18 +281,19 @@ export default function ItemizedLineItems({
                           variant="light"
                           placeholder="0.00"
                           className="!mb-0 w-full"
+                          selectOnFocus
                           inputProps={{ style: { textAlign: 'right' } }}
                         />
                       </div>
                     </td>
-                    <td className="hidden px-3 py-3 align-middle min-w-[9rem] font-medium text-gray-700 dark:text-gray-300 tabular-nums lg:table-cell lg:w-[4.5rem] lg:min-w-0 lg:shrink-0">
+                    <td className="hidden px-3 py-3 align-middle min-w-[9rem] font-medium text-gray-700 dark:text-gray-300 tabular-nums xl:table-cell xl:w-[4.5rem] xl:min-w-0 xl:shrink-0">
                       <div className="text-center">
                         {item.amount != null && item.amount !== ''
                           ? formatCurrency(item.amount, currency)
                           : '—'}
                       </div>
                     </td>
-                    <td className="py-3 pl-3 pr-4 text-right sm:pr-3 lg:w-12 lg:shrink-0">
+                    <td className="py-3 pl-3 pr-4 text-right sm:pr-3 xl:w-12 xl:shrink-0">
                       <button
                         type="button"
                         onClick={() => removeRow(index)}

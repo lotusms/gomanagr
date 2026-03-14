@@ -164,7 +164,7 @@ export default function SMSCampaignView({ showPageHeader = true }) {
       {!activeProvider && (
         <ProviderWarningBanner
           title="No SMS provider configured"
-          message="Configure an SMS provider (e.g. Twilio or Mailchimp) in Marketing Providers settings to send campaigns. Send Now will be disabled until a provider is set up."
+          message="Configure an SMS provider (e.g. Twilio or Mailchimp) in Settings > API to send campaigns. Send Now will be disabled until a provider is set up."
           variant="warning"
         />
       )}

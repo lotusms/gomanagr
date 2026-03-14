@@ -20,7 +20,8 @@ import {
  * @param {Array} props.options - Array of options (strings or {value, label, disabled})
  * @param {string} props.placeholder - Placeholder text
  * @param {boolean} props.disabled - Whether dropdown is disabled
- * @param {string} props.className - Additional CSS classes
+ * @param {string} props.className - Additional CSS classes for the wrapper
+ * @param {string} [props.triggerClassName] - Additional CSS classes for the trigger button (e.g. status draft/sent styling)
  * @param {string} props.label - Label text
  * @param {string} [props.sublabel] - Optional hint text below the label
  * @param {boolean} props.required - Whether field is required
@@ -38,6 +39,7 @@ export default function Dropdown({
   placeholder = 'Select an option...',
   disabled = false,
   className = '',
+  triggerClassName = '',
   label,
   required = false,
   searchable,
@@ -56,7 +58,8 @@ export default function Dropdown({
   const searchInputRef = useRef(null);
 
   const BOTTOM_GAP_PX = 10;
-  const MIN_SPACE_BELOW_TO_OPEN_DOWN_PX = 250;
+  /** When less than this space below the trigger, open upward (e.g. line items Service dropdown near bottom of viewport) */
+  const MIN_SPACE_BELOW_TO_OPEN_DOWN_PX = 320;
   /** Max height of the options list so it scrolls when there are many options */
   const OPTIONS_LIST_MAX_HEIGHT_PX = 280;
 
@@ -329,7 +332,7 @@ export default function Dropdown({
           disabled={disabled}
           className={`inline-flex items-center justify-between w-full ${FORM_CONTROL_HEIGHT} ${FORM_CONTROL_BASE} ${FORM_CONTROL_FOCUS} ${FORM_CONTROL_LIGHT_DEFAULT} hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed ${
             isOpen ? 'ring-1 ring-ternary-500 border-ternary-500' : ''
-          }`}
+          } ${triggerClassName}`}
           aria-label={label || placeholder}
           aria-expanded={isOpen}
           aria-haspopup="listbox"

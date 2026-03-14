@@ -11,6 +11,7 @@
 import Stripe from 'stripe';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+import { getStripeConfig } from '@/lib/getStripeConfig';
 import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
 import { buildInvoiceDocumentPayload } from '@/lib/buildDocumentPayload';
 
@@ -72,7 +73,8 @@ async function listSucceededPaymentIntentsForInvoice(stripe, invoiceId) {
 }
 
 export default async function handler(req, res) {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeConfig = await getStripeConfig();
+  const secretKey = stripeConfig.secretKey;
   if (!secretKey || !secretKey.startsWith('sk_') || !supabaseAdmin) {
     return res.status(503).json({ ok: false, error: 'Service unavailable' });
   }

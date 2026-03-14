@@ -333,7 +333,7 @@ export default function TaskForm({
               />
               <InputField
                 id="task-duration-days"
-                type="number"
+                type="text"
                 min={1}
                 label="Time to complete (days)"
                 value={durationDays}

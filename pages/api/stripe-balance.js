@@ -5,13 +5,15 @@
  */
 
 import Stripe from 'stripe';
+import { getStripeConfig } from '@/lib/getStripeConfig';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeConfig = await getStripeConfig();
+  const secretKey = stripeConfig.secretKey;
   if (!secretKey || !secretKey.startsWith('sk_')) {
     return res.status(503).json({ error: 'Stripe is not configured' });
   }

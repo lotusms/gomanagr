@@ -26,7 +26,7 @@ jest.mock('@/components/ui/NumberField', () => {
     return (
       <input
         id={id}
-        type="number"
+        type="text"
         aria-label={placeholder || id}
         value={value}
         onChange={(e) => onChange && onChange(e)}
@@ -177,7 +177,7 @@ describe('ItemizedLineItems', () => {
   it('calls onChange with updated quantity and recomputed amount', () => {
     const onChange = jest.fn();
     render(<ItemizedLineItems items={[{ ...defaultItems[0] }]} onChange={onChange} />);
-    const qtyInputs = screen.getAllByRole('spinbutton');
+    const qtyInputs = screen.getAllByRole('textbox').filter((el) => el.getAttribute('id') === 'line-0-qty');
     const firstQty = qtyInputs.find((el) => el.value === '2') || qtyInputs[0];
     fireEvent.change(firstQty, { target: { value: '3' } });
     expect(onChange).toHaveBeenCalled();

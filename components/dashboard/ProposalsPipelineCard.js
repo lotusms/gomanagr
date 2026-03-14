@@ -74,7 +74,7 @@ export default function ProposalsPipelineCard({ counts = {}, accountIndustry = n
                   vertical={true}
                 />
                 <XAxis
-                  type="number"
+                  type="text"
                   allowDecimals={false}
                   tick={{ fontSize: 11, fill: '#6b7280' }}
                   axisLine={{ stroke: '#e5e7eb' }}

@@ -34,7 +34,7 @@ export default function MarketingPage() {
                 New Email Campaign
               </PrimaryButton>
               <IconButton variant="light" asChild className="gap-2">
-                <Link href="/dashboard/marketing/settings" className="inline-flex items-center justify-center gap-2">
+                <Link href="/dashboard/settings?section=api" className="inline-flex items-center justify-center gap-2">
                   <HiCog className="w-5 h-5" />
                 </Link>
               </IconButton>

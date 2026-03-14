@@ -6,6 +6,7 @@
 
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { getStripeConfig } from '@/lib/getStripeConfig';
 
 let supabaseAdmin;
 try {
@@ -31,7 +32,8 @@ function parseNum(v) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeConfig = await getStripeConfig();
+  const secretKey = stripeConfig.secretKey;
   if (!secretKey || !secretKey.startsWith('sk_')) {
     return res.status(503).json({ error: 'Stripe is not configured' });
   }

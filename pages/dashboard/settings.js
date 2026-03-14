@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { PageHeader } from '@/components/ui';
 import SettingsMenu from '@/components/settings/SettingsMenu';
 import GeneralSettings from '@/components/settings/GeneralSettings';
@@ -23,8 +24,10 @@ import {
 import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 function SettingsContent() {
+  const router = useRouter();
   const { currentUser } = useAuth();
-  const [activeSection, setActiveSection] = useState('general');
+  const sectionFromQuery = typeof router.query.section === 'string' ? router.query.section : null;
+  const [activeSection, setActiveSection] = useState(sectionFromQuery || 'general');
   const [memberRole, setMemberRole] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
   const [organization, setOrganization] = useState(null);
@@ -60,6 +63,12 @@ function SettingsContent() {
   const isOwnerOrDeveloper = isOwnerOrDeveloperRole(memberRole);
   const isAdminNonOwner = isAdminRole(memberRole) && !isOwner && !isOwnerOrDeveloper;
   const hiddenSections = isTeamMember ? MEMBER_HIDDEN_SETTINGS : isAdminNonOwner ? ADMIN_NON_OWNER_HIDDEN_SETTINGS : [];
+
+  useEffect(() => {
+    if (sectionFromQuery && sectionFromQuery !== activeSection && !hiddenSections.includes(sectionFromQuery)) {
+      setActiveSection(sectionFromQuery);
+    }
+  }, [sectionFromQuery]);
 
   useEffect(() => {
     if (hiddenSections.length && hiddenSections.includes(activeSection)) {

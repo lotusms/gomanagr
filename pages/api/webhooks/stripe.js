@@ -7,6 +7,7 @@ import Stripe from 'stripe';
 import getRawBody from 'raw-body';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+import { getStripeConfig } from '@/lib/getStripeConfig';
 import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
 import { buildInvoiceDocumentPayload } from '@/lib/buildDocumentPayload';
 
@@ -69,8 +70,9 @@ export default async function handler(req, res) {
     return res.status(405).end();
   }
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeConfig = await getStripeConfig();
+  const webhookSecret = stripeConfig.webhookSecret;
+  const secretKey = stripeConfig.secretKey;
   if (!webhookSecret || !secretKey || !supabaseAdmin) {
     console.error('[webhooks/stripe] Missing STRIPE_WEBHOOK_SECRET, STRIPE_SECRET_KEY, or Supabase');
     return res.status(500).end();
@@ -207,7 +209,7 @@ export default async function handler(req, res) {
       if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) customerEmail = String(email).trim();
       if (!customerEmail && paymentIntentObject.id) {
         try {
-          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          const stripe = new Stripe(secretKey);
           const pi = await stripe.paymentIntents.retrieve(paymentIntentObject.id, { expand: ['charges.data.billing_details'] });
           const chargeEmail = pi.charges?.data?.[0]?.billing_details?.email;
           if (chargeEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(chargeEmail)) customerEmail = String(chargeEmail).trim();

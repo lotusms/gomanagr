@@ -273,7 +273,9 @@ describe('AddressAutocomplete', () => {
     await userEvent.clear(screen.getByRole('textbox'));
     await userEvent.type(screen.getByRole('textbox'), '1');
     await advanceDebounce();
-    expect(screen.queryByText('123 Main St, City, ST 12345')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('123 Main St, City, ST 12345')).not.toBeInTheDocument();
+    });
   });
 
   it('sets activeIndex on suggestion mouseEnter and Enter selects', async () => {

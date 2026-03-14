@@ -21,6 +21,7 @@ import { formatCurrency, unformatCurrency } from '@/utils/formatCurrency';
  * @param {string} props.variant - 'dark' or 'light' variant
  * @param {Object} props.inputProps - Additional props for input element
  * @param {string} [props.sublabel] - Optional hint text below the label
+ * @param {boolean} [props.selectOnFocus] - When true, select all text on focus (e.g. for line item price fields)
  */
 export default function CurrencyInput({
   id,
@@ -36,6 +37,7 @@ export default function CurrencyInput({
   disabled = false,
   variant = 'dark',
   inputProps = {},
+  selectOnFocus = false,
 }) {
   const [displayValue, setDisplayValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -88,6 +90,10 @@ export default function CurrencyInput({
   const handleFocus = (e) => {
     setIsFocused(true);
     setDisplayValue(value || '');
+    if (selectOnFocus) {
+      const input = e.target;
+      requestAnimationFrame(() => input.select());
+    }
     if (inputProps.onFocus) {
       inputProps.onFocus(e);
     }

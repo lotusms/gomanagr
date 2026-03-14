@@ -47,6 +47,7 @@
  * @param {string} [clientEmailPlaceholder] - Placeholder when empty/disabled
  * @param {string} [clientEmailLabel] - Label for the field (e.g. "Client email")
  * @param {string} [clientEmailHint] - Hint text below the field
+ * @param {string} [statusTriggerClassName] - Extra classes for the status dropdown trigger (e.g. gray for draft, blue for sent)
  */
 import InputField from '@/components/ui/InputField';
 import Dropdown from '@/components/ui/Dropdown';
@@ -88,6 +89,7 @@ export default function DocumentFormHeader({
   clientEmailPlaceholder = '',
   clientEmailLabel = 'Client email',
   clientEmailHint = '',
+  statusTriggerClassName = '',
 }) {
   const showFullWidthTitle = showClientDropdown || showUseProposalDropdown;
   // 3-field row: 1 col < md, 2 at md, 3 at lg+
@@ -160,6 +162,7 @@ export default function DocumentFormHeader({
               options={statusOptions}
               placeholder={statusPlaceholder}
               searchable={false}
+              triggerClassName={statusTriggerClassName}
             />
             {showUseProposalDropdown && (
               <Dropdown
@@ -195,6 +198,7 @@ export default function DocumentFormHeader({
             options={statusOptions}
             placeholder={statusPlaceholder}
             searchable={false}
+            triggerClassName={statusTriggerClassName}
           />
         </div>
       )}

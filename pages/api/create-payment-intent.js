@@ -10,6 +10,7 @@
 
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { getStripeConfig } from '@/lib/getStripeConfig';
 
 let supabaseAdmin;
 try {
@@ -60,7 +61,8 @@ async function withCreationLock(invoiceId, fn) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeConfig = await getStripeConfig();
+  const secretKey = stripeConfig.secretKey;
   if (!secretKey || !secretKey.startsWith('sk_')) {
     return res.status(503).json({ error: 'Stripe is not configured' });
   }
@@ -109,7 +111,7 @@ export default async function handler(req, res) {
       const stripe = new Stripe(secretKey);
 
       // Card only: use config if set so Payment Element only shows card (no bank).
-      const cardOnlyConfigId = process.env.STRIPE_PAYMENT_METHOD_CONFIGURATION_ID?.trim() || '';
+      const cardOnlyConfigId = stripeConfig.paymentMethodConfigId || '';
 
       // Reuse existing PaymentIntent only when it's still usable and card-only (or created with our card-only config).
       const existingPiId = invoice.stripe_payment_intent_id && String(invoice.stripe_payment_intent_id).trim();

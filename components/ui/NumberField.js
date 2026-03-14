@@ -60,7 +60,7 @@ const NumberField = forwardRef(({
       <input
         ref={ref}
         id={id}
-        type="number"
+        type="text"
         min={min}
         max={max}
         step={step}

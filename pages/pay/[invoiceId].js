@@ -12,8 +12,9 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+import { getStripeConfig } from '@/lib/getStripeConfig';
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import Logo from '@/components/Logo';
 
@@ -47,10 +48,12 @@ function FireworksLoopThree({ style }) {
   );
 }
 
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
-
 const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
+
+export async function getServerSideProps() {
+  const config = await getStripeConfig();
+  return { props: { stripePublishableKey: config.publishableKey || '' } };
+}
 // Fireworks from LottieFiles – file in public/Fireworks.json (served as /Fireworks.json)
 const LOTTIE_FIREWORKS_URL = '/Fireworks.json';
 
@@ -220,7 +223,7 @@ function CardPaymentForm({ clientSecret, returnUrl, onError, onTerminalStateErro
   );
 }
 
-function EmbeddedPaymentSection({ clientSecret, returnUrl, onError, onTerminalStateError }) {
+function EmbeddedPaymentSection({ stripePromise, clientSecret, returnUrl, onError, onTerminalStateError }) {
   if (!stripePromise || !clientSecret) return null;
   const options = {
     clientSecret,
@@ -236,7 +239,13 @@ function EmbeddedPaymentSection({ clientSecret, returnUrl, onError, onTerminalSt
   );
 }
 
-export default function PayInvoicePage() {
+export default function PayInvoicePage({ stripePublishableKey: stripePublishableKeyProp = '' }) {
+  const stripePublishableKey = stripePublishableKeyProp;
+  const stripePromise = useMemo(
+    () => (stripePublishableKey ? loadStripe(stripePublishableKey) : null),
+    [stripePublishableKey]
+  );
+
   const router = useRouter();
   const { invoiceId, token } = router.query;
   const [invoice, setInvoice] = useState(null);
@@ -618,7 +627,7 @@ export default function PayInvoicePage() {
                 </label>
                 <input
                   id="pay-amount"
-                  type="number"
+                  type="text" 
                   min="0.01"
                   max={maxAmount}
                   step="0.01"
@@ -638,6 +647,7 @@ export default function PayInvoicePage() {
                   )}
                   {clientSecret && returnUrl ? (
                     <EmbeddedPaymentSection
+                      stripePromise={stripePromise}
                       clientSecret={clientSecret}
                       returnUrl={returnUrl}
                       onError={setError}

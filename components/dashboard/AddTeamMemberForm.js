@@ -658,7 +658,7 @@ export default function AddTeamMemberForm({
           <InputField
             id="years-experience"
             label="Years of experience"
-            type="number"
+            type="text"
             value={yearsExperience}
             onChange={(e) => setYearsExperience(e.target.value)}
             placeholder="0"

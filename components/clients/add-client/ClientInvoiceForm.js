@@ -135,7 +135,6 @@ const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
   );
   const [dueDate, setDueDate] = useState(toDateLocal(initial.due_date) || '');
   const [dateSent, setDateSent] = useState(toDateLocal(initial.date_sent) || '');
-  const [paidDate, setPaidDate] = useState(toDateLocal(initial.paid_date) || '');
   const [paymentTerms, setPaymentTerms] = useState(initial.payment_terms ?? 'due_on_receipt');
   const [paymentMethod, setPaymentMethod] = useState(initial.payment_method ?? '');
   const [fileUrls, setFileUrls] = useState(
@@ -486,7 +485,6 @@ const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
         date_sent: dateSent.trim() || null,
-        paid_date: paidDate.trim() || null,
         ever_sent: invoiceId ? (initial.ever_sent ?? false) : false,
         status,
         payment_terms: paymentTerms.trim() || null,
@@ -562,9 +560,6 @@ const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
         total: totalFromItems,
         date_issued: dateIssued.trim() || null,
         due_date: dueDate.trim() || null,
-        date_sent: dateSentToday,
-        paid_date: paidDate.trim() || null,
-        ever_sent: true,
         status,
         payment_terms: paymentTerms.trim() || null,
         payment_method: paymentMethod.trim(),
@@ -583,6 +578,7 @@ const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
         })),
       };
 
+      let resolvedInvoiceId = invoiceId;
       if (invoiceId) {
         const res = await fetch('/api/update-client-invoice', {
           method: 'POST',
@@ -599,10 +595,41 @@ const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Failed to create ${invoiceTermSingularLower}`);
+        resolvedInvoiceId = data?.id ?? null;
       }
-      setDateSent(dateSentToday);
-      setHasBeenSentThisSession(true);
       setHasUserEdited(false);
+
+      const toEmail = (clientEmailDisplay && String(clientEmailDisplay).trim()) || '';
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail);
+      if (resolvedInvoiceId && validEmail) {
+        try {
+          const clientName = selectedClient
+            ? (selectedClient.name || selectedClient.companyName || '').trim() || undefined
+            : undefined;
+          const sendRes = await fetch('/api/send-invoice-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              organizationId: organizationId || undefined,
+              invoiceId: resolvedInvoiceId,
+              to: toEmail,
+              clientName,
+              isReminder: false,
+            }),
+          });
+          const sendData = await sendRes.json().catch(() => ({}));
+          if (sendRes.ok) {
+            setDateSent(dateSentToday);
+            setHasBeenSentThisSession(true);
+          } else {
+            setError(`Invoice saved, but the email could not be sent: ${sendData.error || 'Unknown error'}. You can resend from the invoice.`);
+          }
+        } catch (sendErr) {
+          setError(`Invoice saved, but the email could not be sent: ${sendErr.message || 'Network error'}. You can resend from the invoice.`);
+        }
+      }
+
       onSuccess?.();
     } catch (err) {
       setError(err.message || 'Failed to save and send invoice');
@@ -666,6 +693,11 @@ const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
               : `Choose a ${clientTermSingularLower} to see their email from the profile.`)
             : 'Invoices are sent to this address when you click Send or Resend.'
         }
+        statusTriggerClassName={
+          status === 'draft'
+            ? '!bg-gray-100 dark:!bg-gray-700 !border-gray-300 dark:!border-gray-600'
+            : '!bg-blue-50 dark:!bg-blue-900/20 !border-blue-200 dark:!border-blue-700'
+        }
       />
 
       <FormStepNav
@@ -681,8 +713,9 @@ const ClientInvoiceForm = forwardRef(function ClientInvoiceForm({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <DateField id="date-issued" label="Date issued" value={dateIssued} onChange={(e) => { markDirty(); setDateIssued(e.target.value); }} variant="light" />
               <DateField id="due-date" label="Due date" value={dueDate} onChange={(e) => { markDirty(); setDueDate(e.target.value); }} variant="light" />
-              <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => { markDirty(); setDateSent(e.target.value); }} variant="light" />
-              <DateField id="date-paid" label="Date paid" value={paidDate} onChange={(e) => { markDirty(); setPaidDate(e.target.value); }} variant="light" />
+              {invoiceId && everSent && (
+                <DateField id="date-sent" label="Date sent" value={dateSent} onChange={(e) => { markDirty(); setDateSent(e.target.value); }} variant="light" />
+              )}
               {lineItems.length === 0 && (
                 <CurrencyInput
                   id="amount"

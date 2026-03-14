@@ -228,6 +228,7 @@ describe('cleanup-org-invites API', () => {
   });
 
   it('returns 500 when delete fails', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     process.env.CRON_SECRET = 'cron-secret';
     mockFrom.mockImplementation((table) => {
       if (table === 'org_invites') {
@@ -258,6 +259,7 @@ describe('cleanup-org-invites API', () => {
         details: 'delete failed',
       })
     );
+    consoleErrorSpy.mockRestore();
   });
 
   it('returns 200 deleted: n when authorized by x-cron-secret', async () => {

@@ -166,7 +166,7 @@ export default function EmailCampaignView({ showPageHeader = true }) {
       {!activeProvider && (
         <ProviderWarningBanner
           title="No email provider configured"
-          message="Configure an email provider (e.g. Resend or Mailchimp) in Marketing Providers settings to send campaigns. Send Now will be disabled until a provider is set up."
+          message="Configure an email provider (e.g. Resend or Mailchimp) in Settings > API to send campaigns. Send Now will be disabled until a provider is set up."
           variant="warning"
         />
       )}

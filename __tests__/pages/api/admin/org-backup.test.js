@@ -271,4 +271,177 @@ describe('org-backup API', () => {
       })
     );
   });
+
+  it('returns 200 with schema-only filename when backupType is schema_only', async () => {
+    const handler = (await import('@/pages/api/admin/org-backup')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1', backupType: 'schema_only' },
+      headers: {},
+      socket: {},
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filename: expect.stringMatching(/gomanagr-org-backup-schema-only/),
+      })
+    );
+  });
+
+  it('fetches user_profiles when org has members (full backup)', async () => {
+    let orgMembersCalls = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        const n = orgMembersCalls++;
+        if (n === 0) {
+          return chainSingle({ role: 'admin' });
+        }
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: [{ user_id: 'u2' }, { user_id: 'u3' }], error: null }),
+          }),
+        };
+      }
+      if (table === 'backup_exports') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                eq: () => ({
+                  gte: () => ({
+                    limit: () => Promise.resolve({ data: [], error: null }),
+                  }),
+                }),
+              }),
+            }),
+          }),
+          insert: () => Promise.resolve({ error: null }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: { id: 'org-1', name: 'Org' }, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'org_invites') {
+        return {
+          select: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+          }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({ data: [{ id: 'u2', email: 'u2@example.com' }, { id: 'u3', email: 'u3@example.com' }], error: null }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => Promise.resolve({ data: [], error: null }),
+        }),
+        insert: () => Promise.resolve({ error: null }),
+      };
+    });
+    const handler = (await import('@/pages/api/admin/org-backup')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1' },
+      headers: {},
+      socket: {},
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockFrom).toHaveBeenCalledWith('user_profiles');
+  });
+
+  it('returns 500 when storage upload fails', async () => {
+    mockStorageFrom.mockReturnValue({
+      upload: () => Promise.resolve({ data: null, error: { message: 'Upload failed' } }),
+      createSignedUrl: () =>
+        Promise.resolve({
+          data: { signedUrl: 'https://signed.example.com/backup.json' },
+          error: null,
+        }),
+    });
+    const handler = (await import('@/pages/api/admin/org-backup')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1' },
+      headers: {},
+      socket: {},
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to write backup file' });
+  });
+
+  it('returns 500 when createSignedUrl fails', async () => {
+    mockStorageFrom.mockReturnValue({
+      upload: () => Promise.resolve({ data: { path: 'org/org-1/2025-01-01/full.json' }, error: null }),
+      createSignedUrl: () => Promise.resolve({ data: null, error: { message: 'Sign failed' } }),
+    });
+    const handler = (await import('@/pages/api/admin/org-backup')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1' },
+      headers: {},
+      socket: {},
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to create download link' });
+  });
+
+  it('returns 500 when createSignedUrl returns no signedUrl', async () => {
+    mockStorageFrom.mockReturnValue({
+      upload: () => Promise.resolve({ data: { path: 'org/org-1/2025-01-01/full.json' }, error: null }),
+      createSignedUrl: () => Promise.resolve({ data: { signedUrl: null }, error: null }),
+    });
+    const handler = (await import('@/pages/api/admin/org-backup')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1' },
+      headers: {},
+      socket: {},
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to create download link' });
+  });
+
+  it('returns 500 when ensureBackupsBucket throws (handler catch)', async () => {
+    mockStorageCreateBucket.mockResolvedValueOnce({ error: { message: 'Permission denied' } });
+    const handler = (await import('@/pages/api/admin/org-backup')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1' },
+      headers: {},
+      socket: {},
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Backup failed' });
+  });
+
+  it('does not throw when createBucket returns bucket already exists', async () => {
+    mockStorageCreateBucket.mockResolvedValueOnce({
+      error: { message: 'Bucket already exists' },
+    });
+    const handler = (await import('@/pages/api/admin/org-backup')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1' },
+      headers: {},
+      socket: {},
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
 });

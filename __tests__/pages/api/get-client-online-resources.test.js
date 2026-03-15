@@ -81,4 +81,240 @@ describe('get-client-online-resources API', () => {
       resources: [{ id: 'r1', resource_name: 'Google Drive', client_id: 'c1' }],
     });
   });
+
+  it('returns 503 when Supabase unavailable', async () => {
+    const orig = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    jest.resetModules();
+    const handler = (await import('@/pages/api/get-client-online-resources')).default;
+    const res = mockRes();
+    await handler(
+      { method: 'POST', body: { userId: 'u1', clientId: 'c1' } },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Service unavailable' });
+    process.env.SUPABASE_SERVICE_ROLE_KEY = orig;
+    jest.resetModules();
+  });
+
+  it('returns 403 when organizationId set but user not a member', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () =>
+                    Promise.resolve({ data: null, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              is: () => ({
+                order: () => ({
+                  order: () => Promise.resolve({ data: [], error: null }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+    });
+    const handler = (await import('@/pages/api/get-client-online-resources')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { userId: 'u1', clientId: 'c1', organizationId: 'org1' },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Not a member of this organization' });
+  });
+
+  it('returns 200 with resources when organizationId set and user is member', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () =>
+                    Promise.resolve({
+                      data: { organization_id: 'org1' },
+                      error: null,
+                    }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              order: () => ({
+                order: () =>
+                  Promise.resolve({
+                    data: [{ id: 'r2', resource_name: 'Dropbox', client_id: 'c1' }],
+                    error: null,
+                  }),
+              }),
+            }),
+          }),
+        }),
+      };
+    });
+    const handler = (await import('@/pages/api/get-client-online-resources')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { userId: 'u1', clientId: 'c1', organizationId: 'org1' },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      resources: [{ id: 'r2', resource_name: 'Dropbox', client_id: 'c1' }],
+    });
+  });
+
+  it('returns 200 with single resource when resourceId is set', async () => {
+    mockFrom.mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            is: () => ({
+              eq: () =>
+                Promise.resolve({
+                  data: [{ id: 'r-one', resource_name: 'One', client_id: 'c1' }],
+                  error: null,
+                }),
+            }),
+          }),
+        }),
+      }),
+    });
+    const handler = (await import('@/pages/api/get-client-online-resources')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { userId: 'u1', clientId: 'c1', resourceId: 'r-one' },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      resource: { id: 'r-one', resource_name: 'One', client_id: 'c1' },
+    });
+  });
+
+  it('returns 404 when resourceId set but resource not found', async () => {
+    mockFrom.mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            is: () => ({
+              eq: () =>
+                Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }),
+      }),
+    });
+    const handler = (await import('@/pages/api/get-client-online-resources')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { userId: 'u1', clientId: 'c1', resourceId: 'missing' },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Online resource not found' });
+  });
+
+  it('returns 500 when data query errors', async () => {
+    mockFrom.mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            is: () => ({
+              order: () => ({
+                order: () =>
+                  Promise.resolve({
+                    data: null,
+                    error: { message: 'db error' },
+                  }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    });
+    const handler = (await import('@/pages/api/get-client-online-resources')).default;
+    const res = mockRes();
+    await handler(
+      { method: 'POST', body: { userId: 'u1', clientId: 'c1' } },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to load online resources' });
+  });
+
+  it('returns 500 when handler throws', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () => Promise.reject(new Error('connection lost')),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              is: () => ({
+                order: () => ({
+                  order: () => Promise.resolve({ data: [], error: null }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+    });
+    const handler = (await import('@/pages/api/get-client-online-resources')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { userId: 'u1', clientId: 'c1', organizationId: 'org1' },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to load online resources' });
+  });
 });

@@ -8,9 +8,13 @@
 
 const mockFrom = jest.fn();
 const mockCreateClient = jest.fn(() => ({ from: mockFrom }));
+const mockEnsureAttachmentsFromFiles = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: (...args) => mockCreateClient(...args),
+}));
+jest.mock('@/lib/syncFilesToAttachments', () => ({
+  ensureAttachmentsFromFiles: (...args) => mockEnsureAttachmentsFromFiles(...args),
 }));
 
 beforeAll(() => {
@@ -145,5 +149,267 @@ describe('create-client-proposal API', () => {
     expect(contractUpdatePayload).toBeDefined();
     expect(contractUpdatePayload.related_proposal_id).toBe('new-proposal-id');
     expect(contractEqId).toBe('contract-xyz');
+  });
+
+  it('returns 503 when Supabase unavailable', async () => {
+    const orig = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    jest.resetModules();
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      { method: 'POST', body: { userId: 'u1', clientId: 'c1' } },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Service unavailable' });
+    process.env.SUPABASE_SERVICE_ROLE_KEY = orig;
+    jest.resetModules();
+  });
+
+  it('returns 403 when organizationId set but user not a member', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () =>
+                    Promise.resolve({ data: null, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'client_proposals') {
+        return {
+          insert: () => ({
+            select: () => ({
+              single: () =>
+                Promise.resolve({ data: { id: 'new-id' }, error: null }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { userId: 'u1', clientId: 'c1', organizationId: 'org1' },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Not a member of this organization' });
+  });
+
+  it('returns 500 when insert returns error', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_proposals') {
+        return {
+          insert: () => ({
+            select: () => ({
+              single: () =>
+                Promise.resolve({
+                  data: null,
+                  error: { message: 'insert failed' },
+                }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      { method: 'POST', body: { userId: 'u1', clientId: 'c1' } },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to create proposal' });
+  });
+
+  it('calls ensureAttachmentsFromFiles when file_urls provided', async () => {
+    mockEnsureAttachmentsFromFiles.mockResolvedValue(undefined);
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: {
+          userId: 'u1',
+          clientId: 'c1',
+          proposal_title: 'With files',
+          file_urls: ['https://example.com/file1.pdf', 'https://example.com/file2.pdf'],
+        },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(mockEnsureAttachmentsFromFiles).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        clientId: 'c1',
+        userId: 'u1',
+        fileUrls: ['https://example.com/file1.pdf', 'https://example.com/file2.pdf'],
+        linkedProposalId: 'new-proposal-id',
+      })
+    );
+  });
+
+  it('parses file_url (singular) into file_urls', async () => {
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: {
+          userId: 'u1',
+          clientId: 'c1',
+          proposal_title: 'Single file',
+          file_url: 'https://example.com/single.pdf',
+        },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.proposal.file_urls).toEqual(['https://example.com/single.pdf']);
+  });
+
+  it('returns 500 when handler throws', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () => Promise.reject(new Error('connection lost')),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: { userId: 'u1', clientId: 'c1', organizationId: 'org1' },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Failed to create contract' });
+  });
+
+  it('parses status, line_items, dates, linked_project and linked_contract_id', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_proposals') {
+        return {
+          insert: (row) => {
+            expect(row.status).toBe('sent');
+            expect(row.line_items).toHaveLength(2);
+            expect(row.line_items[0]).toMatchObject({
+              item_name: 'Item A',
+              quantity: 2,
+              unit_price: '10.50',
+              amount: '21.00',
+            });
+            expect(row.line_items[1].amount).toBe('99.99');
+            expect(row.date_created).toBe('2024-01-15');
+            expect(row.date_sent).toBe('2024-01-16');
+            expect(row.expiration_date).toBe('2024-02-01');
+            expect(row.linked_project).toBe('proj-1');
+            expect(row.linked_contract_id).toBe('contract-1');
+            return {
+              select: () => ({
+                single: () =>
+                  Promise.resolve({ data: { id: 'new-id' }, error: null }),
+              }),
+            };
+          },
+        };
+      }
+      if (table === 'client_contracts') {
+        return { update: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: {
+          userId: 'u1',
+          clientId: 'c1',
+          status: 'sent',
+          proposal_title: 'Full',
+          line_items: [
+            { item_name: 'Item A', quantity: 2, unit_price: '10.50' },
+            { item_name: 'B', description: 'Desc', amount: '99.99' },
+          ],
+          date_created: '2024-01-15T12:00:00Z',
+          date_sent: '2024-01-16',
+          expiration_date: '2024-02-01',
+          linked_project: 'proj-1',
+          linked_contract_id: 'contract-1',
+        },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it('filters out line_items with no item_name, unit_price, or amount', async () => {
+    let insertedRow;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'client_proposals') {
+        return {
+          insert: (row) => {
+            insertedRow = row;
+            return {
+              select: () => ({
+                single: () =>
+                  Promise.resolve({ data: { id: 'new-id' }, error: null }),
+              }),
+            };
+          },
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/create-client-proposal')).default;
+    const res = mockRes();
+    await handler(
+      {
+        method: 'POST',
+        body: {
+          userId: 'u1',
+          clientId: 'c1',
+          line_items: [
+            { item_name: 'Keep', unit_price: '1' },
+            { item_name: '', description: 'only', unit_price: '', amount: '' },
+            { unit_price: '5', amount: '5' },
+          ],
+        },
+      },
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(insertedRow.line_items).toHaveLength(2);
+    expect(insertedRow.line_items[0].item_name).toBe('Keep');
+    expect(insertedRow.line_items[1].unit_price).toBe('5');
   });
 });

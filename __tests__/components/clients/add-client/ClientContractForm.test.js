@@ -288,4 +288,87 @@ describe('ClientContractForm', () => {
     expect(screen.getByLabelText(/Contract title/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Linked project/i)).toBeInTheDocument();
   });
+
+  it('disables submit when showClientDropdown is true and no client selected', async () => {
+    render(<ClientContractForm {...defaultProps} showClientDropdown />);
+    await screen.findByText(/Contract value \(USD\)/);
+    const addBtn = screen.getByRole('button', { name: /^Add contract$/i });
+    expect(addBtn).toBeDisabled();
+  });
+
+  it('shows error and does not call onSuccess when update fails', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('get-client-proposals') || url.includes('get-proposals')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ proposals: [] }) });
+      }
+      if (url.includes('get-org-team-list')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ teamMembers: [] }) });
+      }
+      if (url.includes('get-projects')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ projects: [] }) });
+      }
+      if (url.includes('update-client-contract')) {
+        return Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ error: 'Update failed' }),
+        });
+      }
+      return Promise.reject(new Error('Unexpected fetch'));
+    });
+    render(
+      <ClientContractForm
+        {...defaultProps}
+        contractId="c-1"
+        initial={{ contract_title: 'Existing' }}
+      />
+    );
+    await screen.findByText(/Contract value \(USD\)/);
+    fireEvent.submit(document.querySelector('form'));
+    await waitFor(() => expect(screen.getByText('Update failed')).toBeInTheDocument());
+    expect(defaultProps.onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('includes contract_type, start_date, end_date, signed_date, file_urls in create payload', async () => {
+    render(
+      <ClientContractForm
+        {...defaultProps}
+        initial={{
+          contract_title: 'Agreement',
+          contract_type: 'service_agreement',
+          start_date: '2026-06-15',
+          end_date: '2026-12-31',
+          signed_date: '2026-06-20',
+          file_urls: ['https://example.com/contract.pdf'],
+        }}
+      />
+    );
+    await screen.findByText(/Contract value \(USD\)/);
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const createCall = Array.from(global.fetch.mock.calls).find((c) =>
+      String(c[0]).includes('create-client-contract')
+    );
+    expect(createCall).toBeDefined();
+    const body = JSON.parse(createCall[1].body);
+    expect(body.contract_title).toBe('Agreement');
+    expect(body.contract_type).toBe('service_agreement');
+    expect(body.start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(body.end_date).toMatch(/^2026-\d{2}-\d{2}$/);
+    expect(body.signed_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(Array.isArray(body.file_urls)).toBe(true);
+    expect(body.file_urls).toContain('https://example.com/contract.pdf');
+  });
+
+  it('fetches get-proposals (org-wide) when showClientDropdown and no client selected', async () => {
+    render(<ClientContractForm {...defaultProps} showClientDropdown clientId={undefined} />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const proposalsCall = Array.from(global.fetch.mock.calls).find((c) =>
+      String(c[0]).includes('get-proposals')
+    );
+    expect(proposalsCall).toBeDefined();
+    const body = JSON.parse(proposalsCall[1].body);
+    expect(body).not.toHaveProperty('clientId');
+  });
 });

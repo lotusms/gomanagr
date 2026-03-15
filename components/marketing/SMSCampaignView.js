@@ -250,7 +250,7 @@ export default function SMSCampaignView({ showPageHeader = true }) {
 
               <div className="flex flex-wrap gap-3 pt-2">
                 <SecondaryButton onClick={handleSaveDraft} disabled={!canSaveDraft}>
-                  Save Draft
+                  Save Campaign
                 </SecondaryButton>
                 <SecondaryButton
                   onClick={handleSendTestSms}

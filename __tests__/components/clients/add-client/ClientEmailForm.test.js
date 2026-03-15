@@ -82,6 +82,12 @@ describe('ClientEmailForm', () => {
       expect(screen.getByRole('radio', { name: /received/i })).toBeInTheDocument();
     });
 
+    it('shows From label and Sender placeholder when direction is received', () => {
+      render(<ClientEmailForm {...defaultProps} initial={{ direction: 'received' }} />);
+      expect(screen.getByLabelText(/^from$/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/^sender$/i)).toBeInTheDocument();
+    });
+
     it('shows Update email button and Received when editing', () => {
       render(
         <ClientEmailForm
@@ -204,6 +210,33 @@ describe('ClientEmailForm', () => {
   });
 
   describe('payload fields', () => {
+    it('includes sent_at in create payload', async () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('create-client-email')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+      render(<ClientEmailForm {...defaultProps} />);
+      await act(async () => {
+        await userEvent.type(screen.getByLabelText(/subject/i), 'Subject');
+        await userEvent.type(screen.getByLabelText(/^to$/i), 'a@b.com');
+      });
+      const dateTimeInput = screen.getByLabelText(/date \/ time/i);
+      expect(dateTimeInput).toHaveAttribute('type', 'datetime-local');
+      fireEvent.change(dateTimeInput, { target: { value: '2026-03-15T14:30' } });
+      const form = document.querySelector('form');
+      await act(async () => {
+        fireEvent.submit(form);
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      });
+      const createCall = fetchMock.mock.calls.find((c) => String(c[0] || '').includes('create-client-email'));
+      expect(createCall).toBeDefined();
+      const body = JSON.parse(createCall[1].body);
+      expect(body.sent_at).toBeDefined();
+      expect(new Date(body.sent_at).toISOString()).toMatch(/2026-03-15/);
+    });
+
     it('includes related_project_case and follow_up_date in create payload when set', async () => {
       fetchMock.mockImplementation((url) => {
         if (url && url.includes('create-client-email')) {
@@ -231,6 +264,54 @@ describe('ClientEmailForm', () => {
       expect(body.subject).toBe('Subject');
       if (relatedInput) expect(body.related_project_case === undefined || body.related_project_case === 'PRJ-1').toBe(true);
       if (followUpInput) expect(body.follow_up_date === undefined || body.follow_up_date).toBeTruthy();
+    });
+  });
+
+  describe('upload attachment', () => {
+    it('calls upload API when user selects a file and includes attachment in payload', async () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('upload-client-attachment')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ url: 'https://example.com/uploaded.pdf' }),
+          });
+        }
+        if (url && url.includes('create-client-email')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) });
+        }
+        return Promise.reject(new Error('Unexpected URL: ' + url));
+      });
+      const mockReadAsDataURL = jest.fn(function () {
+        setTimeout(() => {
+          this.result = 'data:application/pdf;base64,xxx';
+          this.onload?.();
+        }, 0);
+      });
+      const OriginalFileReader = global.FileReader;
+      global.FileReader = jest.fn().mockImplementation(function () {
+        this.readAsDataURL = mockReadAsDataURL;
+        this.onload = null;
+        this.onerror = null;
+        this.result = null;
+        return this;
+      });
+
+      const { container } = render(<ClientEmailForm {...defaultProps} />);
+      await act(async () => {
+        await userEvent.type(screen.getByLabelText(/subject/i), 'Subj');
+        await userEvent.type(screen.getByLabelText(/^to$/i), 'a@b.com');
+      });
+      const fileInput = container.querySelector('input[type="file"]');
+      expect(fileInput).toBeTruthy();
+      const file = new File(['content'], 'doc.pdf', { type: 'application/pdf' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      });
+      const uploadCall = fetchMock.mock.calls.find((c) => String(c[0] || '').includes('upload-client-attachment'));
+      expect(uploadCall).toBeDefined();
+
+      global.FileReader = OriginalFileReader;
     });
   });
 

@@ -10,6 +10,11 @@ describe('clientIdGenerator', () => {
     expect(id).toMatch(/^CL-\d{8}-[A-Z0-9]{6}$/);
   });
 
+  it('accepts no argument and defaults existingIds to empty array', () => {
+    const id = generateClientId();
+    expect(id).toMatch(/^CL-\d{8}-[A-Z0-9]{6}$/);
+  });
+
   it('uses current date for the date prefix', () => {
     const id = generateClientId([]);
     const year = new Date().getFullYear();
@@ -47,5 +52,36 @@ describe('clientIdGenerator', () => {
     Math.random = originalRandom;
     expect(id2).not.toBe(id1);
     expect(id2).toMatch(/^CL-\d{8}-/);
+  });
+
+  it('enters while loop and appends char when generated id collides (lines 25-26)', () => {
+    const originalRandom = Math.random;
+    let callCount = 0;
+    Math.random = () => {
+      callCount++;
+      if (callCount <= 6) return 0;
+      return 0.99;
+    };
+    const id1 = generateClientId([]);
+    callCount = 0;
+    const existingIds = [id1];
+    const id2 = generateClientId(existingIds);
+    Math.random = originalRandom;
+    expect(id2).not.toBe(id1);
+    expect(id2).toMatch(/^CL-\d{8}-[A-Z0-9]{7}$/);
+  });
+
+  it('uses Date.now fallback when still colliding after 10 append attempts (lines 30-31)', () => {
+    const originalRandom = Math.random;
+    Math.random = () => 0;
+    const id1 = generateClientId([]);
+    const existingIds = [id1];
+    for (let i = 1; i <= 10; i++) {
+      existingIds.push(id1 + 'A'.repeat(i));
+    }
+    const id2 = generateClientId(existingIds);
+    Math.random = originalRandom;
+    expect(existingIds).not.toContain(id2);
+    expect(id2).toMatch(/^CL-\d{8}-[A-Z0-9]{6}\d{4}$/);
   });
 });

@@ -58,6 +58,9 @@ jest.mock('@/components/ui', () => ({
 jest.mock('@/components/marketing/ProviderStatusBadge', () => function MockProviderStatusBadge({ status }) {
   return <span data-testid="provider-status-badge" data-status={status}>{status}</span>;
 });
+jest.mock('@/components/settings/MarketingProviderSettings', () => function MockMarketingProviderSettings() {
+  return <div data-testid="marketing-provider-settings" />;
+});
 jest.mock('react-icons/hi', () => ({
   HiCreditCard: () => <span data-testid="icon-credit" />,
   HiSpeakerphone: () => <span data-testid="icon-speaker" />,

@@ -153,16 +153,16 @@ describe('EmailCampaignView', () => {
     expect(countSpans.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('Save Draft adds a draft campaign', async () => {
+  it('Save Campaign adds a draft campaign', async () => {
     setupMocks({ recipients: mockRecipients });
     render(<EmailCampaignView showPageHeader={false} />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Draft/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
     fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'My campaign' } });
     fireEvent.change(screen.getByLabelText(/Subject line/i), { target: { value: 'Hello' } });
     fireEvent.change(screen.getByPlaceholderText(/Write your email content/i), { target: { value: 'Body text' } });
-    fireEvent.click(screen.getByRole('button', { name: /Save Draft/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Save Campaign/i }));
     await waitFor(() => {
       expect(screen.getByTestId('campaign-count')).toHaveTextContent('1');
     }, { timeout: 600 });
@@ -170,14 +170,14 @@ describe('EmailCampaignView', () => {
     expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('draft');
   });
 
-  it('Save Draft uses "Untitled email campaign" when name empty but subject/body set', async () => {
+  it('Save Campaign uses "Untitled email campaign" when name empty but subject/body set', async () => {
     setupMocks({ recipients: mockRecipients });
     render(<EmailCampaignView showPageHeader={false} />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Draft/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
     fireEvent.change(screen.getByPlaceholderText(/Write your email content/i), { target: { value: 'Hello' } });
-    fireEvent.click(screen.getByRole('button', { name: /Save Draft/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Save Campaign/i }));
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('Untitled email campaign');
     }, { timeout: 600 });

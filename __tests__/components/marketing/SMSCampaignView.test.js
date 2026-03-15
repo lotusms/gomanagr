@@ -147,14 +147,14 @@ describe('SMSCampaignView', () => {
     expect(recipientCountSpans.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('Save Draft adds a draft campaign', async () => {
+  it('Save Campaign adds a draft campaign', async () => {
     setupMocks({ recipients: mockRecipients });
     render(<SMSCampaignView showPageHeader={false} />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Draft/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
     fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'My campaign' } });
-    fireEvent.click(screen.getByRole('button', { name: /Save Draft/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Save Campaign/i }));
     // handleSaveDraft uses setTimeout(400ms); wait for draft to appear in history
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('My campaign');
@@ -163,14 +163,14 @@ describe('SMSCampaignView', () => {
     expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('draft');
   });
 
-  it('Save Draft uses "Untitled SMS campaign" when name empty but body set', async () => {
+  it('Save Campaign uses "Untitled SMS campaign" when name empty but body set', async () => {
     setupMocks({ recipients: mockRecipients });
     render(<SMSCampaignView showPageHeader={false} />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Save Draft/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
     fireEvent.change(screen.getByPlaceholderText(/Type your SMS message/i), { target: { value: 'Hello' } });
-    fireEvent.click(screen.getByRole('button', { name: /Save Draft/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Save Campaign/i }));
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('Untitled SMS campaign');
     }, { timeout: 2000 });

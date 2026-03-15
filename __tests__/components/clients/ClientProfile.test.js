@@ -18,12 +18,15 @@ const mockShowError = jest.fn();
 jest.mock('@/components/ui/Toast', () => ({ useToast: () => ({ success: mockSuccess, error: mockShowError }) }));
 const mockUpdateClients = jest.fn();
 const mockGetUserAccount = jest.fn();
+const mockSaveAppointment = jest.fn();
+const mockDeleteAppointment = jest.fn();
+const mockGetUserAccountFromServer = jest.fn();
 jest.mock('@/services/userService', () => ({
   updateClients: (...args) => mockUpdateClients(...args),
   getUserAccount: (...args) => mockGetUserAccount(...args),
-  saveAppointment: jest.fn(),
-  deleteAppointment: jest.fn(),
-  getUserAccountFromServer: jest.fn(),
+  saveAppointment: (...args) => mockSaveAppointment(...args),
+  deleteAppointment: (...args) => mockDeleteAppointment(...args),
+  getUserAccountFromServer: (...args) => mockGetUserAccountFromServer(...args),
 }));
 jest.mock('@/utils/formatPhone', () => ({ formatPhone: (v) => v, unformatPhone: (v) => (v ? v.replace(/\D/g, '') : '') }));
 jest.mock('@/utils/countries', () => ({ COUNTRIES: [{ value: 'US', label: 'United States' }] }));
@@ -62,7 +65,7 @@ jest.mock('@/components/dashboard/ResponsiveSectionWrapper', () => ({
 }));
 jest.mock('@/components/dashboard/AppointmentForm', () => ({
   __esModule: true,
-  default: ({ onCancel, onClientAdd }) => (
+  default: ({ onCancel, onClientAdd, onSubmit, onDelete }) => (
     <div data-testid="appointment-form">
       <span>AppointmentForm</span>
       {onCancel && <button type="button" onClick={onCancel}>Cancel appointment</button>}
@@ -71,6 +74,8 @@ jest.mock('@/components/dashboard/AppointmentForm', () => ({
           Add client from appointment
         </button>
       )}
+      {onSubmit && <button type="button" onClick={() => onSubmit({}).then(() => {})}>Submit appointment</button>}
+      {onDelete && <button type="button" onClick={() => onDelete().then(() => {})}>Delete appointment</button>}
     </div>
   ),
 }));
@@ -475,5 +480,95 @@ describe('ClientProfile', () => {
     fireEvent.click(screen.getByRole('button', { name: /Add client from appointment/i }));
     await waitFor(() => expect(mockUpdateClients).toHaveBeenCalledWith('u1', expect.any(Array)));
     expect(mockSuccess).toHaveBeenCalledWith(expect.stringMatching(/added to appointment/i));
+  });
+
+  it('when userAccount has no clientSettings, visibleTabs include company and financial from shouldShowCompanyFinancialSections', () => {
+    render(
+      <ClientProfile
+        initialClient={null}
+        userAccount={{ industry: 'Legal' }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    const wrapper = screen.getByTestId('section-wrapper');
+    const values = Array.from(wrapper.querySelectorAll('[data-section]')).map((s) => s.getAttribute('data-section'));
+    expect(values).toContain('financial');
+    expect(values).toContain('projects');
+    expect(values).toContain('communication');
+  });
+
+  it('company toggle shows CompanyDetailsSection when visibleTabs include company (no clientSettings path)', () => {
+    render(
+      <ClientProfile
+        initialClient={null}
+        userAccount={{ industry: 'Legal' }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    const wrapper = screen.getByTestId('section-wrapper');
+    expect(wrapper.querySelectorAll('[data-section="company"]').length).toBe(0);
+    fireEvent.click(screen.getByTestId('switch'));
+    expect(wrapper.querySelector('[data-section="company"]')).toBeInTheDocument();
+    expect(screen.getByText('CompanyDetails')).toBeInTheDocument();
+  });
+
+  it('appointment drawer onClientAdd uses onSaveClient when provided', async () => {
+    const mockOnSaveClient = jest.fn().mockResolvedValue(undefined);
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [], appointments: [] }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+        onSaveClient={mockOnSaveClient}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Add appointment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add client from appointment/i }));
+    await waitFor(() => expect(mockOnSaveClient).toHaveBeenCalledWith(expect.any(Object), true));
+    expect(mockSuccess).toHaveBeenCalledWith(expect.stringMatching(/added to appointment/i));
+    expect(mockUpdateClients).not.toHaveBeenCalled();
+  });
+
+  it('appointment drawer Submit calls saveAppointment and shows success', async () => {
+    mockSaveAppointment.mockResolvedValue(undefined);
+    mockGetUserAccountFromServer.mockResolvedValue({});
+
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [{ id: 'c1' }], appointments: [] }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Add appointment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Submit appointment/i }));
+    await waitFor(() => expect(mockSaveAppointment).toHaveBeenCalled());
+    expect(mockSuccess).toHaveBeenCalledWith(expect.stringMatching(/Appointment created successfully/i));
+  });
+
+  it('appointment drawer Delete calls deleteAppointment when confirm and editing', async () => {
+    mockDeleteAppointment.mockResolvedValue(undefined);
+    const origConfirm = window.confirm;
+    window.confirm = jest.fn(() => true);
+
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [{ id: 'c1' }], appointments: [{ id: 'apt1', clientId: 'c1' }] }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Edit appointment/i }));
+    expect(screen.getByTestId('drawer')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Delete appointment/i }));
+    await waitFor(() => expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/delete this appointment/i)));
+    await waitFor(() => expect(mockDeleteAppointment).toHaveBeenCalledWith('u1', 'apt1'));
+    expect(mockSuccess).toHaveBeenCalledWith(expect.stringMatching(/deleted successfully/i));
+    window.confirm = origConfirm;
   });
 });

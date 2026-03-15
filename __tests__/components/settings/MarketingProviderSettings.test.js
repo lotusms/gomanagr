@@ -11,6 +11,11 @@ jest.mock('@/lib/AuthContext', () => ({
   useAuth: () => ({ currentUser }),
 }));
 
+const mockPush = jest.fn();
+jest.mock('next/router', () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 const mockGetMarketingSettings = jest.fn();
 const mockSaveMarketingSettings = jest.fn();
 jest.mock('@/lib/marketing/marketingSettingsService', () => ({
@@ -24,16 +29,6 @@ jest.mock('@/lib/marketing/providerRegistry', () => ({
   PROVIDER_DISPLAY_NAMES: { resend: 'Resend', twilio: 'Twilio', mailchimp: 'Mailchimp', ses: 'Amazon SES' },
 }));
 
-jest.mock('@/components/marketing/ProviderConfigCard', () => function MockProviderConfigCard({ config, onChange }) {
-  return (
-    <div data-testid={`provider-config-${config.providerType}`}>
-      <span>{config.providerType}</span>
-      <button type="button" data-testid={`config-change-${config.providerType}`} onClick={() => onChange({ ...config, enabled: !config.enabled })}>
-        Toggle
-      </button>
-    </div>
-  );
-});
 jest.mock('@/components/ui/Table', () => function MockTable({ columns, data, ariaLabel }) {
   return (
     <table role="table" aria-label={ariaLabel}>
@@ -67,17 +62,16 @@ jest.mock('@/components/ui', () => ({
       </div>
     );
   },
+  useCancelWithConfirm: (onCancel) => ({ handleCancel: onCancel, discardDialog: null }),
 }));
 jest.mock('@/components/ui/buttons', () => ({
   PrimaryButton: ({ children, onClick, disabled }) => (
     <button type="button" onClick={onClick} disabled={disabled} data-testid="save-btn">{children}</button>
   ),
-  SecondaryButton: ({ children, asChild }) =>
-    asChild ? children : <button type="button" data-testid="secondary-btn">{children}</button>,
+  SecondaryButton: ({ children, onClick, type }) => (
+    <button type={type || 'button'} onClick={onClick} data-testid="secondary-btn">{children}</button>
+  ),
 }));
-jest.mock('next/link', () => function MockLink({ children, href }) {
-  return <a href={href} data-testid="link-marketing">{children}</a>;
-});
 jest.mock('react-icons/hi', () => ({ HiSpeakerphone: () => <span data-testid="icon-speaker" /> }));
 
 const defaultSettings = {
@@ -123,17 +117,18 @@ describe('MarketingProviderSettings', () => {
     expect(screen.getByLabelText('Default SMS provider')).toBeInTheDocument();
   });
 
-  it('renders ProviderConfigCard per provider', async () => {
-    render(<MarketingProviderSettings />);
-    await waitFor(() => expect(screen.getByTestId('provider-config-resend')).toBeInTheDocument());
-    expect(screen.getByTestId('provider-config-twilio')).toBeInTheDocument();
-  });
-
-  it('when embedInMarketingPage hides heading and Go to Marketing link', async () => {
+  it('when embedInMarketingPage hides heading and Go to Configurations button', async () => {
     render(<MarketingProviderSettings embedInMarketingPage />);
     await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
     expect(screen.queryByRole('heading', { name: 'Marketing providers' })).not.toBeInTheDocument();
-    expect(screen.queryByTestId('link-marketing')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /go to configurations/i })).not.toBeInTheDocument();
+  });
+
+  it('Go to Configurations button navigates to settings integrations', async () => {
+    render(<MarketingProviderSettings />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /go to configurations/i })).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /go to configurations/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/settings?section=integrations');
   });
 
   it('shows save error when saveMarketingSettings rejects', async () => {

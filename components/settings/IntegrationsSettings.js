@@ -9,6 +9,7 @@ import InputField from '@/components/ui/InputField';
 import CollapsibleSection from '@/components/dashboard/CollapsibleSection';
 import EmptyState from '@/components/ui/EmptyState';
 import ProviderStatusBadge from '@/components/marketing/ProviderStatusBadge';
+import MarketingProviderSettings from '@/components/settings/MarketingProviderSettings';
 import { HiCreditCard, HiSpeakerphone, HiMail } from 'react-icons/hi';
 
 const PROVIDERS = [
@@ -55,7 +56,7 @@ export default function IntegrationsSettings() {
   const [saving, setSaving] = useState(null);
   const [testing, setTesting] = useState(null);
   const [formValues, setFormValues] = useState({});
-  const [openProvider, setOpenProvider] = useState(null);
+  const [openProvider, setOpenProvider] = useState('marketing');
 
   const load = useCallback(async () => {
     if (!currentUser?.uid) return;
@@ -192,6 +193,16 @@ export default function IntegrationsSettings() {
           Per-organization only: Stripe and email/SMS providers for this org to charge its clients and communicate within the org. Not shared across organizations.
         </p>
       </div>
+
+
+      <CollapsibleSection
+        title="Marketing Providers"
+        isOpen={openProvider === 'marketing'}
+        onToggle={() => toggleSection('marketing')}
+        icon={<HiSpeakerphone className="w-5 h-5" aria-hidden />}
+      >
+        <MarketingProviderSettings hideNavigateToIntegrations />
+      </CollapsibleSection>
 
       <div className="space-y-4">
         {PROVIDERS.map((provider) => {

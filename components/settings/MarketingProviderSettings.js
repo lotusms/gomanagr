@@ -1,27 +1,38 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
-import { Dropdown } from '@/components/ui';
+import { Dropdown, useCancelWithConfirm } from '@/components/ui';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
 import { getMarketingSettings, saveMarketingSettings } from '@/lib/marketing/marketingSettingsService';
 import { getProviderCapabilities } from '@/lib/marketing/providerRegistry';
 import { PROVIDER_DISPLAY_NAMES } from '@/lib/marketing/providerRegistry';
-import ProviderConfigCard from '@/components/marketing/ProviderConfigCard';
 import Table from '@/components/ui/Table';
 import { HiSpeakerphone } from 'react-icons/hi';
 
-export default function MarketingProviderSettings({ embedInMarketingPage = false } = {}) {
+export default function MarketingProviderSettings({ embedInMarketingPage = false, hideNavigateToIntegrations = false } = {}) {
+  const router = useRouter();
   const { currentUser } = useAuth();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const navigateToIntegrations = useCallback(() => {
+    router.push('/dashboard/settings?section=integrations');
+  }, [router]);
+
+  const { handleCancel: handleGoToConfigurations, discardDialog } = useCancelWithConfirm(
+    navigateToIntegrations,
+    hasChanges
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     setSaveError(null);
+    setHasChanges(false);
     if (!currentUser?.uid) {
       setSettings(null);
       setLoading(false);
@@ -39,6 +50,7 @@ export default function MarketingProviderSettings({ embedInMarketingPage = false
 
   const handleProviderChange = (providerType, nextConfig) => {
     if (!settings) return;
+    setHasChanges(true);
     const providers = settings.providers.map((p) =>
       p.providerType === providerType ? nextConfig : p
     );
@@ -52,6 +64,7 @@ export default function MarketingProviderSettings({ embedInMarketingPage = false
     try {
       const userId = currentUser?.uid?.trim() || null;
       await saveMarketingSettings(settings, userId);
+      setHasChanges(false);
     } catch (e) {
       setSaveError(e.message || 'Failed to save');
     } finally {
@@ -61,10 +74,12 @@ export default function MarketingProviderSettings({ embedInMarketingPage = false
 
   const setDefaultEmail = (e) => {
     const v = e.target.value;
+    setHasChanges(true);
     setSettings((s) => (s ? { ...s, defaultEmailProvider: v || undefined } : s));
   };
   const setDefaultSms = (e) => {
     const v = e.target.value;
+    setHasChanges(true);
     setSettings((s) => (s ? { ...s, defaultSmsProvider: v || undefined } : s));
   };
 
@@ -98,20 +113,7 @@ export default function MarketingProviderSettings({ embedInMarketingPage = false
             Marketing providers
           </h3>
         )}
-        <div className={`flex flex-wrap gap-2 ${embedInMarketingPage ? 'w-full justify-end' : 'ml-auto'}`}>
-          {!embedInMarketingPage && (
-            <SecondaryButton asChild>
-              <Link href="/dashboard/marketing">Go to Marketing</Link>
-            </SecondaryButton>
-          )}
-          <PrimaryButton onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </PrimaryButton>
-        </div>
       </div>
-      <p className="text-sm text-gray-600 dark:text-gray-400">
-        Platform providers: used by GoManagr to email tenants (invites, receipts). Not used for tenant org email/SMS (those use Integrations).
-      </p>
 
       {saveError && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
@@ -175,20 +177,17 @@ export default function MarketingProviderSettings({ embedInMarketingPage = false
         </div>
       </div>
 
-      <div>
-        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Provider setup</h4>
-        <div className="space-y-6">
-          {settings.providers.map((providerConfig) => (
-            <ProviderConfigCard
-              key={providerConfig.providerType}
-              config={providerConfig}
-              onChange={(next) => handleProviderChange(providerConfig.providerType, next)}
-              isDefaultEmail={settings.defaultEmailProvider === providerConfig.providerType}
-              isDefaultSms={settings.defaultSmsProvider === providerConfig.providerType}
-            />
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2 w-full justify-end">
+        {!hideNavigateToIntegrations && !embedInMarketingPage && (
+          <SecondaryButton type="button" onClick={handleGoToConfigurations}>
+            Go to Configurations
+          </SecondaryButton>
+        )}
+        <PrimaryButton onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </PrimaryButton>
       </div>
+      {!hideNavigateToIntegrations && !embedInMarketingPage && discardDialog}
     </div>
   );
 }

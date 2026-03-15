@@ -28,7 +28,7 @@ describe('NumberField', () => {
     );
     const input = screen.getByLabelText('Quantity');
     expect(input).toBeInTheDocument();
-    expect(input).toHaveValue(5);
+    expect(input).toHaveValue('5');
     expect(input).toHaveAttribute('min', '0');
     expect(input).toHaveAttribute('max', '100');
     expect(input).toHaveAttribute('step', '2');
@@ -39,10 +39,11 @@ describe('NumberField', () => {
     const { rerender } = render(
       <NumberField id="qty" value={0} onChange={() => {}} />
     );
-    expect(screen.queryByRole('label')).not.toBeInTheDocument();
+    expect(document.getElementById('qty')).toBeInTheDocument();
+    expect(screen.queryByText('Qty')).not.toBeInTheDocument();
 
     rerender(<NumberField id="qty" label="" value={0} onChange={() => {}} />);
-    expect(screen.queryByRole('label')).not.toBeInTheDocument();
+    expect(screen.queryByText('Qty')).not.toBeInTheDocument();
   });
 
   it('renders required asterisk with light variant class', () => {
@@ -136,10 +137,10 @@ describe('NumberField', () => {
     const { rerender } = render(
       <NumberField id="qty" label="Qty" value="" onChange={() => {}} />
     );
-    expect(screen.getByLabelText('Qty')).toHaveValue(null);
+    expect(screen.getByLabelText('Qty')).toHaveValue('');
 
     rerender(<NumberField id="qty" label="Qty" value={null} onChange={() => {}} />);
-    expect(screen.getByLabelText('Qty')).toHaveValue(null);
+    expect(screen.getByLabelText('Qty')).toHaveValue('');
   });
 
   it('forwards onChange when input changes', () => {

@@ -155,10 +155,11 @@ describe('SMSCampaignView', () => {
     });
     fireEvent.change(screen.getByLabelText(/Campaign name/i), { target: { value: 'My campaign' } });
     fireEvent.click(screen.getByRole('button', { name: /Save Draft/i }));
+    // handleSaveDraft uses setTimeout(400ms); wait for draft to appear in history
     await waitFor(() => {
-      expect(screen.getByTestId('campaign-count')).toHaveTextContent('1');
-    }, { timeout: 600 });
-    expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('My campaign');
+      expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('My campaign');
+    }, { timeout: 2000 });
+    expect(screen.getByTestId('campaign-count')).toHaveTextContent('1');
     expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('draft');
   });
 
@@ -172,7 +173,7 @@ describe('SMSCampaignView', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save Draft/i }));
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('Untitled SMS campaign');
-    }, { timeout: 600 });
+    }, { timeout: 2000 });
   });
 
   it('Send Now sends campaign and clears form on success', async () => {

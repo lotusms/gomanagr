@@ -19,6 +19,7 @@ import {
   deleteUserAccount,
   deleteAppointment,
   uploadFile,
+  uploadTeamPhoto,
   listStorageFiles,
   getStoragePublicUrl,
   removeStorageFiles,
@@ -30,7 +31,7 @@ let storageUploadResult = { data: { path: 'p/file.png' }, error: null };
 let storageListResult = { data: [{ name: 'f1.png' }], error: null };
 let storageRemoveResult = { error: null };
 
-const mockFrom = jest.fn((table) => {
+const defaultFromImpl = (table) => {
   if (table !== 'user_profiles') return {};
   return {
     select: () => ({
@@ -44,7 +45,8 @@ const mockFrom = jest.fn((table) => {
         Promise.resolve(profilesUpdateResult),
     }),
   };
-});
+};
+const mockFrom = jest.fn(defaultFromImpl);
 
 const mockStorageFrom = jest.fn((bucket) => ({
   upload: (path, file, opts) => Promise.resolve(storageUploadResult),
@@ -70,6 +72,10 @@ global.fetch = jest.fn();
 describe('userService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFrom.mockImplementation(defaultFromImpl);
+    const { supabase } = require('@/lib/supabase');
+    supabase.from = (t) => mockFrom(t);
+    supabase.auth.getSession = jest.fn().mockResolvedValue({ data: { session: null } });
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -117,6 +123,63 @@ describe('userService', () => {
     it('throws on other error', async () => {
       profilesSelectResult = { data: null, error: { message: 'DB error' } };
       await expect(getUserAccount('uid')).rejects.toThrow('Failed to get user account');
+    });
+
+    it('auto-creates account when not found and session has email', async () => {
+      profilesSelectResult = { data: null, error: null };
+      const supabase = require('@/lib/supabase').supabase;
+      supabase.auth.getSession = jest.fn().mockResolvedValue({
+        data: { session: { user: { email: 'new@example.com', user_metadata: { firstName: 'New', lastName: 'User' } } } },
+      });
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+      let callCount = 0;
+      mockFrom.mockImplementation((table) => {
+        if (table !== 'user_profiles') return {};
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => {
+                callCount++;
+                if (callCount === 1) return Promise.resolve({ data: null, error: null });
+                return Promise.resolve({
+                  data: { id: 'uid', email: 'new@example.com', first_name: 'New', last_name: 'User', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+                  error: null,
+                });
+              },
+            }),
+          }),
+        };
+      });
+      const result = await getUserAccount('uid');
+      expect(result).toMatchObject({ userId: 'uid', email: 'new@example.com', firstName: 'New', lastName: 'User' });
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/fix-missing-account',
+        expect.objectContaining({ method: 'POST', body: expect.any(String) })
+      );
+      mockFrom.mockImplementation(defaultFromImpl);
+      supabase.auth.getSession = jest.fn().mockResolvedValue({ data: { session: null } });
+    });
+
+    it('returns null when auto-create attempted but no email in session', async () => {
+      profilesSelectResult = { data: null, error: null };
+      const supabase = require('@/lib/supabase').supabase;
+      supabase.auth.getSession = jest.fn().mockResolvedValue({ data: { session: { user: {} } } });
+      const result = await getUserAccount('uid');
+      expect(result).toBeNull();
+      expect(global.fetch).not.toHaveBeenCalled();
+      supabase.auth.getSession = jest.fn().mockResolvedValue({ data: { session: null } });
+    });
+
+    it('returns null when auto-create fetch not ok', async () => {
+      profilesSelectResult = { data: null, error: null };
+      const supabase = require('@/lib/supabase').supabase;
+      supabase.auth.getSession = jest.fn().mockResolvedValue({
+        data: { session: { user: { email: 'a@b.com' } } },
+      });
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, text: () => Promise.resolve('Server error') });
+      const result = await getUserAccount('uid');
+      expect(result).toBeNull();
+      supabase.auth.getSession = jest.fn().mockResolvedValue({ data: { session: null } });
     });
   });
 
@@ -217,6 +280,32 @@ describe('userService', () => {
       });
       await expect(updateTeamMembers('uid', null)).resolves.toBeUndefined();
     });
+
+    it('throws when update returns error with RLS/code 42501', async () => {
+      profilesSelectResult = { data: { id: 'uid' }, error: null };
+      const supabase = require('@/lib/supabase').supabase;
+      supabase.from = jest.fn((table) => {
+        if (table !== 'user_profiles') return {};
+        return {
+          select: () => ({ eq: () => ({ single: () => Promise.resolve(profilesSelectResult) }) }),
+          update: () => ({ eq: () => ({ select: () => Promise.resolve({ data: null, error: { message: 'new row violates row-level security', code: '42501' } }) }) }),
+        };
+      });
+      await expect(updateTeamMembers('uid', [])).rejects.toThrow('Failed to save team members');
+    });
+
+    it('throws when update returns no rows', async () => {
+      profilesSelectResult = { data: { id: 'uid' }, error: null };
+      const supabase = require('@/lib/supabase').supabase;
+      supabase.from = jest.fn((table) => {
+        if (table !== 'user_profiles') return {};
+        return {
+          select: () => ({ eq: () => ({ single: () => Promise.resolve(profilesSelectResult) }) }),
+          update: () => ({ eq: () => ({ select: () => Promise.resolve({ data: [], error: null }) }) }),
+        };
+      });
+      await expect(updateTeamMembers('uid', [])).rejects.toThrow('no rows were returned');
+    });
   });
 
   describe('updateClients', () => {
@@ -234,6 +323,26 @@ describe('userService', () => {
         update: () => ({ eq: () => Promise.resolve({ error: null }) }),
       }));
       await expect(updateClients('uid', null)).resolves.toBeUndefined();
+    });
+
+    it('throws on supabase update error', async () => {
+      const supabase = require('@/lib/supabase').supabase;
+      supabase.from = jest.fn(() => ({
+        update: () => ({ eq: () => Promise.resolve({ error: { message: 'RLS denied' } }) }),
+      }));
+      await expect(updateClients('uid', [{ id: 'c1' }])).rejects.toThrow('Failed to save clients');
+    });
+
+    it('cleans empty strings and sparse arrays via cleanClient', async () => {
+      const supabase = require('@/lib/supabase').supabase;
+      supabase.from = jest.fn(() => ({
+        update: (payload) => {
+          expect(payload.clients).toBeDefined();
+          expect(Array.isArray(payload.clients)).toBe(true);
+          return { eq: () => Promise.resolve({ error: null }) };
+        },
+      }));
+      await expect(updateClients('uid', [{ id: 'c1', name: 'A', emptyStr: '', arr: [null, 'x', ''] }])).resolves.toBeUndefined();
     });
   });
 
@@ -258,6 +367,11 @@ describe('userService', () => {
       global.fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: 'Forbidden' }), statusText: 'Forbidden' });
       await expect(getOrgServices('org1', 'uid')).rejects.toThrow('Forbidden');
     });
+
+    it('throws with statusText when !res.ok and res.json() rejects', async () => {
+      global.fetch.mockResolvedValue({ ok: false, json: () => Promise.reject(new Error('Invalid JSON')), statusText: 'Server Error' });
+      await expect(getOrgServices('org1', 'uid')).rejects.toThrow('Server Error');
+    });
   });
 
   describe('updateOrgServices', () => {
@@ -269,6 +383,11 @@ describe('userService', () => {
     it('throws on !res.ok', async () => {
       global.fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: 'Failed' }) });
       await expect(updateOrgServices('org1', 'uid', [])).rejects.toThrow('Failed');
+    });
+
+    it('throws with statusText when !res.ok and res.json() rejects', async () => {
+      global.fetch.mockResolvedValue({ ok: false, json: () => Promise.reject(new Error('Parse error')), statusText: 'Bad Gateway' });
+      await expect(updateOrgServices('org1', 'uid', [])).rejects.toThrow('Bad Gateway');
     });
   });
 
@@ -301,6 +420,17 @@ describe('userService', () => {
     it('throws on !response.ok', async () => {
       global.fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ message: 'Not allowed' }) });
       await expect(deleteUserAccount('uid')).rejects.toThrow('Not allowed');
+    });
+
+    it('throws with text when !response.ok and response.json() throws', async () => {
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: () => Promise.reject(new Error('Invalid JSON')),
+        text: () => Promise.resolve('Server error body'),
+      });
+      await expect(deleteUserAccount('uid')).rejects.toThrow('Server error body');
     });
   });
 
@@ -368,6 +498,76 @@ describe('userService', () => {
     it('throws on remove error', async () => {
       storageRemoveResult = { error: { message: 'Remove failed' } };
       await expect(removeStorageFiles('bucket', ['p1'])).rejects.toMatchObject({ message: 'Remove failed' });
+    });
+  });
+
+  describe('uploadTeamPhoto', () => {
+    let FileReaderBackup;
+    beforeEach(() => {
+      FileReaderBackup = global.FileReader;
+      global.FileReader = jest.fn().mockImplementation(function () {
+        this.readAsDataURL = jest.fn(function () {
+          const self = this;
+          setTimeout(() => {
+            self.result = 'data:image/png;base64,dGVzdA==';
+            self.onloadend?.();
+          }, 0);
+        });
+      });
+    });
+    afterEach(() => {
+      global.FileReader = FileReaderBackup;
+    });
+
+    it('returns photoUrl on success', async () => {
+      const mockFile = new Blob(['x'], { type: 'image/png' });
+      Object.defineProperty(mockFile, 'name', { value: 'photo.png' });
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ photoUrl: 'https://cdn.example.com/team/photo.png' }),
+      });
+      const result = await uploadTeamPhoto('uid', 'member-1', mockFile);
+      expect(result).toBe('https://cdn.example.com/team/photo.png');
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/upload-team-photo',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: expect.any(String),
+        })
+      );
+    });
+
+    it('throws when API returns !response.ok with error message', async () => {
+      const mockFile = new Blob(['x'], { type: 'image/png' });
+      Object.defineProperty(mockFile, 'name', { value: 'p.png' });
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 413,
+        statusText: 'Payload Too Large',
+        json: () => Promise.resolve({ error: 'File too large' }),
+      });
+      await expect(uploadTeamPhoto('uid', 'm1', mockFile)).rejects.toThrow('File too large');
+    });
+
+    it('throws with text when !response.ok and response.json() throws', async () => {
+      const mockFile = new Blob(['x'], { type: 'image/png' });
+      Object.defineProperty(mockFile, 'name', { value: 'p.png' });
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Server Error',
+        json: () => Promise.reject(new Error('Invalid JSON')),
+        text: () => Promise.resolve('Internal error'),
+      });
+      await expect(uploadTeamPhoto('uid', 'm1', mockFile)).rejects.toThrow('Internal error');
+    });
+
+    it('throws when fetch fails', async () => {
+      const mockFile = new Blob(['x'], { type: 'image/png' });
+      Object.defineProperty(mockFile, 'name', { value: 'p.png' });
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      await expect(uploadTeamPhoto('uid', 'm1', mockFile)).rejects.toThrow('Failed to upload team photo');
     });
   });
 });

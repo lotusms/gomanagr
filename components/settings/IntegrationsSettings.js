@@ -9,21 +9,9 @@ import InputField from '@/components/ui/InputField';
 import CollapsibleSection from '@/components/dashboard/CollapsibleSection';
 import EmptyState from '@/components/ui/EmptyState';
 import ProviderStatusBadge from '@/components/marketing/ProviderStatusBadge';
-import MarketingProviderSettings from '@/components/settings/MarketingProviderSettings';
 import { HiCreditCard, HiSpeakerphone, HiMail } from 'react-icons/hi';
 
 const PROVIDERS = [
-  { id: 'stripe', name: 'Stripe', description: 'Accept payments and manage invoices. Enter your Stripe API keys from the Stripe Dashboard.', icon: HiCreditCard, fields: [
-    { key: 'publishableKey', label: 'Publishable key', placeholder: 'pk_live_...', type: 'text' },
-    { key: 'secretKey', label: 'Secret key', placeholder: 'sk_live_...', type: 'password' },
-    { key: 'webhookSecret', label: 'Webhook secret (optional)', placeholder: 'whsec_...', type: 'password', optional: true },
-    { key: 'paymentMethodConfigId', label: 'Payment method configuration ID (optional)', placeholder: '', type: 'text', optional: true },
-  ]},
-  { id: 'twilio', name: 'Twilio', description: 'Send SMS. Configure with your Twilio Account SID, Auth Token, and a Twilio phone number.', icon: HiSpeakerphone, fields: [
-    { key: 'accountSid', label: 'Account SID', placeholder: 'AC...', type: 'text' },
-    { key: 'authToken', label: 'Auth Token', placeholder: '...', type: 'password' },
-    { key: 'fromNumber', label: 'From phone number', placeholder: '+1234567890', type: 'text' },
-  ]},
   { id: 'mailchimp', name: 'Mailchimp', description: 'Email and optionally SMS via Mailchimp. Add your API key and server prefix.', icon: HiMail, fields: [
     { key: 'apiKey', label: 'API key', placeholder: '...', type: 'password' },
     { key: 'serverPrefix', label: 'Server prefix (e.g. us21)', placeholder: 'us21', type: 'text' },
@@ -31,10 +19,21 @@ const PROVIDERS = [
     { key: 'senderName', label: 'Sender name', placeholder: 'Your Company', type: 'text' },
     { key: 'fromNumber', label: 'From number (SMS, optional)', placeholder: '', type: 'text', optional: true },
   ]},
+  { id: 'twilio', name: 'Twilio', description: 'Send SMS. Configure with your Twilio Account SID, Auth Token, and a Twilio phone number.', icon: HiSpeakerphone, fields: [
+    { key: 'accountSid', label: 'Account SID', placeholder: 'AC...', type: 'text' },
+    { key: 'authToken', label: 'Auth Token', placeholder: '...', type: 'password' },
+    { key: 'fromNumber', label: 'From phone number', placeholder: '+1234567890', type: 'text' },
+  ]},
   { id: 'resend', name: 'Resend', description: 'Send transactional email. Add your Resend API key and verify your sender domain.', icon: HiMail, fields: [
     { key: 'apiKey', label: 'API key', placeholder: 're_...', type: 'password' },
     { key: 'senderEmail', label: 'Sender email', placeholder: 'onboarding@resend.dev', type: 'text' },
     { key: 'senderName', label: 'Sender name', placeholder: 'Your Company', type: 'text' },
+  ]},
+  { id: 'stripe', name: 'Stripe', description: 'Accept payments and manage invoices. Enter your Stripe API keys from the Stripe Dashboard.', icon: HiCreditCard, fields: [
+    { key: 'publishableKey', label: 'Publishable key', placeholder: 'pk_live_...', type: 'text' },
+    { key: 'secretKey', label: 'Secret key', placeholder: 'sk_live_...', type: 'password' },
+    { key: 'webhookSecret', label: 'Webhook secret (optional)', placeholder: 'whsec_...', type: 'password', optional: true },
+    { key: 'paymentMethodConfigId', label: 'Payment method configuration ID (optional)', placeholder: '', type: 'text', optional: true },
   ]},
 ];
 
@@ -56,7 +55,7 @@ export default function IntegrationsSettings() {
   const [saving, setSaving] = useState(null);
   const [testing, setTesting] = useState(null);
   const [formValues, setFormValues] = useState({});
-  const [openProvider, setOpenProvider] = useState('marketing');
+  const [openProvider, setOpenProvider] = useState(null);
 
   const load = useCallback(async () => {
     if (!currentUser?.uid) return;
@@ -193,16 +192,6 @@ export default function IntegrationsSettings() {
           Per-organization only: Stripe and email/SMS providers for this org to charge its clients and communicate within the org. Not shared across organizations.
         </p>
       </div>
-
-
-      <CollapsibleSection
-        title="Marketing Providers"
-        isOpen={openProvider === 'marketing'}
-        onToggle={() => toggleSection('marketing')}
-        icon={<HiSpeakerphone className="w-5 h-5" aria-hidden />}
-      >
-        <MarketingProviderSettings hideNavigateToIntegrations />
-      </CollapsibleSection>
 
       <div className="space-y-4">
         {PROVIDERS.map((provider) => {

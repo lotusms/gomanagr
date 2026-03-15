@@ -14,6 +14,7 @@ export { default as Drawer } from './Drawer';
 export { default as Dropdown } from './Dropdown';
 export { default as EmptyState } from './EmptyState';
 export { default as SearchableMultiselect } from './SearchableMultiselect';
+export { default as SidebarNav } from './SidebarNav';
 export { ToastProvider, useToast } from './Toast';
 export { default as FileInput } from './FileInput';
 export { default as FormStepFooter } from './FormStepFooter';

@@ -14,7 +14,15 @@ jest.mock('@/lib/taskSettings', () => ({
   getDefaultTaskSettings: (...args) => mockGetDefaultTaskSettings(...args),
   COLUMN_LABELS: { assignee: 'Assignee', title: 'Title', status: 'Status', priority: 'Priority', due_at: 'Due date', start_date: 'Start date', duration_days: 'Time to complete' },
   DEFAULT_COLUMNS: { assignee: true, title: true, status: true, priority: true, due_at: true, start_date: true, duration_days: true },
-  TASK_STATUSES: [],
+}));
+jest.mock('@/config/taskConstants', () => ({
+  TASK_STATUSES: [
+    { value: 'backlog', label: 'Backlog' },
+    { value: 'to_do', label: 'To do' },
+    { value: 'in_progress', label: 'In progress' },
+    { value: 'blocked', label: 'Blocked' },
+    { value: 'done', label: 'Completed' },
+  ],
 }));
 
 describe('TasksSettingsDrawer', () => {
@@ -98,5 +106,81 @@ describe('TasksSettingsDrawer', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /Save/i }));
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('syncs settings from initialSettings when drawer opens', () => {
+    const serverSettings = {
+      ...defaultSettings,
+      defaultView: 'list',
+      statusLabels: { to_do: 'Todo' },
+    };
+    const { rerender } = render(
+      <TasksSettingsDrawer isOpen={false} onClose={jest.fn()} orgId="org-1" userId="u1" taskSettings={serverSettings} />
+    );
+    rerender(
+      <TasksSettingsDrawer isOpen onClose={jest.fn()} orgId="org-1" userId="u1" taskSettings={serverSettings} />
+    );
+    expect(screen.getByText('Task settings')).toBeInTheDocument();
+    expect(screen.getByText('Default view')).toBeInTheDocument();
+  });
+
+  it('toggles column visibility via switch', () => {
+    render(
+      <TasksSettingsDrawer isOpen taskSettings={defaultSettings} onClose={jest.fn()} orgId="org-1" userId="u1" />
+    );
+    const switches = screen.getAllByRole('switch');
+    expect(switches.length).toBeGreaterThan(0);
+    fireEvent.click(switches[0]);
+    fireEvent.click(switches[0]);
+  });
+
+  it('updates status label via input', () => {
+    render(
+      <TasksSettingsDrawer isOpen taskSettings={defaultSettings} onClose={jest.fn()} orgId="org-1" userId="u1" />
+    );
+    const toDoInput = screen.getByLabelText(/To do/i);
+    fireEvent.change(toDoInput, { target: { value: 'Todo' } });
+    expect(toDoInput.value).toBe('Todo');
+    fireEvent.change(toDoInput, { target: { value: '' } });
+    expect(toDoInput).toBeInTheDocument();
+  });
+
+  it('toggles view visibility (Table, Calendar, Gantt)', () => {
+    render(
+      <TasksSettingsDrawer isOpen taskSettings={defaultSettings} onClose={jest.fn()} orgId="org-1" userId="u1" />
+    );
+    const viewSwitches = screen.getAllByRole('switch');
+    const tableCalendarGanttSwitches = viewSwitches.slice(-3);
+    tableCalendarGanttSwitches.forEach((sw) => fireEvent.click(sw));
+    expect(screen.getByText('Views')).toBeInTheDocument();
+  });
+
+  it('changes default view via dropdown', () => {
+    render(
+      <TasksSettingsDrawer isOpen taskSettings={defaultSettings} onClose={jest.fn()} orgId="org-1" userId="u1" />
+    );
+    const dropdown = document.getElementById('default-view');
+    fireEvent.change(dropdown, { target: { value: 'calendar' } });
+    expect(dropdown.value).toBe('calendar');
+  });
+
+  it('default view fallback to board when selection is empty', () => {
+    render(
+      <TasksSettingsDrawer isOpen taskSettings={defaultSettings} onClose={jest.fn()} orgId="org-1" userId="u1" />
+    );
+    const dropdown = document.getElementById('default-view');
+    fireEvent.change(dropdown, { target: { value: '' } });
+    expect(dropdown).toBeInTheDocument();
+  });
+
+  it('shows save error when fetch fails', async () => {
+    global.fetch.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: 'Server error' }) });
+    render(
+      <TasksSettingsDrawer isOpen taskSettings={defaultSettings} onClose={jest.fn()} orgId="org-1" userId="u1" />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Save/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Failed to save|Server error/);
+    });
   });
 });

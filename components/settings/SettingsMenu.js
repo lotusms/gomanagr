@@ -1,4 +1,5 @@
 import { HiOfficeBuilding, HiColorSwatch, HiShieldCheck, HiCreditCard, HiCog, HiUserGroup, HiPuzzle } from 'react-icons/hi';
+import { SidebarNav } from '@/components/ui';
 
 const SETTINGS_SECTIONS = [
   { id: 'general', label: 'General', icon: HiCog },
@@ -13,25 +14,12 @@ const SETTINGS_SECTIONS = [
 export default function SettingsMenu({ activeSection, onSectionChange, hiddenSections = [], sectionLabelOverrides = {} }) {
   const visibleSections = SETTINGS_SECTIONS.filter((s) => !hiddenSections.includes(s.id));
   return (
-    <nav className="flex-shrink-0 w-full lg:w-56">
-      <ul className="space-y-1 bg-white dark:bg-gray-800 rounded-lg shadow p-2">
-        {visibleSections.map(({ id, label, icon: Icon }) => (
-          <li key={id}>
-            <button
-              type="button"
-              onClick={() => onSectionChange(id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left font-medium transition-colors ${
-                activeSection === id
-                  ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-              }`}
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              {sectionLabelOverrides[id] ?? label}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <SidebarNav
+      items={visibleSections}
+      activeId={activeSection}
+      onSelect={onSectionChange}
+      ariaLabel="Settings sections"
+      labelOverrides={sectionLabelOverrides}
+    />
   );
 }

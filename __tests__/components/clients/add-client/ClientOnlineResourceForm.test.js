@@ -174,4 +174,61 @@ describe('ClientOnlineResourceForm', () => {
     });
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
   });
+
+  it('submits with resource type, admin access, username, password, dates, description, access instructions', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: 'new' }) });
+    render(<ClientOnlineResourceForm {...defaultProps} />);
+    await userEvent.type(screen.getByLabelText(/resource name/i), 'Portal');
+    await userEvent.type(screen.getByLabelText(/^URL$/i), 'https://example.com');
+    const resourceTypeSelect = screen.getByLabelText(/resource type/i);
+    if (resourceTypeSelect.tagName === 'SELECT') {
+      fireEvent.change(resourceTypeSelect, { target: { value: 'google_drive_folder' } });
+    }
+    const adminSwitch = screen.getByRole('switch', { name: /do we have admin access/i });
+    fireEvent.click(adminSwitch);
+    await userEvent.type(screen.getByLabelText(/username/i), 'admin@co.com');
+    const passwordInput = screen.getByLabelText(/^Related password$/i);
+    fireEvent.change(passwordInput, { target: { value: 'secret' } });
+    const dateAddedInput = screen.getByLabelText(/date added/i);
+    fireEvent.change(dateAddedInput, { target: { value: '2026-01-15' } });
+    const lastVerifiedInput = screen.getByLabelText(/last verified date/i);
+    fireEvent.change(lastVerifiedInput, { target: { value: '2026-02-01' } });
+    await userEvent.type(screen.getByLabelText(/description/i), 'Shared drive');
+    await userEvent.type(screen.getByLabelText(/access instructions/i), 'Use SSO');
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.resource_name).toBe('Portal');
+    expect(body.url).toBe('https://example.com');
+    expect(body.has_admin_access).toBe(true);
+    expect(body.login_email_username).toBe('admin@co.com');
+    expect(body.related_password).toBe('secret');
+    expect(body.description).toBe('Shared drive');
+    expect(body.access_instructions).toBe('Use SSO');
+    if (resourceTypeSelect.tagName === 'SELECT') {
+      expect(body.resource_type).toBe('google_drive_folder');
+    }
+  });
+
+  it('shows Saving... and disables Cancel while submit in progress', async () => {
+    let resolveFetch;
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = () => resolve({ ok: true, json: () => Promise.resolve({ id: 'new' }) });
+        })
+    );
+    render(<ClientOnlineResourceForm {...defaultProps} />);
+    await userEvent.type(screen.getByLabelText(/resource name/i), 'X');
+    await userEvent.type(screen.getByLabelText(/^URL$/i), 'https://x.com');
+    fireEvent.submit(document.querySelector('form'));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /saving\.\.\./i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeDisabled();
+    });
+    resolveFetch();
+    await waitFor(() => expect(defaultProps.onSuccess).toHaveBeenCalled());
+  });
 });

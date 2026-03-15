@@ -223,4 +223,40 @@ describe('ClientProjectForm', () => {
     await userEvent.type(screen.getByLabelText(/project title/i), 'My Project');
     expect(addBtn).toBeDisabled();
   });
+
+  it('submits with scope summary and notes in payload', async () => {
+    render(<ClientProjectForm {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/project title/i)).toBeInTheDocument();
+    });
+    await userEvent.type(screen.getByLabelText(/project title/i), 'Build App');
+    await userEvent.type(screen.getByLabelText(/scope summary/i), 'Deliver MVP');
+    await userEvent.type(screen.getByLabelText(/notes \/ special terms/i), 'Payment on milestone');
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const createCall = Array.from(global.fetch.mock.calls).find((c) => String(c[0]).includes('create-client-project'));
+    expect(createCall).toBeDefined();
+    const body = JSON.parse(createCall[1].body);
+    expect(body.project_name).toBe('Build App');
+    expect(body.scope_summary).toBe('Deliver MVP');
+    expect(body.notes).toBe('Payment on milestone');
+  });
+
+  it('when get-client-proposals fails sets proposals to empty', async () => {
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('get-client-proposals')) return Promise.reject(new Error('Network error'));
+      return mockFetch()(url);
+    });
+    render(<ClientProjectForm {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/project title/i)).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(/linked proposal/i)).toBeInTheDocument();
+  });
 });

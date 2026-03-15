@@ -374,4 +374,261 @@ describe('DocumentsFilesSection', () => {
     await waitFor(() => expect(screen.getByText(/No online resources yet/)).toBeInTheDocument());
     globalThis.fetch = origFetch;
   });
+
+  it('AttachmentsBlock with attachments from API shows cards and Add attachment in empty state', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [{ id: 'att1', name: 'Doc.pdf', file_name: 'Doc.pdf' }] }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Attachments'));
+    await waitFor(() => expect(screen.getByText(/No attachments yet|Loading attachments|Doc\.pdf/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Doc.pdf')).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('AttachmentsBlock delete confirm removes attachment on API success', async () => {
+    const attachments = [{ id: 'att1', name: 'Doc.pdf', file_name: 'Doc.pdf' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments }) });
+      if (url?.includes?.('delete-client-attachment')) return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Attachments'));
+    await waitFor(() => expect(screen.getByText('Doc.pdf')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Delete attachment/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.getByText(/No attachments yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('OnlineResourcesBlock with resources from API shows cards and Add resource in empty state', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-online-resources')) return Promise.resolve({ ok: true, json: async () => ({ resources: [{ id: 'r1', url: 'https://link.com', label: 'Portal' }] }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Online Resources'));
+    await waitFor(() => expect(screen.getByText(/No online resources yet|Loading online resources|Portal|https:\/\/link\.com/)).toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByText('https://link.com') || screen.getByText('Portal')).toBeInTheDocument();
+    });
+    globalThis.fetch = origFetch;
+  });
+
+  it('OnlineResourcesBlock Add resource button navigates to new', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-online-resources')) return Promise.resolve({ ok: true, json: async () => ({ resources: [] }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Online Resources'));
+    await waitFor(() => expect(screen.getByText(/No online resources yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Add resource/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/online-resources/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('OnlineResourcesBlock delete confirm removes resource on API success', async () => {
+    const resources = [{ id: 'r1', url: 'https://link.com', label: 'Portal' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-online-resources')) return Promise.resolve({ ok: true, json: async () => ({ resources }) });
+      if (url?.includes?.('delete-client-online-resource')) return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Online Resources'));
+    await waitFor(() => {
+      expect(screen.getByText(/https:\/\/link\.com|Portal/)).toBeInTheDocument();
+    });
+    const deleteBtn = screen.getByRole('button', { name: /Delete resource/i });
+    await userEvent.click(deleteBtn);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.getByText(/No online resources yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('handleAddInHeader pushes to proposals new when on proposals tab with clientId', async () => {
+    const proposals = [{ id: 'p1', proposal_title: 'Quote 1' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-proposals')) return Promise.resolve({ ok: true, json: async () => ({ proposals }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('proposal'));
+    await waitFor(() => expect(screen.getByText('Quote 1')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/proposals/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('handleAddInHeader pushes to invoices new when on invoices tab with clientId', async () => {
+    const invoices = [{ id: 'inv1', invoice_number: 'INV-1', total: '100' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.resolve({ ok: true, json: async () => ({ invoices }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText('INV-1')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/invoices/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('handleAddInHeader pushes to attachments new when on attachments tab with clientId', async () => {
+    const attachments = [{ id: 'a1', name: 'File.pdf', file_name: 'File.pdf' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Attachments'));
+    await waitFor(() => expect(screen.getByText('File.pdf')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/attachments/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('handleAddInHeader pushes to online-resources new when on Online Resources tab with clientId', async () => {
+    const resources = [{ id: 'r1', url: 'https://x.com', label: 'X' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-online-resources')) return Promise.resolve({ ok: true, json: async () => ({ resources }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Online Resources'));
+    await waitFor(() => {
+      expect(screen.getByText(/https:\/\/x\.com|X/)).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/online-resources/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('legacy mode: Add in header calls selectedBlock.onAdd for proposals tab', async () => {
+    const onProposalsChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={['Proposal One']}
+        invoices={[]}
+        attachments={[]}
+        onlineResources={[]}
+        onContractsChange={() => {}}
+        onProposalsChange={onProposalsChange}
+        onInvoicesChange={() => {}}
+        onAttachmentsChange={() => {}}
+        onOnlineResourcesChange={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByText('proposal'));
+    expect(screen.getByDisplayValue('Proposal One')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(onProposalsChange).toHaveBeenCalledWith(['Proposal One', '']);
+  });
+
+  it('legacy mode: Add in header calls selectedBlock.onAdd for invoices tab', async () => {
+    const onInvoicesChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={[]}
+        invoices={['INV-1']}
+        attachments={[]}
+        onlineResources={[]}
+        onContractsChange={() => {}}
+        onProposalsChange={() => {}}
+        onInvoicesChange={onInvoicesChange}
+        onAttachmentsChange={() => {}}
+        onOnlineResourcesChange={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByText('invoice'));
+    expect(screen.getByDisplayValue('INV-1')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(onInvoicesChange).toHaveBeenCalledWith(['INV-1', '']);
+  });
+
+  it('legacy mode: Add in header calls selectedBlock.onAdd for attachments tab', async () => {
+    const onAttachmentsChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={[]}
+        invoices={[]}
+        attachments={['att1.txt']}
+        onlineResources={[]}
+        onContractsChange={() => {}}
+        onProposalsChange={() => {}}
+        onInvoicesChange={() => {}}
+        onAttachmentsChange={onAttachmentsChange}
+        onOnlineResourcesChange={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByText('Attachments'));
+    expect(screen.getByDisplayValue('att1.txt')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(onAttachmentsChange).toHaveBeenCalledWith(['att1.txt', '']);
+  });
+
+  it('legacy mode: Add in header calls selectedBlock.onAdd for onlineResources tab', async () => {
+    const onOnlineResourcesChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={[]}
+        invoices={[]}
+        attachments={[]}
+        onlineResources={['https://site.com']}
+        onContractsChange={() => {}}
+        onProposalsChange={() => {}}
+        onInvoicesChange={() => {}}
+        onAttachmentsChange={() => {}}
+        onOnlineResourcesChange={onOnlineResourcesChange}
+      />
+    );
+    await userEvent.click(screen.getByText('Online Resources'));
+    expect(screen.getByDisplayValue('https://site.com')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(onOnlineResourcesChange).toHaveBeenCalledWith(['https://site.com', '']);
+  });
 });

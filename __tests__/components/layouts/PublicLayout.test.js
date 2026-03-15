@@ -20,12 +20,9 @@ jest.mock('@/lib/AuthContext', () => ({
 jest.mock('next/head', () => ({
   __esModule: true,
   default: function MockHead({ children }) {
-    const titleMatch = React.Children.toArray(children).find(
-      (c) => c?.props?.children && (c.type === 'title' || c?.type === 'title')
-    );
-    const titleText = typeof titleMatch?.props?.children === 'string'
-      ? titleMatch.props.children
-      : '';
+    const titleMatch = React.Children.toArray(children).find((c) => c?.type === 'title');
+    const raw = titleMatch?.props?.children;
+    const titleText = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : '';
     return (
       <div data-testid="next-head" data-title={titleText}>
         {children}

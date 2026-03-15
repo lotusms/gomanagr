@@ -15,6 +15,11 @@ jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => mockStripe);
 });
 
+const mockGetStripeConfig = jest.fn();
+jest.mock('@/lib/getStripeConfig', () => ({
+  getStripeConfig: (...args) => mockGetStripeConfig(...args),
+}));
+
 jest.mock('@/lib/renderDocumentToHtml', () => ({
   renderDocumentToHtml: jest.fn().mockResolvedValue('<html><body>Receipt</body></html>'),
 }));
@@ -26,6 +31,11 @@ const mockSendMail = jest.fn().mockResolvedValue(undefined);
 jest.mock('nodemailer', () => ({
   createTransport: () => ({ sendMail: mockSendMail }),
 }));
+
+const mockResendSend = jest.fn().mockResolvedValue({ data: { id: 'msg-1' }, error: null });
+jest.mock('resend', () => ({
+  Resend: jest.fn().mockImplementation(() => ({ emails: { send: mockResendSend } })),
+}), { virtual: false });
 
 const mockFrom = jest.fn();
 const mockCreateClient = jest.fn(() => ({ from: mockFrom }));
@@ -123,29 +133,23 @@ const singleSucceededPI = [
   { id: 'pi_123', status: 'succeeded', metadata: { invoice_id: 'inv-1' }, amount: 10000, created: 1234567890 },
 ];
 
+const validStripeConfig = {
+  publishableKey: 'pk_test_xxx',
+  secretKey: 'sk_test_xxx',
+  webhookSecret: '',
+  paymentMethodConfigId: '',
+};
+
 describe('sync-invoice-paid API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetStripeConfig.mockResolvedValue(validStripeConfig);
     mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
   });
 
   it('returns 503 when Stripe or Supabase is unavailable', async () => {
-    const orig = process.env.STRIPE_SECRET_KEY;
-    process.env.STRIPE_SECRET_KEY = '';
-    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
-    const res = mockRes();
-    await handler({
-      method: 'GET',
-      query: { invoiceId: 'inv-1', token: 't' },
-    }, res);
-    expect(res.status).toHaveBeenCalledWith(503);
-    expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Service unavailable' });
-    process.env.STRIPE_SECRET_KEY = orig;
-  });
-
-  it('returns 503 when STRIPE_SECRET_KEY does not start with sk_', async () => {
-    const orig = process.env.STRIPE_SECRET_KEY;
-    process.env.STRIPE_SECRET_KEY = 'invalid_key';
+    setupSupabaseForGet(invoiceRow);
+    mockGetStripeConfig.mockResolvedValueOnce({ secretKey: '' });
     const handler = (await import('@/pages/api/sync-invoice-paid')).default;
     const res = mockRes();
     await handler({
@@ -153,8 +157,20 @@ describe('sync-invoice-paid API', () => {
       query: { invoiceId: 'inv-1', token: 'valid-token' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(503);
-    expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Service unavailable' });
-    process.env.STRIPE_SECRET_KEY = orig;
+    expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Stripe is not configured' });
+  });
+
+  it('returns 503 when STRIPE_SECRET_KEY does not start with sk_', async () => {
+    setupSupabaseForGet(invoiceRow);
+    mockGetStripeConfig.mockResolvedValueOnce({ secretKey: 'invalid_key' });
+    const handler = (await import('@/pages/api/sync-invoice-paid')).default;
+    const res = mockRes();
+    await handler({
+      method: 'GET',
+      query: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ ok: false, error: 'Stripe is not configured' });
   });
 
   it('GET returns 400 when invoiceId or token missing', async () => {

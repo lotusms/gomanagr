@@ -12,7 +12,7 @@ jest.mock('react-icons/hi', () => ({
   HiUserGroup: () => <span data-testid="icon-usergroup" />,
   HiColorSwatch: () => <span data-testid="icon-theme" />,
   HiShieldCheck: () => <span data-testid="icon-security" />,
-  HiCode: () => <span data-testid="icon-code" />,
+  HiPuzzle: () => <span data-testid="icon-puzzle" />,
   HiCreditCard: () => <span data-testid="icon-credit" />,
 }));
 
@@ -25,7 +25,7 @@ describe('SettingsMenu', () => {
     expect(screen.getByRole('button', { name: 'Team Access' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Theme' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Security' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'API' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Integrations' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Billing' })).toBeInTheDocument();
   });
 
@@ -41,12 +41,12 @@ describe('SettingsMenu', () => {
       <SettingsMenu
         activeSection="general"
         onSectionChange={jest.fn()}
-        hiddenSections={['billing', 'api']}
+        hiddenSections={['billing', 'integrations']}
       />
     );
     expect(screen.getByRole('button', { name: 'General' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Billing' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'API' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Integrations' })).not.toBeInTheDocument();
   });
 
   it('uses sectionLabelOverrides when provided', () => {

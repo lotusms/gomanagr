@@ -1,13 +1,17 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { PageHeader } from '@/components/ui';
-import { IconButton, PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
+import { PrimaryButton } from '@/components/ui/buttons';
 import SMSCampaignView from '@/components/marketing/SMSCampaignView';
-import { HiPlus, HiCog } from 'react-icons/hi';
+import MarketingProviderSettings from '@/components/settings/MarketingProviderSettings';
+import { HiPlus } from 'react-icons/hi';
+import CollapsibleSection from '@/components/dashboard/CollapsibleSection';
+import { useState } from 'react';
+import { HiSpeakerphone } from 'react-icons/hi';
 
 export default function MarketingPage() {
   const router = useRouter();
+  const [providersOpen, setProvidersOpen] = useState(false);
 
   return (
     <>
@@ -18,7 +22,7 @@ export default function MarketingPage() {
       <div className="space-y-6">
         <PageHeader
           title="Marketing"
-          description="Use the buttons below to start a new SMS or email campaign. Configure providers in Settings."
+          description="Create campaigns and configure email/SMS providers below."
           actions={
             <div className="flex flex-wrap gap-2">
               <PrimaryButton type="button" className="gap-2" disabled>
@@ -33,14 +37,19 @@ export default function MarketingPage() {
                 <HiPlus className="w-5 h-5" />
                 New Email Campaign
               </PrimaryButton>
-              <IconButton variant="light" asChild className="gap-2">
-                <Link href="/dashboard/settings?section=api" className="inline-flex items-center justify-center gap-2">
-                  <HiCog className="w-5 h-5" />
-                </Link>
-              </IconButton>
             </div>
           }
         />
+
+        <CollapsibleSection
+          title="Marketing providers"
+          isOpen={providersOpen}
+          onToggle={() => setProvidersOpen(!providersOpen)}
+          icon={<HiSpeakerphone className="w-5 h-5" aria-hidden />}
+        >
+          <MarketingProviderSettings embedInMarketingPage />
+        </CollapsibleSection>
+
         <SMSCampaignView showPageHeader={false} />
       </div>
     </>

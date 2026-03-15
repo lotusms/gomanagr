@@ -238,19 +238,19 @@ export default function IntegrationsSettings() {
                     />
                   );
                 })}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <PrimaryButton
-                    onClick={() => handleSave(provider.id)}
-                    disabled={saving !== null}
-                  >
-                    {saving === provider.id ? 'Saving…' : 'Save'}
-                  </PrimaryButton>
+                <div className="flex flex-wrap justify-between gap-2 pt-2">
                   <SecondaryButton
                     onClick={() => handleTest(provider.id)}
                     disabled={testing !== null}
                   >
                     {testing === provider.id ? 'Testing…' : 'Test connection'}
                   </SecondaryButton>
+                  <PrimaryButton
+                    onClick={() => handleSave(provider.id)}
+                    disabled={saving !== null}
+                  >
+                    {saving === provider.id ? 'Saving…' : 'Save'}
+                  </PrimaryButton>
                 </div>
               </div>
             </CollapsibleSection>

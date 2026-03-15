@@ -1,8 +1,8 @@
 -- Consolidated schema migration
 -- Single file that defines the final database state (no intermediate adds/removes).
 -- Use on a fresh database or for schema-only restores. Does not run data migrations.
--- Tables: user_profiles, organizations, org_members, org_invites, client_*, proposal_line_items (none),
--- invoice_line_items (none), tasks, task_activity, task_comments, platform_admins, backup_exports.
+-- Tables: user_profiles, organizations, org_members, org_invites, client_*, tasks, task_activity,
+-- task_comments, platform_admins, backup_exports, app_settings, organization_integrations.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -1029,3 +1029,37 @@ CREATE INDEX IF NOT EXISTS idx_backup_exports_org_exported ON public.backup_expo
 
 COMMENT ON TABLE public.backup_exports IS 'Audit trail for backup exports; used for rate limiting and compliance.';
 COMMENT ON COLUMN public.backup_exports.checksum IS 'Optional SHA-256 hash of the exported JSON for integrity verification.';
+
+-- ---------------------------------------------------------------------------
+-- app_settings (global key-value config: Stripe, marketing providers for platform)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.app_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.app_settings IS 'Global app configuration (Stripe, marketing). Read/write via API with role check. No RLS; API uses service role.';
+
+-- ---------------------------------------------------------------------------
+-- organization_integrations (per-org encrypted provider config: Stripe, Twilio, Mailchimp, Resend)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.organization_integrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL CHECK (provider IN ('stripe', 'twilio', 'mailchimp', 'resend')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('connected', 'disconnected', 'invalid', 'pending')),
+  config_encrypted TEXT,
+  metadata_json JSONB NOT NULL DEFAULT '{}',
+  last_validated_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(organization_id, provider)
+);
+
+CREATE INDEX IF NOT EXISTS idx_organization_integrations_org ON public.organization_integrations(organization_id);
+CREATE INDEX IF NOT EXISTS idx_organization_integrations_provider ON public.organization_integrations(provider);
+
+COMMENT ON TABLE public.organization_integrations IS 'Per-org third-party integration credentials (encrypted). Provider: stripe, twilio, mailchimp, resend. Access via service role; RBAC in API.';
+COMMENT ON COLUMN public.organization_integrations.config_encrypted IS 'AES-256-GCM encrypted JSON of provider-specific credentials. Decrypted server-side only.';
+COMMENT ON COLUMN public.organization_integrations.metadata_json IS 'Non-secret display info: account label, masked key suffix, sender email/phone, etc.';

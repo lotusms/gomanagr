@@ -12,7 +12,7 @@ import ProviderConfigCard from '@/components/marketing/ProviderConfigCard';
 import Table from '@/components/ui/Table';
 import { HiSpeakerphone } from 'react-icons/hi';
 
-export default function MarketingProviderSettings() {
+export default function MarketingProviderSettings({ embedInMarketingPage = false } = {}) {
   const { currentUser } = useAuth();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,14 +92,18 @@ export default function MarketingProviderSettings() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-          <HiSpeakerphone className="w-5 h-5 text-primary-500 dark:text-primary-400" aria-hidden />
-          Marketing providers
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          <SecondaryButton asChild>
-            <Link href="/dashboard/marketing">Go to Marketing</Link>
-          </SecondaryButton>
+        {!embedInMarketingPage && (
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <HiSpeakerphone className="w-5 h-5 text-primary-500 dark:text-primary-400" aria-hidden />
+            Marketing providers
+          </h3>
+        )}
+        <div className={`flex flex-wrap gap-2 ${embedInMarketingPage ? 'w-full justify-end' : 'ml-auto'}`}>
+          {!embedInMarketingPage && (
+            <SecondaryButton asChild>
+              <Link href="/dashboard/marketing">Go to Marketing</Link>
+            </SecondaryButton>
+          )}
           <PrimaryButton onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </PrimaryButton>

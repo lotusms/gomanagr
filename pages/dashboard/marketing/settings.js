@@ -3,14 +3,14 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 
 /**
- * Marketing provider configuration has moved to Settings > API.
+ * Marketing provider configuration lives on the Marketing page.
  * Redirect so bookmarks and old links still work.
  */
 export default function MarketingSettingsRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/dashboard/settings?section=api');
+    router.replace('/dashboard/marketing');
   }, [router]);
 
   return (
@@ -19,7 +19,7 @@ export default function MarketingSettingsRedirect() {
         <title>Marketing Providers | GoManagr</title>
       </Head>
       <div className="space-y-6">
-        <p className="text-gray-500 dark:text-gray-400">Redirecting to Settings…</p>
+        <p className="text-gray-500 dark:text-gray-400">Redirecting to Marketing…</p>
       </div>
     </>
   );

@@ -25,6 +25,11 @@ jest.mock('stripe', () => {
   return jest.fn().mockImplementation(() => mockStripe);
 });
 
+const mockGetStripeConfig = jest.fn();
+jest.mock('@/lib/getStripeConfig', () => ({
+  getStripeConfig: (...args) => mockGetStripeConfig(...args),
+}));
+
 const mockFrom = jest.fn();
 const mockCreateClient = jest.fn(() => ({ from: mockFrom }));
 
@@ -62,35 +67,60 @@ const invoiceRow = {
   stripe_payment_intent_id: null,
 };
 
-function setupSupabase(data = invoiceRow, updateResult = { error: null }) {
+function setupSupabase(data = invoiceRow, updateResult = null, getCurrentRow = null) {
+  const updateSuccess = updateResult === null;
   mockFrom.mockImplementation((table) => {
     if (table === 'client_invoices') {
       return {
-        select: () => ({
-          eq: () => ({
-            limit: () => ({
-              single: () => Promise.resolve({ data, error: data ? null : { message: 'not found' } }),
-            }),
-          }),
-        }),
-        update: (payload) => ({
-          eq: () => ({
-            is: () => ({
-              select: () => ({
-                maybeSingle: () => Promise.resolve({ data: { id: 'inv-1', stripe_payment_intent_id: payload?.stripe_payment_intent_id || 'pi_new' }, error: null }),
+        select: (...cols) => {
+          if (cols.length === 1 && cols[0] === 'stripe_payment_intent_id') {
+            return {
+              eq: () => ({
+                single: () => Promise.resolve({ data: getCurrentRow, error: null }),
+              }),
+            };
+          }
+          return {
+            eq: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({ data, error: data ? null : { message: 'not found' } }),
               }),
             }),
-          }),
-        }),
+          };
+        },
+        update: (payload) => {
+          const eqReturn = {
+            is: () => ({
+              select: () => ({
+                maybeSingle: () =>
+                  Promise.resolve(
+                    updateSuccess
+                      ? { data: { id: 'inv-1', stripe_payment_intent_id: payload?.stripe_payment_intent_id || 'pi_new' }, error: null }
+                      : { data: null, error: updateResult?.error || { message: 'conflict' } }
+                  ),
+              }),
+            }),
+          };
+          eqReturn.then = (resolve) => resolve({ error: null });
+          return { eq: () => eqReturn };
+        },
       };
     }
     return {};
   });
 }
 
+const validStripeConfig = {
+  publishableKey: 'pk_test_xxx',
+  secretKey: 'sk_test_xxx',
+  webhookSecret: '',
+  paymentMethodConfigId: '',
+};
+
 describe('create-payment-intent API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetStripeConfig.mockResolvedValue(validStripeConfig);
     mockCreate.mockResolvedValue({
       id: 'pi_new',
       client_secret: 'pi_new_secret_xxx',
@@ -107,8 +137,8 @@ describe('create-payment-intent API', () => {
   });
 
   it('returns 503 when Stripe not configured', async () => {
-    const orig = process.env.STRIPE_SECRET_KEY;
-    process.env.STRIPE_SECRET_KEY = '';
+    mockGetStripeConfig.mockResolvedValueOnce({ secretKey: '' });
+    setupSupabase(invoiceRow);
     const handler = (await import('@/pages/api/create-payment-intent')).default;
     const res = mockRes();
     await handler({
@@ -117,7 +147,6 @@ describe('create-payment-intent API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith({ error: 'Stripe is not configured' });
-    process.env.STRIPE_SECRET_KEY = orig;
   });
 
   it('returns 400 when invoiceId or token missing', async () => {
@@ -255,5 +284,175 @@ describe('create-payment-intent API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: 'Payment amount must be greater than zero' });
+  });
+
+  it('returns 503 when Supabase client cannot be created', async () => {
+    mockCreateClient.mockImplementationOnce(() => {
+      throw new Error('supabase init');
+    });
+    jest.resetModules();
+    const mod = await import('@/pages/api/create-payment-intent');
+    const res = mockRes();
+    await mod.default({ method: 'POST', body: { invoiceId: 'inv-1', token: 'valid-token' } }, res);
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Service unavailable' });
+    mockCreateClient.mockImplementation(() => ({ from: mockFrom }));
+    jest.resetModules();
+    await import('@/pages/api/create-payment-intent');
+  });
+
+  it('returns 200 with partial payment amount', async () => {
+    setupSupabase(invoiceRow);
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token', amount: 50 },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 5000, currency: 'usd', metadata: { invoice_id: 'inv-1' } })
+    );
+  });
+
+  it('returns 200 and reuses existing PI when cardOnlyConfigId and same config', async () => {
+    mockGetStripeConfig.mockResolvedValueOnce({
+      ...validStripeConfig,
+      paymentMethodConfigId: 'pmc_xxx',
+    });
+    setupSupabase({ ...invoiceRow, stripe_payment_intent_id: 'pi_existing' });
+    mockRetrieve.mockResolvedValue({
+      id: 'pi_existing',
+      status: 'requires_payment_method',
+      amount: 10000,
+      client_secret: 'pi_existing_secret',
+      payment_method_configuration: 'pmc_xxx',
+    });
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ clientSecret: 'pi_existing_secret' });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('creates PI with payment_method_configuration when cardOnlyConfigId set', async () => {
+    mockGetStripeConfig.mockResolvedValueOnce({
+      ...validStripeConfig,
+      paymentMethodConfigId: 'pmc_yyy',
+    });
+    setupSupabase(invoiceRow);
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 10000,
+        currency: 'usd',
+        automatic_payment_methods: { enabled: true },
+        payment_method_configuration: 'pmc_yyy',
+      })
+    );
+  });
+
+  it('returns 200 with current PI when update fails but row has reusable PI', async () => {
+    setupSupabase(invoiceRow, { error: { message: 'conflict' } }, { stripe_payment_intent_id: 'pi_current' });
+    mockRetrieve.mockResolvedValueOnce({
+      id: 'pi_current',
+      status: 'requires_payment_method',
+      amount: 10000,
+      client_secret: 'pi_current_secret',
+      payment_method_types: ['card'],
+    });
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ clientSecret: 'pi_current_secret' });
+  });
+
+  it('returns 200 with new PI when update fails and row has no current PI', async () => {
+    setupSupabase(invoiceRow, { error: { message: 'conflict' } }, null);
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ clientSecret: 'pi_new_secret_xxx' });
+  });
+
+  it('returns 200 with new PI when update fails and current PI not reusable then overwrites', async () => {
+    setupSupabase(invoiceRow, { error: { message: 'conflict' } }, { stripe_payment_intent_id: 'pi_old' });
+    mockRetrieve.mockResolvedValue({
+      id: 'pi_old',
+      status: 'succeeded',
+      amount: 10000,
+      client_secret: 'pi_old_secret',
+    });
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ clientSecret: 'pi_new_secret_xxx' });
+  });
+
+  it('returns 502 when Stripe returns STRIPE_ERROR', async () => {
+    setupSupabase(invoiceRow);
+    const stripeError = new Error('Stripe API error');
+    stripeError.code = 'STRIPE_ERROR';
+    mockCreate.mockRejectedValueOnce(stripeError);
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(502);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Payment provider error', details: 'Stripe API error' });
+    spy.mockRestore();
+  });
+
+  it('uses outstanding_balance when set and differs from total', async () => {
+    setupSupabase({ ...invoiceRow, total: '100', outstanding_balance: '60' });
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 6000 })
+    );
+  });
+
+  it('returns 500 when an unexpected error is thrown', async () => {
+    setupSupabase(invoiceRow);
+    mockGetStripeConfig.mockRejectedValueOnce(new Error('Network failure'));
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const handler = (await import('@/pages/api/create-payment-intent')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { invoiceId: 'inv-1', token: 'valid-token' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Something went wrong' });
+    spy.mockRestore();
   });
 });

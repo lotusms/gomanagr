@@ -7,7 +7,6 @@ import GeneralSettings from '@/components/settings/GeneralSettings';
 import OrganizationSettings from '@/components/settings/OrganizationSettings';
 import ThemeSettings from '@/components/settings/ThemeSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
-import APISettings from '@/components/settings/APISettings';
 import IntegrationsSettings from '@/components/settings/IntegrationsSettings';
 import BillingSettings from '@/components/settings/BillingSettings';
 import TeamAccessSettings from '@/components/settings/TeamAccessSettings';
@@ -18,11 +17,9 @@ import {
   isOwnerRole,
   isAdminRole,
   isMemberRole,
-  isDeveloperRole,
   isOwnerOrDeveloperRole,
   MEMBER_HIDDEN_SETTINGS,
   ADMIN_NON_OWNER_HIDDEN_SETTINGS,
-  OWNER_HIDDEN_SETTINGS,
 } from '@/config/rolePermissions';
 import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
@@ -30,7 +27,8 @@ function SettingsContent() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const sectionFromQuery = typeof router.query.section === 'string' ? router.query.section : null;
-  const [activeSection, setActiveSection] = useState(sectionFromQuery || 'general');
+  const normalizedSection = sectionFromQuery === 'api' ? 'integrations' : sectionFromQuery;
+  const [activeSection, setActiveSection] = useState(normalizedSection || 'general');
   const [memberRole, setMemberRole] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
   const [organization, setOrganization] = useState(null);
@@ -63,24 +61,20 @@ function SettingsContent() {
   }, [currentUser?.uid, memberRole, userAccount]);
 
   const isTeamMember = isMemberRole(memberRole);
-  const isOwnerOrDeveloper = isOwnerOrDeveloperRole(memberRole);
-  const isAdminNonOwner = isAdminRole(memberRole) && !isOwner && !isOwnerOrDeveloper;
-  // API = developer-only (platform Stripe/email). Integrations = superadmin + developer (per-org only).
-  const hiddenSections = isTeamMember
-    ? MEMBER_HIDDEN_SETTINGS
-    : isDeveloperRole(memberRole)
-      ? []
-      : isOwnerRole(memberRole)
-        ? OWNER_HIDDEN_SETTINGS
-        : isAdminNonOwner
-          ? ADMIN_NON_OWNER_HIDDEN_SETTINGS
-          : [];
+  const isAdminNonOwner = isAdminRole(memberRole) && !isOwner && !isOwnerOrDeveloperRole(memberRole);
+  const hiddenSections = isTeamMember ? MEMBER_HIDDEN_SETTINGS : isAdminNonOwner ? ADMIN_NON_OWNER_HIDDEN_SETTINGS : [];
 
   useEffect(() => {
-    if (sectionFromQuery && sectionFromQuery !== activeSection && !hiddenSections.includes(sectionFromQuery)) {
-      setActiveSection(sectionFromQuery);
+    if (sectionFromQuery === 'api') {
+      router.replace('/dashboard/settings?section=integrations', undefined, { shallow: true });
     }
-  }, [sectionFromQuery]);
+  }, [sectionFromQuery, router]);
+
+  useEffect(() => {
+    if (normalizedSection && normalizedSection !== activeSection && !hiddenSections.includes(normalizedSection)) {
+      setActiveSection(normalizedSection);
+    }
+  }, [normalizedSection]);
 
   useEffect(() => {
     if (hiddenSections.length && hiddenSections.includes(activeSection)) {
@@ -105,8 +99,6 @@ function SettingsContent() {
         return <SecuritySettings />;
       case 'integrations':
         return <IntegrationsSettings />;
-      case 'api':
-        return <APISettings />;
       case 'billing':
         return <BillingSettings />;
       default:

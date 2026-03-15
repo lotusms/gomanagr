@@ -193,4 +193,165 @@ describe('TaskDetailTrello', () => {
       });
     });
   });
+
+  describe('create mode save', () => {
+    it('calls create-task with payload and onSuccess when Create Task clicked', async () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('get-next-document-id')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'TASK-NEW-1' }) });
+        }
+        if (url && url.includes('create-task')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ task: { id: 'created-1', title: 'New task' } }),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      render(
+        <TaskDetailTrello
+          {...defaultProps}
+          task={{}}
+          onSuccess={onSuccess}
+          onCancel={onCancel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Create Task/i })).toBeInTheDocument();
+      });
+      await act(async () => {
+        await userEvent.type(screen.getByRole('textbox', { name: /Task title/i }), 'New task');
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Create Task/i }));
+      });
+
+      await waitFor(() => {
+        const createCall = fetchMock.mock.calls.find((c) => String(c[0] || '').includes('create-task'));
+        expect(createCall).toBeDefined();
+        const body = JSON.parse(createCall[1].body);
+        expect(body.userId).toBe('user-1');
+        expect(body.organizationId).toBe('org-1');
+        expect(body.title).toBe('New task');
+        expect(body.status).toBeDefined();
+        expect(body.priority).toBeDefined();
+        expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ id: 'created-1' }));
+      });
+    });
+
+    it('shows error when create-task fails', async () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('get-next-document-id')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'TASK-NEW-1' }) });
+        }
+        if (url && url.includes('create-task')) {
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({ error: 'Server error' }),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      render(<TaskDetailTrello {...defaultProps} task={{}} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Create Task/i })).toBeInTheDocument();
+      });
+      await act(async () => {
+        await userEvent.type(screen.getByRole('textbox', { name: /Task title/i }), 'New task');
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Create Task/i }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Server error')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('defaultSprintEndDate', () => {
+    it('sets due date from defaultSprintEndDate when task has no due_at', async () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('get-next-document-id')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'TASK-1' }) });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      render(
+        <TaskDetailTrello
+          {...defaultProps}
+          task={{ ...defaultTask, due_at: null }}
+          defaultSprintEndDate="2026-03-20"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Sprint ends on:/i)).toBeInTheDocument();
+        expect(screen.getByText('2026-03-20')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('initial subtasks', () => {
+    it('renders existing subtasks with id, title and completed state', () => {
+      const taskWithSubtasks = {
+        ...defaultTask,
+        subtasks: [
+          { id: 'st-1', title: 'First', completed: true },
+          { id: 'st-2', title: 'Second', completed: false },
+        ],
+      };
+
+      render(<TaskDetailTrello {...defaultProps} task={taskWithSubtasks} />);
+
+      expect(screen.getByDisplayValue('First')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Second')).toBeInTheDocument();
+      const checkboxes = screen.getAllByRole('checkbox');
+      const subtaskCheckboxes = checkboxes.filter((c) => c.closest('li'));
+      expect(subtaskCheckboxes[0]).toBeChecked();
+      expect(subtaskCheckboxes[1]).not.toBeChecked();
+    });
+  });
+
+  describe('checklist interactions', () => {
+    it('adds subtask when Add an item clicked', async () => {
+      render(<TaskDetailTrello {...defaultProps} task={{ ...defaultTask, subtasks: [] }} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Add an item/i }));
+
+      await waitFor(() => {
+        const inputs = screen.getAllByPlaceholderText('Subtask');
+        expect(inputs.length).toBe(1);
+      });
+    });
+
+    it('toggles subtask completed and removes subtask', async () => {
+      const taskWithSubtasks = {
+        ...defaultTask,
+        subtasks: [{ id: 'st-1', title: 'One', completed: false }],
+      };
+
+      render(<TaskDetailTrello {...defaultProps} task={taskWithSubtasks} />);
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes.length).toBeGreaterThanOrEqual(1);
+      fireEvent.click(checkboxes[0]);
+
+      await waitFor(() => {
+        expect(checkboxes[0]).toBeChecked();
+      });
+
+      const removeBtn = screen.getByRole('button', { name: /Remove subtask/i });
+      fireEvent.click(removeBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByDisplayValue('One')).not.toBeInTheDocument();
+      });
+    });
+  });
 });

@@ -250,4 +250,170 @@ describe('TaskForm', () => {
       expect(onCancel).toHaveBeenCalled();
     });
   });
+
+  describe('step 3 (client and project)', () => {
+    it('shows client and project dropdowns on step 3 after two Next clicks', async () => {
+      render(
+        <TaskForm
+          {...defaultProps}
+          clients={[{ id: 'c1', name: 'Acme' }]}
+          projects={[{ id: 'p1', project_name: 'Project Alpha' }]}
+          onSuccess={onSuccess}
+          onCancel={onCancel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Title/i)).toBeInTheDocument();
+      });
+      await act(async () => {
+        await userEvent.type(screen.getByLabelText(/Title/i), 'Task');
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /^Next$/i }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /^Next$/i }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Client/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Project/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Create Task/i })).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('created by and created date', () => {
+    it('shows Created by and Created date when initial has created_by and created_at', async () => {
+      render(
+        <TaskForm
+          {...defaultProps}
+          teamMembers={[{ id: 'u1', name: 'Alice', user_id: 'u1' }]}
+          initial={{
+            id: 'task-1',
+            title: 'Existing',
+            created_by: 'u1',
+            created_at: '2026-03-01T12:00:00.000Z',
+          }}
+          onSuccess={onSuccess}
+          onCancel={onCancel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Existing')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByText('2026-03-01')).toBeInTheDocument();
+    });
+  });
+
+  describe('subtasks in step 1', () => {
+    it('adds, toggles and removes subtask', async () => {
+      render(
+        <TaskForm
+          {...defaultProps}
+          initial={{ subtasks: [{ id: 'st-1', title: 'Sub one', completed: false }] }}
+          onSuccess={onSuccess}
+          onCancel={onCancel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Sub one')).toBeInTheDocument();
+      });
+
+      const addBtn = screen.getByRole('button', { name: /Add subtask/i });
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+      await waitFor(() => {
+        const subtaskInputs = screen.getAllByPlaceholderText('Subtask title');
+        expect(subtaskInputs.length).toBe(2);
+      });
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      const firstSubtaskCheckbox = checkboxes.find((c) => c.getAttribute('aria-label')?.includes('Sub one'));
+      if (firstSubtaskCheckbox) {
+        await act(async () => {
+          fireEvent.click(firstSubtaskCheckbox);
+        });
+      }
+
+      const removeButtons = screen.getAllByRole('button', { name: /Remove subtask/i });
+      await act(async () => {
+        fireEvent.click(removeButtons[0]);
+      });
+      await waitFor(() => {
+        expect(screen.queryByDisplayValue('Sub one')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('step navigation', () => {
+    it('Back on step 2 goes to step 1', async () => {
+      render(<TaskForm {...defaultProps} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Title/i)).toBeInTheDocument();
+      });
+      await act(async () => {
+        await userEvent.type(screen.getByLabelText(/Title/i), 'T');
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /^Next$/i }));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Status/i)).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Back/i }));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Title/i)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/Status/i)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('submit error handling', () => {
+    it('shows error when update-task fails', async () => {
+      fetchMock.mockImplementation((url) => {
+        if (url && url.includes('update-task')) {
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({ error: 'Update failed' }),
+          });
+        }
+        return Promise.reject(new Error('Unexpected URL'));
+      });
+
+      render(
+        <TaskForm
+          {...defaultProps}
+          initial={{ id: 'task-1', title: 'Original' }}
+          onSuccess={onSuccess}
+          onCancel={onCancel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Original')).toBeInTheDocument();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /^Next$/i }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /^Next$/i }));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Update Task/i }));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Update failed')).toBeInTheDocument();
+      });
+    });
+  });
 });

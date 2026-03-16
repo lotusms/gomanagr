@@ -7,8 +7,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ClientProfile from '@/components/clients/ClientProfile';
 
 const mockPush = jest.fn();
+let routerQuery = {};
 jest.mock('next/router', () => ({
-  useRouter: () => ({ push: mockPush, replace: jest.fn(), pathname: '/', query: {}, asPath: '/' }),
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), pathname: '/', query: routerQuery, asPath: '/' }),
 }));
 
 const mockAuth = { currentUser: { uid: 'u1' } };
@@ -34,7 +35,7 @@ jest.mock('country-state-city', () => ({ State: { getStatesOfCountry: () => [] }
 jest.mock('@/utils/clientIdGenerator', () => ({ generateClientId: () => 'test-id' }));
 jest.mock('@/components/clients/clientProfileConstants', () => ({
   getProjectTermForIndustry: () => 'Projects',
-  shouldShowCompanyFinancialSections: () => true,
+  shouldShowCompanyFinancialSections: (industry) => industry !== 'NoFinancial',
   getTermForIndustry: () => 'Clients',
   getTermSingular: () => 'Client',
 }));
@@ -70,7 +71,7 @@ jest.mock('@/components/dashboard/AppointmentForm', () => ({
       <span>AppointmentForm</span>
       {onCancel && <button type="button" onClick={onCancel}>Cancel appointment</button>}
       {onClientAdd && (
-        <button type="button" onClick={() => onClientAdd({ name: 'New Client', email: 'new@test.com' }).then(() => {})}>
+        <button type="button" onClick={() => onClientAdd({ name: 'New Client', email: 'new@test.com' }).then(() => {}).catch(() => {})}>
           Add client from appointment
         </button>
       )}
@@ -113,6 +114,7 @@ describe('ClientProfile', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    routerQuery = {};
     mockAuth.currentUser = { uid: 'u1' };
     mockGetUserAccount.mockResolvedValue({ clients: [] });
   });
@@ -570,5 +572,160 @@ describe('ClientProfile', () => {
     await waitFor(() => expect(mockDeleteAppointment).toHaveBeenCalledWith('u1', 'apt1'));
     expect(mockSuccess).toHaveBeenCalledWith(expect.stringMatching(/deleted successfully/i));
     window.confirm = origConfirm;
+  });
+
+  it('appointment drawer Submit failure shows error and does not close drawer', async () => {
+    mockSaveAppointment.mockRejectedValue(new Error('Save failed'));
+    const origConsole = console.error;
+    console.error = () => {};
+
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [{ id: 'c1' }], appointments: [] }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Add appointment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Submit appointment/i }));
+    await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(expect.stringMatching(/Failed to save appointment/i)));
+    expect(screen.getByTestId('drawer')).toBeInTheDocument();
+    console.error = origConsole;
+  });
+
+  it('appointment drawer Delete failure shows error when deleteAppointment rejects', async () => {
+    mockDeleteAppointment.mockRejectedValue(new Error('Delete failed'));
+    const origConfirm = window.confirm;
+    const origConsole = console.error;
+    window.confirm = jest.fn(() => true);
+    console.error = () => {};
+
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [{ id: 'c1' }], appointments: [{ id: 'apt1', clientId: 'c1' }] }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Edit appointment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Delete appointment/i }));
+    await waitFor(() => expect(mockDeleteAppointment).toHaveBeenCalledWith('u1', 'apt1'));
+    await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(expect.stringMatching(/Failed to delete appointment/i)));
+    window.confirm = origConfirm;
+    console.error = origConsole;
+  });
+
+  it('appointment drawer onClientAdd failure shows error when updateClients rejects', async () => {
+    mockUpdateClients.mockRejectedValue(new Error('Add failed'));
+    const origConsole = console.error;
+    console.error = () => {};
+
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [], appointments: [] }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Add appointment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add client from appointment/i }));
+    await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(expect.stringMatching(/Failed to add.*Please try again/i)));
+    console.error = origConsole;
+  });
+
+  it('appointment drawer onClientAdd failure shows error when onSaveClient rejects', async () => {
+    const mockOnSaveClient = jest.fn().mockRejectedValue(new Error('Org save failed'));
+    const origConsole = console.error;
+    console.error = () => {};
+
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [], appointments: [] }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+        onSaveClient={mockOnSaveClient}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Add appointment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add client from appointment/i }));
+    await waitFor(() => expect(mockOnSaveClient).toHaveBeenCalled());
+    await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(expect.stringMatching(/Failed to add.*Please try again/i)));
+    console.error = origConsole;
+  });
+
+  it('renders with router.query.section sharedAssets so initialSection is onlineResources', () => {
+    routerQuery = { section: 'sharedAssets' };
+    render(
+      <ClientProfile
+        initialClient={{ id: 'c1' }}
+        userAccount={{ clients: [{ id: 'c1' }], clientSettings: { visibleTabs: ['communication', 'documents'] } }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    expect(screen.getByTestId('section-wrapper')).toBeInTheDocument();
+    expect(screen.getByText('Communication')).toBeInTheDocument();
+  });
+
+  it('renders all tab sections when visibleTabs include company financial projects communication documents scheduling and isCompany', () => {
+    render(
+      <ClientProfile
+        initialClient={null}
+        userAccount={{
+          clientSettings: {
+            visibleTabs: ['company', 'financial', 'projects', 'communication', 'documents', 'scheduling'],
+          },
+        }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    const wrapper = screen.getByTestId('section-wrapper');
+    let sections = Array.from(wrapper.querySelectorAll('[data-section]')).map((s) => s.getAttribute('data-section'));
+    expect(sections).toContain('financial');
+    expect(sections).toContain('projects');
+    expect(sections).toContain('communication');
+    expect(sections).toContain('documents');
+    expect(sections).toContain('scheduling');
+    fireEvent.click(screen.getByTestId('switch'));
+    sections = Array.from(wrapper.querySelectorAll('[data-section]')).map((s) => s.getAttribute('data-section'));
+    expect(sections).toContain('company');
+    expect(wrapper.querySelector('[data-section="company"]')).toBeInTheDocument();
+    expect(screen.getByText('CompanyDetails')).toBeInTheDocument();
+    expect(screen.getByText('Financial')).toBeInTheDocument();
+    expect(screen.getByText('Projects')).toBeInTheDocument();
+    expect(screen.getByText('Communication')).toBeInTheDocument();
+    expect(screen.getByText('Documents')).toBeInTheDocument();
+  });
+
+  it('clientSettings with showCompanyDetails and showFinancialInformation false hides those tabs', () => {
+    render(
+      <ClientProfile
+        initialClient={null}
+        userAccount={{
+          clientSettings: {
+            showCompanyDetails: false,
+            showFinancialInformation: false,
+            showProjectsDetails: true,
+            showCommunicationLog: true,
+            showDocumentsFiles: true,
+            showAppointmentsSchedule: true,
+          },
+        }}
+        onSave={mockOnSave}
+        onCancel={mockOnCancel}
+      />
+    );
+    const values = Array.from(screen.getByTestId('section-wrapper').querySelectorAll('[data-section]')).map((s) => s.getAttribute('data-section'));
+    expect(values).toContain('projects');
+    expect(values).toContain('communication');
+    expect(values).toContain('documents');
+    expect(values).toContain('scheduling');
+    expect(values).not.toContain('company');
+    expect(values).not.toContain('financial');
   });
 });

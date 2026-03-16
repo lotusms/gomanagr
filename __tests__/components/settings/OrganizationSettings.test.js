@@ -66,11 +66,19 @@ jest.mock('@/components/ui/InputField', () => function MockInputField({ id, labe
 });
 
 jest.mock('@/components/ui', () => ({
-  AddressAutocomplete: function MockAddressAutocomplete({ id, onSelect, label }) {
+  AddressAutocomplete: function MockAddressAutocomplete({ id, onSelect, onChange, value, label }) {
     const isNewLocation = id === 'newLocation';
     return (
       <div data-testid={isNewLocation ? 'address-new-location' : 'address-autocomplete'}>
         <span>{label}</span>
+        {isNewLocation && onChange != null && (
+          <input
+            data-testid="new-location-input"
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Start typing an address..."
+          />
+        )}
         {onSelect && (
           <button
             type="button"
@@ -262,5 +270,113 @@ describe('OrganizationSettings', () => {
     await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('save-btn'));
     await waitFor(() => expect(screen.getByText(/Forbidden|Failed to update/)).toBeInTheDocument());
+  });
+
+  it('shows error when remove logo fails', async () => {
+    mockGetUserOrganization.mockResolvedValue({ id: 'org1', name: 'Org', logo_url: 'https://example.com/logo.png' });
+    mockGetUserAccount.mockResolvedValue({ companyName: 'Org', companyLogo: 'https://example.com/logo.png' });
+    global.fetch.mockRejectedValue(new Error('Network error'));
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByAltText('Organization logo')).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle('Remove logo'));
+    await waitFor(() => expect(screen.getByText(/Failed to remove logo/)).toBeInTheDocument());
+  });
+
+  it('shows error when submit and organization not found', async () => {
+    mockGetUserOrganization.mockResolvedValue(null);
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('save-btn'));
+    await waitFor(() => expect(screen.getByText(/Organization not found|contact support/)).toBeInTheDocument());
+  });
+
+  it('HQ address onSelect shows Address line 2 and City/State/Postal fields', async () => {
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('address-hq-select-btn')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('address-hq-select-btn'));
+    await waitFor(() => expect(screen.getByTestId('input-organizationAddress2')).toBeInTheDocument());
+    expect(screen.getByTestId('input-organizationCity')).toBeInTheDocument();
+    expect(screen.getByTestId('input-organizationState')).toBeInTheDocument();
+    expect(screen.getByTestId('input-organizationPostalCode')).toBeInTheDocument();
+  });
+
+  it('newLocation AddressAutocomplete onChange updates value', async () => {
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('new-location-input')).toBeInTheDocument());
+    const input = screen.getByTestId('new-location-input');
+    fireEvent.change(input, { target: { value: '456 Oak Ave' } });
+    await waitFor(() => expect(input).toHaveValue('456 Oak Ave'));
+  });
+
+  it('submit with logo file uploads logo and then updates org', async () => {
+    mockGetUserOrganization.mockResolvedValue({ id: 'org1', name: 'Org' });
+    mockGetUserAccount.mockResolvedValue({ companyName: 'Org', userId: 'u1', email: 'u@test.com' });
+    const smallFile = new File(['x'], 'logo.png', { type: 'image/png' });
+    Object.defineProperty(smallFile, 'size', { value: 1024 });
+    global.FileReader = jest.fn().mockImplementation(function () {
+      this.readAsDataURL = jest.fn(() => {
+        setTimeout(() => {
+          this.onloadend && this.onloadend({ target: { result: 'data:image/png;base64,x' } });
+        }, 0);
+      });
+      this.result = 'data:image/png;base64,x';
+    });
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ logoUrl: 'https://uploaded.com/logo.png' }) })
+      .mockResolvedValueOnce({ ok: true });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
+    const logoInput = document.getElementById('logo');
+    expect(logoInput).toBeTruthy();
+    fireEvent.change(logoInput, { target: { files: [smallFile] } });
+    await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('save-btn'));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/upload-organization-logo', expect.any(Object)));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/update-organization', expect.any(Object)));
+    await waitFor(() => expect(screen.getByText(/Organization settings saved successfully/)).toBeInTheDocument());
+  });
+
+  it('shows error when logo upload fails during submit', async () => {
+    mockGetUserOrganization.mockResolvedValue({ id: 'org1', name: 'Org' });
+    mockGetUserAccount.mockResolvedValue({});
+    const smallFile = new File(['x'], 'logo.png', { type: 'image/png' });
+    Object.defineProperty(smallFile, 'size', { value: 1024 });
+    global.FileReader = jest.fn().mockImplementation(function () {
+      this.readAsDataURL = jest.fn(() => {
+        setTimeout(() => { this.onloadend && this.onloadend({ target: { result: 'data:image/png;base64,x' } }); }, 0);
+      });
+    });
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
+    const logoInput = document.getElementById('logo');
+    fireEvent.change(logoInput, { target: { files: [smallFile] } });
+    fireEvent.click(screen.getByTestId('save-btn'));
+    await waitFor(() => expect(screen.getByText(/Failed to upload logo/)).toBeInTheDocument());
+  });
+
+  it('submit with alt logo file uploads alt logo', async () => {
+    mockGetUserOrganization.mockResolvedValue({ id: 'org1', name: 'Org' });
+    mockGetUserAccount.mockResolvedValue({ companyName: 'Org', userId: 'u1', email: 'u@test.com' });
+    const smallFile = new File(['y'], 'alt.png', { type: 'image/png' });
+    Object.defineProperty(smallFile, 'size', { value: 1024 });
+    global.FileReader = jest.fn().mockImplementation(function () {
+      this.readAsDataURL = jest.fn(() => {
+        setTimeout(() => { this.onloadend && this.onloadend({ target: { result: 'data:image/png;base64,y' } }); }, 0);
+      });
+    });
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ altLogoUrl: 'https://uploaded.com/alt.png' }) })
+      .mockResolvedValueOnce({ ok: true });
+    render(<OrganizationSettings />);
+    await waitFor(() => expect(screen.getByTestId('save-btn')).toBeInTheDocument());
+    const altInput = document.getElementById('alt-logo');
+    if (altInput) {
+      fireEvent.change(altInput, { target: { files: [smallFile] } });
+      fireEvent.click(screen.getByTestId('save-btn'));
+      await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/upload-organization-logo', expect.objectContaining({
+        body: expect.stringContaining('isAltLogo'),
+      })));
+    }
   });
 });

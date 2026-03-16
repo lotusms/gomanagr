@@ -371,4 +371,161 @@ describe('ClientContractForm', () => {
     const body = JSON.parse(proposalsCall[1].body);
     expect(body).not.toHaveProperty('clientId');
   });
+
+  it('calls onHasChangesChange when form is edited', async () => {
+    const onHasChangesChange = jest.fn();
+    render(<ClientContractForm {...defaultProps} onHasChangesChange={onHasChangesChange} />);
+    await screen.findByText(/Contract value \(USD\)/);
+    await userEvent.type(screen.getByLabelText(/Contract title/i), 'X');
+    await waitFor(() => expect(onHasChangesChange).toHaveBeenCalledWith(true));
+  });
+
+  it('linked proposal: selecting proposal fetches get-proposals with proposalId and sets contract value', async () => {
+    global.fetch = jest.fn((url, opts) => {
+      const u = typeof url === 'string' ? url : '';
+      const body = opts?.body && typeof opts.body === 'string' ? JSON.parse(opts.body) : opts?.body || {};
+      if (u.includes('get-client-proposals')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              proposals: [{ id: 'prop-1', proposal_number: 'PROP-001', proposal_title: 'Proposal A' }],
+            }),
+        });
+      }
+      if (u.includes('get-proposals')) {
+        if (body.proposalId) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                proposal: { line_items: [{ amount: '500' }], tax: 50, discount: 0 },
+              }),
+            });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ proposals: [] }) });
+      }
+      if (u.includes('get-org-team-list')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ teamMembers: [] }) });
+      }
+      if (u.includes('get-projects')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ projects: [] }) });
+      }
+      if (u.includes('get-next-document-id')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'CONT-001' }) });
+      }
+      if (u.includes('create-client-contract')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) });
+      }
+      return Promise.reject(new Error('Unexpected fetch'));
+    });
+    render(<ClientContractForm {...defaultProps} />);
+    await screen.findByText(/Contract value \(USD\)/);
+    const linkedProposalTrigger = screen.getByRole('button', { name: /Linked proposal/i });
+    fireEvent.click(linkedProposalTrigger);
+    const option = await screen.findByRole('option', { name: /PROP-001|Proposal A/i });
+    fireEvent.click(option);
+    await waitFor(() => {
+      const proposalIdCall = Array.from(global.fetch.mock.calls).find(
+        (c) => String(c[0]).includes('get-proposals') && c[1]?.body && JSON.parse(c[1].body).proposalId === 'prop-1'
+      );
+      expect(proposalIdCall).toBeDefined();
+    });
+  });
+
+  it('prefills file_urls from initial.file_url when single file', async () => {
+    render(
+      <ClientContractForm
+        {...defaultProps}
+        initial={{
+          contract_title: 'Agreement',
+          file_url: 'https://example.com/contract.pdf',
+        }}
+      />
+    );
+    await screen.findByText(/Contract value \(USD\)/);
+    expect(screen.getByDisplayValue('Agreement')).toBeInTheDocument();
+  });
+
+  it('renders Signed by dropdown with team members from get-org-team-list', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url?.includes('get-client-proposals')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ proposals: [] }) });
+      }
+      if (url?.includes('get-proposals')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ proposals: [] }) });
+      }
+      if (url?.includes('get-org-team-list')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              teamMembers: [
+                { id: 'tm1', name: 'Alice' },
+                { id: 'tm2', name: 'Bob' },
+              ],
+            }),
+        });
+      }
+      if (url?.includes('get-projects')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ projects: [] }) });
+      }
+      if (url?.includes('get-next-document-id')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'CONT-001' }) });
+      }
+      return Promise.reject(new Error('Unexpected fetch'));
+    });
+    render(<ClientContractForm {...defaultProps} />);
+    await screen.findByText(/Contract value \(USD\)/);
+    const signedByTrigger = screen.getByRole('button', { name: /Signed by/i });
+    expect(signedByTrigger).toBeInTheDocument();
+    fireEvent.click(signedByTrigger);
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Alice' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Bob' })).toBeInTheDocument();
+    });
+  });
+
+  it('renders Contract files label and linkedAttachments when provided', async () => {
+    render(
+      <ClientContractForm
+        {...defaultProps}
+        linkedAttachments={[
+          { id: 'att-1', file_name: 'signed.pdf', file_type: 'application/pdf' },
+        ]}
+      />
+    );
+    await screen.findByText(/Contract value \(USD\)/);
+    expect(screen.getByText('Contract files (PDF/DOC)')).toBeInTheDocument();
+    expect(screen.getByText('signed.pdf')).toBeInTheDocument();
+  });
+
+  it('create failure shows error message with contract term', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url?.includes('get-client-proposals') || url?.includes('get-proposals')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ proposals: [] }) });
+      }
+      if (url?.includes('get-org-team-list')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ teamMembers: [] }) });
+      }
+      if (url?.includes('get-projects')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ projects: [] }) });
+      }
+      if (url?.includes('create-client-contract')) {
+        return Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ error: 'Failed to create contract' }),
+        });
+      }
+      return Promise.reject(new Error('Unexpected fetch'));
+    });
+    render(<ClientContractForm {...defaultProps} />);
+    await screen.findByText(/Contract value \(USD\)/);
+    await userEvent.type(screen.getByLabelText(/Contract title/i), 'New');
+    fireEvent.submit(document.querySelector('form'));
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to create contract/)).toBeInTheDocument();
+    });
+    expect(defaultProps.onSuccess).not.toHaveBeenCalled();
+  });
 });

@@ -125,6 +125,76 @@ describe('StripeSettings', () => {
     expect(screen.getByText(/Webhook secret is set/)).toBeInTheDocument();
   });
 
+  it('when secret and webhook are configured, inputs show masked placeholder and hint text', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        publishableKey: 'pk_live_xxx',
+        secretKeyMasked: true,
+        webhookSecretMasked: true,
+        paymentMethodConfigId: 'pmc_abc',
+      }),
+    });
+    render(<StripeSettings />);
+    await waitFor(() => expect(screen.getByText(/Secret key is set. Enter a new value only to change it./)).toBeInTheDocument());
+    const secretInput = screen.getByTestId('input-stripe-secret-key').querySelector('input');
+    const webhookInput = screen.getByTestId('input-stripe-webhook-secret').querySelector('input');
+    expect(secretInput?.placeholder).toBe('••••••••••••');
+    expect(webhookInput?.placeholder).toBe('••••••••••••');
+    expect(screen.getByText(/Webhook secret is set. Enter a new value only to change it./)).toBeInTheDocument();
+    const pmcInput = screen.getByTestId('input-stripe-payment-method-config').querySelector('input');
+    expect(pmcInput?.value).toBe('pmc_abc');
+    expect(pmcInput?.placeholder).toBe('pmc_…');
+  });
+
+  it('when only secret key is configured, shows secret key hint and masked placeholder', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        publishableKey: 'pk_test_xxx',
+        secretKeyMasked: true,
+        webhookSecretMasked: false,
+        paymentMethodConfigId: '',
+      }),
+    });
+    render(<StripeSettings />);
+    await waitFor(() => expect(screen.getByText(/Secret key is set. Enter a new value only to change it./)).toBeInTheDocument());
+    expect(screen.getByTestId('input-stripe-secret-key').querySelector('input')?.placeholder).toBe('••••••••••••');
+    expect(screen.queryByText(/Webhook secret is set/)).not.toBeInTheDocument();
+  });
+
+  it('when only webhook secret is configured, shows webhook hint and masked placeholder', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        publishableKey: 'pk_test_xxx',
+        secretKeyMasked: false,
+        webhookSecretMasked: true,
+        paymentMethodConfigId: '',
+      }),
+    });
+    render(<StripeSettings />);
+    await waitFor(() => expect(screen.getByText(/Webhook secret is set. Enter a new value only to change it./)).toBeInTheDocument());
+    expect(screen.getByTestId('input-stripe-webhook-secret').querySelector('input')?.placeholder).toBe('••••••••••••');
+    expect(screen.queryByText(/Secret key is set/)).not.toBeInTheDocument();
+  });
+
+  it('payment method config field can be edited and included in save', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ publishableKey: 'pk_test_1', paymentMethodConfigId: '' }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ publishableKey: 'pk_test_1', paymentMethodConfigId: '' }) });
+    render(<StripeSettings />);
+    await waitFor(() => expect(screen.getByTestId('input-stripe-payment-method-config')).toBeInTheDocument());
+    const pmcInput = screen.getByTestId('input-stripe-payment-method-config').querySelector('input');
+    await userEvent.type(pmcInput, 'pmc_custom123');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/settings/stripe', expect.objectContaining({
+      method: 'POST',
+      body: expect.stringMatching(/paymentMethodConfigId.*pmc_custom123/),
+    })));
+  });
+
   it('shows warning when no publishable or secret key configured', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

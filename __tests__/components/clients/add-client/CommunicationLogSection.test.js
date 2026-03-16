@@ -703,4 +703,158 @@ describe('CommunicationLogSection', () => {
     const lastCall = onMeetingNotesChange.mock.calls[onMeetingNotesChange.mock.calls.length - 1][0];
     expect(lastCall[0]).toBe('note onex');
   });
+
+  it('MeetingNotesBlock with data: delete confirm removes note', async () => {
+    const notes = [
+      { id: 'mn1', title: 'Kickoff', content: 'Content', meeting_date: '2026-02-27' },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-meeting-notes'))
+        return Promise.resolve({ ok: true, json: async () => ({ notes }) });
+      if (url?.includes?.('delete-client-meeting-note'))
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Meeting notes'));
+    await waitFor(() => expect(screen.getByText(/Kickoff|Content/)).toBeInTheDocument());
+    await userEvent.click(screen.getByTitle('Delete meeting note'));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.getByText('No meeting notes yet')).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('InternalNotesBlock with data: delete confirm removes note', async () => {
+    const notes = [
+      { id: 'in1', content: 'Secret note', created_at: '2026-02-27T14:00:00Z' },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-internal-notes'))
+        return Promise.resolve({ ok: true, json: async () => ({ notes }) });
+      if (url?.includes?.('delete-client-internal-note'))
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        internalNotes=""
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+        onInternalNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Internal notes'));
+    await waitFor(() => expect(screen.getByText(/Secret note/)).toBeInTheDocument());
+    await userEvent.click(screen.getByTitle('Delete internal note'));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.getByText('No internal notes yet')).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('MeetingNotesBlock: delete API failure keeps list and closes dialog', async () => {
+    const notes = [
+      { id: 'mn1', title: 'Note', content: 'C', meeting_date: '2026-02-27' },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-meeting-notes'))
+        return Promise.resolve({ ok: true, json: async () => ({ notes }) });
+      if (url?.includes?.('delete-client-meeting-note'))
+        return Promise.resolve({ ok: false, json: async () => ({ error: 'Forbidden' }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Meeting notes'));
+    await waitFor(() => expect(screen.getByTitle('Delete meeting note')).toBeInTheDocument());
+    await userEvent.click(screen.getByTitle('Delete meeting note'));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByTitle('Delete meeting note')).toBeInTheDocument();
+    globalThis.fetch = origFetch;
+  });
+
+  it('InternalNotesBlock: delete API failure keeps list and closes dialog', async () => {
+    const notes = [
+      { id: 'in1', content: 'Internal', created_at: '2026-02-27T14:00:00Z' },
+    ];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-emails'))
+        return Promise.resolve({ ok: true, json: async () => ({ emails: [] }) });
+      if (url?.includes?.('get-client-internal-notes'))
+        return Promise.resolve({ ok: true, json: async () => ({ notes }) });
+      if (url?.includes?.('delete-client-internal-note'))
+        return Promise.resolve({ ok: false, json: async () => ({ error: 'Forbidden' }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(
+      <CommunicationLogSection
+        clientId="c1"
+        userId="u1"
+        messages={[]}
+        calls={[]}
+        meetingNotes={[]}
+        internalNotes=""
+        onMessagesChange={() => {}}
+        onCallsChange={() => {}}
+        onMeetingNotesChange={() => {}}
+        onInternalNotesChange={() => {}}
+      />
+    );
+    await waitFor(() => expect(screen.getByText(/No emails yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Internal notes'));
+    await waitFor(() => expect(screen.getByTitle('Delete internal note')).toBeInTheDocument());
+    await userEvent.click(screen.getByTitle('Delete internal note'));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByTitle('Delete internal note')).toBeInTheDocument();
+    globalThis.fetch = origFetch;
+  });
 });

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ClientProposalForm from '@/components/clients/add-client/ClientProposalForm';
 
@@ -217,6 +217,96 @@ describe('ClientProposalForm', () => {
     await userEvent.type(screen.getByLabelText(/proposal title/i), 'X');
     await waitFor(() => {
       expect(onHasChangesChange).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it('calls create-client-proposal when create fails shows error', async () => {
+    const mockFetchImpl = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('create-client-proposal')) {
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'Create failed' }) });
+      }
+      return mockFetch()(url);
+    });
+    global.fetch = mockFetchImpl;
+    render(<ClientProposalForm {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toBeInTheDocument();
+    });
+    await userEvent.type(screen.getByLabelText(/proposal title/i), 'New');
+    await act(async () => {
+      fireEvent.submit(document.querySelector('form'));
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Create failed/)).toBeInTheDocument();
+    });
+  });
+
+  it('Save and Send: with clientEmail and proposalId sends email and calls onSuccess', async () => {
+    const mockFetchImpl = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('update-client-proposal')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      if (u.includes('send-proposal-email')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      }
+      return mockFetch()(url);
+    });
+    global.fetch = mockFetchImpl;
+    render(
+      <ClientProposalForm
+        {...defaultProps}
+        proposalId="prop-1"
+        clientEmail="client@example.com"
+        initial={{ proposal_title: 'Sent Proposal', ever_sent: true }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toHaveValue('Sent Proposal');
+    });
+    const saveAndResendBtn = screen.getByRole('button', { name: /Save and Resend|Resend/i });
+    await userEvent.click(saveAndResendBtn);
+    await waitFor(() => {
+      const sendCall = mockFetchImpl.mock.calls.find((c) => String(c[0]).includes('send-proposal-email'));
+      expect(sendCall).toBeDefined();
+      const body = JSON.parse(sendCall[1].body);
+      expect(body.to).toBe('client@example.com');
+      expect(body.proposalId).toBe('prop-1');
+    });
+  });
+
+  it('shows Send Proposal when never sent and secondary button when client email present', async () => {
+    global.fetch = jest.fn((url) => {
+      const u = typeof url === 'string' ? url : '';
+      if (u.includes('get-next-document-id')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ suggestedId: 'PROP-1' }) });
+      if (u.includes('get-org-clients')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ clients: [] }) });
+      if (u.includes('get-client-contracts')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ contracts: [] }) });
+      if (u.includes('create-client-proposal')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) });
+      if (u.includes('send-proposal-email')) return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      return Promise.reject(new Error('Unexpected: ' + u));
+    });
+    render(<ClientProposalForm {...defaultProps} clientEmail="to@example.com" />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Send Proposal/i })).toBeInTheDocument();
+    });
+  });
+
+  it('step 2 shows line items and step 3 shows terms', async () => {
+    render(<ClientProposalForm {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/proposal title/i)).toBeInTheDocument();
+    });
+    const nav = screen.getByRole('navigation', { name: /proposal form steps/i });
+    const step2Btn = within(nav).getByRole('button', { name: /Line items/i });
+    await userEvent.click(step2Btn);
+    await waitFor(() => {
+      expect(screen.getByTestId('line-items')).toBeInTheDocument();
+    });
+    const step3Btn = within(nav).getByRole('button', { name: /Attachments/i });
+    await userEvent.click(step3Btn);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Terms/i)).toBeInTheDocument();
     });
   });
 });

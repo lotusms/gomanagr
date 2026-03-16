@@ -224,13 +224,21 @@ export default function IntegrationsSettings() {
                           ? `pk_••••${saved.metadata.publishableKeySuffix}`
                           : 'Saved')
                     : null;
+                  const handleFieldChange = (e) => {
+                    const value = e.target.value;
+                    setField(provider.id, field.key, value);
+                    if (provider.id === 'mailchimp' && field.key === 'apiKey') {
+                      const prefix = value.trim().split('-')[1];
+                      if (prefix) setField(provider.id, 'serverPrefix', prefix);
+                    }
+                  };
                   return (
                     <InputField
                       key={field.key}
                       id={`integrations-${provider.id}-${field.key}`}
                       label={field.label}
                       value={formValues[provider.id]?.[field.key] ?? ''}
-                      onChange={(e) => setField(provider.id, field.key, e.target.value)}
+                      onChange={handleFieldChange}
                       placeholder={savedPlaceholder || field.placeholder}
                       type={field.type || 'text'}
                       required={!field.optional}

@@ -247,9 +247,18 @@ describe('Clients page', () => {
 
       render(<ClientsPage />);
 
-      await waitFor(() => {
-        expect(screen.getByText('Acme')).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.queryByTestId('clients-page-skeleton')).not.toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+      await waitFor(
+        () => {
+          expect(screen.getByText('Acme')).toBeInTheDocument();
+        },
+        { timeout: 2000 }
+      );
 
       const removeBtn = within(screen.getByRole('button', { name: /acme/i })).getByRole('button', { name: /deactivate/i });
       await act(async () => {

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import ClientProfile from '@/components/clients/ClientProfile';
 
 const mockPush = jest.fn();
@@ -195,7 +195,11 @@ describe('ClientProfile', () => {
     fireEvent.submit(container.querySelector('form'));
     await waitFor(() => expect(mockUpdateClients).toHaveBeenCalled());
     expect(mockSuccess).toHaveBeenCalled();
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/test-id/edit'));
+    // Redirect is scheduled with setTimeout(500); advance so it runs
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 550));
+    });
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/test-id/edit');
   });
 
   it('calls onSaveClient when provided (org path)', async () => {

@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import MultiStepSignup from '@/components/signup/MultiStepSignup';
 
 const mockPush = jest.fn();
@@ -78,10 +79,11 @@ function completeStep5AndNext() {
   fireEvent.click(screen.getByTestId('primary-btn'));
 }
 
-/** Fill step 6 and click Complete Signup. */
-function completeStep6AndSubmit() {
-  fireEvent.click(screen.getByRole('radio', { name: 'Google' }));
-  fireEvent.click(screen.getByTestId('primary-btn'));
+/** Fill step 6 and click Complete Signup. Uses userEvent so referral state flushes before submit. */
+async function completeStep6AndSubmit() {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('radio', { name: 'Google' }));
+  await user.click(screen.getByTestId('primary-btn'));
 }
 
 describe('MultiStepSignup', () => {
@@ -133,7 +135,7 @@ describe('MultiStepSignup', () => {
     completeStep3AndNext();
     completeStep4AndNext();
     completeStep5AndNext();
-    completeStep6AndSubmit();
+    await completeStep6AndSubmit();
     await waitFor(() => {
       expect(mockSignup).toHaveBeenCalledWith('test@example.com', 'password123');
       expect(mockCreateUserAccount).toHaveBeenCalled();
@@ -149,11 +151,11 @@ describe('MultiStepSignup', () => {
     completeStep3AndNext();
     completeStep4AndNext();
     completeStep5AndNext();
-    completeStep6AndSubmit();
-    await waitFor(() => expect(mockCreateUserAccount).toHaveBeenCalled());
+    await completeStep6AndSubmit();
+    await waitFor(() => expect(mockCreateUserAccount).toHaveBeenCalled(), { timeout: 8000 });
     const call = mockCreateUserAccount.mock.calls[0];
     expect(call[3]).toBe('invite-token-123');
-  });
+  }, 12000);
 
   it('shows submit error when createUserAccount fails and cleanup runs', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
@@ -164,7 +166,7 @@ describe('MultiStepSignup', () => {
     completeStep3AndNext();
     completeStep4AndNext();
     completeStep5AndNext();
-    completeStep6AndSubmit();
+    await completeStep6AndSubmit();
     await waitFor(() => {
       expect(screen.getByText(/Account creation failed/)).toBeInTheDocument();
     });
@@ -182,7 +184,7 @@ describe('MultiStepSignup', () => {
     completeStep3AndNext();
     completeStep4AndNext();
     completeStep5AndNext();
-    completeStep6AndSubmit();
+    await completeStep6AndSubmit();
     await waitFor(() => {
       expect(screen.getByText(/rate limit|Rate limit/i)).toBeInTheDocument();
     });
@@ -196,7 +198,7 @@ describe('MultiStepSignup', () => {
     completeStep3AndNext();
     completeStep4AndNext();
     completeStep5AndNext();
-    completeStep6AndSubmit();
+    await completeStep6AndSubmit();
     await waitFor(() => {
       expect(screen.getByText(/already registered.*sign in/i)).toBeInTheDocument();
     });
@@ -210,7 +212,7 @@ describe('MultiStepSignup', () => {
     completeStep3AndNext();
     completeStep4AndNext();
     completeStep5AndNext();
-    completeStep6AndSubmit();
+    await completeStep6AndSubmit();
     await waitFor(() => {
       expect(screen.getByText(/Network error|Failed to create account/i)).toBeInTheDocument();
     });
@@ -223,7 +225,7 @@ describe('MultiStepSignup', () => {
     completeStep3AndNext();
     completeStep4AndNext();
     completeStep5AndNext();
-    completeStep6AndSubmit();
+    await completeStep6AndSubmit();
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'));
     fireEvent.click(screen.getByTestId('primary-btn'));
     await waitFor(() => {

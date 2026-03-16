@@ -13,6 +13,7 @@ import ReceiptViewSkeleton from '@/components/dashboard/ReceiptViewSkeleton';
 import ReceiptViewInPage from '@/components/dashboard/ReceiptViewInPage';
 import EmptyStateCard from '@/components/clients/add-client/EmptyStateCard';
 import ReceiptCard from '@/components/dashboard/ReceiptCard';
+import { DocumentViewDialog } from '@/components/documents';
 import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buildDocumentPayload';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
@@ -28,6 +29,7 @@ function ReceiptsContent() {
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   const accountIndustry = organization?.industry ?? userAccount?.industry;
   const clientTermPlural = getTermForIndustry(accountIndustry, 'client');
@@ -183,7 +185,7 @@ function ReceiptsContent() {
                   </SecondaryButton>
                   <IconButton 
                     type="button" 
-                    onClick={() => window.print()} 
+                    onClick={() => setPrintDialogOpen(true)} 
                     className="gap-2" 
                     variant="light"
                     title="Print"
@@ -215,6 +217,28 @@ function ReceiptsContent() {
               dateFormat={dateFormat}
               timezone={timezone}
             />
+            {printDialogOpen && (
+              <DocumentViewDialog
+                isOpen={printDialogOpen}
+                onClose={() => setPrintDialogOpen(false)}
+                type="receipt"
+                document={buildInvoiceDocumentPayload(receiptToOpen)}
+                company={company}
+                client={{
+                  name: (receiptToOpen.client_id && clientNameByClientId[receiptToOpen.client_id]) || 'Client',
+                  email: (receiptToOpen.client_id && clientEmailByClientId[receiptToOpen.client_id]) || '',
+                }}
+                currency={defaultCurrency}
+                lineItemsSectionLabel={lineItemsSectionLabel}
+                amountPaid={
+                  (Number(receiptToOpen.total) || 0) -
+                  (receiptToOpen.outstanding_balance != null && String(receiptToOpen.outstanding_balance).trim() !== ''
+                    ? Number(receiptToOpen.outstanding_balance)
+                    : 0)
+                }
+                autoPrint={true}
+              />
+            )}
           </>
         ) : (
           <>

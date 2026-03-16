@@ -13,10 +13,10 @@ const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
 
 /**
- * Dialog that shows a proposal or invoice in the same layout used for email/print.
+ * Dialog that shows a proposal, invoice, or receipt in the same layout used for email/print.
  * @param {boolean} isOpen
  * @param {() => void} onClose
- * @param {'proposal'|'invoice'} type
+ * @param {'proposal'|'invoice'|'receipt'} type
  * @param {Object} document - payload for ProposalInvoiceDocument (title, number, lineItems, subtotal, tax, discount, total, etc.)
  * @param {Object} company - { name, logoUrl? }
  * @param {Object} client - { name, email? }
@@ -24,6 +24,7 @@ const MAX_ZOOM = 2;
  * @param {boolean} [autoPrint] - when true, triggers print shortly after open
  * @param {string} [lineItemsSectionLabel='Services'] - Section heading for line items (e.g. "Procedures", "Products")
  * @param {string} [documentTypeLabel] - When type is 'proposal', label for the document type (e.g. "Quote", "Estimate") for dialog title and document heading
+ * @param {number} [amountPaid] - When type is 'receipt', amount paid (shown with remaining balance)
  */
 export default function DocumentViewDialog({
   isOpen,
@@ -36,6 +37,7 @@ export default function DocumentViewDialog({
   autoPrint = false,
   lineItemsSectionLabel = 'Services',
   documentTypeLabel,
+  amountPaid,
 }) {
   const printRef = useRef(null);
   const contentRef = useRef(null);
@@ -134,6 +136,7 @@ export default function DocumentViewDialog({
                   document={doc}
                   currency={currency}
                   lineItemsSectionLabel={lineItemsSectionLabel}
+                  {...(type === 'receipt' && amountPaid != null && { amountPaid })}
                 />
               </div>
             </div>

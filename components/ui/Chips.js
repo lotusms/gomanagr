@@ -53,10 +53,10 @@ export function ChipsSingle({
     return `flex flex-wrap ${gapClass}`;
   };
   
-  const validValue = value && options.includes(value) ? value : undefined;
+  const validValue = value && options.includes(value) ? value : '';
   
   const getChipClassName = (option, index) => {
-    const isSelected = validValue === option && validValue !== undefined;
+    const isSelected = validValue === option && validValue !== '';
     const isFirst = index === 0;
     const isLast = index === options.length - 1;
     
@@ -132,7 +132,7 @@ export function ChipsSingle({
           >
             <div className={isVertical ? 'flex items-center justify-between' : ''}>
               <span>{option}</span>
-              {isVertical && validValue === option && validValue !== undefined && (
+              {isVertical && validValue === option && validValue !== '' && (
                 <span className={mini ? 'text-sm' : 'text-xl'}>✓</span>
               )}
             </div>

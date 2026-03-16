@@ -123,8 +123,8 @@ const InputField = forwardRef(({
           </div>
         )}
         
-        {/* Custom icon */}
-        {!checking && !hasError && !isValid && icon && (
+        {/* Custom icon (e.g. eye toggle for secrets – always visible when provided so user can hide again) */}
+        {!checking && !hasError && icon && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-ternary-500)' }}>
             {icon}
           </div>

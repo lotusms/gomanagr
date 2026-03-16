@@ -222,12 +222,12 @@ export default function ReceiptCard({
         <DocumentViewDialog
           isOpen={printDialogOpen}
           onClose={() => setPrintDialogOpen(false)}
-          type="invoice"
-          documentTypeLabel="Receipt"
+          type="receipt"
           document={buildInvoiceDocumentPayload(invoice)}
           company={company}
           client={{ name: clientName || 'Client', email: clientEmail || '' }}
           currency={defaultCurrency}
+          amountPaid={amountPaid}
           autoPrint={true}
           lineItemsSectionLabel={lineItemsSectionLabel}
         />

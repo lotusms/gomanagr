@@ -8,11 +8,10 @@
  * - On success (first send): updates ever_sent, date_sent, optional payment_token and client_snapshot
  */
 
-const mockSendMail = jest.fn().mockResolvedValue(undefined);
-const mockCreateTransport = jest.fn(() => ({ sendMail: mockSendMail }));
+const mockSendTenantEmail = jest.fn();
 
-jest.mock('nodemailer', () => ({
-  createTransport: (...args) => mockCreateTransport(...args),
+jest.mock('@/lib/sendTenantEmail', () => ({
+  sendTenantEmail: (...args) => mockSendTenantEmail(...args),
 }));
 
 jest.mock('@/lib/renderDocumentToHtml', () => ({
@@ -30,21 +29,9 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: (...args) => mockCreateClient(...args),
 }));
 
-const mockResendSend = jest.fn().mockResolvedValue({ data: { id: '1' }, error: null });
-jest.mock('resend', () => ({
-  Resend: jest.fn().mockImplementation(function () {
-    this.emails = { send: mockResendSend };
-    return this;
-  }),
-}));
-
 beforeAll(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
-  process.env.SMTP_HOST = 'smtp.test.com';
-  process.env.SMTP_USER = 'user';
-  process.env.SMTP_PASSWORD = 'pass';
-  process.env.SMTP_FROM_EMAIL = 'invoices@test.com';
 });
 
 function mockRes() {
@@ -64,7 +51,7 @@ const existingInvoice = {
   id: 'inv-1',
   client_id: 'c1',
   user_id: 'u1',
-  organization_id: null,
+  organization_id: 'org-1',
   invoice_title: 'Test Invoice',
   invoice_number: 'INV-001',
   status: 'draft',
@@ -98,6 +85,19 @@ function setupSupabaseSuccess(invoice = existingInvoice) {
         select: () => ({ eq: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: { company_name: 'Co' }, error: null }) }) }) }),
       };
     }
+    if (table === 'org_members') {
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+              }),
+            }),
+          }),
+        }),
+      };
+    }
     if (table === 'organizations') {
       return {
         select: () => ({ eq: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) }),
@@ -111,7 +111,7 @@ function setupSupabaseSuccess(invoice = existingInvoice) {
 describe('send-invoice-email API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSendMail.mockResolvedValue(undefined);
+    mockSendTenantEmail.mockResolvedValue({ sent: true });
   });
 
   it('returns 405 when method is not POST', async () => {
@@ -204,6 +204,7 @@ describe('send-invoice-email API', () => {
       method: 'POST',
       body: {
         userId: 'u1',
+        organizationId: 'org-1',
         invoiceId: 'inv-1',
         to: 'client@example.com',
         clientName: 'Acme',
@@ -211,7 +212,7 @@ describe('send-invoice-email API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ sent: true, message: 'Invoice email sent' });
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
     expect(updateMock).toHaveBeenCalled();
     const updatePayload = updateMock.mock.calls[0][0];
     expect(updatePayload.ever_sent).toBe(true);
@@ -227,6 +228,7 @@ describe('send-invoice-email API', () => {
       method: 'POST',
       body: {
         userId: 'u1',
+        organizationId: 'org-1',
         invoiceId: 'inv-1',
         to: 'client@example.com',
         isReminder: true,
@@ -234,7 +236,7 @@ describe('send-invoice-email API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ sent: true, message: 'Reminder sent' });
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
     expect(updateMock).not.toHaveBeenCalled();
   });
 
@@ -402,7 +404,7 @@ describe('send-invoice-email API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ sent: true, message: 'Invoice email sent' });
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('includes client snapshot from profile.clients when invoice has client_id', async () => {
@@ -449,6 +451,19 @@ describe('send-invoice-email API', () => {
           }),
         };
       }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () => Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
       if (table === 'organizations') {
         return {
           select: () => ({ eq: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) }),
@@ -460,7 +475,7 @@ describe('send-invoice-email API', () => {
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@example.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@example.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(updateMock).toHaveBeenCalled();
@@ -471,42 +486,36 @@ describe('send-invoice-email API', () => {
   });
 
   it('returns 503 when no email provider configured', async () => {
-    const origHost = process.env.SMTP_HOST;
-    const origResend = process.env.RESEND_API_KEY;
-    delete process.env.SMTP_HOST;
-    delete process.env.RESEND_API_KEY;
+    mockSendTenantEmail.mockResolvedValueOnce({
+      sent: false,
+      error: 'No email provider configured. Configure Resend or SMTP in Settings > Integrations.',
+    });
     setupSupabaseSuccess();
     const handler = (await import('@/pages/api/send-invoice-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@example.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@example.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: 'No email provider configured',
-        message: expect.stringContaining('SMTP_* or RESEND_API_KEY'),
+        error: expect.stringContaining('No email provider configured'),
+        message: expect.stringMatching(/Settings|Integrations|Resend|SMTP/i),
       })
     );
-    process.env.SMTP_HOST = origHost;
-    process.env.RESEND_API_KEY = origResend;
   });
 
-  it('sends via Resend when RESEND_API_KEY set and SMTP not used', async () => {
-    const origHost = process.env.SMTP_HOST;
-    delete process.env.SMTP_HOST;
-    process.env.RESEND_API_KEY = 're_xxx';
+  it('sends via sendTenantEmail when org has provider configured', async () => {
     setupSupabaseSuccess();
     const handler = (await import('@/pages/api/send-invoice-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@example.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@example.com' },
     }, res);
-    process.env.SMTP_HOST = origHost;
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ sent: true, message: 'Invoice email sent' });
-    expect(mockResendSend).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 });

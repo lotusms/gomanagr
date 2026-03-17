@@ -51,10 +51,11 @@ const PROVIDERS = [
 ];
 
 /** Map integration API status to ProviderStatusBadge status (connected, not_connected, misconfigured). */
-function integrationStatusToBadgeStatus(status) {
+function integrationStatusToBadgeStatus(status, testPassed = false) {
+  if (status && String(status).toLowerCase() === 'connected') return 'connected';
+  if (testPassed) return 'connected';
   if (!status) return 'not_connected';
-  const s = status.toLowerCase();
-  if (s === 'connected') return 'connected';
+  const s = String(status).toLowerCase();
   if (s === 'invalid') return 'misconfigured';
   return 'not_connected';
 }
@@ -74,6 +75,7 @@ export default function IntegrationsSettings() {
   const [revealPin, setRevealPin] = useState('');
   const [revealLoading, setRevealLoading] = useState(false);
   const [visibleSecrets, setVisibleSecrets] = useState({});
+  const [testPassedProviders, setTestPassedProviders] = useState({});
   const lockTimerRef = useRef(null);
 
   const clearRevealedStorage = useCallback(() => {
@@ -214,6 +216,16 @@ export default function IntegrationsSettings() {
       if (!res.ok) throw new Error(data.error || 'Failed to save');
       toast.success('Saved successfully.', 3000);
       setFormValues((prev) => ({ ...prev, [providerId]: {} }));
+      // Optimistically update status so badge shows "Connected" immediately
+      const newStatus = data.status === 'connected' ? 'connected' : data.status;
+      if (newStatus) {
+        setIntegrations((prev) =>
+          prev.some((i) => i.provider === providerId)
+            ? prev.map((i) => (i.provider === providerId ? { ...i, status: newStatus } : i))
+            : prev
+        );
+        setTestPassedProviders((prev) => ({ ...prev, [providerId]: false }));
+      }
       await load();
     } catch (e) {
       toast.error(e.message || 'Failed to save');
@@ -241,7 +253,8 @@ export default function IntegrationsSettings() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Test failed');
       if (!data.ok) throw new Error(data.error || 'Connection failed');
-      toast.success('Connection test passed.', 3000);
+      setTestPassedProviders((prev) => ({ ...prev, [providerId]: true }));
+      toast.success('Connection test passed. Click Save to store your settings.', 4000);
     } catch (e) {
       toast.error(e.message || 'Test failed');
     } finally {
@@ -394,7 +407,7 @@ export default function IntegrationsSettings() {
           const saved = integrations.find((i) => i.provider === provider.id);
           const Icon = provider.icon;
           const isOpen = openProvider === provider.id;
-          const badgeStatus = integrationStatusToBadgeStatus(saved?.status);
+          const badgeStatus = integrationStatusToBadgeStatus(saved?.status, testPassedProviders[provider.id]);
           return (
             <CollapsibleSection
               key={provider.id}

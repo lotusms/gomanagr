@@ -1,14 +1,12 @@
 /**
  * Unit tests for send-receipt-email API.
- * POST only; 400 missing params / invalid email; 503 Supabase unavailable; 404 invoice not found;
- * 403 ownership; 503 no email provider; 200 sent when SMTP configured.
+ * POST only; uses sendTenantEmail (tenant integrations). 503 no org or no provider; 200 when sendTenantEmail succeeds.
  */
 
-const mockSendMail = jest.fn();
-const mockCreateTransport = jest.fn(() => ({ sendMail: mockSendMail }));
+const mockSendTenantEmail = jest.fn();
 
-jest.mock('nodemailer', () => ({
-  createTransport: (...args) => mockCreateTransport(...args),
+jest.mock('@/lib/sendTenantEmail', () => ({
+  sendTenantEmail: (...args) => mockSendTenantEmail(...args),
 }));
 
 jest.mock('@/lib/renderDocumentToHtml', () => ({
@@ -24,13 +22,6 @@ const mockFrom = jest.fn();
 const mockCreateClient = jest.fn(() => ({ from: mockFrom }));
 jest.mock('@supabase/supabase-js', () => ({
   createClient: (...args) => mockCreateClient(...args),
-}));
-
-const mockResendSend = jest.fn();
-jest.mock('resend', () => ({
-  Resend: jest.fn().mockImplementation(() => ({
-    emails: { send: mockResendSend },
-  })),
 }));
 
 beforeAll(() => {
@@ -55,7 +46,7 @@ function mockRes() {
 const defaultInvoice = {
   id: 'inv-1',
   user_id: 'u1',
-  organization_id: null,
+  organization_id: 'org-1',
   invoice_number: 'INV-001',
   total: 100,
   outstanding_balance: 0,
@@ -68,10 +59,7 @@ describe('send-receipt-email API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCreateClient.mockImplementation(() => ({ from: mockFrom }));
-    delete process.env.SMTP_HOST;
-    delete process.env.RESEND_API_KEY;
-    mockSendMail.mockResolvedValue(undefined);
-    mockResendSend.mockResolvedValue({ data: {}, error: null });
+    mockSendTenantEmail.mockResolvedValue({ sent: true });
     mockFrom.mockImplementation((t) => {
       if (t === 'client_invoices') {
         return {
@@ -121,7 +109,15 @@ describe('send-receipt-email API', () => {
           }),
         };
       }
-      return {};
+      // Fallback so .select() never throws (e.g. when a test only mocks some tables)
+      return {
+        select: () => ({
+          eq: () => ({
+            limit: () => ({ single: () => Promise.resolve({ data: null, error: null }) }),
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+          }),
+        }),
+      };
     });
   });
 
@@ -164,7 +160,7 @@ describe('send-receipt-email API', () => {
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(503);
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
@@ -236,36 +232,95 @@ describe('send-receipt-email API', () => {
   });
 
   it('returns 503 when no email provider configured', async () => {
+    mockSendTenantEmail.mockResolvedValueOnce({
+      sent: false,
+      error: 'No email provider configured. Configure Resend or SMTP in Settings > Integrations.',
+    });
+    // Ensure default mock is used (previous test may have overwritten it)
+    mockCreateClient.mockImplementation(() => ({ from: mockFrom }));
+    mockFrom.mockImplementation((t) => {
+      if (t === 'client_invoices') {
+        return {
+          select: () => ({
+            eq: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({ data: defaultInvoice, error: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (t === 'user_profiles') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () =>
+                Promise.resolve({
+                  data: { company_name: 'My Co', company_logo: '', profile: {}, clients: [] },
+                  error: null,
+                }),
+            }),
+          }),
+        };
+      }
+      if (t === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () =>
+                    Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (t === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            limit: () => ({ single: () => Promise.resolve({ data: null, error: null }) }),
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+          }),
+        }),
+      };
+    });
     const handler = (await import('@/pages/api/send-receipt-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: 'No email provider configured',
-        message: expect.stringContaining('SMTP'),
+        error: expect.stringContaining('No email provider configured'),
+        message: expect.stringMatching(/Settings|Integrations|Resend|SMTP/i),
       })
     );
   });
 
-  it('returns 200 sent: true when SMTP configured and sendMail succeeds', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'user';
-    process.env.SMTP_PASSWORD = 'pass';
-    process.env.SMTP_FROM_EMAIL = 'receipts@test.com';
-    jest.resetModules();
+  it('returns 200 sent: true when sendTenantEmail succeeds', async () => {
     const handler = (await import('@/pages/api/send-receipt-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ sent: true, message: 'Receipt email sent' });
-    expect(mockSendMail).toHaveBeenCalledWith(
+    expect(mockSendTenantEmail).toHaveBeenCalledWith(
+      'org-1',
       expect.objectContaining({
         to: 'client@test.com',
         subject: expect.stringMatching(/Receipt #/),
@@ -364,10 +419,6 @@ describe('send-receipt-email API', () => {
   });
 
   it('succeeds with organizationId and fetches org for display (name, address, phone, website)', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'user';
-    process.env.SMTP_PASSWORD = 'pass';
-    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
     const invoiceWithOrg = { ...defaultInvoice, organization_id: 'org-1' };
     mockFrom.mockImplementation((t) => {
       if (t === 'client_invoices') {
@@ -433,7 +484,6 @@ describe('send-receipt-email API', () => {
       }
       return {};
     });
-    jest.resetModules();
     const handler = (await import('@/pages/api/send-receipt-email')).default;
     const res = mockRes();
     await handler({
@@ -441,16 +491,10 @@ describe('send-receipt-email API', () => {
       body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalled();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_FROM_EMAIL;
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('uses profile.clients client for name and address when client_id matches', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASSWORD = 'p';
-    process.env.SMTP_FROM_EMAIL = 'x@test.com';
     mockFrom.mockImplementation((t) => {
       if (t === 'client_invoices') {
         return {
@@ -496,26 +540,41 @@ describe('send-receipt-email API', () => {
           }),
         };
       }
+      if (t === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () => Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (t === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
+          }),
+        };
+      }
       return {};
     });
-    jest.resetModules();
     const handler = (await import('@/pages/api/send-receipt-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalled();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_FROM_EMAIL;
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('uses client_snapshot.addressLines when present', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASSWORD = 'p';
-    process.env.SMTP_FROM_EMAIL = 'x@test.com';
     mockFrom.mockImplementation((t) => {
       if (t === 'client_invoices') {
         return {
@@ -526,6 +585,7 @@ describe('send-receipt-email API', () => {
                   Promise.resolve({
                     data: {
                       ...defaultInvoice,
+                      organization_id: 'org-1',
                       client_snapshot: {
                         name: 'Client',
                         addressLines: ['123 Main St', 'City, ST 12345'],
@@ -548,56 +608,66 @@ describe('send-receipt-email API', () => {
           }),
         };
       }
+      if (t === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () => Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (t === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
+          }),
+        };
+      }
       return {};
     });
-    jest.resetModules();
     const handler = (await import('@/pages/api/send-receipt-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_FROM_EMAIL;
   });
 
-  it('returns 200 when Resend configured and send succeeds', async () => {
-    process.env.RESEND_API_KEY = 're_xxx';
-    mockResendSend.mockResolvedValueOnce({ data: { id: 'msg-1' }, error: null });
-    jest.resetModules();
+  it('returns 200 when sendTenantEmail succeeds (Resend path)', async () => {
     const handler = (await import('@/pages/api/send-receipt-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ sent: true, message: 'Receipt email sent' });
-    expect(mockResendSend).toHaveBeenCalled();
-    delete process.env.RESEND_API_KEY;
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
-  it('returns 500 when Resend returns error', async () => {
-    process.env.RESEND_API_KEY = 're_xxx';
-    mockResendSend.mockResolvedValueOnce({ error: { message: 'Resend failed' } });
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    jest.resetModules();
+  it('returns 503 when sendTenantEmail returns sent: false with error', async () => {
+    mockSendTenantEmail.mockResolvedValueOnce({ sent: false, error: 'Resend failed' });
     const handler = (await import('@/pages/api/send-receipt-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
-    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: 'Failed to send email',
-        details: 'Resend failed',
+        error: 'Resend failed',
+        message: expect.any(String),
       })
     );
-    spy.mockRestore();
-    delete process.env.RESEND_API_KEY;
   });
 
   it('returns 503 when createClient throws at module load', async () => {
@@ -609,23 +679,69 @@ describe('send-receipt-email API', () => {
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith({ error: 'Service unavailable' });
   });
 
   it('returns 500 when handler throws (e.g. buildDocumentPayload)', async () => {
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockBuildInvoiceDocumentPayload.mockImplementation(() => {
       throw new Error('Document build failed');
     });
+    mockFrom.mockImplementation((t) => {
+      if (t === 'client_invoices') {
+        return {
+          select: () => ({
+            eq: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({ data: defaultInvoice, error: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (t === 'user_profiles') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () =>
+                Promise.resolve({ data: { company_name: 'My Co', company_logo: '', profile: {}, clients: [] }, error: null }),
+            }),
+          }),
+        };
+      }
+      if (t === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () => Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (t === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            }),
+          }),
+        };
+      }
+      return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) };
+    });
     jest.resetModules();
-    const handler = (await import('@/pages/api/send-receipt-email')).default;
+    const { default: handler } = await import('@/pages/api/send-receipt-email');
     const res = mockRes();
-    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     await handler({
       method: 'POST',
-      body: { userId: 'u1', invoiceId: 'inv-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', invoiceId: 'inv-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({

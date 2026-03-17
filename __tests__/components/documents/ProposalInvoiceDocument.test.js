@@ -266,7 +266,7 @@ describe('ProposalInvoiceDocument', () => {
     expect(screen.getByText('One-time')).toBeInTheDocument();
     expect(screen.getByText('Subtotal:')).toBeInTheDocument();
     expect(screen.getAllByText('$250.00').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Total:/)).toBeInTheDocument();
+    expect(screen.getByText(/Remaining balance:/)).toBeInTheDocument();
   });
 
   it('shows subtotal, discount, tax, total', () => {
@@ -292,7 +292,7 @@ describe('ProposalInvoiceDocument', () => {
     expect(screen.getByText('$-10.00')).toBeInTheDocument();
     expect(screen.getByText('Tax/VAT:')).toBeInTheDocument();
     expect(screen.getByText('$8.00')).toBeInTheDocument();
-    expect(screen.getByText(/Total:/)).toBeInTheDocument();
+    expect(screen.getByText(/Remaining balance:/)).toBeInTheDocument();
     expect(screen.getAllByText('$98.00').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -435,12 +435,12 @@ describe('ProposalInvoiceDocument', () => {
         document={doc}
       />
     );
-    expect(screen.getByText(/Total:/)).toBeInTheDocument();
+    expect(screen.getByText(/Remaining balance:/)).toBeInTheDocument();
     expect(screen.getByText('$100.00')).toBeInTheDocument();
     expect(screen.getByText('$-5.00')).toBeInTheDocument();
     expect(screen.getByText('$10.00')).toBeInTheDocument();
-    const totalRow = screen.getByText(/Total:/).parentElement;
-    expect(totalRow).toHaveTextContent(/\$|—/);
+    const balanceRow = screen.getByText(/Remaining balance:/).parentElement;
+    expect(balanceRow).toHaveTextContent(/\$|—/);
   });
 
   it('handles line item with null quantity and formats as —', () => {

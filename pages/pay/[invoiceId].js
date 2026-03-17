@@ -629,12 +629,15 @@ export default function PayInvoicePage({ stripePublishableKey: stripePublishable
 
             <div className="border-b border-dotted my-3" style={{ borderColor: BORDER_COLOR }} />
 
-            {/* Totals — ensure we always show numbers (0 when missing) */}
+            {/* Totals — match invoice/receipt: Subtotal, Discount, Tax/VAT, Amount paid (if any), Remaining balance */}
             <div className="text-right space-y-2 text-sm tabular-nums">
               <div><strong>Subtotal:</strong> {formatMoney(subtotal, currency)}</div>
               <div><strong>Discount:</strong> {formatMoney(-discountNum, currency)}</div>
               <div><strong>Tax/VAT:</strong> {formatMoney(taxNum, currency)}</div>
-              <div className="text-base font-bold mt-2">Total: {formatMoney(total, currency)}</div>
+              {(total - amountDue) > 0 && (
+                <div><strong>Amount paid:</strong> {formatMoney(-(total - amountDue), currency)}</div>
+              )}
+              <div className="text-base font-bold mt-2">Remaining balance: {formatMoney(amountDue, currency)}</div>
             </div>
 
             {/* Amount to pay: default remaining balance, editable for partial payments (max = balance). */}

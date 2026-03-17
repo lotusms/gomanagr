@@ -27,9 +27,9 @@ jest.mock('@/lib/buildDocumentPayload', () => ({
   buildInvoiceDocumentPayload: jest.fn().mockReturnValue({}),
 }));
 
-const mockSendMail = jest.fn().mockResolvedValue(undefined);
-jest.mock('nodemailer', () => ({
-  createTransport: () => ({ sendMail: mockSendMail }),
+const mockSendTenantEmail = jest.fn().mockResolvedValue({ sent: true });
+jest.mock('@/lib/sendTenantEmail', () => ({
+  sendTenantEmail: (...args) => mockSendTenantEmail(...args),
 }));
 
 const mockFrom = jest.fn();
@@ -644,7 +644,7 @@ describe('Stripe webhook handler', () => {
     await handler({ method: 'POST', headers: { 'stripe-signature': 'sig' } }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ received: true });
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('resolves customer email from Stripe paymentIntents.retrieve when receipt_email and charges missing', async () => {
@@ -694,7 +694,7 @@ describe('Stripe webhook handler', () => {
                       invoice_title: 'Inv2',
                       total: '50',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org2',
                       client_id: null,
                       client_snapshot: null,
                     },
@@ -713,7 +713,25 @@ describe('Stripe webhook handler', () => {
       }
       if (table === 'user_profiles') {
         return {
-          select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }), in: () => Promise.resolve({ data: [], error: null }) }),
+          select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }), in: () => Promise.resolve({ data: [{ email: 'admin@test.com' }], error: null }) }),
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ user_id: 'u1' }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
+          }),
         };
       }
       return {};
@@ -723,7 +741,7 @@ describe('Stripe webhook handler', () => {
     await handler({ method: 'POST', headers: { 'stripe-signature': 'sig' } }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(mockPaymentIntentsRetrieve).toHaveBeenCalledWith('pi_retrieve', { expand: ['charges.data.billing_details'] });
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('resolves customer email from user_profiles.clients when invoice has client_id and user_id', async () => {
@@ -759,7 +777,7 @@ describe('Stripe webhook handler', () => {
                       invoice_title: 'Inv3',
                       total: '100',
                       user_id: 'u2',
-                      organization_id: null,
+                      organization_id: 'org3',
                       client_id: 'c2',
                       client_snapshot: null,
                     },
@@ -788,7 +806,25 @@ describe('Stripe webhook handler', () => {
                   error: null,
                 }),
             }),
-            in: () => Promise.resolve({ data: [], error: null }),
+            in: () => Promise.resolve({ data: [{ email: 'admin@test.com' }], error: null }),
+          }),
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ user_id: 'u2' }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
           }),
         };
       }
@@ -798,7 +834,7 @@ describe('Stripe webhook handler', () => {
     const res = mockRes();
     await handler({ method: 'POST', headers: { 'stripe-signature': 'sig' } }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('sends fallback receipt when fullInvoice select returns null', async () => {
@@ -824,7 +860,7 @@ describe('Stripe webhook handler', () => {
               eq: () => ({
                 single: () =>
                   Promise.resolve({
-                    data: { id: 'inv-1', status: 'sent', outstanding_balance: '100', total: '100', stripe_payment_intent_id: null },
+                    data: { id: 'inv-1', status: 'sent', outstanding_balance: '100', total: '100', stripe_payment_intent_id: null, organization_id: 'org-fallback' },
                     error: null,
                   }),
               }),
@@ -845,7 +881,7 @@ describe('Stripe webhook handler', () => {
                       invoice_title: 'Test',
                       total: '100',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org-fallback',
                       client_id: null,
                       client_snapshot: { email: 'c@example.com' },
                     },
@@ -867,13 +903,23 @@ describe('Stripe webhook handler', () => {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }), in: () => Promise.resolve({ data: [], error: null }) }),
         };
       }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
     const res = mockRes();
     await handler({ method: 'POST', headers: { 'stripe-signature': 'sig' } }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalledWith(
+    expect(mockSendTenantEmail).toHaveBeenCalledWith(
+      'org-fallback',
       expect.objectContaining({
         to: expect.any(String),
         subject: expect.stringContaining('Payment receipt'),
@@ -882,9 +928,9 @@ describe('Stripe webhook handler', () => {
     );
   });
 
-  it('continues when sendEmail throws for receipt (logs error)', async () => {
+  it('continues when sendTenantEmail throws for receipt (logs error)', async () => {
     mockConstructEvent.mockReturnValue(buildPaymentIntentEvent('inv-1'));
-    mockSendMail.mockRejectedValueOnce(new Error('SMTP failed'));
+    mockSendTenantEmail.mockRejectedValueOnce(new Error('SMTP failed'));
     let clientInvoicesCall = 0;
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
@@ -1011,11 +1057,11 @@ describe('Stripe webhook handler', () => {
   it('sends payment notification to org admins and handles send failure for one admin', async () => {
     mockConstructEvent.mockReturnValue(buildPaymentIntentEvent('inv-1'));
     let sendCallCount = 0;
-    mockSendMail.mockImplementation(() => {
+    mockSendTenantEmail.mockImplementation(() => {
       sendCallCount++;
-      if (sendCallCount === 1) return Promise.resolve();
+      if (sendCallCount === 1) return Promise.resolve({ sent: true });
       if (sendCallCount === 2) return Promise.reject(new Error('Admin email failed'));
-      return Promise.resolve();
+      return Promise.resolve({ sent: true });
     });
     let clientInvoicesCall = 0;
     mockFrom.mockImplementation((table) => {
@@ -1088,7 +1134,7 @@ describe('Stripe webhook handler', () => {
     const res = mockRes();
     await handler({ method: 'POST', headers: { 'stripe-signature': 'sig' } }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('falls back to invoice user_id for admin email when no org_members', async () => {
@@ -1104,7 +1150,7 @@ describe('Stripe webhook handler', () => {
               eq: () => ({
                 single: () =>
                   Promise.resolve({
-                    data: { id: 'inv-1', status: 'sent', outstanding_balance: '100', total: '100', stripe_payment_intent_id: null },
+                    data: { id: 'inv-1', status: 'sent', outstanding_balance: '100', total: '100', stripe_payment_intent_id: null, organization_id: 'org-1' },
                     error: null,
                   }),
               }),
@@ -1125,7 +1171,7 @@ describe('Stripe webhook handler', () => {
                       invoice_title: 'Test',
                       total: '100',
                       user_id: 'owner1',
-                      organization_id: null,
+                      organization_id: 'org-1',
                       client_id: null,
                       client_snapshot: { email: 'c@example.com' },
                     },
@@ -1158,13 +1204,23 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
     const res = mockRes();
     await handler({ method: 'POST', headers: { 'stripe-signature': 'sig' } }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalledWith(
+    expect(mockSendTenantEmail).toHaveBeenCalledWith(
+      expect.any(String),
       expect.objectContaining({ to: 'owner@example.com', subject: expect.any(String), html: expect.any(String) })
     );
   });

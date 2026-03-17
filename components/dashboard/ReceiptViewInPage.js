@@ -92,10 +92,6 @@ export default function ReceiptViewInPage({
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatMoney(amountPaid)}</span>
               </div>
             )}
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Remaining balance ({currency}): </span>
-              <span className="font-semibold text-gray-900 dark:text-white">{formatMoney(amountDue)}</span>
-            </div>
           </div>
         </div>
 
@@ -135,7 +131,10 @@ export default function ReceiptViewInPage({
             <div><strong>Subtotal:</strong> {formatMoney(subtotal)}</div>
             <div><strong>Discount:</strong> {formatMoney(discountNum)}</div>
             <div><strong>Tax/VAT:</strong> {formatMoney(taxNum)}</div>
-            <div className="font-bold text-base mt-2">Total: {formatMoney(total)}</div>
+            {((isPartialReceipt && (partialBalanceRemaining != null || amountDue > 0)) || (!isPartialReceipt && amountPaid > 0)) && (
+              <div><strong>Amount paid:</strong> {formatMoney(-(total - (isPartialReceipt ? (partialBalanceRemaining ?? amountDue) : amountDue)))}</div>
+            )}
+            <div className="font-bold text-base mt-2">Remaining balance: {formatMoney(isPartialReceipt ? (partialBalanceRemaining ?? amountDue) : amountDue)}</div>
           </div>
         </div>
 
@@ -157,9 +156,6 @@ export default function ReceiptViewInPage({
           <div className="pt-4 border-t border-gray-200 dark:border-gray-600 text-right text-sm text-gray-500 dark:text-gray-400 space-y-1">
             {doc.paidDate && (
               <div>Payment on {formatDateFromISO(doc.paidDate, dateFormat, timezone)}</div>
-            )}
-            {(isPartialReceipt ? partialAmountPaid != null : amountPaid > 0) && (
-              <div>Amount paid: {formatMoney(isPartialReceipt ? partialAmountPaid : amountPaid)}</div>
             )}
             {(isPartialReceipt ? partialBalanceRemaining != null : true) && (
               <div className="font-medium text-gray-700 dark:text-gray-300">Remaining balance: {formatMoney(isPartialReceipt ? partialBalanceRemaining : amountDue)}</div>

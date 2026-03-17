@@ -173,6 +173,7 @@ export default async function handler(req, res) {
     // Keep the most recent PI id on the invoice for reference (last one in list by created).
     const latestPi = succeededPIs.reduce((a, b) => ((a.created ?? 0) >= (b.created ?? 0) ? a : b));
     updatePayload.stripe_payment_intent_id = latestPi.id;
+    const thisPaymentAmount = (latestPi.amount ?? 0) / 100;
 
     const { error: updateError } = await supabaseAdmin
       .from('client_invoices')
@@ -194,7 +195,7 @@ export default async function handler(req, res) {
 
     if (invoiceForEmail) {
       const orgIdForEmail = invoiceForEmail.organization_id || null;
-      const amountStr = formatMoney(totalPaid, 'USD');
+      const amountStr = formatMoney(thisPaymentAmount, 'USD');
       const invNum = invoiceForEmail.invoice_number || invoiceId;
       const invTitle = invoiceForEmail.invoice_title || 'Invoice';
       const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
@@ -297,7 +298,7 @@ export default async function handler(req, res) {
               },
               document: docPayload,
               currency: 'USD',
-              amountPaid: totalPaid,
+              amountPaid: thisPaymentAmount,
             });
             const result = await sendTenantEmail(orgIdForEmail, { to: customerEmail, subject: `Payment receipt – Receipt #${invNum}`, html: receiptHtml });
             if (result.sent) console.log('[sync-invoice-paid] Receipt email sent to client:', customerEmail);

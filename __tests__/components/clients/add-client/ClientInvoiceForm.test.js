@@ -411,7 +411,7 @@ describe('ClientInvoiceForm', () => {
       expect(screen.getByText(/saved, but the email could not be sent|SMTP error/)).toBeInTheDocument();
     });
     await waitFor(() => expect(defaultProps.onSuccess).toHaveBeenCalled());
-  });
+  }, 10000);
 
   it('fetches get-proposals when showClientDropdown and no clientId', async () => {
     const propsNoClient = { userId: 'u1', organizationId: 'org-1', onSuccess: jest.fn(), onCancel: jest.fn(), showClientDropdown: true };

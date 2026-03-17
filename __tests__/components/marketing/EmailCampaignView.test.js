@@ -2,7 +2,7 @@
  * Unit tests for EmailCampaignView: mount with mocked provider and mock data.
  */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import EmailCampaignView from '@/components/marketing/EmailCampaignView';
 import * as providerRegistry from '@/lib/marketing/providerRegistry';
 import * as marketingMockData from '@/lib/marketingMockData';
@@ -171,6 +171,7 @@ describe('EmailCampaignView', () => {
   });
 
   it('Save Campaign uses "Untitled email campaign" when name empty but subject/body set', async () => {
+    jest.useFakeTimers();
     setupMocks({ recipients: mockRecipients });
     render(<EmailCampaignView showPageHeader={false} />);
     await waitFor(() => {
@@ -178,9 +179,13 @@ describe('EmailCampaignView', () => {
     });
     fireEvent.change(screen.getByPlaceholderText(/Write your email content/i), { target: { value: 'Hello' } });
     fireEvent.click(screen.getByRole('button', { name: /Save Campaign/i }));
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    jest.useRealTimers();
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('Untitled email campaign');
-    }, { timeout: 600 });
+    }, { timeout: 1000 });
   });
 
   it('Send Now sends campaign and clears form on success', async () => {

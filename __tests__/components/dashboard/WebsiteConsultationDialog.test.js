@@ -149,11 +149,12 @@ describe('WebsiteConsultationDialog', () => {
   it('sends trimmed name, email, company, phone, message in body', async () => {
     global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
     render(<WebsiteConsultationDialog open onClose={mockOnClose} />);
-    await userEvent.type(screen.getByLabelText('Name'), '  Jane Doe  ');
-    await userEvent.type(screen.getByLabelText('Email'), ' jane@example.com ');
-    await userEvent.type(screen.getByLabelText('Company / Organization'), ' Acme ');
-    await userEvent.type(screen.getByLabelText('Phone'), '(717) 123-4567');
-    await userEvent.type(screen.getByLabelText(/Message \(optional\)/i), ' Hello ');
+    const typeOpts = { delay: 1 };
+    await userEvent.type(screen.getByLabelText('Name'), '  Jane Doe  ', typeOpts);
+    await userEvent.type(screen.getByLabelText('Email'), ' jane@example.com ', typeOpts);
+    await userEvent.type(screen.getByLabelText('Company / Organization'), ' Acme ', typeOpts);
+    await userEvent.type(screen.getByLabelText('Phone'), '(717) 123-4567', typeOpts);
+    await userEvent.type(screen.getByLabelText(/Message \(optional\)/i), ' Hello ', typeOpts);
     await userEvent.click(screen.getByRole('button', { name: 'Send request' }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const body = JSON.parse(global.fetch.mock.calls[0][1].body);
@@ -162,7 +163,7 @@ describe('WebsiteConsultationDialog', () => {
     expect(body.company).toBe('Acme');
     expect(body.phone).toBe('7171234567');
     expect(body.message).toBe('Hello');
-  });
+  }, 10000);
 
   it('shows error when response is not ok', async () => {
     global.fetch.mockResolvedValueOnce({

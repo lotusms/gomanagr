@@ -116,10 +116,6 @@ export default function ReceiptViewContent({
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatMoney(amountPaid)}</span>
               </div>
             )}
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Remaining balance ({currency}): </span>
-              <span className="font-semibold text-gray-900 dark:text-white">{formatMoney(amountDue)}</span>
-            </div>
           </div>
         </div>
 
@@ -197,7 +193,6 @@ export default function ReceiptViewContent({
             {doc.paidDate && (
               <div>Payment on {formatDateFromISO(doc.paidDate, dateFormat, timezone)}</div>
             )}
-            {amountPaid > 0 && <div>Amount paid: {formatMoney(amountPaid)}</div>}
             <div>Remaining balance: {formatMoney(amountDue)}</div>
             {amountDue === 0 && <div>Amount due: {formatMoney(0)}</div>}
           </div>

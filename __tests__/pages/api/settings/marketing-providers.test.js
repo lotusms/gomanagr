@@ -42,9 +42,17 @@ describe('pages/api/settings/marketing-providers', () => {
     jest.clearAllMocks();
     mockFrom.mockImplementation((table) => {
       if (table === 'org_members') {
+        const roleData = { data: [{ role: 'superadmin' }], error: null };
+        const orgData = { data: [{ organization_id: 'org-1' }], error: null };
         return {
           select: () => ({
-            eq: () => Promise.resolve({ data: [{ role: 'superadmin' }], error: null }),
+            eq: () => ({
+              then(resolve) {
+                resolve(roleData);
+                return this;
+              },
+              limit: (n) => Promise.resolve(n === 1 ? orgData : roleData),
+            }),
           }),
         };
       }
@@ -161,7 +169,8 @@ describe('pages/api/settings/marketing-providers', () => {
       body: { userId: 'u1' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Save failed' });
+    // Handler returns result.error from saveMarketingConfig when set
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Save failed' }));
   });
 
   it('POST returns 500 when getMarketingConfig or saveMarketingConfig throws', async () => {

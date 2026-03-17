@@ -149,7 +149,7 @@ describe('IntegrationsSettings', () => {
     await waitFor(() => expect(screen.getByTestId('section-Stripe')).toBeInTheDocument());
     const testButtons = screen.getAllByRole('button', { name: 'Test connection' });
     await userEvent.click(testButtons[0]);
-    await waitFor(() => expect(mockToast.success).toHaveBeenCalledWith('Connection test passed.', 3000));
+    await waitFor(() => expect(mockToast.success).toHaveBeenCalledWith('Connection test passed. Click Save to store your settings.', 4000));
     expect(global.fetch).toHaveBeenCalledWith('/api/integrations', expect.objectContaining({
       method: 'POST',
       body: expect.stringContaining('"action":"test"'),

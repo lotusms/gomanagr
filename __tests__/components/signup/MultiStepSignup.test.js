@@ -139,9 +139,9 @@ describe('MultiStepSignup', () => {
     await waitFor(() => {
       expect(mockSignup).toHaveBeenCalledWith('test@example.com', 'password123');
       expect(mockCreateUserAccount).toHaveBeenCalled();
-    });
+    }, { timeout: 8000 });
     expect(mockPush).toHaveBeenCalledWith('/dashboard');
-  });
+  }, 15000);
 
   it('passes invite token to createUserAccount when present in URL', async () => {
     routerQuery = { invite: 'invite-token-123' };

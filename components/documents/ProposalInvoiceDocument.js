@@ -278,9 +278,6 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
                   <strong>Amount paid ({currency}):</strong> {formatMoney(amountPaid, currency)}
                 </div>
               )}
-              <div style={{ marginTop: '4px' }}>
-                <strong>Remaining balance ({currency}):</strong> {formatMoney(doc.amountDue ?? 0, currency)}
-              </div>
             </>
           )}
           {!isProposal && !isReceipt && (
@@ -329,8 +326,17 @@ export default function ProposalInvoiceDocument({ type, documentTypeLabel, compa
       <div style={{ textAlign: 'right', marginBottom: '8px' }}>
         <strong>Tax/VAT:</strong> {formatMoney(taxNum, currency)}
       </div>
+      {(isReceipt || !isProposal) && (total - amountDueNum) > 0 && (
+        <div style={{ textAlign: 'right', marginBottom: '8px' }}>
+          <strong>Amount paid:</strong> {formatMoney(-(total - amountDueNum), currency)}
+        </div>
+      )}
       <div style={{ textAlign: 'right', fontSize: '12pt', fontWeight: 700, marginTop: '10px' }}>
-        Total: {formatMoney(total, currency)}
+        {isReceipt || !isProposal ? (
+          <>Remaining balance: {formatMoney(amountDueNum, currency)}</>
+        ) : (
+          <>Total: {formatMoney(total, currency)}</>
+        )}
       </div>
 
       {doc.scopeSummary && (

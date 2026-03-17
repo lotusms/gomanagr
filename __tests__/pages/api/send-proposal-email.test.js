@@ -1,14 +1,12 @@
 /**
  * Unit tests for send-proposal-email API.
- * POST only; 400 missing params / invalid email; 503 Supabase unavailable; 404 proposal not found;
- * 403 ownership; 503 no email provider; 200 sent when SMTP configured.
+ * POST only; uses sendTenantEmail (tenant integrations). 503 no org or no provider; 200 when sendTenantEmail succeeds.
  */
 
-const mockSendMail = jest.fn();
-const mockCreateTransport = jest.fn(() => ({ sendMail: mockSendMail }));
+const mockSendTenantEmail = jest.fn();
 
-jest.mock('nodemailer', () => ({
-  createTransport: (...args) => mockCreateTransport(...args),
+jest.mock('@/lib/sendTenantEmail', () => ({
+  sendTenantEmail: (...args) => mockSendTenantEmail(...args),
 }));
 
 jest.mock('@/lib/renderDocumentToHtml', () => ({
@@ -42,9 +40,7 @@ function mockRes() {
 describe('send-proposal-email API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    delete process.env.SMTP_HOST;
-    delete process.env.RESEND_API_KEY;
-    mockSendMail.mockResolvedValue(undefined);
+    mockSendTenantEmail.mockResolvedValue({ sent: true });
     mockFrom.mockImplementation((t) => {
       if (t === 'client_proposals') {
         return {
@@ -58,7 +54,7 @@ describe('send-proposal-email API', () => {
                       proposal_title: 'Test Proposal',
                       proposal_number: 'P-001',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org-1',
                       client_id: 'c1',
                       line_items: [{ item_name: 'Item', quantity: 1, unit_price: 100 }],
                     },
@@ -234,35 +230,34 @@ describe('send-proposal-email API', () => {
   });
 
   it('returns 503 when no email provider configured', async () => {
+    mockSendTenantEmail.mockResolvedValueOnce({
+      sent: false,
+      error: 'No email provider configured. Configure Resend or SMTP in Settings > Integrations.',
+    });
     const handler = (await import('@/pages/api/send-proposal-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', proposalId: 'prop-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', proposalId: 'prop-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: 'No email provider configured',
-        message: expect.stringContaining('SMTP'),
+        error: expect.stringContaining('No email provider configured'),
+        message: expect.stringMatching(/Settings|Integrations|Resend|SMTP/i),
       })
     );
   });
 
-  it('returns 200 sent: true when SMTP configured and sendMail succeeds', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'user';
-    process.env.SMTP_PASSWORD = 'pass';
-    process.env.SMTP_FROM_EMAIL = 'proposals@test.com';
-    jest.resetModules();
+  it('returns 200 sent: true when sendTenantEmail succeeds', async () => {
     const handler = (await import('@/pages/api/send-proposal-email')).default;
     const res = mockRes();
     await handler({
       method: 'POST',
-      body: { userId: 'u1', proposalId: 'prop-1', to: 'client@test.com' },
+      body: { userId: 'u1', organizationId: 'org-1', proposalId: 'prop-1', to: 'client@test.com' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ sent: true, message: 'Proposal email sent' });
-    expect(mockSendMail).toHaveBeenCalled();
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 });

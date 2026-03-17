@@ -8,9 +8,10 @@ describe('integrations types', () => {
     expect(Array.isArray(PROVIDERS)).toBe(true);
     expect(PROVIDERS).toContain('stripe');
     expect(PROVIDERS).toContain('twilio');
+    expect(PROVIDERS).toContain('smtp');
     expect(PROVIDERS).toContain('mailchimp');
     expect(PROVIDERS).toContain('resend');
-    expect(PROVIDERS.length).toBe(4);
+    expect(PROVIDERS.length).toBe(5);
     expect(Object.isFrozen(PROVIDERS)).toBe(true);
   });
 

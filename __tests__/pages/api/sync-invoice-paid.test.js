@@ -27,15 +27,10 @@ jest.mock('@/lib/buildDocumentPayload', () => ({
   buildInvoiceDocumentPayload: jest.fn().mockReturnValue({}),
 }));
 
-const mockSendMail = jest.fn().mockResolvedValue(undefined);
-jest.mock('nodemailer', () => ({
-  createTransport: () => ({ sendMail: mockSendMail }),
+const mockSendTenantEmail = jest.fn().mockResolvedValue({ sent: true });
+jest.mock('@/lib/sendTenantEmail', () => ({
+  sendTenantEmail: (...args) => mockSendTenantEmail(...args),
 }));
-
-const mockResendSend = jest.fn().mockResolvedValue({ data: { id: 'msg-1' }, error: null });
-jest.mock('resend', () => ({
-  Resend: jest.fn().mockImplementation(() => ({ emails: { send: mockResendSend } })),
-}), { virtual: false });
 
 const mockFrom = jest.fn();
 const mockCreateClient = jest.fn(() => ({ from: mockFrom }));
@@ -69,6 +64,7 @@ const invoiceRow = {
   payment_token: 'valid-token',
   stripe_payment_intent_id: null,
   status: 'sent',
+  organization_id: 'org-1',
 };
 
 function setupSupabaseForGet(data = invoiceRow) {
@@ -701,7 +697,7 @@ describe('sync-invoice-paid API', () => {
     const fullInvoiceForReceipt = {
       id: 'inv-1',
       user_id: 'u1',
-      organization_id: null,
+      organization_id: 'org-1',
       client_id: null,
       client_snapshot: { email: 'customer@example.com', name: 'Customer' },
       invoice_number: 'INV-001',
@@ -738,7 +734,7 @@ describe('sync-invoice-paid API', () => {
                       invoice_title: 'Test',
                       total: '100',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org-1',
                       client_id: null,
                       client_snapshot: { email: 'customer@example.com' },
                     },
@@ -768,6 +764,25 @@ describe('sync-invoice-paid API', () => {
                 error: null,
               }),
             }),
+            in: () => Promise.resolve({ data: [{ email: 'owner@test.com' }], error: null }),
+          }),
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ user_id: 'u1' }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
           }),
         };
       }
@@ -782,20 +797,12 @@ describe('sync-invoice-paid API', () => {
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ ok: true, synced: true });
-    expect(mockSendMail).toHaveBeenCalled();
-    const sendMailCall = mockSendMail.mock.calls.find((c) => c[0]?.to === 'customer@example.com');
-    expect(sendMailCall).toBeDefined();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
+    expect(mockSendTenantEmail).toHaveBeenCalled();
+    const receiptCall = mockSendTenantEmail.mock.calls.find((c) => c[1]?.to === 'customer@example.com');
+    expect(receiptCall).toBeDefined();
   });
 
   it('sends fallback receipt when full invoice select returns null', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASSWORD = 'p';
-    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
     let selectCallCount = 0;
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
@@ -827,7 +834,7 @@ describe('sync-invoice-paid API', () => {
                       invoice_title: 'Test',
                       total: '100',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org-1',
                       client_id: null,
                       client_snapshot: { email: 'customer@example.com' },
                     },
@@ -848,7 +855,28 @@ describe('sync-invoice-paid API', () => {
       }
       if (table === 'user_profiles') {
         return {
-          select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+          select: () => ({
+            eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
+            in: () => Promise.resolve({ data: [{ email: 'owner@test.com' }], error: null }),
+          }),
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ user_id: 'u1' }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
+          }),
         };
       }
       return {};
@@ -861,22 +889,14 @@ describe('sync-invoice-paid API', () => {
       query: { invoiceId: 'inv-1', token: 'valid-token' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalled();
-    const fallbackCall = mockSendMail.mock.calls.find(
-      (c) => c[0]?.subject?.includes('Payment receipt') && c[0]?.html?.includes('Amount paid')
+    expect(mockSendTenantEmail).toHaveBeenCalled();
+    const fallbackCall = mockSendTenantEmail.mock.calls.find(
+      (c) => c[1]?.subject?.includes('Payment receipt') && c[1]?.html?.includes('Amount paid')
     );
     expect(fallbackCall).toBeDefined();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
   });
 
   it('resolves customer email from profile.clients when client_snapshot has no email', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASSWORD = 'p';
-    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
     let profileSelectCount = 0;
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
@@ -895,7 +915,7 @@ describe('sync-invoice-paid API', () => {
                       invoice_title: 'Test',
                       total: '100',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org-1',
                       client_id: 'client-1',
                       client_snapshot: null,
                     },
@@ -911,6 +931,7 @@ describe('sync-invoice-paid API', () => {
                     data: {
                       id: 'inv-1',
                       user_id: 'u1',
+                      organization_id: 'org-1',
                       client_id: 'client-1',
                       client_snapshot: null,
                       invoice_number: 'INV-001',
@@ -941,8 +962,29 @@ describe('sync-invoice-paid API', () => {
                 }),
               };
             }
-            return { eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) };
+            return {
+              eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
+              in: () => Promise.resolve({ data: [{ email: 'owner@test.com' }], error: null }),
+            };
           },
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ user_id: 'u1' }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
+          }),
         };
       }
       return {};
@@ -955,19 +997,11 @@ describe('sync-invoice-paid API', () => {
       query: { invoiceId: 'inv-1', token: 'valid-token' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    const receiptToClient = mockSendMail.mock.calls.find((c) => c[0]?.to === 'client@billing.com');
+    const receiptToClient = mockSendTenantEmail.mock.calls.find((c) => c[1]?.to === 'client@billing.com');
     expect(receiptToClient).toBeDefined();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
   });
 
   it('sends payment notification to org admins and owner fallback', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASSWORD = 'p';
-    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
     let orgMembersCalls = 0;
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
@@ -1027,14 +1061,10 @@ describe('sync-invoice-paid API', () => {
       query: { invoiceId: 'inv-1', token: 'valid-token' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    const adminNotification = mockSendMail.mock.calls.find(
-      (c) => c[0]?.to === 'admin@org.com' && c[0]?.subject?.includes('Payment received')
+    const adminNotification = mockSendTenantEmail.mock.calls.find(
+      (c) => c[1]?.to === 'admin@org.com' && c[1]?.subject?.includes('Payment received')
     );
     expect(adminNotification).toBeDefined();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
   });
 
   it('returns 405 for unsupported method', async () => {
@@ -1060,19 +1090,12 @@ describe('sync-invoice-paid API', () => {
     await import('@/pages/api/sync-invoice-paid');
   });
 
-  it('uses Resend when RESEND_API_KEY set and SMTP not set', async () => {
-    mockResendSend.mockClear();
-    process.env.RESEND_API_KEY = 're_xxx';
-    process.env.RESEND_FROM_EMAIL = 'billing@test.com';
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
+  it('uses sendTenantEmail when org has provider (e.g. Resend) configured', async () => {
     let selectCallCount = 0;
     const fullInvoiceForReceipt = {
       id: 'inv-1',
       user_id: 'u1',
-      organization_id: null,
+      organization_id: 'org-1',
       client_id: null,
       client_snapshot: { email: 'customer@example.com', name: 'Customer' },
       invoice_number: 'INV-001',
@@ -1109,7 +1132,7 @@ describe('sync-invoice-paid API', () => {
                       invoice_title: 'Test',
                       total: '100',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org-1',
                       client_id: null,
                       client_snapshot: { email: 'customer@example.com' },
                     },
@@ -1139,6 +1162,25 @@ describe('sync-invoice-paid API', () => {
                 error: null,
               }),
             }),
+            in: () => Promise.resolve({ data: [{ email: 'owner@test.com' }], error: null }),
+          }),
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [{ user_id: 'u1' }], error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'organizations') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: { name: 'Org' }, error: null }),
+            }),
           }),
         };
       }
@@ -1152,19 +1194,11 @@ describe('sync-invoice-paid API', () => {
       query: { invoiceId: 'inv-1', token: 'valid-token' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockResendSend).toHaveBeenCalled();
-    expect(mockSendMail).not.toHaveBeenCalled();
-    delete process.env.RESEND_API_KEY;
-    delete process.env.RESEND_FROM_EMAIL;
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
-  it('logs warn when no email transport and customer email would be sent', async () => {
+  it('logs warn when no organization_id for invoice and customer email would be sent', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
-    delete process.env.RESEND_API_KEY;
     let selectCallCount = 0;
     mockFrom.mockImplementation((table) => {
       if (table === 'client_invoices') {
@@ -1225,7 +1259,7 @@ describe('sync-invoice-paid API', () => {
       query: { invoiceId: 'inv-1', token: 'valid-token' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No email transport'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No organization_id for invoice'), 'inv-1', expect.any(String));
     warnSpy.mockRestore();
   });
 
@@ -1245,10 +1279,6 @@ describe('sync-invoice-paid API', () => {
   });
 
   it('includes org name and address in receipt when invoice has organization_id', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASSWORD = 'p';
-    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
     let selectCallCount = 0;
     const fullInvoiceForReceipt = {
       id: 'inv-1',
@@ -1365,18 +1395,10 @@ describe('sync-invoice-paid API', () => {
       query: { invoiceId: 'inv-1', token: 'valid-token' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockSendMail).toHaveBeenCalled();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
+    expect(mockSendTenantEmail).toHaveBeenCalled();
   });
 
   it('logs warn when no org admin or owner email for notification', async () => {
-    process.env.SMTP_HOST = 'smtp.test.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASSWORD = 'p';
-    process.env.SMTP_FROM_EMAIL = 'noreply@test.com';
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     let selectCallCount = 0;
     mockFrom.mockImplementation((table) => {
@@ -1409,7 +1431,7 @@ describe('sync-invoice-paid API', () => {
                       invoice_title: 'Test',
                       total: '100',
                       user_id: 'u1',
-                      organization_id: null,
+                      organization_id: 'org-1',
                       client_id: null,
                       client_snapshot: null,
                     },
@@ -1421,6 +1443,15 @@ describe('sync-invoice-paid API', () => {
             return { eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) };
           },
           update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        };
+      }
+      if (table === 'org_members') {
+        return {
+          select: () => ({
+            eq: () => ({
+              in: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
         };
       }
       if (table === 'user_profiles') {
@@ -1443,9 +1474,5 @@ describe('sync-invoice-paid API', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(warnSpy.mock.calls.some((c) => String(c[0] || '').includes('No org admin or owner email'))).toBe(true);
     warnSpy.mockRestore();
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASSWORD;
-    delete process.env.SMTP_FROM_EMAIL;
   });
 });

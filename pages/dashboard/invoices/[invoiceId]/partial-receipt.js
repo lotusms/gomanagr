@@ -237,12 +237,6 @@ export default function PartialReceiptPage() {
                   {new Intl.NumberFormat(undefined, { style: 'currency', currency: defaultCurrency }).format(amountPaid)}
                 </span>
               </div>
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">Remaining balance ({defaultCurrency}): </span>
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {new Intl.NumberFormat(undefined, { style: 'currency', currency: defaultCurrency }).format(balanceDue)}
-                </span>
-              </div>
             </div>
           </div>
           <ReceiptViewInPage

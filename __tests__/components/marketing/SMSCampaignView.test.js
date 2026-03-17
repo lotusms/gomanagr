@@ -198,7 +198,7 @@ describe('SMSCampaignView', () => {
           expect.objectContaining({ id: 'r1', phone: '+15551111111', name: 'Alice' }),
           expect.objectContaining({ id: 'r2', phone: '+15552222222', name: 'Bob' }),
         ]),
-      }));
+      }), undefined);
     });
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('sent');
@@ -241,7 +241,7 @@ describe('SMSCampaignView', () => {
       expect(providerRegistry.sendTestMessage).toHaveBeenCalledWith('sms', expect.objectContaining({
         body: 'Test body',
         channel: 'sms',
-      }));
+      }), undefined);
     });
   });
 
@@ -289,7 +289,7 @@ describe('SMSCampaignView', () => {
     await waitFor(() => {
       expect(providerRegistry.sendCampaign).toHaveBeenCalledWith('sms', expect.objectContaining({
         recipients: [expect.objectContaining({ id: 'r1', name: 'Alice', phone: '+15551111111' })],
-      }));
+      }), undefined);
     });
   });
 

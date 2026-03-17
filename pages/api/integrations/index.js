@@ -11,6 +11,7 @@ import { validateStripeConfig, stripeMetadataFromConfig } from '@/lib/integratio
 import { validateTwilioConfig, twilioMetadataFromConfig } from '@/lib/integrations/providers/twilio';
 import { validateMailchimpConfig, mailchimpMetadataFromConfig } from '@/lib/integrations/providers/mailchimp';
 import { validateResendConfig, resendMetadataFromConfig } from '@/lib/integrations/providers/resend';
+import { validateSmtpConfig, smtpMetadataFromConfig } from '@/lib/integrations/providers/smtp';
 import { listProviders } from '@/lib/integrations/registry';
 
 let supabaseAdmin;
@@ -43,6 +44,7 @@ const VALIDATORS = {
   twilio: validateTwilioConfig,
   mailchimp: validateMailchimpConfig,
   resend: validateResendConfig,
+  smtp: validateSmtpConfig,
 };
 
 const METADATA_BUILDERS = {
@@ -50,6 +52,7 @@ const METADATA_BUILDERS = {
   twilio: twilioMetadataFromConfig,
   mailchimp: mailchimpMetadataFromConfig,
   resend: resendMetadataFromConfig,
+  smtp: smtpMetadataFromConfig,
 };
 
 export default async function handler(req, res) {
@@ -83,7 +86,7 @@ export default async function handler(req, res) {
   }
 
   const { provider, action, config, metadata } = req.body || {};
-  if (!provider || !['stripe', 'twilio', 'mailchimp', 'resend'].includes(provider)) {
+  if (!provider || !['stripe', 'twilio', 'mailchimp', 'resend', 'smtp'].includes(provider)) {
     return res.status(400).json({ error: 'Invalid provider' });
   }
   if (!action || !['save', 'test'].includes(action)) {

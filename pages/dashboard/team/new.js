@@ -189,6 +189,7 @@ export default function NewTeamMemberPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              organizationId: organization?.id,
               to: (data.email || '').trim(),
               inviteLink: invData.inviteLink,
               memberName: data.name,

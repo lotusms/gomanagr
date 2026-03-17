@@ -17,16 +17,20 @@ export default function ProviderInfoCard({ providerType, status, capabilities, w
   const displayName = PROVIDER_DISPLAY_NAMES[providerType] || providerType;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Sending via</h3>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-gray-900 dark:text-white font-medium">{displayName}</span>
-        {status && <ProviderStatusBadge status={status} />}
-        <ProviderCapabilityBadges capabilities={capabilities} />
+    <div className="bg-white/90 dark:bg-gray-800/90 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg shadow-gray-200/50 dark:shadow-none backdrop-blur-sm overflow-hidden">
+      <div className="px-4 py-3 bg-gradient-to-r from-primary-50 to-primary-50/50 dark:from-primary-900/30 dark:to-primary-950/20 border-b border-primary-100/50 dark:border-primary-800/30">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-700 dark:text-primary-400">Sending via</h3>
       </div>
-      {warning && (
-        <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">{warning}</p>
-      )}
+      <div className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-gray-900 dark:text-white font-semibold">{displayName}</span>
+          {status && <ProviderStatusBadge status={status} />}
+          <ProviderCapabilityBadges capabilities={capabilities} />
+        </div>
+        {warning && (
+          <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">{warning}</p>
+        )}
+      </div>
     </div>
   );
 }

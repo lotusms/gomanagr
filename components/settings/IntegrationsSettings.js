@@ -13,17 +13,26 @@ import InputField from '@/components/ui/InputField';
 import CollapsibleSection from '@/components/dashboard/CollapsibleSection';
 import EmptyState from '@/components/ui/EmptyState';
 import ProviderStatusBadge from '@/components/marketing/ProviderStatusBadge';
-import { HiCreditCard, HiSpeakerphone, HiMail, HiLockClosed, HiLockOpen, HiX, HiEye, HiEyeOff } from 'react-icons/hi';
+import { HiCreditCard, HiSpeakerphone, HiMail, HiChat, HiLockClosed, HiLockOpen, HiX, HiEye, HiEyeOff } from 'react-icons/hi';
 
 const PROVIDERS = [
-  { id: 'mailchimp', name: 'Mailchimp', description: 'Email and optionally SMS via Mailchimp. Add your API key and server prefix.', icon: HiMail, fields: [
+  { id: 'smtp', name: 'SMTP', description: 'Send transactional email (invoices, receipts, proposals, invites) via your own SMTP server.', icon: HiMail, fields: [
+    { key: 'host', label: 'SMTP host', placeholder: 'smtp.example.com', type: 'text' },
+    { key: 'port', label: 'SMTP port', placeholder: '587', type: 'text' },
+    { key: 'secure', label: 'Use TLS (port 465)', placeholder: 'true or false', type: 'text', optional: true },
+    { key: 'user', label: 'SMTP user', placeholder: 'noreply@yourdomain.com', type: 'text' },
+    { key: 'password', label: 'SMTP password', placeholder: '...', type: 'password' },
+    { key: 'fromEmail', label: 'From email', placeholder: 'noreply@yourdomain.com', type: 'text' },
+    { key: 'fromName', label: 'From name', placeholder: 'Your Company', type: 'text', optional: true },
+  ]},
+  { id: 'mailchimp', name: 'Mailchimp', description: 'Email and optionally SMS via Mailchimp. Add your API key and server prefix.', icon: HiSpeakerphone, fields: [
     { key: 'apiKey', label: 'API key', placeholder: '...', type: 'password' },
     { key: 'serverPrefix', label: 'Server prefix (e.g. us21)', placeholder: 'us21', type: 'text' },
     { key: 'senderEmail', label: 'Sender email', placeholder: 'noreply@yourdomain.com', type: 'text' },
     { key: 'senderName', label: 'Sender name', placeholder: 'Your Company', type: 'text' },
     { key: 'fromNumber', label: 'From number (SMS, optional)', placeholder: '', type: 'text', optional: true },
   ]},
-  { id: 'twilio', name: 'Twilio', description: 'Send SMS. Configure with your Twilio Account SID, Auth Token, and a Twilio phone number.', icon: HiSpeakerphone, fields: [
+  { id: 'twilio', name: 'Twilio', description: 'Send SMS. Configure with your Twilio Account SID, Auth Token, and a Twilio phone number.', icon: HiChat, fields: [
     { key: 'accountSid', label: 'Account SID', placeholder: 'AC...', type: 'text' },
     { key: 'authToken', label: 'Auth Token', placeholder: '...', type: 'password' },
     { key: 'fromNumber', label: 'From phone number', placeholder: '+1234567890', type: 'text' },
@@ -458,6 +467,7 @@ export default function IntegrationsSettings() {
                       key={field.key}
                       id={fieldId}
                       label={field.label}
+                      sublabel={field.help}
                       value={value}
                       onChange={handleFieldChange}
                       placeholder={savedPlaceholder != null ? savedPlaceholder : field.placeholder}

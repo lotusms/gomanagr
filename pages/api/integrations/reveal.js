@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getOrgIntegration } from '@/lib/integrations/get-org-integration';
 import { verifyPin } from '@/lib/revealPin';
 
-const PROVIDERS = ['stripe', 'twilio', 'mailchimp', 'resend'];
+const PROVIDERS = ['stripe', 'twilio', 'mailchimp', 'resend', 'smtp'];
 
 let supabaseAdmin;
 function getAdmin() {

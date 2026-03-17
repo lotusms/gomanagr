@@ -57,7 +57,19 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const config = await getMarketingConfigForSettings();
+      let organizationId = null;
+      const supabase = getAdmin();
+      if (supabase) {
+        const { data: members } = await supabase
+          .from('org_members')
+          .select('organization_id')
+          .eq('user_id', uid)
+          .limit(1);
+        if (members?.[0]?.organization_id) {
+          organizationId = members[0].organization_id;
+        }
+      }
+      const config = await getMarketingConfigForSettings(organizationId);
       return res.status(200).json(config);
     } catch (e) {
       console.error('[settings/marketing-providers] GET', e?.message ?? 'Unknown error');
@@ -68,7 +80,19 @@ export default async function handler(req, res) {
   // POST
   const incoming = req.body || {};
   try {
-    const current = await getMarketingConfig();
+    let organizationId = null;
+    const supabase = getAdmin();
+    if (supabase) {
+      const { data: members } = await supabase
+        .from('org_members')
+        .select('organization_id')
+        .eq('user_id', uid)
+        .limit(1);
+      if (members?.[0]?.organization_id) {
+        organizationId = members[0].organization_id;
+      }
+    }
+    const current = await getMarketingConfig(organizationId);
     const result = await saveMarketingConfig(incoming, current);
     if (result.error) {
       return res.status(500).json({ error: result.error });

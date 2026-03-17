@@ -1,14 +1,14 @@
 /**
  * Send an invoice copy by email. POST body: { userId, organizationId?, invoiceId, to, clientName?, isReminder? }
- * Uses same SMTP/Resend config as send-proposal-email. Email body is HTML version of the invoice.
+ * Uses the tenant's Resend/Mailchimp connection (Settings > Integrations). No fallback to .env SMTP/Resend.
  * When sending, generates payment_token if missing so the email can include a "Pay now" link.
  */
 
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
 import { buildInvoiceDocumentPayload } from '@/lib/buildDocumentPayload';
+import { sendTenantEmail } from '@/lib/sendTenantEmail';
 
 let supabaseAdmin;
 try {
@@ -64,8 +64,15 @@ export default async function handler(req, res) {
       if (invoice.organization_id != null || invoice.user_id !== userId) return res.status(403).json({ error: 'Invoice does not belong to you' });
     }
 
+    const orgId = organizationId || invoice.organization_id || null;
+    if (!orgId) {
+      return res.status(503).json({
+        error: 'No organization context',
+        message: 'Invoice email requires an organization. Configure Resend or Mailchimp in Settings > Integrations for the organization.',
+      });
+    }
+
     const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
-    const fromName = process.env.SMTP_FROM_NAME || appName;
     const title = (invoice.invoice_title || 'Invoice').trim();
     const number = (invoice.invoice_number || '').trim();
     const subject = isReminder
@@ -185,56 +192,21 @@ export default async function handler(req, res) {
       ? htmlBase.replace(/\s*<\/body>\s*/, `${paySection}\n</body>\n`)
       : htmlBase;
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASSWORD;
-    const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@lotusmarketingsolutions.com';
-
     const dateSentToday = new Date().toISOString().slice(0, 10);
-
-    if (smtpHost && smtpUser && smtpPass) {
-      const port = parseInt(process.env.SMTP_PORT || '587', 10);
-      const secure = process.env.SMTP_SECURE === 'true';
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port,
-        secure,
-        auth: { user: smtpUser, pass: smtpPass },
+    const result = await sendTenantEmail(orgId, { to: toEmail, subject, html });
+    if (!result.sent) {
+      return res.status(503).json({
+        error: result.error || 'Failed to send email',
+        message: result.error || 'Configure Resend or Mailchimp in Settings > Integrations to send invoice emails.',
       });
-      const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
-      await transporter.sendMail({ from, to: toEmail, subject, html });
-      if (!isReminder) {
-        const updatePayload = { ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() };
-        if (paymentToken && !invoice.payment_token) updatePayload.payment_token = paymentToken;
-        if (clientSnapshot) updatePayload.client_snapshot = clientSnapshot;
-        await supabaseAdmin.from('client_invoices').update(updatePayload).eq('id', invoiceId);
-      }
-      return res.status(200).json({ sent: true, message: isReminder ? 'Reminder sent' : 'Invoice email sent' });
     }
-
-    const resendKey = process.env.RESEND_API_KEY;
-    if (resendKey) {
-      const { Resend } = await import('resend');
-      const resend = new Resend(resendKey);
-      const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-      const { error } = await resend.emails.send({ from, to: [toEmail], subject, html });
-      if (error) {
-        console.error('[send-invoice-email] Resend error:', error);
-        return res.status(500).json({ error: 'Failed to send email', details: error.message });
-      }
-      if (!isReminder) {
-        const updatePayload = { ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() };
-        if (paymentToken && !invoice.payment_token) updatePayload.payment_token = paymentToken;
-        if (clientSnapshot) updatePayload.client_snapshot = clientSnapshot;
-        await supabaseAdmin.from('client_invoices').update(updatePayload).eq('id', invoiceId);
-      }
-      return res.status(200).json({ sent: true, message: isReminder ? 'Reminder sent' : 'Invoice email sent' });
+    if (!isReminder) {
+      const updatePayload = { ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() };
+      if (paymentToken && !invoice.payment_token) updatePayload.payment_token = paymentToken;
+      if (clientSnapshot) updatePayload.client_snapshot = clientSnapshot;
+      await supabaseAdmin.from('client_invoices').update(updatePayload).eq('id', invoiceId);
     }
-
-    return res.status(503).json({
-      error: 'No email provider configured',
-      message: 'Configure SMTP_* or RESEND_API_KEY to send invoice emails.',
-    });
+    return res.status(200).json({ sent: true, message: isReminder ? 'Reminder sent' : 'Invoice email sent' });
   } catch (err) {
     console.error('[send-invoice-email]', err);
     return res.status(500).json({ error: 'Failed to send email', details: err.message });

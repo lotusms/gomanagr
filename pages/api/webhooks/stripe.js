@@ -5,11 +5,11 @@
 
 import Stripe from 'stripe';
 import getRawBody from 'raw-body';
-import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { getStripeConfig } from '@/lib/getStripeConfig';
 import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
 import { buildInvoiceDocumentPayload } from '@/lib/buildDocumentPayload';
+import { sendTenantEmail } from '@/lib/sendTenantEmail';
 
 export const config = {
   api: { bodyParser: false },
@@ -28,32 +28,6 @@ try {
   }
 } catch (e) {
   supabaseAdmin = null;
-}
-
-async function sendEmail(to, subject, html) {
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASSWORD;
-  const fromEmail = process.env.SMTP_FROM_EMAIL || '';
-  const fromName = process.env.SMTP_FROM_NAME || process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
-  if (smtpHost && smtpUser && smtpPass && fromEmail) {
-    const port = parseInt(process.env.SMTP_PORT || '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true';
-    const transporter = nodemailer.createTransport({ host: smtpHost, port, secure, auth: { user: smtpUser, pass: smtpPass } });
-    const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
-    await transporter.sendMail({ from, to, subject, html });
-    return;
-  }
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey) {
-    const { Resend } = await import('resend');
-    const resend = new Resend(resendKey);
-    const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-    const { error } = await resend.emails.send({ from, to: [to], subject, html });
-    if (error) throw error;
-    return;
-  }
-  console.warn('[webhooks/stripe] No email transport (SMTP or RESEND_API_KEY) configured; skipping send');
 }
 
 function formatMoney(value, currency = 'USD') {
@@ -228,8 +202,9 @@ export default async function handler(req, res) {
       const client = clients.find((c) => c.id === invoice.client_id);
       if (client?.email) customerEmail = String(client.email).trim();
     }
-    // Send receipt to client (every payment).
-    if (customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    // Send receipt to client (every payment) using tenant's email provider. Skip if no org.
+    const orgId = invoice.organization_id || null;
+    if (customerEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail) && orgId) {
       try {
         const { data: fullInvoice } = await supabaseAdmin
           .from('client_invoices')
@@ -311,18 +286,22 @@ export default async function handler(req, res) {
             currency: 'USD',
             amountPaid: paymentAmount,
           });
-          await sendEmail(customerEmail, `Payment receipt – Receipt #${invNum}`, receiptHtml);
-          console.log('[webhooks/stripe] Receipt email sent to client:', customerEmail);
+          const result = await sendTenantEmail(orgId, { to: customerEmail, subject: `Payment receipt – Receipt #${invNum}`, html: receiptHtml });
+          if (result.sent) console.log('[webhooks/stripe] Receipt email sent to client:', customerEmail);
+          else console.warn('[webhooks/stripe] Receipt not sent:', result.error);
         } else {
           const fallbackReceiptHtml = `<p>Your payment for <strong>${invTitle}</strong> (Receipt #${invNum}) has been received.</p><p><strong>Amount paid:</strong> ${amountStr}</p><p>Thank you for your business.</p><p>— ${appName}</p>`;
-          await sendEmail(customerEmail, `Payment receipt – Receipt #${invNum}`, fallbackReceiptHtml);
-          console.log('[webhooks/stripe] Receipt email (fallback) sent to client:', customerEmail);
+          const result = await sendTenantEmail(orgId, { to: customerEmail, subject: `Payment receipt – Receipt #${invNum}`, html: fallbackReceiptHtml });
+          if (result.sent) console.log('[webhooks/stripe] Receipt email (fallback) sent to client:', customerEmail);
+          else console.warn('[webhooks/stripe] Receipt not sent:', result.error);
         }
       } catch (e) {
         console.error('[webhooks/stripe] Failed to send receipt to customer:', e.message);
       }
     } else if (!customerEmail) {
       console.warn('[webhooks/stripe] No customer email for receipt (invoice', invoiceId, ')');
+    } else if (!orgId) {
+      console.warn('[webhooks/stripe] No organization_id for invoice', invoiceId, '; skipping receipt email');
     }
 
     // Send payment notification to org member(s).
@@ -356,16 +335,19 @@ export default async function handler(req, res) {
         adminEmails.add(String(profile.email).trim());
       }
     }
-    for (const adminEmail of adminEmails) {
-      try {
-        await sendEmail(
-          adminEmail,
-          `Payment received – Invoice #${invNum} (${amountStr})`,
-          notificationHtml
-        );
-        console.log('[webhooks/stripe] Payment notification sent to org admin:', adminEmail);
-      } catch (e) {
-        console.error('[webhooks/stripe] Failed to send payment notification to', adminEmail, e.message);
+    if (orgId) {
+      for (const adminEmail of adminEmails) {
+        try {
+          const result = await sendTenantEmail(orgId, {
+            to: adminEmail,
+            subject: `Payment received – Invoice #${invNum} (${amountStr})`,
+            html: notificationHtml,
+          });
+          if (result.sent) console.log('[webhooks/stripe] Payment notification sent to org admin:', adminEmail);
+          else console.warn('[webhooks/stripe] Admin notification not sent:', result.error);
+        } catch (e) {
+          console.error('[webhooks/stripe] Failed to send payment notification to', adminEmail, e.message);
+        }
       }
     }
     if (adminEmails.size === 0) {

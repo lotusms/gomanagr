@@ -207,7 +207,7 @@ describe('EmailCampaignView', () => {
           expect.objectContaining({ id: 'r1', email: 'alice@test.com', name: 'Alice' }),
           expect.objectContaining({ id: 'r2', email: 'bob@test.com', name: 'Bob' }),
         ]),
-      }));
+      }), undefined);
     });
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('sent');
@@ -253,7 +253,7 @@ describe('EmailCampaignView', () => {
         body: 'Test body',
         channel: 'email',
         subject: '(Test)',
-      }));
+      }), undefined);
     });
   });
 
@@ -294,7 +294,7 @@ describe('EmailCampaignView', () => {
     await waitFor(() => {
       expect(providerRegistry.sendCampaign).toHaveBeenCalledWith('email', expect.objectContaining({
         recipients: [expect.objectContaining({ id: 'r1', name: 'Alice', email: 'alice@test.com' })],
-      }));
+      }), undefined);
     });
   });
 
@@ -361,7 +361,7 @@ describe('EmailCampaignView', () => {
     await waitFor(() => {
       expect(providerRegistry.sendTestMessage).toHaveBeenCalledWith('email', expect.objectContaining({
         subject: 'Test subject',
-      }));
+      }), undefined);
     });
   });
 });

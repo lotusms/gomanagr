@@ -1,24 +1,26 @@
 /**
- * Send email notifying a team member that their access to GoManagr has been revoked.
- * Uses same SMTP/Resend config as send-invite-email.
+ * Send email notifying a team member that their access has been revoked.
+ * Uses the tenant's Resend/Mailchimp connection (Settings > Integrations). No fallback to .env SMTP/Resend.
+ * POST body: { organizationId, to, memberName?, orgName? }
  */
 
-import nodemailer from 'nodemailer';
+import { sendTenantEmail } from '@/lib/sendTenantEmail';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { to, memberName, orgName } = req.body;
+  const { organizationId, to, memberName, orgName } = req.body;
 
   if (!to || !to.trim()) {
     return res.status(400).json({ error: 'Missing recipient email' });
   }
+  if (!organizationId || !String(organizationId).trim()) {
+    return res.status(400).json({ error: 'Missing organizationId' });
+  }
 
   const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
-  const fromName = process.env.SMTP_FROM_NAME || appName;
-
   const html = `
     <p>${memberName ? `Hi ${memberName},` : 'Hi,'}</p>
     <p>Your access to ${appName}${orgName ? ` for ${orgName}` : ''} has been revoked.</p>
@@ -26,56 +28,18 @@ export default async function handler(req, res) {
     <p>If you believe this was done in error, please contact your organization administrator.</p>
   `;
 
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASSWORD;
-  const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@lotusmarketingsolutions.com';
+  const result = await sendTenantEmail(organizationId, {
+    to: String(to).trim(),
+    subject: `Your access to ${appName} has been revoked`,
+    html,
+  });
 
-  if (smtpHost && smtpUser && smtpPass) {
-    try {
-      const port = parseInt(process.env.SMTP_PORT || '587', 10);
-      const secure = process.env.SMTP_SECURE === 'true';
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port,
-        secure,
-        auth: { user: smtpUser, pass: smtpPass },
-      });
-      const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
-      await transporter.sendMail({
-        from,
-        to: to.trim(),
-        subject: `Your access to ${appName} has been revoked`,
-        html,
-      });
-      return res.status(200).json({ sent: true });
-    } catch (err) {
-      console.error('[send-revoked-access-email] SMTP error:', err);
-      return res.status(500).json({ error: 'Failed to send email', details: err.message });
-    }
+  if (!result.sent) {
+    return res.status(503).json({
+      error: result.error || 'Failed to send email',
+      message: result.error || 'Configure Resend or Mailchimp in Settings > Integrations.',
+      sent: false,
+    });
   }
-
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey) {
-    try {
-      const { Resend } = await import('resend');
-      const resend = new Resend(resendKey);
-      const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-      const { error } = await resend.emails.send({
-        from,
-        to: [to.trim()],
-        subject: `Your access to ${appName} has been revoked`,
-        html,
-      });
-      if (error) {
-        console.error('[send-revoked-access-email] Resend error:', error);
-        return res.status(500).json({ error: 'Failed to send email', details: error.message });
-      }
-      return res.status(200).json({ sent: true });
-    } catch (err) {
-      console.error('[send-revoked-access-email] Resend exception:', err);
-    }
-  }
-
-  return res.status(200).json({ sent: false, message: 'No email provider configured' });
+  return res.status(200).json({ sent: true });
 }

@@ -589,6 +589,7 @@ function TeamContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          organizationId: organization?.id,
           to: email,
           inviteLink: invData.inviteLink,
           memberName: member.name,

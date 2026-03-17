@@ -230,6 +230,7 @@ export default function EditTeamMemberPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          organizationId: organization?.id,
           to: email,
           inviteLink: invData.inviteLink,
           memberName: memberToInvite.name,
@@ -422,6 +423,7 @@ export default function EditTeamMemberPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+              organizationId: organization?.id,
               to: (data.email || '').trim(),
               inviteLink: invData.inviteLink,
               memberName: data.name,

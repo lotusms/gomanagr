@@ -25,8 +25,9 @@ try {
 }
 
 /** Returns true if the revoked-access email was sent, false otherwise. */
-async function sendRevokedEmail(to, memberName, orgName, baseUrl) {
+async function sendRevokedEmail(organizationId, to, memberName, orgName, baseUrl) {
   const body = JSON.stringify({
+    organizationId,
     to: to.trim(),
     memberName: memberName || undefined,
     orgName: orgName || undefined,
@@ -175,7 +176,7 @@ export default async function handler(req, res) {
       const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
       const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
       const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || `${proto}://${host}`).replace(/\/$/, '');
-      const emailSent = await sendRevokedEmail(revokeEmail, memberName, orgName, baseUrl);
+      const emailSent = await sendRevokedEmail(organizationId, revokeEmail, memberName, orgName, baseUrl);
       if (!emailSent) {
         console.warn('[revoke-org-member] Revoked user may not have received email. Configure SMTP_* or RESEND_API_KEY.');
       }

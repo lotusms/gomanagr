@@ -1,13 +1,12 @@
 /**
  * Send a proposal copy by email to the client's email on file.
  * POST body: { userId, organizationId?, proposalId, to }
- * Uses same SMTP/Resend config as send-invite-email.
- * Email body is a rich HTML version of the proposal (company logo, line items, totals).
+ * Uses the tenant's Resend/Mailchimp connection (Settings > Integrations). No fallback to .env SMTP/Resend.
  */
 
-import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
+import { sendTenantEmail } from '@/lib/sendTenantEmail';
 
 let supabaseAdmin;
 try {
@@ -69,8 +68,15 @@ export default async function handler(req, res) {
       if (proposal.organization_id != null || proposal.user_id !== userId) return res.status(403).json({ error: 'Proposal does not belong to you' });
     }
 
+    const orgId = organizationId || proposal.organization_id || null;
+    if (!orgId) {
+      return res.status(503).json({
+        error: 'No organization context',
+        message: 'Proposal email requires an organization. Configure Resend or Mailchimp in Settings > Integrations.',
+      });
+    }
+
     const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
-    const fromName = process.env.SMTP_FROM_NAME || appName;
     const title = (proposal.proposal_title || 'Proposal').trim();
     const number = (proposal.proposal_number || '').trim();
     const subject = number ? `Proposal: ${title} (${number})` : `Proposal: ${title}`;
@@ -185,46 +191,16 @@ export default async function handler(req, res) {
       currency: 'USD',
     });
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASSWORD;
-    const fromEmail = process.env.SMTP_FROM_EMAIL || 'info@lotusmarketingsolutions.com';
-
     const dateSentToday = new Date().toISOString().slice(0, 10);
-
-    if (smtpHost && smtpUser && smtpPass) {
-      const port = parseInt(process.env.SMTP_PORT || '587', 10);
-      const secure = process.env.SMTP_SECURE === 'true';
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port,
-        secure,
-        auth: { user: smtpUser, pass: smtpPass },
+    const result = await sendTenantEmail(orgId, { to: toEmail, subject, html });
+    if (!result.sent) {
+      return res.status(503).json({
+        error: result.error || 'Failed to send email',
+        message: result.error || 'Configure Resend or Mailchimp in Settings > Integrations to send proposal emails.',
       });
-      const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
-      await transporter.sendMail({ from, to: toEmail, subject, html });
-      await supabaseAdmin.from('client_proposals').update({ ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() }).eq('id', proposalId);
-      return res.status(200).json({ sent: true, message: 'Proposal email sent' });
     }
-
-    const resendKey = process.env.RESEND_API_KEY;
-    if (resendKey) {
-      const { Resend } = await import('resend');
-      const resend = new Resend(resendKey);
-      const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-      const { error } = await resend.emails.send({ from, to: [toEmail], subject, html });
-      if (error) {
-        console.error('[send-proposal-email] Resend error:', error);
-        return res.status(500).json({ error: 'Failed to send email', details: error.message });
-      }
-      await supabaseAdmin.from('client_proposals').update({ ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() }).eq('id', proposalId);
-      return res.status(200).json({ sent: true, message: 'Proposal email sent' });
-    }
-
-    return res.status(503).json({
-      error: 'No email provider configured',
-      message: 'Configure SMTP_* or RESEND_API_KEY to send proposal emails.',
-    });
+    await supabaseAdmin.from('client_proposals').update({ ever_sent: true, date_sent: dateSentToday, updated_at: new Date().toISOString() }).eq('id', proposalId);
+    return res.status(200).json({ sent: true, message: 'Proposal email sent' });
   } catch (err) {
     console.error('[send-proposal-email]', err);
     return res.status(500).json({ error: 'Failed to send email', details: err.message });

@@ -1,12 +1,12 @@
 /**
  * Send a receipt (paid-invoice document) by email. POST body: { userId, organizationId?, invoiceId, to }.
- * Uses the same document design as the payment receipt email (renderDocumentToHtml type 'receipt').
+ * Uses the tenant's Resend/Mailchimp connection (Settings > Integrations). No fallback to .env SMTP/Resend.
  */
 
-import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { renderDocumentToHtml } from '@/lib/renderDocumentToHtml';
 import { buildInvoiceDocumentPayload } from '@/lib/buildDocumentPayload';
+import { sendTenantEmail } from '@/lib/sendTenantEmail';
 
 function parseNum(v) {
   if (v == null || v === '') return 0;
@@ -66,6 +66,14 @@ export default async function handler(req, res) {
       if (!membership) return res.status(403).json({ error: 'Not a member of this organization' });
     } else {
       if (invoice.organization_id != null || invoice.user_id !== userId) return res.status(403).json({ error: 'Invoice does not belong to you' });
+    }
+
+    const orgId = organizationId || invoice.organization_id || null;
+    if (!orgId) {
+      return res.status(503).json({
+        error: 'No organization context',
+        message: 'Receipt email requires an organization. Configure Resend or Mailchimp in Settings > Integrations.',
+      });
     }
 
     const appName = process.env.NEXT_PUBLIC_APP_NAME || 'GoManagr';
@@ -153,38 +161,14 @@ export default async function handler(req, res) {
     });
 
     const subject = `Receipt #${invNum}`;
-    const fromName = process.env.SMTP_FROM_NAME || appName;
-    const fromEmail = process.env.SMTP_FROM_EMAIL || '';
-
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASSWORD;
-    if (smtpHost && smtpUser && smtpPass && fromEmail) {
-      const port = parseInt(process.env.SMTP_PORT || '587', 10);
-      const secure = process.env.SMTP_SECURE === 'true';
-      const transporter = nodemailer.createTransport({ host: smtpHost, port, secure, auth: { user: smtpUser, pass: smtpPass } });
-      const from = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
-      await transporter.sendMail({ from, to: toEmail, subject, html: receiptHtml });
-      return res.status(200).json({ sent: true, message: 'Receipt email sent' });
+    const result = await sendTenantEmail(orgId, { to: toEmail, subject, html: receiptHtml });
+    if (!result.sent) {
+      return res.status(503).json({
+        error: result.error || 'Failed to send email',
+        message: result.error || 'Configure Resend or Mailchimp in Settings > Integrations to send receipt emails.',
+      });
     }
-
-    const resendKey = process.env.RESEND_API_KEY;
-    if (resendKey) {
-      const { Resend } = await import('resend');
-      const resend = new Resend(resendKey);
-      const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-      const { error } = await resend.emails.send({ from, to: [toEmail], subject, html: receiptHtml });
-      if (error) {
-        console.error('[send-receipt-email] Resend error:', error);
-        return res.status(500).json({ error: 'Failed to send email', details: error.message });
-      }
-      return res.status(200).json({ sent: true, message: 'Receipt email sent' });
-    }
-
-    return res.status(503).json({
-      error: 'No email provider configured',
-      message: 'Configure SMTP_* or RESEND_API_KEY to send receipt emails.',
-    });
+    return res.status(200).json({ sent: true, message: 'Receipt email sent' });
   } catch (err) {
     console.error('[send-receipt-email]', err);
     return res.status(500).json({ error: 'Failed to send email', details: err.message });

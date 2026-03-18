@@ -50,7 +50,9 @@ describe('InvoicePaymentSummary', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    global.fetch = jest.fn();
+    global.fetch = jest.fn((url) =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+    );
   });
 
   it('renders total, amount paid, balance due, and date paid labels', () => {
@@ -314,9 +316,11 @@ describe('InvoicePaymentSummary', () => {
   });
 
   it('email receipt send API error shows error message', async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      json: () => Promise.resolve({ error: 'SMTP failed' }),
+    global.fetch = jest.fn((url) => {
+      if (url === '/api/send-receipt-email') {
+        return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: 'SMTP failed' }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     render(
       <InvoicePaymentSummary

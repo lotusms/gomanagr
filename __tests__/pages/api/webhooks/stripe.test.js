@@ -220,6 +220,9 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -243,6 +246,9 @@ describe('Stripe webhook handler', () => {
             }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -278,6 +284,9 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -311,6 +320,9 @@ describe('Stripe webhook handler', () => {
             }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -350,6 +362,9 @@ describe('Stripe webhook handler', () => {
             eq: () => Promise.resolve({ error: { message: 'update failed' } }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -445,6 +460,9 @@ describe('Stripe webhook handler', () => {
           select: () => ({ eq: () => ({ in: () => Promise.resolve({ data: [], error: null }) }) }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -499,6 +517,9 @@ describe('Stripe webhook handler', () => {
         return {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -637,6 +658,9 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -734,6 +758,9 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -828,6 +855,9 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -912,6 +942,9 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -984,6 +1017,9 @@ describe('Stripe webhook handler', () => {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }), in: () => Promise.resolve({ data: [], error: null }) }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -1045,6 +1081,9 @@ describe('Stripe webhook handler', () => {
             in: () => Promise.resolve({ data: [], error: null }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1127,6 +1166,9 @@ describe('Stripe webhook handler', () => {
             }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1213,6 +1255,9 @@ describe('Stripe webhook handler', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/webhooks/stripe')).default;
@@ -1236,6 +1281,9 @@ describe('Stripe webhook handler', () => {
             }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });

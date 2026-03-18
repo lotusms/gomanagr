@@ -185,6 +185,23 @@ export default async function handler(req, res) {
       return res.status(500).json({ ok: false, error: 'Failed to update invoice' });
     }
 
+    // Ensure each succeeded payment is in invoice_payments for payment history timeline.
+    for (const pi of succeededPIs) {
+      const paidAt = pi.created ? new Date(pi.created * 1000).toISOString() : new Date().toISOString();
+      await supabaseAdmin
+        .from('invoice_payments')
+        .upsert(
+          {
+            invoice_id: invoiceId,
+            amount_cents: pi.amount ?? 0,
+            currency: (pi.currency || 'usd').toLowerCase(),
+            paid_at: paidAt,
+            stripe_payment_intent_id: pi.id || null,
+          },
+          { onConflict: 'stripe_payment_intent_id', ignoreDuplicates: true }
+        );
+    }
+
     console.log('[sync-invoice-paid] Supabase client_invoices updated (total paid from Stripe):', invoiceId, totalPaid);
 
     const { data: invoiceForEmail } = await supabaseAdmin

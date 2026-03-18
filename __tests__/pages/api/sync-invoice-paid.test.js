@@ -80,6 +80,9 @@ function setupSupabaseForGet(data = invoiceRow) {
         }),
       };
     }
+    if (table === 'invoice_payments') {
+      return { upsert: () => Promise.resolve({ error: null }) };
+    }
     return {};
   });
 }
@@ -118,6 +121,9 @@ function setupSupabaseForPost(data = invoiceRow, orgId = null) {
       return {
         select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { email: 'owner@test.com' }, error: null }) }) }),
       };
+    }
+    if (table === 'invoice_payments') {
+      return { upsert: () => Promise.resolve({ error: null }) };
     }
     return {};
   });
@@ -194,6 +200,9 @@ describe('sync-invoice-paid API', () => {
             eq: () => ({ limit: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'not found' } }) }) }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -288,6 +297,9 @@ describe('sync-invoice-paid API', () => {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/sync-invoice-paid')).default;
@@ -339,6 +351,9 @@ describe('sync-invoice-paid API', () => {
           },
           update: () => ({ eq: () => Promise.resolve({ error: null }) }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -401,6 +416,9 @@ describe('sync-invoice-paid API', () => {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/sync-invoice-paid')).default;
@@ -444,6 +462,9 @@ describe('sync-invoice-paid API', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     const handler = (await import('@/pages/api/sync-invoice-paid')).default;
@@ -468,6 +489,9 @@ describe('sync-invoice-paid API', () => {
         return {
           select: () => chain,
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -560,6 +584,9 @@ describe('sync-invoice-paid API', () => {
           },
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     mockPaymentIntentsList.mockResolvedValue({
@@ -613,6 +640,9 @@ describe('sync-invoice-paid API', () => {
         return {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -674,6 +704,9 @@ describe('sync-invoice-paid API', () => {
           },
           update: () => ({ eq: () => Promise.resolve({ error: { message: 'update failed' } }) }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -786,6 +819,9 @@ describe('sync-invoice-paid API', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
@@ -878,6 +914,9 @@ describe('sync-invoice-paid API', () => {
             }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -987,6 +1026,9 @@ describe('sync-invoice-paid API', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
@@ -1050,6 +1092,9 @@ describe('sync-invoice-paid API', () => {
             in: () => Promise.resolve({ data: [{ email: 'admin@org.com' }], error: null }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1184,6 +1229,9 @@ describe('sync-invoice-paid API', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
@@ -1248,6 +1296,9 @@ describe('sync-invoice-paid API', () => {
         return {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1385,6 +1436,9 @@ describe('sync-invoice-paid API', () => {
           }),
         };
       }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
       return {};
     });
     mockPaymentIntentsList.mockResolvedValue({ data: singleSucceededPI });
@@ -1461,6 +1515,9 @@ describe('sync-invoice-paid API', () => {
             in: () => Promise.resolve({ data: [], error: null }),
           }),
         };
+      }
+      if (table === 'invoice_payments') {
+        return { upsert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });

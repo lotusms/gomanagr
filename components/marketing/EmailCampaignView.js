@@ -47,12 +47,14 @@ export default function EmailCampaignView({ showPageHeader = true, userId = null
   const [campaigns, setCampaigns] = useState(() => getMockCampaignsByChannel('email'));
   const [activeProvider, setActiveProvider] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
+  const [providerChecked, setProviderChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     getActiveProviderForChannel(MARKETING_CHANNELS.EMAIL, userId || undefined).then((res) => {
       if (cancelled) return;
       setActiveProvider(res);
+      setProviderChecked(true);
       if (res?.adapter?.getProviderStatus) {
         res.adapter.getProviderStatus(res.provider).then((s) => {
           if (!cancelled) setProviderStatus(s?.status ?? null);
@@ -163,7 +165,7 @@ export default function EmailCampaignView({ showPageHeader = true, userId = null
         />
       )}
 
-      {!activeProvider && (
+      {providerChecked && !activeProvider && (
         <ProviderWarningBanner
           title="No email provider configured"
           message="Configure an email provider (e.g. Resend or Mailchimp) in Settings > API to send campaigns. Send Now will be disabled until a provider is set up."

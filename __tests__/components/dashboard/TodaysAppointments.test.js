@@ -40,8 +40,13 @@ jest.mock('@/components/clients/clientProfileConstants', () => ({
 }));
 
 describe('TodaysAppointments', () => {
+  const getEffectiveTz = (tz = 'UTC') => {
+    if (tz && tz !== 'UTC') return tz;
+    const localTz = typeof Intl !== 'undefined' && Intl.DateTimeFormat?.().resolvedOptions?.().timeZone;
+    return localTz || 'UTC';
+  };
   const getTodayKey = (tz = 'UTC') =>
-    new Date().toLocaleDateString('en-CA', { timeZone: tz });
+    new Date().toLocaleDateString('en-CA', { timeZone: getEffectiveTz(tz) });
 
   it('renders heading and date label', () => {
     render(
@@ -196,8 +201,8 @@ describe('TodaysAppointments', () => {
   it('filters out appointments not for today', () => {
     const today = new Date();
     const other = new Date(today);
-    other.setDate(today.getDate() - 1);
-    const otherKey = other.toLocaleDateString('en-CA', { timeZone: 'UTC' });
+    other.setDate(today.getDate() - 2);
+    const otherKey = other.toLocaleDateString('en-CA', { timeZone: getEffectiveTz('UTC') });
     render(
       <TodaysAppointments
         appointments={[

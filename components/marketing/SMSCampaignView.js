@@ -48,12 +48,14 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
   const [campaigns, setCampaigns] = useState(() => getMockCampaignsByChannel('sms'));
   const [activeProvider, setActiveProvider] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
+  const [providerChecked, setProviderChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     getActiveProviderForChannel(MARKETING_CHANNELS.SMS, userId || undefined).then((res) => {
       if (cancelled) return;
       setActiveProvider(res);
+      setProviderChecked(true);
       if (res?.adapter?.getProviderStatus) {
         res.adapter.getProviderStatus(res.provider).then((s) => {
           if (!cancelled) setProviderStatus(s?.status ?? null);
@@ -161,7 +163,7 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
         />
       )}
 
-      {!activeProvider && (
+      {providerChecked && !activeProvider && (
         <ProviderWarningBanner
           title="No SMS provider configured"
           message="Configure an SMS provider (e.g. Twilio or Mailchimp) in Settings > API to send campaigns. Send Now will be disabled until a provider is set up."

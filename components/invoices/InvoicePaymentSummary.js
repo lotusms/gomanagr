@@ -60,6 +60,7 @@ export default function InvoicePaymentSummary({
   const [receiptSending, setReceiptSending] = useState(false);
   const [receiptError, setReceiptError] = useState('');
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [paymentHistoryList, setPaymentHistoryList] = useState([]);
 
   const status = (invoice?.status || 'draft').toLowerCase();
   const total = parseNum(invoice?.total ?? invoice?.amount);
@@ -73,23 +74,60 @@ export default function InvoicePaymentSummary({
   const dateSent = invoice?.date_sent || null;
   const createdAt = invoice?.created_at || null;
 
+  // Fetch stored payment timeline when invoice is paid or partially paid.
+  useEffect(() => {
+    if (!invoice?.id || !userId || (status !== 'paid' && status !== 'partially_paid')) {
+      setPaymentHistoryList([]);
+      return;
+    }
+    fetch('/api/get-invoice-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        organizationId: organizationId || undefined,
+        invoiceId: invoice.id,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setPaymentHistoryList(Array.isArray(data?.payments) ? data.payments : []))
+      .catch(() => setPaymentHistoryList([]));
+  }, [invoice?.id, userId, organizationId, status]);
+
   const paymentHistoryEvents = [];
   if (createdAt) {
-    paymentHistoryEvents.push({ key: 'created', label: 'Created', date: createdAt.slice(0, 10), icon: HiDocument });
+    paymentHistoryEvents.push({ key: 'created', label: 'Created', date: createdAt.slice(0, 10), sortOrder: 0, icon: HiDocument });
   }
   if (everSent && dateSent) {
-    paymentHistoryEvents.push({ key: 'sent', label: 'Sent to client', date: dateSent, icon: HiMail });
+    paymentHistoryEvents.push({ key: 'sent', label: 'Sent to client', date: dateSent, sortOrder: 1, icon: HiMail });
   }
-  if (paidDate && (status === 'paid' || status === 'partially_paid')) {
-    paymentHistoryEvents.push({ key: 'paid', label: 'Paid', date: paidDate, icon: HiCheckCircle });
+  if (status === 'paid' || status === 'partially_paid') {
+    if (paymentHistoryList.length > 0) {
+      paymentHistoryList.forEach((p, i) => {
+        const dateStr = p.paid_at ? (p.paid_at.slice && p.paid_at.slice(0, 10)) || p.paid_at : paidDate;
+        const amount = (p.amount_cents ?? 0) / 100;
+        const currency = (p.currency || defaultCurrency || 'USD').toUpperCase();
+        paymentHistoryEvents.push({
+          key: `paid-${p.id || i}`,
+          label: `Paid ${formatCurrency(amount, currency)}`,
+          date: dateStr,
+          sortOrder: 2,
+          icon: HiCheckCircle,
+        });
+      });
+    } else if (paidDate) {
+      paymentHistoryEvents.push({ key: 'paid', label: 'Paid', date: paidDate, sortOrder: 2, icon: HiCheckCircle });
+    }
   }
   if (status === 'void') {
-    paymentHistoryEvents.push({ key: 'void', label: 'Voided', date: null, icon: HiBan });
+    paymentHistoryEvents.push({ key: 'void', label: 'Voided', date: null, sortOrder: 9, icon: HiBan });
   }
   paymentHistoryEvents.sort((a, b) => {
     if (!a.date) return 1;
     if (!b.date) return -1;
-    return a.date.localeCompare(b.date);
+    const d = a.date.localeCompare(b.date);
+    if (d !== 0) return d;
+    return (a.sortOrder ?? 5) - (b.sortOrder ?? 5);
   });
 
   const handleSendSuccess = () => {

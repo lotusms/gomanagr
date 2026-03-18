@@ -70,10 +70,14 @@ export default async function handler(req, res) {
     let invoiceId = null;
     let paymentIntentObject = null;
     let paymentAmountCents = 0;
+    let stripePiIdForPayment = null;
+    let paymentCurrency = 'usd';
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       invoiceId = session.metadata?.invoice_id;
       paymentAmountCents = session.amount_total ?? 0;
+      stripePiIdForPayment = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
+      paymentCurrency = (session.currency || 'usd').toLowerCase();
       if (!invoiceId) {
         console.warn('[webhooks/stripe] checkout.session.completed missing metadata.invoice_id');
         return res.status(200).json({ received: true });
@@ -84,6 +88,8 @@ export default async function handler(req, res) {
     } else if (event.type === 'payment_intent.succeeded') {
       paymentIntentObject = event.data.object;
       paymentAmountCents = paymentIntentObject.amount ?? 0;
+      stripePiIdForPayment = paymentIntentObject.id ?? null;
+      paymentCurrency = (paymentIntentObject.currency || 'usd').toLowerCase();
       invoiceId = paymentIntentObject.metadata?.invoice_id;
       if (!invoiceId && paymentIntentObject.id) {
         const { data: row } = await supabaseAdmin
@@ -152,6 +158,23 @@ export default async function handler(req, res) {
     if (updateError) {
       console.error('[webhooks/stripe] Failed to update Supabase client_invoices:', invoiceId, updateError);
       return res.status(500).json({ error: 'Database update failed' });
+    }
+
+    // Record this payment in invoice_payments for payment history timeline (idempotent by stripe_payment_intent_id).
+    const { error: payInsertError } = await supabaseAdmin
+      .from('invoice_payments')
+      .upsert(
+        {
+          invoice_id: invoiceId,
+          amount_cents: paymentAmountCents,
+          currency: paymentCurrency,
+          paid_at: new Date().toISOString(),
+          stripe_payment_intent_id: stripePiIdForPayment || null,
+        },
+        { onConflict: 'stripe_payment_intent_id', ignoreDuplicates: true }
+      );
+    if (payInsertError && payInsertError.code !== '23505') {
+      console.warn('[webhooks/stripe] invoice_payments insert failed (non-fatal):', payInsertError);
     }
 
     console.log('[webhooks/stripe] Supabase client_invoices updated to paid:', invoiceId);

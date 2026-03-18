@@ -81,7 +81,7 @@ function setupSupabaseForGet(data = invoiceRow) {
       };
     }
     if (table === 'invoice_payments') {
-      return { upsert: () => Promise.resolve({ error: null }) };
+      return { insert: () => Promise.resolve({ error: null }) };
     }
     return {};
   });
@@ -123,7 +123,7 @@ function setupSupabaseForPost(data = invoiceRow, orgId = null) {
       };
     }
     if (table === 'invoice_payments') {
-      return { upsert: () => Promise.resolve({ error: null }) };
+      return { insert: () => Promise.resolve({ error: null }) };
     }
     return {};
   });
@@ -202,7 +202,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -298,7 +298,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -353,7 +353,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -417,7 +417,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -463,7 +463,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -491,7 +491,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -585,7 +585,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -642,7 +642,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -706,7 +706,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -820,7 +820,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -916,7 +916,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1027,7 +1027,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1094,7 +1094,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1230,7 +1230,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1298,7 +1298,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1437,7 +1437,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1517,7 +1517,7 @@ describe('sync-invoice-paid API', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });

@@ -160,19 +160,18 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Database update failed' });
     }
 
-    // Record this payment in invoice_payments for payment history timeline (idempotent by stripe_payment_intent_id).
+    // Record this payment in invoice_payments for payment history timeline.
+    // Use insert (not upsert) because PostgREST doesn't support onConflict with partial unique indexes.
+    // Duplicate PI id is caught by the unique index and ignored (23505).
     const { error: payInsertError } = await supabaseAdmin
       .from('invoice_payments')
-      .upsert(
-        {
-          invoice_id: invoiceId,
-          amount_cents: paymentAmountCents,
-          currency: paymentCurrency,
-          paid_at: new Date().toISOString(),
-          stripe_payment_intent_id: stripePiIdForPayment || null,
-        },
-        { onConflict: 'stripe_payment_intent_id', ignoreDuplicates: true }
-      );
+      .insert({
+        invoice_id: invoiceId,
+        amount_cents: paymentAmountCents,
+        currency: paymentCurrency,
+        paid_at: new Date().toISOString(),
+        stripe_payment_intent_id: stripePiIdForPayment || null,
+      });
     if (payInsertError && payInsertError.code !== '23505') {
       console.warn('[webhooks/stripe] invoice_payments insert failed (non-fatal):', payInsertError);
     }

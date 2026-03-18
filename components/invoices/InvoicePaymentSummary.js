@@ -116,7 +116,9 @@ export default function InvoicePaymentSummary({
         });
       });
     } else if (paidDate) {
-      paymentHistoryEvents.push({ key: 'paid', label: 'Paid', date: paidDate, sortOrder: 2, icon: HiCheckCircle });
+      const currency = (defaultCurrency || 'USD').toUpperCase();
+      const paidLabel = amountPaid > 0 ? `Paid ${formatCurrency(amountPaid, currency)}` : 'Paid';
+      paymentHistoryEvents.push({ key: 'paid', label: paidLabel, date: paidDate, sortOrder: 2, icon: HiCheckCircle });
     }
   }
   if (status === 'void') {

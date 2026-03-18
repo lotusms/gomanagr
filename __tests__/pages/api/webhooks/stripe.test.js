@@ -221,7 +221,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -248,7 +248,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -285,7 +285,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -322,7 +322,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -364,7 +364,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -461,7 +461,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -519,7 +519,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -659,7 +659,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -759,7 +759,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -856,7 +856,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -943,7 +943,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1018,7 +1018,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1083,7 +1083,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1168,7 +1168,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1256,7 +1256,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });
@@ -1283,7 +1283,7 @@ describe('Stripe webhook handler', () => {
         };
       }
       if (table === 'invoice_payments') {
-        return { upsert: () => Promise.resolve({ error: null }) };
+        return { insert: () => Promise.resolve({ error: null }) };
       }
       return {};
     });

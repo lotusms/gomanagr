@@ -186,20 +186,22 @@ export default async function handler(req, res) {
     }
 
     // Ensure each succeeded payment is in invoice_payments for payment history timeline.
+    // Use insert (not upsert) because PostgREST doesn't support onConflict with partial unique indexes.
+    // Duplicate PI id is caught by the unique index and ignored (23505).
     for (const pi of succeededPIs) {
       const paidAt = pi.created ? new Date(pi.created * 1000).toISOString() : new Date().toISOString();
-      await supabaseAdmin
+      const { error: payErr } = await supabaseAdmin
         .from('invoice_payments')
-        .upsert(
-          {
-            invoice_id: invoiceId,
-            amount_cents: pi.amount ?? 0,
-            currency: (pi.currency || 'usd').toLowerCase(),
-            paid_at: paidAt,
-            stripe_payment_intent_id: pi.id || null,
-          },
-          { onConflict: 'stripe_payment_intent_id', ignoreDuplicates: true }
-        );
+        .insert({
+          invoice_id: invoiceId,
+          amount_cents: pi.amount ?? 0,
+          currency: (pi.currency || 'usd').toLowerCase(),
+          paid_at: paidAt,
+          stripe_payment_intent_id: pi.id || null,
+        });
+      if (payErr && payErr.code !== '23505') {
+        console.warn('[sync-invoice-paid] invoice_payments insert failed (non-fatal):', payErr);
+      }
     }
 
     console.log('[sync-invoice-paid] Supabase client_invoices updated (total paid from Stripe):', invoiceId, totalPaid);

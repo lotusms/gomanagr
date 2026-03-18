@@ -1,14 +1,28 @@
 /**
- * Unit tests for SMSCampaignView: mount with mocked provider and mock data.
+ * Unit tests for SMSCampaignView: mount with mocked provider and real data fetching.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SMSCampaignView from '@/components/marketing/SMSCampaignView';
 import * as providerRegistry from '@/lib/marketing/providerRegistry';
-import * as marketingMockData from '@/lib/marketingMockData';
+
+import * as orgService from '@/services/organizationService';
+import * as userService from '@/services/userService';
 
 jest.mock('@/lib/marketing/providerRegistry');
-jest.mock('@/lib/marketingMockData');
+
+jest.mock('@/services/organizationService');
+jest.mock('@/services/userService');
+jest.mock('@/lib/UserAccountContext', () => ({
+  useUserAccount: () => ({ account: { industry: null } }),
+}));
+jest.mock('@/components/clients/clientProfileConstants', () => ({
+  getTermForIndustry: (_industry, concept) => {
+    if (concept === 'client') return 'Clients';
+    if (concept === 'teamMember') return 'Team Members';
+    return concept;
+  },
+}));
 jest.mock('@/components/ui', () => ({
   PageHeader: ({ title, description, actions }) => (
     <div data-testid="page-header">
@@ -69,12 +83,11 @@ function setupMocks(overrides = {}) {
   providerRegistry.sendTestMessage.mockImplementation(() =>
     Promise.resolve(overrides.testMessageResult ?? { success: true })
   );
-  marketingMockData.getMockRecipientsByGroup.mockImplementation(() =>
-    overrides.recipients ?? []
-  );
-  marketingMockData.getMockCampaignsByChannel.mockImplementation(() =>
-    overrides.campaigns ?? []
-  );
+  orgService.getUserOrganization.mockResolvedValue(overrides.organization ?? null);
+  userService.getUserAccount.mockResolvedValue({
+    clients: overrides.recipients ?? [],
+    team_members: overrides.teamMembers ?? [],
+  });
 }
 
 describe('SMSCampaignView', () => {
@@ -124,12 +137,14 @@ describe('SMSCampaignView', () => {
 
   it('shows Compose form and recipient summary', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<SMSCampaignView showPageHeader={false} />);
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     expect(screen.getByText('Compose')).toBeInTheDocument();
     expect(screen.getByLabelText(/Campaign name/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Type your SMS message/i)).toBeInTheDocument();
     expect(screen.getByText('Recipient summary')).toBeInTheDocument();
-    expect(screen.getByText('Total recipients')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Total recipients')).toBeInTheDocument();
+    });
   });
 
   it('shows empty recipient copy when no recipients', async () => {
@@ -140,8 +155,10 @@ describe('SMSCampaignView', () => {
 
   it('shows recipient summary when recipients exist', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<SMSCampaignView showPageHeader={false} />);
-    expect(screen.getByText('Total recipients')).toBeInTheDocument();
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
+    await waitFor(() => {
+      expect(screen.getByText('Total recipients')).toBeInTheDocument();
+    });
     expect(screen.getByText('Audience type')).toBeInTheDocument();
     const recipientCountSpans = screen.getAllByText('2');
     expect(recipientCountSpans.length).toBeGreaterThanOrEqual(1);
@@ -149,7 +166,7 @@ describe('SMSCampaignView', () => {
 
   it('Save Campaign adds a draft campaign', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<SMSCampaignView showPageHeader={false} />);
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
@@ -165,7 +182,7 @@ describe('SMSCampaignView', () => {
 
   it('Save Campaign uses "Untitled SMS campaign" when name empty but body set', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<SMSCampaignView showPageHeader={false} />);
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
@@ -181,7 +198,7 @@ describe('SMSCampaignView', () => {
       recipients: mockRecipients,
       provider: { provider: { providerType: 'twilio' }, adapter: {} },
     });
-    render(<SMSCampaignView showPageHeader={false} />);
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByTestId('provider-info-card')).toBeInTheDocument();
     });
@@ -198,7 +215,7 @@ describe('SMSCampaignView', () => {
           expect.objectContaining({ id: 'r1', phone: '+15551111111', name: 'Alice' }),
           expect.objectContaining({ id: 'r2', phone: '+15552222222', name: 'Bob' }),
         ]),
-      }), undefined);
+      }), 'test-uid');
     });
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('sent');
@@ -213,7 +230,7 @@ describe('SMSCampaignView', () => {
       provider: { provider: { providerType: 'twilio' }, adapter: {} },
       sendResult: { success: false, error: 'Provider error' },
     });
-    render(<SMSCampaignView showPageHeader={false} />);
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByTestId('provider-info-card')).toBeInTheDocument();
     });
@@ -255,17 +272,17 @@ describe('SMSCampaignView', () => {
 
   it('shows segment estimate when message exceeds 160 characters', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<SMSCampaignView showPageHeader={false} />);
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     const longMessage = 'x'.repeat(200);
     fireEvent.change(screen.getByPlaceholderText(/Type your SMS message/i), { target: { value: longMessage } });
     expect(screen.getByText(/segment\(s\)/)).toBeInTheDocument();
   });
 
   it('recipient summary shows Team Members when recipient group is team', async () => {
-    setupMocks({ recipients: mockRecipients });
-    render(<SMSCampaignView showPageHeader={false} />);
+    setupMocks({ recipients: mockRecipients, teamMembers: mockRecipients });
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Set Team/i })).toBeInTheDocument();
+      expect(screen.getByText('Clients')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /Set Team/i }));
     await waitFor(() => {
@@ -278,9 +295,9 @@ describe('SMSCampaignView', () => {
       recipients: mockRecipients,
       provider: { provider: { providerType: 'twilio' }, adapter: {} },
     });
-    render(<SMSCampaignView showPageHeader={false} />);
+    render(<SMSCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Set Selected/i })).toBeInTheDocument();
+      expect(screen.getByText('Total recipients')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /Set Selected/i }));
     fireEvent.click(screen.getByRole('button', { name: /Select r1/i }));
@@ -289,7 +306,7 @@ describe('SMSCampaignView', () => {
     await waitFor(() => {
       expect(providerRegistry.sendCampaign).toHaveBeenCalledWith('sms', expect.objectContaining({
         recipients: [expect.objectContaining({ id: 'r1', name: 'Alice', phone: '+15551111111' })],
-      }), undefined);
+      }), 'test-uid');
     });
   });
 

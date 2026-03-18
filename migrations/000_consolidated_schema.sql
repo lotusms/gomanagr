@@ -691,6 +691,41 @@ CREATE POLICY "Users can delete own or org client invoices" ON public.client_inv
   );
 
 -- ---------------------------------------------------------------------------
+-- invoice_payments: one row per payment applied to an invoice; used for payment history timeline
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.invoice_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID NOT NULL REFERENCES public.client_invoices(id) ON DELETE CASCADE,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'usd',
+  paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  stripe_payment_intent_id TEXT DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_payments_stripe_pi
+  ON public.invoice_payments(stripe_payment_intent_id) WHERE stripe_payment_intent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_invoice_id ON public.invoice_payments(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_paid_at ON public.invoice_payments(paid_at);
+
+ALTER TABLE public.invoice_payments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view invoice_payments for own or org invoices" ON public.invoice_payments FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.client_invoices inv
+      WHERE inv.id = invoice_payments.invoice_id
+      AND (
+        (inv.organization_id IS NULL AND inv.user_id = auth.uid())
+        OR (inv.organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid()))
+      )
+    )
+  );
+CREATE POLICY "No user insert on invoice_payments" ON public.invoice_payments FOR INSERT WITH CHECK (false);
+CREATE POLICY "No user update on invoice_payments" ON public.invoice_payments FOR UPDATE USING (false);
+CREATE POLICY "No user delete on invoice_payments" ON public.invoice_payments FOR DELETE USING (false);
+
+-- ---------------------------------------------------------------------------
 -- client_projects (final: scope_summary, status draft|active|inactive|on_hold|completed|abandoned, project_number, project_owner, related_proposal_id, related_contract_id, related_project_id, notes, file_urls)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.client_projects (
@@ -1063,3 +1098,58 @@ CREATE INDEX IF NOT EXISTS idx_organization_integrations_provider ON public.orga
 COMMENT ON TABLE public.organization_integrations IS 'Per-org third-party integration credentials (encrypted). Provider: stripe, twilio, mailchimp, resend. Access via service role; RBAC in API.';
 COMMENT ON COLUMN public.organization_integrations.config_encrypted IS 'AES-256-GCM encrypted JSON of provider-specific credentials. Decrypted server-side only.';
 COMMENT ON COLUMN public.organization_integrations.metadata_json IS 'Non-secret display info: account label, masked key suffix, sender email/phone, etc.';
+
+-- ========================
+-- Marketing Campaigns
+-- ========================
+
+CREATE TABLE IF NOT EXISTS public.marketing_campaigns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL,
+  channel TEXT NOT NULL DEFAULT 'email',
+  name TEXT NOT NULL DEFAULT '',
+  subject TEXT DEFAULT '',
+  body TEXT DEFAULT '',
+  recipient_group TEXT NOT NULL DEFAULT 'clients',
+  audience_mode TEXT NOT NULL DEFAULT 'all',
+  selected_recipient_ids JSONB DEFAULT '[]'::jsonb,
+  status TEXT NOT NULL DEFAULT 'draft',
+  audience_size INTEGER DEFAULT 0,
+  sent_at TIMESTAMPTZ,
+  error_message TEXT,
+  template_type TEXT DEFAULT NULL,
+  mailchimp_template_id INTEGER DEFAULT NULL,
+  mailchimp_template_name TEXT DEFAULT NULL,
+  custom_html TEXT DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_user_id ON public.marketing_campaigns(user_id);
+CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_org_id ON public.marketing_campaigns(organization_id);
+CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_channel ON public.marketing_campaigns(channel);
+CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_status ON public.marketing_campaigns(status);
+
+COMMENT ON COLUMN public.marketing_campaigns.template_type IS 'NULL = plain text body, ''mailchimp'' = Mailchimp template, ''custom_html'' = custom HTML managed by GoManagr';
+COMMENT ON COLUMN public.marketing_campaigns.mailchimp_template_id IS 'Mailchimp template ID when template_type = ''mailchimp''';
+
+ALTER TABLE public.marketing_campaigns ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own or org campaigns" ON public.marketing_campaigns FOR SELECT
+  USING (
+    user_id = auth.uid()::text
+    OR (
+      organization_id IS NOT NULL
+      AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+    )
+  );
+
+CREATE POLICY "Users can insert own campaigns" ON public.marketing_campaigns FOR INSERT
+  WITH CHECK (user_id = auth.uid()::text);
+
+CREATE POLICY "Users can update own campaigns" ON public.marketing_campaigns FOR UPDATE
+  USING (user_id = auth.uid()::text);
+
+CREATE POLICY "Users can delete own campaigns" ON public.marketing_campaigns FOR DELETE
+  USING (user_id = auth.uid()::text);

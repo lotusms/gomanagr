@@ -440,6 +440,26 @@ export default function IntegrationsSettings() {
               }
             >
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{provider.description}</p>
+              {provider.id === 'mailchimp' && (() => {
+                const prefix = (formValues.mailchimp?.serverPrefix || '').trim()
+                  || (saved?.metadata_json?.serverPrefix || saved?.metadata?.serverPrefix || '').toString().trim()
+                  || '';
+                return (
+                  <div className="mb-4 rounded-lg border border-primary-200 dark:border-primary-800/50 bg-primary-50/50 dark:bg-primary-900/10 p-3">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      After connecting Mailchimp, create email templates in your Mailchimp account to use them in GoManagr campaigns.{' '}
+                      <a
+                        href={`https://${prefix || 'us21'}.admin.mailchimp.com/templates/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-600 dark:text-primary-400 underline font-medium hover:text-primary-700 dark:hover:text-primary-300"
+                      >
+                        Open Mailchimp Templates
+                      </a>
+                    </p>
+                  </div>
+                );
+              })()}
               {saved?.status === 'connected' && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                   Credentials are stored securely. Enter new values only to update.

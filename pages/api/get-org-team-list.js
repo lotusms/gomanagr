@@ -108,12 +108,14 @@ export default async function handler(req, res) {
 
     // Build list from org_members (use profile when present, else Unknown)
     const seenIds = new Set();
+    const seenEmails = new Set();
     const teamMembers = userIds.map((uid) => {
       seenIds.add(uid);
       const p = profileById.get(uid);
       const photoUrl = photoByUserId.get(uid) || '';
       if (p) {
         const name = [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '';
+        if (p.email) seenEmails.add(p.email.toLowerCase());
         return {
           id: uid,
           user_id: uid,
@@ -133,11 +135,15 @@ export default async function handler(req, res) {
       };
     });
 
-    // Append owner's team_members not already in org_members
+    // Append owner's team_members not already in org_members (skip deactivated and duplicates)
     for (const m of ownerTeam) {
+      if ((m?.status || 'active') === 'inactive') continue;
       const uid = m?.userId ?? m?.id;
       if (!uid || seenIds.has(uid)) continue;
+      const email = (m.email || '').trim().toLowerCase();
+      if (email && seenEmails.has(email)) continue;
       seenIds.add(uid);
+      if (email) seenEmails.add(email);
       const name = [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || (m.name || '').trim() || m.email || '';
       const photoUrl = (m.pictureUrl || m.photoUrl || '').trim();
       teamMembers.push({

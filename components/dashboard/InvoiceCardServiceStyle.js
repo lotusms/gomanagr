@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { HiCurrencyDollar, HiTrash, HiEye, HiPrinter, HiMail, HiRefresh, HiBan, HiDotsVertical } from 'react-icons/hi';
+import { HiCurrencyDollar, HiEye, HiPrinter, HiMail, HiRefresh, HiBan, HiDotsVertical } from 'react-icons/hi';
 import { formatDateFromISO } from '@/utils/dateTimeFormatters';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { useOptionalUserAccount } from '@/lib/UserAccountContext';
@@ -9,6 +9,7 @@ import { buildInvoiceDocumentPayload, buildCompanyForDocument } from '@/lib/buil
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 import SendInvoiceDialog from '@/components/invoices/SendInvoiceDialog';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
+import EntityCard from '@/components/ui/EntityCard';
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -90,7 +91,6 @@ export default function InvoiceCardServiceStyle({
   const canSend = invoice.status !== 'void' && invoice.status !== 'paid';
   const canVoid = invoice.status !== 'void';
 
-  // Header color by status: paid=green, overdue=red, partially_paid=amber, draft=slate, sent=primary, void=gray
   const statusForHeader = (invoice.status || 'draft').toLowerCase();
   const headerGradient =
     statusForHeader === 'paid'
@@ -104,8 +104,6 @@ export default function InvoiceCardServiceStyle({
             : statusForHeader === 'void'
               ? 'bg-gradient-to-br from-gray-500 via-gray-600 to-gray-700'
               : 'bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700';
-
-  const openEdit = () => onSelect(invoice.id);
 
   const handleSendSuccess = () => {
     setSendDialogOpen(false);
@@ -138,141 +136,103 @@ export default function InvoiceCardServiceStyle({
     }
   };
 
-  return (
-    <div className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg hover:border-primary-200 dark:hover:border-primary-600 transition-all duration-300 flex flex-col">
-      {/* Header with gradient by status: paid=green, overdue=red, partially_paid=amber, draft=slate, sent=primary */}
-      <div className={`relative ${headerGradient} px-5 py-4`}>
-        <div className="flex items-center justify-between gap-2">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={openEdit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                openEdit();
-              }
-            }}
-            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-          >
-            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <HiCurrencyDollar className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold text-white truncate">
-                {invoice.invoice_title || untitledInvoiceLabel}
-              </h3>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+  const menuButton = (
+    <div className="relative">
+      <button
+        ref={menuButtonRef}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          const rect = menuButtonRef.current?.getBoundingClientRect();
+          if (rect) setMenuAnchorRect(rect);
+          setMenuOpen((o) => !o);
+        }}
+        className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+        title="More actions"
+        aria-expanded={menuOpen}
+        aria-haspopup="true"
+      >
+        <HiDotsVertical className="size-5" />
+      </button>
+      {menuOpen && menuAnchorRect && createPortal(
+        <div
+          ref={menuContentRef}
+          role="menu"
+          className="fixed z-50 min-w-[10rem] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 py-1 shadow-lg"
+          style={{
+            top: menuAnchorRect.bottom + 4,
+            right: typeof window !== 'undefined' ? window.innerWidth - menuAnchorRect.right : 0,
+          }}
+        >
+          {canSend && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setSendDialogReminder(false); setSendDialogOpen(true); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <HiMail className="w-4 h-4 flex-shrink-0" />
+                {everSent ? `Resend ${invoiceTermSingularLower}` : `Send ${invoiceTermSingularLower}`}
+              </button>
+              {everSent && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setSendDialogReminder(true); setSendDialogOpen(true); }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <HiRefresh className="w-4 h-4 flex-shrink-0" />
+                  Send reminder
+                </button>
+              )}
+            </>
+          )}
+          {canVoid && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onDelete(invoice.id); }}
-              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-              title={`Delete ${invoiceTermSingularLower}`}
+              role="menuitem"
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setVoidDialogOpen(true); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              <HiTrash className="size-5" />
+              <HiBan className="w-4 h-4 flex-shrink-0" />
+              Void / Refund
             </button>
-            <div className="relative">
-              <button
-                ref={menuButtonRef}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const rect = menuButtonRef.current?.getBoundingClientRect();
-                  if (rect) setMenuAnchorRect(rect);
-                  setMenuOpen((o) => !o);
-                }}
-                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-                title="More actions"
-                aria-expanded={menuOpen}
-                aria-haspopup="true"
-              >
-                <HiDotsVertical className="size-5" />
-              </button>
-              {menuOpen && menuAnchorRect && createPortal(
-                <div
-                  ref={menuContentRef}
-                  role="menu"
-                  className="fixed z-50 min-w-[10rem] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 py-1 shadow-lg"
-                  style={{
-                    top: menuAnchorRect.bottom + 4,
-                    right: typeof window !== 'undefined' ? window.innerWidth - menuAnchorRect.right : 0,
-                  }}
-                >
-                  {canSend && (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setSendDialogReminder(false); setSendDialogOpen(true); }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <HiMail className="w-4 h-4 flex-shrink-0" />
-                        {everSent ? `Resend ${invoiceTermSingularLower}` : `Send ${invoiceTermSingularLower}`}
-                      </button>
-                      {everSent && (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setSendDialogReminder(true); setSendDialogOpen(true); }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          <HiRefresh className="w-4 h-4 flex-shrink-0" />
-                          Send reminder
-                        </button>
-                      )}
-                    </>
-                  )}
-                  {canVoid && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setVoidDialogOpen(true); }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <HiBan className="w-4 h-4 flex-shrink-0" />
-                      Void / Refund
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setViewState({ open: true, autoPrint: false }); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <HiEye className="w-4 h-4 flex-shrink-0" />
-                    View {invoiceTermSingularLower}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setViewState({ open: true, autoPrint: true }); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    <HiPrinter className="w-4 h-4 flex-shrink-0" />
-                    Print {invoiceTermSingularLower}
-                  </button>
-                </div>,
-                document.body
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setViewState({ open: true, autoPrint: false }); }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <HiEye className="w-4 h-4 flex-shrink-0" />
+            View {invoiceTermSingularLower}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setViewState({ open: true, autoPrint: true }); }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <HiPrinter className="w-4 h-4 flex-shrink-0" />
+            Print {invoiceTermSingularLower}
+          </button>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
 
-      {/* Content area - click opens edit */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={openEdit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            openEdit();
-          }
-        }}
-        className="p-5 flex-1 flex flex-col cursor-pointer"
+  return (
+    <>
+      <EntityCard
+        icon={HiCurrencyDollar}
+        title={invoice.invoice_title || untitledInvoiceLabel}
+        headerGradient={headerGradient}
+        onSelect={() => onSelect(invoice.id)}
+        onDelete={() => onDelete(invoice.id)}
+        deleteTitle={`Delete ${invoiceTermSingularLower}`}
+        headerActions={menuButton}
       >
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">
           {clientName && (
@@ -316,7 +276,7 @@ export default function InvoiceCardServiceStyle({
             <p className="text-gray-400 dark:text-gray-500 italic">No amount</p>
           )}
         </div>
-      </div>
+      </EntityCard>
       <SendInvoiceDialog
         isOpen={sendDialogOpen}
         onClose={() => { setSendDialogOpen(false); setSendDialogReminder(false); }}
@@ -355,6 +315,6 @@ export default function InvoiceCardServiceStyle({
           lineItemsSectionLabel={lineItemsSectionLabel}
         />
       )}
-    </div>
+    </>
   );
 }

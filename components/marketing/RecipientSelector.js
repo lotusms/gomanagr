@@ -1,35 +1,16 @@
 'use client';
 
+import { useMemo } from 'react';
 import Dropdown from '@/components/ui/Dropdown';
 import SearchableMultiselect from '@/components/ui/SearchableMultiselect';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
 import { RECIPIENT_GROUPS, AUDIENCE_MODES } from '@/lib/marketingTypes';
-
-const RECIPIENT_GROUP_OPTIONS = [
-  { value: RECIPIENT_GROUPS.CLIENTS, label: 'Clients' },
-  { value: RECIPIENT_GROUPS.TEAM, label: 'Team Members' },
-];
 
 const AUDIENCE_OPTIONS = [
   { value: AUDIENCE_MODES.ALL, label: 'All' },
   { value: AUDIENCE_MODES.SELECTED, label: 'Selected' },
 ];
 
-/**
- * Recipient type + audience mode + optional searchable multi-select for "Selected".
- * @param {{
- *   recipientGroup: string,
- *   onRecipientGroupChange: (v: string) => void,
- *   audienceMode: string,
- *   onAudienceModeChange: (v: string) => void,
- *   recipientOptions: Array<{ value: string, label: string }>,
- *   selectedIds: string[],
- *   onSelectedIdsChange: (ids: string[]) => void,
- *   disabled?: boolean,
- *   recipientGroupLabel?: string,
- *   audienceLabel?: string,
- * }} props
- */
 export default function RecipientSelector({
   recipientGroup,
   onRecipientGroupChange,
@@ -41,12 +22,23 @@ export default function RecipientSelector({
   disabled = false,
   recipientGroupLabel = 'Recipient type',
   audienceLabel = 'Audience',
+  clientLabel = 'Clients',
+  teamMemberLabel = 'Team Members',
 }) {
   const showSelectedList = audienceMode === AUDIENCE_MODES.SELECTED;
   const allCount = recipientOptions.length;
   const selectedCount = selectedIds.length;
 
   const labelClass = getLabelClasses('light');
+
+  const recipientGroupOptions = useMemo(() => [
+    { value: RECIPIENT_GROUPS.CLIENTS, label: clientLabel },
+    { value: RECIPIENT_GROUPS.TEAM, label: teamMemberLabel },
+  ], [clientLabel, teamMemberLabel]);
+
+  const activeGroupLabel = recipientGroup === RECIPIENT_GROUPS.CLIENTS
+    ? clientLabel.toLowerCase()
+    : teamMemberLabel.toLowerCase();
 
   return (
     <div className="space-y-4">
@@ -56,7 +48,7 @@ export default function RecipientSelector({
           label={recipientGroupLabel}
           value={recipientGroup}
           onChange={(e) => onRecipientGroupChange(e.target.value)}
-          options={RECIPIENT_GROUP_OPTIONS}
+          options={recipientGroupOptions}
           placeholder="Select..."
           disabled={disabled}
           searchable={false}
@@ -88,7 +80,7 @@ export default function RecipientSelector({
             options={recipientOptions}
             value={selectedIds}
             onChange={onSelectedIdsChange}
-            placeholder={`Search ${recipientGroup === RECIPIENT_GROUPS.CLIENTS ? 'clients' : 'team members'}...`}
+            placeholder={`Search ${activeGroupLabel}...`}
             disabled={disabled}
           />
           {selectedCount === 0 && (
@@ -101,7 +93,7 @@ export default function RecipientSelector({
 
       {audienceMode === AUDIENCE_MODES.ALL && allCount > 0 && (
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          All {allCount} {recipientGroup === RECIPIENT_GROUPS.CLIENTS ? 'clients' : 'team members'} will receive this campaign.
+          All {allCount} {activeGroupLabel} will receive this campaign.
         </p>
       )}
     </div>

@@ -8,7 +8,7 @@ import CampaignHistoryTable from './CampaignHistoryTable';
 import ProviderWarningBanner from './ProviderWarningBanner';
 import ProviderInfoCard from './ProviderInfoCard';
 import { RECIPIENT_GROUPS, AUDIENCE_MODES, SMS_SEGMENT_LENGTH } from '@/lib/marketingTypes';
-import { getMockRecipientsByGroup, getMockCampaignsByChannel } from '@/lib/marketingMockData';
+
 import { getActiveProviderForChannel, getProviderCapabilities, sendCampaign as registrySendCampaign, sendTestMessage } from '@/lib/marketing/providerRegistry';
 import { MARKETING_CHANNELS } from '@/lib/marketing/types';
 import { HiPlus } from 'react-icons/hi';
@@ -16,6 +16,10 @@ import InputField from '@/components/ui/InputField';
 import TextareaInput from '@/components/ui/TextareaInput';
 import Dropdown from '@/components/ui/Dropdown';
 import { getLabelClasses } from '@/components/ui/formControlStyles';
+import { useUserAccount } from '@/lib/UserAccountContext';
+import { getUserOrganization } from '@/services/organizationService';
+import { getUserAccount } from '@/services/userService';
+import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 
 const VARIABLE_OPTIONS = [
   { value: 'first_name', label: 'First name' },
@@ -27,16 +31,15 @@ function getRecipientCount(recipientGroup, audienceMode, selectedIds, options) {
   return selectedIds.length;
 }
 
-/** Build campaign recipients for sending (id, phone, name). */
-function buildSmsRecipients(recipientGroup, audienceMode, selectedIds) {
-  const list = getMockRecipientsByGroup(recipientGroup);
+function buildSmsRecipients(recipientsList, audienceMode, selectedIds) {
   const subset = audienceMode === AUDIENCE_MODES.SELECTED && selectedIds.length
-    ? list.filter((r) => selectedIds.includes(r.id))
-    : list;
+    ? recipientsList.filter((r) => selectedIds.includes(r.id))
+    : recipientsList;
   return subset.map((r) => ({ id: r.id, phone: r.phone || r.email, name: r.name }));
 }
 
 export default function SMSCampaignView({ showPageHeader = true, userId = null }) {
+  const { account } = useUserAccount();
   const [campaignName, setCampaignName] = useState('');
   const [recipientGroup, setRecipientGroup] = useState(RECIPIENT_GROUPS.CLIENTS);
   const [audienceMode, setAudienceMode] = useState(AUDIENCE_MODES.ALL);
@@ -45,10 +48,106 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
   const [variableSelectValue, setVariableSelectValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [testSending, setTestSending] = useState(false);
-  const [campaigns, setCampaigns] = useState(() => getMockCampaignsByChannel('sms'));
+  const [campaigns, setCampaigns] = useState([]);
   const [activeProvider, setActiveProvider] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
   const [providerChecked, setProviderChecked] = useState(false);
+  const [organization, setOrganization] = useState(undefined);
+  const [recipientsList, setRecipientsList] = useState([]);
+
+  const industry = organization?.industry ?? account?.industry ?? null;
+  const clientLabel = getTermForIndustry(industry, 'client');
+  const teamMemberLabel = getTermForIndustry(industry, 'teamMember');
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    getUserOrganization(userId)
+      .then((org) => { if (!cancelled) setOrganization(org || null); })
+      .catch(() => { if (!cancelled) setOrganization(null); });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || organization === undefined) return;
+    let cancelled = false;
+    setRecipientsList([]);
+
+    if (recipientGroup === RECIPIENT_GROUPS.CLIENTS) {
+      if (organization?.id) {
+        fetch('/api/get-org-clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (cancelled) return;
+            setRecipientsList(
+              (data?.clients || []).map((c) => ({
+                id: c.id,
+                name: c.name || [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email || c.id,
+                email: c.email || '',
+                phone: c.phone || '',
+              }))
+            );
+          })
+          .catch(() => { if (!cancelled) setRecipientsList([]); });
+      } else {
+        getUserAccount(userId)
+          .then((acct) => {
+            if (cancelled) return;
+            const clients = Array.isArray(acct?.clients) ? acct.clients : [];
+            setRecipientsList(
+              clients.map((c) => ({
+                id: c.id,
+                name: c.name || [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email || c.id,
+                email: c.email || '',
+                phone: c.phone || '',
+              }))
+            );
+          })
+          .catch(() => { if (!cancelled) setRecipientsList([]); });
+      }
+    } else {
+      if (organization?.id) {
+        fetch('/api/get-org-team-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ organizationId: organization.id, callerUserId: userId }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (cancelled) return;
+            setRecipientsList(
+              (data?.teamMembers || []).map((m) => ({
+                id: m.id || m.user_id,
+                name: m.name || m.displayName || m.email || m.id,
+                email: m.email || '',
+                phone: '',
+              }))
+            );
+          })
+          .catch(() => { if (!cancelled) setRecipientsList([]); });
+      } else {
+        getUserAccount(userId)
+          .then((acct) => {
+            if (cancelled) return;
+            const members = Array.isArray(acct?.team_members) ? acct.team_members : [];
+            setRecipientsList(
+              members.map((m) => ({
+                id: m.userId || m.id,
+                name: m.name || [m.firstName, m.lastName].filter(Boolean).join(' ') || m.email || m.id,
+                email: m.email || '',
+                phone: '',
+              }))
+            );
+          })
+          .catch(() => { if (!cancelled) setRecipientsList([]); });
+      }
+    }
+    return () => { cancelled = true; };
+  }, [userId, organization, recipientGroup]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,9 +165,8 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
   }, [userId]);
 
   const recipientOptions = useMemo(() => {
-    const list = getMockRecipientsByGroup(recipientGroup);
-    return list.map((r) => ({ value: r.id, label: r.name || r.email || r.phone || r.id }));
-  }, [recipientGroup]);
+    return recipientsList.map((r) => ({ value: r.id, label: r.name || r.email || r.phone || r.id }));
+  }, [recipientsList]);
 
   const recipientCount = getRecipientCount(recipientGroup, audienceMode, selectedIds, recipientOptions);
   const charCount = messageBody.length;
@@ -105,7 +203,7 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
   const handleSendNow = useCallback(async () => {
     if (!canSend) return;
     setSaving(true);
-    const recipients = buildSmsRecipients(recipientGroup, audienceMode, selectedIds);
+    const recipients = buildSmsRecipients(recipientsList, audienceMode, selectedIds);
     const result = await registrySendCampaign(MARKETING_CHANNELS.SMS, {
       body: messageBody,
       recipients,
@@ -133,7 +231,7 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
       setSelectedIds([]);
     }
     setSaving(false);
-  }, [canSend, campaignName, messageBody, recipientGroup, audienceMode, selectedIds, recipientCount, userId]);
+  }, [canSend, campaignName, messageBody, recipientsList, audienceMode, selectedIds, recipientCount, userId]);
 
   const handleSendTestSms = useCallback(async () => {
     if (!activeProvider || !messageBody.trim()) return;
@@ -203,6 +301,8 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
                 recipientOptions={recipientOptions}
                 selectedIds={selectedIds}
                 onSelectedIdsChange={setSelectedIds}
+                clientLabel={clientLabel}
+                teamMemberLabel={teamMemberLabel}
               />
 
               <div>
@@ -297,7 +397,7 @@ export default function SMSCampaignView({ showPageHeader = true, userId = null }
               <ul className="space-y-3 text-sm">
                 <li className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
                   <span className="text-gray-500 dark:text-gray-400">Audience type</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{recipientGroup === RECIPIENT_GROUPS.CLIENTS ? 'Clients' : 'Team Members'}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{recipientGroup === RECIPIENT_GROUPS.CLIENTS ? clientLabel : teamMemberLabel}</span>
                 </li>
                 <li className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
                   <span className="text-gray-500 dark:text-gray-400">Total recipients</span>

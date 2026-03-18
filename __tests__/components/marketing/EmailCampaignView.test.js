@@ -1,14 +1,28 @@
 /**
- * Unit tests for EmailCampaignView: mount with mocked provider and mock data.
+ * Unit tests for EmailCampaignView: mount with mocked provider and real data fetching.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import EmailCampaignView from '@/components/marketing/EmailCampaignView';
 import * as providerRegistry from '@/lib/marketing/providerRegistry';
-import * as marketingMockData from '@/lib/marketingMockData';
+
+import * as orgService from '@/services/organizationService';
+import * as userService from '@/services/userService';
 
 jest.mock('@/lib/marketing/providerRegistry');
-jest.mock('@/lib/marketingMockData');
+
+jest.mock('@/services/organizationService');
+jest.mock('@/services/userService');
+jest.mock('@/lib/UserAccountContext', () => ({
+  useUserAccount: () => ({ account: { industry: null } }),
+}));
+jest.mock('@/components/clients/clientProfileConstants', () => ({
+  getTermForIndustry: (_industry, concept) => {
+    if (concept === 'client') return 'Clients';
+    if (concept === 'teamMember') return 'Team Members';
+    return concept;
+  },
+}));
 jest.mock('@/components/ui', () => ({
   PageHeader: ({ title, description, actions }) => (
     <div data-testid="page-header">
@@ -74,12 +88,11 @@ function setupMocks(overrides = {}) {
   providerRegistry.sendTestMessage.mockImplementation(() =>
     Promise.resolve(overrides.testMessageResult ?? { success: true })
   );
-  marketingMockData.getMockRecipientsByGroup.mockImplementation(() =>
-    overrides.recipients ?? []
-  );
-  marketingMockData.getMockCampaignsByChannel.mockImplementation(() =>
-    overrides.campaigns ?? []
-  );
+  orgService.getUserOrganization.mockResolvedValue(overrides.organization ?? null);
+  userService.getUserAccount.mockResolvedValue({
+    clients: overrides.recipients ?? [],
+    team_members: overrides.teamMembers ?? [],
+  });
 }
 
 describe('EmailCampaignView', () => {
@@ -127,15 +140,17 @@ describe('EmailCampaignView', () => {
     });
   });
 
-  it('shows Compose form and recipient summary', () => {
+  it('shows Compose form and recipient summary', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<EmailCampaignView showPageHeader={false} />);
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
     expect(screen.getByText('Compose')).toBeInTheDocument();
     expect(screen.getByLabelText(/Campaign name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Subject line/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Write your email content/i)).toBeInTheDocument();
     expect(screen.getByText('Recipient summary')).toBeInTheDocument();
-    expect(screen.getByText('Audience size')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Audience size')).toBeInTheDocument();
+    });
   });
 
   it('shows empty recipient copy when no recipients', () => {
@@ -144,10 +159,12 @@ describe('EmailCampaignView', () => {
     expect(screen.getByText('Select recipients to see summary.')).toBeInTheDocument();
   });
 
-  it('shows recipient summary when recipients exist', () => {
+  it('shows recipient summary when recipients exist', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<EmailCampaignView showPageHeader={false} />);
-    expect(screen.getByText('Recipient type')).toBeInTheDocument();
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
+    await waitFor(() => {
+      expect(screen.getByText('Recipient type')).toBeInTheDocument();
+    });
     expect(screen.getByText('Audience size')).toBeInTheDocument();
     const countSpans = screen.getAllByText('2');
     expect(countSpans.length).toBeGreaterThanOrEqual(1);
@@ -155,7 +172,7 @@ describe('EmailCampaignView', () => {
 
   it('Save Campaign adds a draft campaign', async () => {
     setupMocks({ recipients: mockRecipients });
-    render(<EmailCampaignView showPageHeader={false} />);
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
@@ -173,7 +190,7 @@ describe('EmailCampaignView', () => {
   it('Save Campaign uses "Untitled email campaign" when name empty but subject/body set', async () => {
     jest.useFakeTimers();
     setupMocks({ recipients: mockRecipients });
-    render(<EmailCampaignView showPageHeader={false} />);
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Save Campaign/i })).toBeInTheDocument();
     });
@@ -193,7 +210,7 @@ describe('EmailCampaignView', () => {
       recipients: mockRecipients,
       provider: { provider: { providerType: 'resend', senderEmail: 'noreply@example.com' }, adapter: {} },
     });
-    render(<EmailCampaignView showPageHeader={false} />);
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByTestId('provider-info-card')).toBeInTheDocument();
     });
@@ -212,7 +229,7 @@ describe('EmailCampaignView', () => {
           expect.objectContaining({ id: 'r1', email: 'alice@test.com', name: 'Alice' }),
           expect.objectContaining({ id: 'r2', email: 'bob@test.com', name: 'Bob' }),
         ]),
-      }), undefined);
+      }), 'test-uid');
     });
     await waitFor(() => {
       expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('sent');
@@ -228,7 +245,7 @@ describe('EmailCampaignView', () => {
       provider: { provider: { providerType: 'resend' }, adapter: {} },
       sendResult: { success: false, error: 'Provider error' },
     });
-    render(<EmailCampaignView showPageHeader={false} />);
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
       expect(screen.getByTestId('provider-info-card')).toBeInTheDocument();
     });
@@ -271,10 +288,10 @@ describe('EmailCampaignView', () => {
   });
 
   it('recipient summary shows Team Members when recipient group is team', async () => {
-    setupMocks({ recipients: mockRecipients });
-    render(<EmailCampaignView showPageHeader={false} />);
+    setupMocks({ recipients: mockRecipients, teamMembers: mockRecipients });
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Set Team/i })).toBeInTheDocument();
+      expect(screen.getByText('Clients')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /Set Team/i }));
     await waitFor(() => {
@@ -287,9 +304,9 @@ describe('EmailCampaignView', () => {
       recipients: mockRecipients,
       provider: { provider: { providerType: 'resend', senderEmail: 'noreply@example.com' }, adapter: {} },
     });
-    render(<EmailCampaignView showPageHeader={false} />);
+    render(<EmailCampaignView showPageHeader={false} userId="test-uid" />);
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Set Selected/i })).toBeInTheDocument();
+      expect(screen.getByText('Audience size')).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { name: /Set Selected/i }));
     fireEvent.click(screen.getByRole('button', { name: /Select r1/i }));
@@ -299,7 +316,7 @@ describe('EmailCampaignView', () => {
     await waitFor(() => {
       expect(providerRegistry.sendCampaign).toHaveBeenCalledWith('email', expect.objectContaining({
         recipients: [expect.objectContaining({ id: 'r1', name: 'Alice', email: 'alice@test.com' })],
-      }), undefined);
+      }), 'test-uid');
     });
   });
 

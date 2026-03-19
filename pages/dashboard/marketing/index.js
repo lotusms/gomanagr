@@ -11,6 +11,8 @@ import { getUserOrganization } from '@/services/organizationService';
 import { HiPlus, HiMail, HiChat, HiSpeakerphone } from 'react-icons/hi';
 import { formatDate } from '@/utils/dateTimeFormatters';
 import EntityCard from '@/components/ui/EntityCard';
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
+import { useToast } from '@/components/ui/Toast';
 
 const FILTER_ALL = 'all';
 const FILTER_EMAIL = 'email';
@@ -55,6 +57,9 @@ function CampaignCard({ campaign, onEdit, onDelete }) {
           </span>
         )}
       </div>
+      {campaign.status === 'failed' && campaign.error_message && (
+        <p className="text-xs text-red-500 dark:text-red-400 line-clamp-2 mb-1">{campaign.error_message}</p>
+      )}
       <p className="text-xs text-gray-400 dark:text-gray-500">{dateStr}</p>
     </EntityCard>
   );
@@ -63,12 +68,14 @@ function CampaignCard({ campaign, onEdit, onDelete }) {
 export default function MarketingPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
+  const toast = useToast();
   const [activeFilter, setActiveFilter] = useState(FILTER_ALL);
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [marketingSettings, setMarketingSettings] = useState(null);
   const [organization, setOrganization] = useState(null);
   const [orgResolved, setOrgResolved] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -114,20 +121,22 @@ export default function MarketingPage() {
     router.push(`/dashboard/marketing/${id}/edit`);
   }, [router]);
 
-  const handleDelete = useCallback(async (campaignId) => {
-    if (!currentUser?.uid) return;
-    if (!window.confirm('Delete this campaign? This cannot be undone.')) return;
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!currentUser?.uid || !deleteTarget) return;
     try {
       await fetch('/api/delete-marketing-campaign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.uid, campaignId }),
+        body: JSON.stringify({ userId: currentUser.uid, campaignId: deleteTarget }),
       });
-      setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
+      setCampaigns((prev) => prev.filter((c) => c.id !== deleteTarget));
+      toast.success('Campaign deleted.');
     } catch {
-      console.error('Failed to delete campaign');
+      toast.error('Failed to delete campaign. Please try again.');
+    } finally {
+      setDeleteTarget(null);
     }
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, deleteTarget, toast]);
 
   const filteredCampaigns = useMemo(() => {
     if (activeFilter === FILTER_ALL) return campaigns;
@@ -234,7 +243,7 @@ export default function MarketingPage() {
                     key={c.id}
                     campaign={c}
                     onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    onDelete={setDeleteTarget}
                   />
                 ))}
               </div>
@@ -281,6 +290,18 @@ export default function MarketingPage() {
           </section>
         </div>
       </div>
+
+      <ConfirmationDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Campaign"
+        message="This campaign will be permanently deleted. This cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmationWord="delete"
+        variant="danger"
+      />
     </>
   );
 }

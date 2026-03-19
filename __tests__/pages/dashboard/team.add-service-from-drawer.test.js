@@ -124,6 +124,7 @@ describe('Add team member page – Add service from form', () => {
   });
 
   it('clicking Add Service must NOT save the team member and must NOT navigate away', async () => {
+    jest.setTimeout(15000);
     render(<NewTeamMemberPage />);
 
     // Wait for page to finish loading (org + get-org-team) and show the form

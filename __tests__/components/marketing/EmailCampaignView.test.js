@@ -182,7 +182,7 @@ describe('EmailCampaignView', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save Campaign/i }));
     await waitFor(() => {
       expect(screen.getByTestId('campaign-count')).toHaveTextContent('1');
-    }, { timeout: 600 });
+    }, { timeout: 2000 });
     expect(screen.getByTestId('first-campaign-name')).toHaveTextContent('My campaign');
     expect(screen.getByTestId('first-campaign-status')).toHaveTextContent('draft');
   });

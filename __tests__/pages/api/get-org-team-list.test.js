@@ -140,6 +140,16 @@ describe('get-org-team-list API', () => {
     });
   });
 
+  it('returns 400 when body is null (uses empty object fallback)', async () => {
+    const handler = (await import('@/pages/api/get-org-team-list')).default;
+    const res = mockRes();
+    await handler({ method: 'POST', body: null }, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Missing organizationId or callerUserId',
+    });
+  });
+
   it('returns 403 when caller is not a member of the organization', async () => {
     mockFrom.mockImplementation((table) => {
       if (table === 'org_members') {
@@ -166,6 +176,39 @@ describe('get-org-team-list API', () => {
     await handler({
       method: 'POST',
       body: { organizationId: 'org-1', callerUserId: 'user-99' },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Not a member of this organization',
+    });
+  });
+
+  it('returns 403 when membership row is missing but Supabase error is null', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        return {
+          select: (cols) => {
+            if (cols === 'role') {
+              return {
+                eq: () => ({
+                  eq: () => ({
+                    single: () =>
+                      Promise.resolve({ data: null, error: null }),
+                  }),
+                }),
+              };
+            }
+            return {};
+          },
+        };
+      }
+      return {};
+    });
+    const handler = (await import('@/pages/api/get-org-team-list')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: { organizationId: 'org-1', callerUserId: 'user-ghost' },
     }, res);
     expect(res.status).toHaveBeenCalledWith(403);
     expect(res.json).toHaveBeenCalledWith({

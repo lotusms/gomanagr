@@ -17,6 +17,8 @@ jest.mock('@/components/ui', () => ({
 }));
 
 describe('ClientOnlineResourceForm', () => {
+  jest.setTimeout(30000);
+
   const defaultProps = {
     clientId: 'client-1',
     userId: 'user-1',

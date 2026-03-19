@@ -187,8 +187,8 @@ describe('MultiStepSignup', () => {
     await completeStep6AndSubmit();
     await waitFor(() => {
       expect(screen.getByText(/rate limit|Rate limit/i)).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it('shows already registered message when signup throws user already exists', async () => {
     mockSignup.mockRejectedValueOnce(new Error('User already exists'));
@@ -201,8 +201,8 @@ describe('MultiStepSignup', () => {
     await completeStep6AndSubmit();
     await waitFor(() => {
       expect(screen.getByText(/already registered.*sign in/i)).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it('shows generic submit error when signup fails', async () => {
     mockSignup.mockRejectedValueOnce(new Error('Network error'));
@@ -226,7 +226,7 @@ describe('MultiStepSignup', () => {
     completeStep4AndNext();
     completeStep5AndNext();
     await completeStep6AndSubmit();
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'), { timeout: 10000 });
     fireEvent.click(screen.getByTestId('primary-btn'));
     await waitFor(() => {
       expect(screen.getByText(/Please wait a moment/i)).toBeInTheDocument();

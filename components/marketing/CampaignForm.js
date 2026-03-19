@@ -22,6 +22,7 @@ import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount } from '@/services/userService';
 import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
 import { HiMail, HiChat, HiTemplate, HiCode, HiDocumentText } from 'react-icons/hi';
+import { useToast } from '@/components/ui/Toast';
 
 const VARIABLE_OPTIONS = [
   { value: 'first_name', label: 'First name' },
@@ -76,6 +77,7 @@ export default function CampaignForm({
   onCancel,
 }) {
   const { account } = useUserAccount();
+  const toast = useToast();
   const isEdit = !!campaign;
 
   const [channel, setChannel] = useState(campaign?.channel || defaultChannel);
@@ -88,6 +90,7 @@ export default function CampaignForm({
   const [variableSelectValue, setVariableSelectValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [testSending, setTestSending] = useState(false);
+  const [sendError, setSendError] = useState(null);
   const [activeProvider, setActiveProvider] = useState(null);
   const [providerStatus, setProviderStatus] = useState(null);
   const [providerChecked, setProviderChecked] = useState(false);
@@ -300,25 +303,26 @@ export default function CampaignForm({
     try {
       const payload = buildCampaignPayload('draft');
       const saved = await saveCampaignToApi(payload);
+      toast.success(isEdit ? 'Campaign updated.' : 'Campaign draft saved.');
       onSuccess?.(saved);
     } catch (err) {
       console.error('Save draft failed:', err);
+      toast.error('Failed to save campaign. Please try again.');
     } finally {
       setSaving(false);
     }
-  }, [canSaveDraft, buildCampaignPayload, saveCampaignToApi, onSuccess]);
+  }, [canSaveDraft, buildCampaignPayload, saveCampaignToApi, onSuccess, toast, isEdit]);
 
   const handleSendNow = useCallback(async () => {
     if (!canSend) return;
     setSaving(true);
+    setSendError(null);
     try {
       const recipients = buildRecipients(recipientsList, audienceMode, selectedIds, channel);
 
-      // Save as queued first so we have a DB record with an ID
       const queuedPayload = buildCampaignPayload('queued');
       const savedCampaign = await saveCampaignToApi(queuedPayload);
 
-      // For Mailchimp email: use server-side API (has decrypted credentials)
       if (isEmail && isMailchimpProvider && organizationId) {
         const serverCampaign = {
           ...savedCampaign,
@@ -333,22 +337,31 @@ export default function CampaignForm({
         });
         const result = await res.json();
         if (!result.success) {
+          const errorMsg = result.error || 'Send failed';
+          setSendError(errorMsg);
+          toast.error('Campaign send failed.');
           await saveCampaignToApi({
             ...queuedPayload,
             id: savedCampaign.id,
             status: 'failed',
-            errorMessage: result.error || 'Send failed',
+            errorMessage: errorMsg,
           });
+        } else {
+          toast.success('Campaign sent successfully!');
+          onSuccess?.(savedCampaign);
         }
-        onSuccess?.(savedCampaign);
         return;
       }
 
-      // Fallback: client-side provider registry (for non-Mailchimp providers)
       const sendPayload = { body, recipients };
       if (isEmail) sendPayload.subject = subject.trim();
       const ch = isEmail ? MARKETING_CHANNELS.EMAIL : MARKETING_CHANNELS.SMS;
       const result = await registrySendCampaign(ch, sendPayload, userId || undefined);
+
+      if (!result.success) {
+        setSendError(result.error || 'Send failed');
+        toast.error('Campaign send failed.');
+      }
 
       await saveCampaignToApi({
         ...queuedPayload,
@@ -357,13 +370,18 @@ export default function CampaignForm({
         sentAt: result.success ? new Date().toISOString() : null,
         errorMessage: result.error || null,
       });
-      onSuccess?.(savedCampaign);
+      if (result.success) {
+        toast.success('Campaign sent successfully!');
+        onSuccess?.(savedCampaign);
+      }
     } catch (err) {
       console.error('Send failed:', err);
+      setSendError(err.message || 'An unexpected error occurred while sending.');
+      toast.error('An unexpected error occurred while sending.');
     } finally {
       setSaving(false);
     }
-  }, [canSend, recipientsList, audienceMode, selectedIds, channel, body, isEmail, subject, userId, organizationId, isMailchimpProvider, templateType, mailchimpTemplateId, customHtml, buildCampaignPayload, saveCampaignToApi, onSuccess]);
+  }, [canSend, recipientsList, audienceMode, selectedIds, channel, body, isEmail, subject, userId, organizationId, isMailchimpProvider, templateType, mailchimpTemplateId, customHtml, buildCampaignPayload, saveCampaignToApi, onSuccess, toast]);
 
   const handleSendTest = useCallback(async () => {
     if (!activeProvider || !body.trim()) return;
@@ -613,20 +631,34 @@ export default function CampaignForm({
                   </div>
                 )}
 
-                {/* Plain text body (shown for plain text email or SMS) */}
-                {(templateType !== 'mailchimp' && templateType !== 'custom_html') && (
+                {/* Plain text body */}
+                {templateType !== 'custom_html' && (
                   <div>
                     <TextareaInput
                       id="campaign-body"
-                      label={isEmail ? 'Email body' : 'Message'}
+                      label={
+                        templateType === 'mailchimp'
+                          ? 'Email body (used if template content is unavailable via API)'
+                          : isEmail ? 'Email body' : 'Message'
+                      }
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
-                      placeholder={isEmail ? 'Write your email content...' : 'Type your SMS message...'}
-                      required
-                      rows={isEmail ? 8 : 4}
+                      placeholder={
+                        templateType === 'mailchimp'
+                          ? 'Enter fallback email text in case the template cannot be loaded...'
+                          : isEmail ? 'Write your email content...' : 'Type your SMS message...'
+                      }
+                      required={templateType !== 'mailchimp'}
+                      rows={templateType === 'mailchimp' ? 4 : isEmail ? 8 : 4}
                       variant="light"
                     />
-                    {!isEmail && (
+                    {templateType === 'mailchimp' && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        Some Mailchimp templates (new email builder) cannot be loaded via the API.
+                        Enter body text here as a fallback so your campaign can still be sent.
+                      </p>
+                    )}
+                    {!isEmail && templateType !== 'mailchimp' && (
                       <div className="mt-1.5 flex items-center justify-between text-sm">
                         <span className="text-gray-500 dark:text-gray-400">
                           {charCount} characters
@@ -698,6 +730,13 @@ export default function CampaignForm({
                     )}
                   </div>
                 </div>
+
+                {sendError && (
+                  <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/20 p-4">
+                    <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Campaign send failed</p>
+                    <p className="text-sm text-red-600 dark:text-red-400">{sendError}</p>
+                  </div>
+                )}
 
                 <div className="flex flex-wrap gap-3 pt-2">
                   <SecondaryButton type="button" onClick={onCancel}>

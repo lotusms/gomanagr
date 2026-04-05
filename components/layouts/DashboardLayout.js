@@ -6,6 +6,7 @@ import { getUserOrganization } from '@/services/organizationService';
 import { isOwnerRole, isOwnerOrDeveloperRole } from '@/config/rolePermissions';
 import { supabase } from '@/lib/supabase';
 import Logo from '@/components/Logo';
+import DashboardHeaderLocalWeather from '@/components/layouts/DashboardHeaderLocalWeather';
 import UserMenu from '@/components/layouts/UserMenu';
 import DashboardSidebar from '@/components/layouts/DashboardSidebar';
 import { PATH_TO_SECTION } from '@/config/teamMemberAccess';
@@ -229,8 +230,9 @@ export default function DashboardLayout({ children }) {
       {/* Top Navigation Bar */}
       <header className="z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 flex-shrink-0">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
-          <div className="flex items-center space-x-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Logo href="/" inlineClassName="h-16" />
+            <DashboardHeaderLocalWeather />
           </div>
 
           <div className="flex items-center space-x-4">

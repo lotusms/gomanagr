@@ -21,7 +21,7 @@ import { useUserAccount } from '@/lib/UserAccountContext';
 import { getUserOrganization } from '@/services/organizationService';
 import { getUserAccount } from '@/services/userService';
 import { getTermForIndustry } from '@/components/clients/clientProfileConstants';
-import { HiMail, HiChat, HiTemplate, HiCode, HiDocumentText } from 'react-icons/hi';
+import { HiMail, HiChat, HiCode, HiDocumentText, HiExternalLink } from 'react-icons/hi';
 import { useToast } from '@/components/ui/Toast';
 
 const VARIABLE_OPTIONS = [
@@ -31,7 +31,6 @@ const VARIABLE_OPTIONS = [
 
 const TEMPLATE_TYPE_OPTIONS = [
   { value: '', label: 'Plain text', icon: HiDocumentText, description: 'Simple text body' },
-  { value: 'mailchimp', label: 'Mailchimp template', icon: HiTemplate, description: 'Use a template from your Mailchimp account' },
   { value: 'custom_html', label: 'Custom HTML', icon: HiCode, description: 'Write or paste your own HTML' },
 ];
 
@@ -97,17 +96,19 @@ export default function CampaignForm({
   const [organization, setOrganization] = useState(undefined);
   const [recipientsList, setRecipientsList] = useState([]);
 
-  const [templateType, setTemplateType] = useState(campaign?.template_type || campaign?.templateType || '');
-  const [mailchimpTemplateId, setMailchimpTemplateId] = useState(campaign?.mailchimp_template_id || campaign?.mailchimpTemplateId || null);
-  const [mailchimpTemplateName, setMailchimpTemplateName] = useState(campaign?.mailchimp_template_name || campaign?.mailchimpTemplateName || '');
+  const initialTemplateType =
+    (campaign?.template_type || campaign?.templateType) === 'mailchimp'
+      ? ''
+      : (campaign?.template_type || campaign?.templateType || '');
+  const [templateType, setTemplateType] = useState(initialTemplateType);
   const [customHtml, setCustomHtml] = useState(campaign?.custom_html || campaign?.customHtml || '');
-  const [mcTemplates, setMcTemplates] = useState([]);
-  const [mcTemplatesLoading, setMcTemplatesLoading] = useState(false);
-  const [mcTemplatesError, setMcTemplatesError] = useState(null);
   const [mcServerPrefix, setMcServerPrefix] = useState(null);
+  const [mailchimpSyncLoading, setMailchimpSyncLoading] = useState(false);
+  const [mailchimpSyncMessage, setMailchimpSyncMessage] = useState(null);
 
   const industry = organization?.industry ?? account?.industry ?? null;
   const clientLabel = getTermForIndustry(industry, 'client');
+  const clientsLower = clientLabel.toLowerCase();
   const teamMemberLabel = getTermForIndustry(industry, 'teamMember');
   const isEmail = channel === 'email';
 
@@ -221,13 +222,11 @@ export default function CampaignForm({
 
   useEffect(() => {
     if (!isEmail || !organizationId || !isMailchimpProvider) {
-      setMcTemplates([]);
+      setMcServerPrefix(null);
       return;
     }
     let cancelled = false;
-    setMcTemplatesLoading(true);
-    setMcTemplatesError(null);
-    fetch('/api/get-mailchimp-templates', {
+    fetch('/api/get-mailchimp-meta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ organizationId }),
@@ -235,18 +234,14 @@ export default function CampaignForm({
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        if (data.error) setMcTemplatesError(data.error);
-        setMcTemplates(data.templates || []);
-        if (data.serverPrefix) setMcServerPrefix(data.serverPrefix);
-        setMcTemplatesLoading(false);
+        if (data.connected && data.serverPrefix) setMcServerPrefix(data.serverPrefix);
       })
-      .catch((err) => {
-        if (!cancelled) {
-          setMcTemplatesError(err.message);
-          setMcTemplatesLoading(false);
-        }
+      .catch(() => {
+        if (!cancelled) setMcServerPrefix(null);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isEmail, organizationId, isMailchimpProvider]);
 
   const recipientOptions = useMemo(() => {
@@ -259,13 +254,13 @@ export default function CampaignForm({
   const overSingleSegment = !isEmail && charCount > SMS_SEGMENT_LENGTH;
   const hasRecipients = recipientCount > 0;
   const hasSubject = isEmail ? subject.trim().length > 0 : true;
-  const hasContent = templateType === 'mailchimp'
-    ? !!mailchimpTemplateId
-    : templateType === 'custom_html'
+  const hasContent =
+    templateType === 'custom_html'
       ? customHtml.trim().length > 0
       : body.trim().length > 0;
   const canSend = hasRecipients && hasSubject && hasContent && !!activeProvider && !saving;
-  const canSaveDraft = (campaignName.trim() || (isEmail && subject.trim()) || body.trim() || customHtml.trim() || mailchimpTemplateId) && !saving;
+  const canSaveDraft =
+    (campaignName.trim() || (isEmail && subject.trim()) || body.trim() || customHtml.trim()) && !saving;
   const providerCapabilities = activeProvider ? getProviderCapabilities(activeProvider.provider) : { email: false, sms: false };
 
   const buildCampaignPayload = useCallback((status, extraFields = {}) => ({
@@ -280,11 +275,11 @@ export default function CampaignForm({
     status,
     audienceSize: recipientCount,
     templateType: isEmail ? (templateType || null) : null,
-    mailchimpTemplateId: templateType === 'mailchimp' ? mailchimpTemplateId : null,
-    mailchimpTemplateName: templateType === 'mailchimp' ? mailchimpTemplateName : null,
+    mailchimpTemplateId: null,
+    mailchimpTemplateName: null,
     customHtml: templateType === 'custom_html' ? customHtml : null,
     ...extraFields,
-  }), [campaign?.id, channel, campaignName, isEmail, subject, body, recipientGroup, audienceMode, selectedIds, recipientCount, templateType, mailchimpTemplateId, mailchimpTemplateName, customHtml]);
+  }), [campaign?.id, channel, campaignName, isEmail, subject, body, recipientGroup, audienceMode, selectedIds, recipientCount, templateType, customHtml]);
 
   const saveCampaignToApi = useCallback(async (campaignData) => {
     const res = await fetch('/api/save-marketing-campaign', {
@@ -327,7 +322,7 @@ export default function CampaignForm({
         const serverCampaign = {
           ...savedCampaign,
           template_type: templateType || null,
-          mailchimp_template_id: templateType === 'mailchimp' ? mailchimpTemplateId : null,
+          mailchimp_template_id: null,
           custom_html: templateType === 'custom_html' ? customHtml : null,
         };
         const res = await fetch('/api/send-marketing-campaign', {
@@ -381,7 +376,42 @@ export default function CampaignForm({
     } finally {
       setSaving(false);
     }
-  }, [canSend, recipientsList, audienceMode, selectedIds, channel, body, isEmail, subject, userId, organizationId, isMailchimpProvider, templateType, mailchimpTemplateId, customHtml, buildCampaignPayload, saveCampaignToApi, onSuccess, toast]);
+  }, [canSend, recipientsList, audienceMode, selectedIds, channel, body, isEmail, subject, userId, organizationId, isMailchimpProvider, templateType, customHtml, buildCampaignPayload, saveCampaignToApi, onSuccess, toast]);
+
+  const handleMailchimpSync = useCallback(async () => {
+    if (!organizationId || !userId) return;
+    setMailchimpSyncLoading(true);
+    setMailchimpSyncMessage(null);
+    try {
+      const res = await fetch('/api/sync-mailchimp-audience', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, organizationId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const n = data.synced ?? 0;
+        if (n === 0) {
+          toast.info('No clients with an email address to sync.');
+        } else {
+          toast.success(`Synced ${n} contact(s) to Mailchimp (GoManagr Contacts).`);
+        }
+        setMailchimpSyncMessage(
+          n === 0
+            ? 'No contacts with email were synced.'
+            : `Last sync: ${n} contact(s) added or updated in Mailchimp.`
+        );
+      } else {
+        toast.error(data.error || 'Sync failed');
+        setMailchimpSyncMessage(data.error || null);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Sync failed');
+      setMailchimpSyncMessage(err.message);
+    } finally {
+      setMailchimpSyncLoading(false);
+    }
+  }, [userId, organizationId, toast]);
 
   const handleSendTest = useCallback(async () => {
     if (!activeProvider || !body.trim()) return;
@@ -482,22 +512,17 @@ export default function CampaignForm({
                     <div className="flex flex-wrap gap-2 mt-1.5">
                       {TEMPLATE_TYPE_OPTIONS.map(({ value, label, icon: Icon, description }) => {
                         const isActive = templateType === value;
-                        const isMcOption = value === 'mailchimp';
-                        const disabled = isMcOption && !isMailchimpProvider;
                         return (
                           <button
                             key={value}
                             type="button"
-                            disabled={disabled}
                             onClick={() => setTemplateType(value)}
-                            title={disabled ? 'Connect Mailchimp in Settings > Integrations' : description}
+                            title={description}
                             className={`
                               inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200
                               ${isActive
                                 ? 'bg-primary-600 text-white shadow-md'
-                                : disabled
-                                  ? 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-60'
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                               }
                             `}
                           >
@@ -507,86 +532,60 @@ export default function CampaignForm({
                         );
                       })}
                     </div>
-                    {templateType === 'mailchimp' && !isMailchimpProvider && (
-                      <p className="mt-1.5 text-sm text-amber-600 dark:text-amber-400">
-                        Connect Mailchimp in Settings &gt; Integrations to use templates.
+                  </div>
+                )}
+
+                {/* Mailchimp: template newsletters happen in Mailchimp; sync clients into audience */}
+                {isEmail && organizationId && isMailchimpProvider && (
+                  <div className="rounded-xl border border-violet-200 dark:border-violet-800/60 bg-violet-50/80 dark:bg-violet-950/20 p-4 space-y-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Mailchimp templates &amp; designed campaigns
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        Design emails with Mailchimp&apos;s template builder and send campaigns from Mailchimp.
+                        <br />
+                        GoManagr keeps your {clientsLower} list in sync with the Mailchimp audience{' '}
+                        "GoManagr Contacts" so you can target them when you create a campaign there.
                       </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <SecondaryButton
+                        type="button"
+                        onClick={handleMailchimpSync}
+                        disabled={mailchimpSyncLoading}
+                      >
+                        {mailchimpSyncLoading ? 'Syncing…' : 'Sync contacts to Mailchimp'}
+                      </SecondaryButton>
+                      <a
+                        href={`https://${mcServerPrefix || 'us21'}.admin.mailchimp.com/campaigns/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      >
+                        Open Mailchimp campaigns
+                        <HiExternalLink className="w-4 h-4" aria-hidden />
+                      </a>
+                      <a
+                        href={`https://${mcServerPrefix || 'us21'}.admin.mailchimp.com/templates/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      >
+                        Templates
+                        <HiExternalLink className="w-4 h-4" aria-hidden />
+                      </a>
+                    </div>
+                    {mailchimpSyncMessage && (
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{mailchimpSyncMessage}</p>
                     )}
                   </div>
                 )}
 
-                {/* Mailchimp template picker */}
-                {isEmail && templateType === 'mailchimp' && isMailchimpProvider && (
-                  <div>
-                    {mcTemplatesLoading ? (
-                      <div className="animate-pulse space-y-2">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32" />
-                        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded" />
-                      </div>
-                    ) : mcTemplatesError ? (
-                      <p className="text-sm text-red-600 dark:text-red-400">{mcTemplatesError}</p>
-                    ) : mcTemplates.length === 0 ? (
-                      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          No templates found in your Mailchimp account.{' '}
-                          <a
-                            href={`https://${mcServerPrefix || 'us21'}.admin.mailchimp.com/templates/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary-600 dark:text-primary-400 underline hover:text-primary-700 dark:hover:text-primary-300"
-                          >
-                            Create templates in Mailchimp
-                          </a>{' '}
-                          first, then they will appear here.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <Dropdown
-                          id="mc-template-select"
-                          label="Select Mailchimp template"
-                          value={mailchimpTemplateId ? String(mailchimpTemplateId) : ''}
-                          onChange={(e) => {
-                            const id = e.target.value ? Number(e.target.value) : null;
-                            setMailchimpTemplateId(id);
-                            const tpl = mcTemplates.find((t) => t.id === id);
-                            setMailchimpTemplateName(tpl?.name || '');
-                          }}
-                          options={mcTemplates.map((t) => ({
-                            value: String(t.id),
-                            label: t.name,
-                          }))}
-                          placeholder="Choose a template..."
-                          searchable={mcTemplates.length > 6}
-                        />
-                        {mailchimpTemplateId && (() => {
-                          const tpl = mcTemplates.find((t) => t.id === mailchimpTemplateId);
-                          if (!tpl) return null;
-                          return (
-                            <div className="mt-3 flex items-start gap-4 rounded-xl border border-primary-200 dark:border-primary-700/50 bg-primary-50/50 dark:bg-primary-900/10 p-4">
-                              {tpl.thumbnail && (
-                                <img
-                                  src={tpl.thumbnail}
-                                  alt={`Preview of ${tpl.name}`}
-                                  className="w-24 h-auto rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm flex-shrink-0"
-                                />
-                              )}
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white text-sm">{tpl.name}</p>
-                                {tpl.date_created && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Created: {new Date(tpl.date_created).toLocaleDateString()}
-                                  </p>
-                                )}
-                                <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
-                                  This template will be used when the campaign is sent via Mailchimp.
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </>
-                    )}
+                {isEmail && isEdit && (campaign?.template_type === 'mailchimp' || campaign?.templateType === 'mailchimp') && (
+                  <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/90 dark:bg-amber-950/20 p-3 text-sm text-amber-900 dark:text-amber-100">
+                    This draft was saved as a Mailchimp template campaign. That flow now lives in Mailchimp only.
+                    Choose <strong>Plain text</strong> or <strong>Custom HTML</strong> above to send from GoManagr, or rebuild the send in Mailchimp after syncing contacts.
                   </div>
                 )}
 
@@ -636,29 +635,17 @@ export default function CampaignForm({
                   <div>
                     <TextareaInput
                       id="campaign-body"
-                      label={
-                        templateType === 'mailchimp'
-                          ? 'Email body (used if template content is unavailable via API)'
-                          : isEmail ? 'Email body' : 'Message'
-                      }
+                      label={isEmail ? 'Email body' : 'Message'}
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
                       placeholder={
-                        templateType === 'mailchimp'
-                          ? 'Enter fallback email text in case the template cannot be loaded...'
-                          : isEmail ? 'Write your email content...' : 'Type your SMS message...'
+                        isEmail ? 'Write your email content...' : 'Type your SMS message...'
                       }
-                      required={templateType !== 'mailchimp'}
-                      rows={templateType === 'mailchimp' ? 4 : isEmail ? 8 : 4}
+                      required
+                      rows={isEmail ? 8 : 4}
                       variant="light"
                     />
-                    {templateType === 'mailchimp' && (
-                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                        Some Mailchimp templates (new email builder) cannot be loaded via the API.
-                        Enter body text here as a fallback so your campaign can still be sent.
-                      </p>
-                    )}
-                    {!isEmail && templateType !== 'mailchimp' && (
+                    {!isEmail && (
                       <div className="mt-1.5 flex items-center justify-between text-sm">
                         <span className="text-gray-500 dark:text-gray-400">
                           {charCount} characters
@@ -674,7 +661,7 @@ export default function CampaignForm({
                 )}
 
                 {/* Variable insertion (plain text and custom HTML) */}
-                {templateType !== 'mailchimp' && (
+                {(templateType === 'custom_html' || !templateType) && (
                   <div className="max-w-xs">
                     <Dropdown
                       id="campaign-insert-variable"
@@ -707,12 +694,7 @@ export default function CampaignForm({
                         Subject: {subject || '—'}
                       </p>
                     )}
-                    {templateType === 'mailchimp' && mailchimpTemplateName ? (
-                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <HiTemplate className="w-4 h-4 text-primary-500" />
-                        <span>Using Mailchimp template: <strong>{mailchimpTemplateName}</strong></span>
-                      </div>
-                    ) : templateType === 'custom_html' && customHtml.trim() ? (
+                    {templateType === 'custom_html' && customHtml.trim() ? (
                       <iframe
                         title="HTML preview"
                         srcDoc={customHtml}

@@ -175,16 +175,16 @@ describe('CampaignForm', () => {
     await waitFor(() => expect(getProviderStatus).toHaveBeenCalled());
   });
 
-  it('fetches Mailchimp templates when email + organizationId + mailchimp provider', async () => {
+  it('fetches Mailchimp meta when email + organizationId + mailchimp provider', async () => {
     mockGetActiveProviderForChannel.mockResolvedValue({
       provider: { providerType: 'mailchimp' },
       adapter: {},
     });
     global.fetch.mockImplementation((url) => {
-      if (url === '/api/get-mailchimp-templates') {
+      if (url === '/api/get-mailchimp-meta') {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ templates: [{ id: 1, name: 'Welcome' }], serverPrefix: 'us21' }),
+          json: () => Promise.resolve({ connected: true, serverPrefix: 'us21' }),
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -192,7 +192,7 @@ describe('CampaignForm', () => {
     render(<CampaignForm {...defaultProps} organizationId="org-1" />);
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/get-mailchimp-templates',
+        '/api/get-mailchimp-meta',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ organizationId: 'org-1' }),

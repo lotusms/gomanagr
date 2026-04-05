@@ -113,6 +113,26 @@ describe('mailchimpApiService', () => {
     });
   });
 
+  describe('fetchTemplateHtml', () => {
+    it('returns html from template object when present', async () => {
+      mockFetch.mockImplementation((url) => {
+        if (url.includes('/templates/1') && !url.includes('default-content')) {
+          return Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify({
+              html: '<html><body><p>Hello from template</p></body></html>',
+            })),
+          });
+        }
+        return Promise.resolve({ ok: true, text: () => Promise.resolve('{}') });
+      });
+      const { fetchTemplateHtml } = await import('@/lib/marketing/mailchimpApiService');
+      const out = await fetchTemplateHtml('key', 'us21', 1);
+      expect(out.available).toBe(true);
+      expect(out.html).toContain('Hello from template');
+    });
+  });
+
   describe('findOrCreateList', () => {
     it('returns existing list id when GoManagr Contacts exists', async () => {
       const { findOrCreateList } = await import('@/lib/marketing/mailchimpApiService');
@@ -170,6 +190,52 @@ describe('mailchimpApiService', () => {
         sendImmediately: true,
       });
       expect(result).toEqual({ campaignId: 'camp-1', success: true });
+    });
+
+    it('prefers edited html over Mailchimp template fetch when both templateId and html are set', async () => {
+      const putBodies = [];
+      mockFetch.mockImplementation((url, opts) => {
+        fetchCalls.push({ url, opts });
+        if (url.includes('/templates/') && opts?.method !== 'PUT' && !url.includes('/campaigns/')) {
+          return Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify({ html: '' })),
+          });
+        }
+        if (url.includes('/campaigns/') && url.includes('/content') && opts?.method === 'PUT') {
+          putBodies.push(opts.body);
+          return Promise.resolve({ ok: true, text: () => Promise.resolve('{}') });
+        }
+        if (url.includes('/campaigns') && !url.includes('content') && !url.includes('send')) {
+          return Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify({ id: 'camp-1', settings: {}, recipients: {}, tracking: {} })),
+          });
+        }
+        if (url.includes('/content') && !opts?.method) {
+          const longHtml = '<html><body><p>Edited in GoManagr with enough length for verification</p></body></html>';
+          return Promise.resolve({ ok: true, text: () => Promise.resolve(JSON.stringify({ html: longHtml })) });
+        }
+        if (url.includes('actions/send')) {
+          return Promise.resolve({ ok: true, text: () => Promise.resolve('') });
+        }
+        return Promise.resolve({ ok: true, text: () => Promise.resolve('{}') });
+      });
+      const longEdited =
+        '<html><body><p>Edited in GoManagr with enough length for verification</p></body></html>';
+      const { createAndSendCampaign } = await import('@/lib/marketing/mailchimpApiService');
+      await createAndSendCampaign('key', 'us21', {
+        listId: 'list-1',
+        segmentId: 100,
+        subject: 'Test',
+        fromName: 'Sender',
+        fromEmail: 'sender@test.com',
+        templateId: 999,
+        html: longEdited,
+        plainText: null,
+        sendImmediately: true,
+      });
+      expect(putBodies.some((b) => b && b.includes('Edited in GoManagr'))).toBe(true);
     });
   });
 });

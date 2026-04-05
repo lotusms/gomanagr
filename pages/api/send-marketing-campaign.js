@@ -105,7 +105,7 @@ async function handleMailchimpSend(req, res, { userId, organizationId, campaign,
     return res.status(200).json({ success: false, error: `Failed to create recipient segment in Mailchimp: ${err.message}` });
   }
 
-  const templateId = campaign.template_type === 'mailchimp' ? campaign.mailchimp_template_id : null;
+  const templateId = null;
   const customHtml = campaign.template_type === 'custom_html' ? campaign.custom_html : null;
   const plainText = campaign.body || null;
 

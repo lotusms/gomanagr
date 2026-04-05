@@ -22,6 +22,17 @@ try {
   supabaseAdmin = null;
 }
 
+function scheduleMailchimpAudienceSync(organizationId, supabase) {
+  if (!organizationId || !supabase) return;
+  import('@/lib/marketing/syncOrgClientsToMailchimp.js')
+    .then(({ syncOrgClientsToMailchimp }) =>
+      syncOrgClientsToMailchimp(organizationId, supabase).catch((e) =>
+        console.error('[update-org-clients] Mailchimp audience sync:', e.message)
+      )
+    )
+    .catch((e) => console.error('[update-org-clients] Mailchimp sync import:', e.message));
+}
+
 function sanitizeClient(client) {
   if (!client || typeof client !== 'object') return null;
   const out = JSON.parse(JSON.stringify(client));
@@ -133,6 +144,7 @@ export default async function handler(req, res) {
         console.error('[update-org-clients]', updateErr);
         return res.status(500).json({ error: 'Failed to save clients' });
       }
+      scheduleMailchimpAudienceSync(orgId, supabaseAdmin);
       return res.status(200).json({ clients: nextClients });
     }
 
@@ -193,6 +205,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to save clients' });
     }
 
+    scheduleMailchimpAudienceSync(orgId, supabaseAdmin);
     return res.status(200).json({ clients: nextClients });
   } catch (err) {
     console.error('[update-org-clients]', err);

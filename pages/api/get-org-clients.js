@@ -63,24 +63,87 @@ export default async function handler(req, res) {
     const orgUserIds = orgMemberRows.map((r) => r.user_id).filter(Boolean);
     const { data: profileRows, error: profilesErr } = await supabaseAdmin
       .from('user_profiles')
-      .select('id, first_name, last_name, clients, team_members')
+      .select('id, first_name, last_name, email, clients, team_members')
       .in('id', orgUserIds);
 
     if (profilesErr || !profileRows?.length) {
       return res.status(200).json({ clients: [], isOrgAdmin });
     }
 
-    const userIdToName = {};
-    const allClients = [];
+    /** Best display string from a team_members[] entry (prefers first+last / name over raw email). */
+    function nameFromTeamMemberEntry(m) {
+      if (!m) return '';
+      const fl = [m.firstName, m.lastName].filter(Boolean).join(' ').trim();
+      if (fl) return fl;
+      const n = (m.name || '').trim();
+      if (n) return n;
+      return (m.email || '').trim();
+    }
 
+    // 1) Collect name hints from every org profile's team_members (roster often has "First Last" when user_profiles names are empty).
+    const teamHintByUserId = {};
+    for (const row of profileRows) {
+      const teamMembers = Array.isArray(row.team_members) ? row.team_members : [];
+      for (const m of teamMembers) {
+        const uid = m?.userId;
+        if (!uid) continue;
+        const nm = nameFromTeamMemberEntry(m);
+        if (!nm) continue;
+        const prev = teamHintByUserId[uid];
+        const prevLooksEmail = prev?.includes('@');
+        const nmLooksEmail = nm.includes('@');
+        if (!prev || (prevLooksEmail && !nmLooksEmail)) {
+          teamHintByUserId[uid] = nm;
+        }
+      }
+    }
+
+    // 2) Resolve each org member: profile first+last, else team roster, else email.
+    const userIdToName = {};
     for (const row of profileRows) {
       const first = (row.first_name || '').trim();
       const last = (row.last_name || '').trim();
-      userIdToName[row.id] = [first, last].filter(Boolean).join(' ') || 'Unknown';
-      const teamMembers = Array.isArray(row.team_members) ? row.team_members : [];
-      teamMembers.forEach((m) => {
-        if (m?.userId && m?.name) userIdToName[m.userId] = m.name;
-      });
+      const fromProfile = [first, last].filter(Boolean).join(' ').trim();
+      const email = (row.email || '').trim();
+      const hint = teamHintByUserId[row.id] || '';
+      userIdToName[row.id] = fromProfile || hint || email || 'Unknown';
+    }
+
+    /** Supabase Auth user_metadata keys used elsewhere in the app (userService, sign-up). */
+    function displayNameFromAuthMetadata(meta) {
+      if (!meta || typeof meta !== 'object') return '';
+      const snake = [meta.first_name, meta.last_name].filter(Boolean).join(' ').trim();
+      if (snake) return snake;
+      const camel = [meta.firstName, meta.lastName].filter(Boolean).join(' ').trim();
+      if (camel) return camel;
+      for (const k of ['full_name', 'name', 'display_name']) {
+        const v = meta[k];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+      }
+      return '';
+    }
+
+    // 3) When still unknown or email-only, fill from Auth user_metadata (e.g. OAuth full_name).
+    const needsAuthName = orgUserIds.filter((uid) => {
+      const v = userIdToName[uid];
+      return !v || v === 'Unknown' || (typeof v === 'string' && v.includes('@'));
+    });
+    await Promise.all(
+      needsAuthName.map(async (uid) => {
+        try {
+          const { data, error } = await supabaseAdmin.auth.admin.getUserById(uid);
+          if (error || !data?.user) return;
+          const fromMeta = displayNameFromAuthMetadata(data.user.user_metadata);
+          if (!fromMeta) return;
+          userIdToName[uid] = fromMeta;
+        } catch (_) {
+          /* ignore */
+        }
+      })
+    );
+
+    const allClients = [];
+    for (const row of profileRows) {
       const rowClients = Array.isArray(row.clients) ? row.clients : [];
       rowClients.forEach((c) => {
         const addedBy = c?.addedBy || row.id;

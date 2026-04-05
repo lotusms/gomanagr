@@ -33,7 +33,12 @@ const mockFrom = jest.fn((table) => {
   }
   return {};
 });
-const mockCreateClient = jest.fn(() => ({ from: mockFrom }));
+
+const mockGetUserById = jest.fn().mockResolvedValue({ data: { user: null }, error: null });
+const mockCreateClient = jest.fn(() => ({
+  from: mockFrom,
+  auth: { admin: { getUserById: mockGetUserById } },
+}));
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: (...args) => mockCreateClient(...args),
@@ -61,6 +66,7 @@ describe('get-org-clients API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     orgMembersCallCount = 0;
+    mockGetUserById.mockResolvedValue({ data: { user: null }, error: null });
   });
 
   it('returns 405 when method is not POST', async () => {
@@ -167,5 +173,219 @@ describe('get-org-clients API', () => {
     expect(payload.clients[0].name).toBe('Acme');
     expect(payload.clients[0].addedByName).toBe('Jane Doe');
     expect(payload.isOrgAdmin).toBe(true);
+  });
+
+  it('uses profile email for addedByName when first and last name are empty', async () => {
+    let orgCall = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        orgCall++;
+        if (orgCall === 1) {
+          return {
+            select: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () =>
+                    Promise.resolve({
+                      data: { organization_id: 'org-1', role: 'member' },
+                      error: null,
+                    }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [{ user_id: 'creator-1' }],
+                error: null,
+              }),
+          }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: () => ({
+            in: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: 'creator-1',
+                    first_name: '',
+                    last_name: '',
+                    email: 'l.silva@example.com',
+                    clients: [{ id: 'c1', name: 'Acme', addedBy: 'creator-1' }],
+                    team_members: [],
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    const getOrgClientsHandler = (await import('@/pages/api/get-org-clients')).default;
+    const req = { method: 'POST', body: { userId: 'user-1' } };
+    const res = mockRes();
+
+    await getOrgClientsHandler(req, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.clients[0].addedByName).toBe('l.silva@example.com');
+  });
+
+  it('uses Auth user_metadata display name for addedByName when profile has only email', async () => {
+    let orgCall = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        orgCall++;
+        if (orgCall === 1) {
+          return {
+            select: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () =>
+                    Promise.resolve({
+                      data: { organization_id: 'org-1', role: 'member' },
+                      error: null,
+                    }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [{ user_id: 'creator-1' }],
+                error: null,
+              }),
+          }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: () => ({
+            in: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: 'creator-1',
+                    first_name: '',
+                    last_name: '',
+                    email: 'l.silva@example.com',
+                    clients: [{ id: 'c1', name: 'Acme', addedBy: 'creator-1' }],
+                    team_members: [],
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    mockGetUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: { full_name: 'Luis Silva' },
+        },
+      },
+      error: null,
+    });
+
+    const getOrgClientsHandler = (await import('@/pages/api/get-org-clients')).default;
+    const req = { method: 'POST', body: { userId: 'user-1' } };
+    const res = mockRes();
+
+    await getOrgClientsHandler(req, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.clients[0].addedByName).toBe('Luis Silva');
+    expect(mockGetUserById).toHaveBeenCalledWith('creator-1');
+  });
+
+  it('prefers team_members roster first+last over profile email when profile names are empty', async () => {
+    let orgCall = 0;
+    mockFrom.mockImplementation((table) => {
+      if (table === 'org_members') {
+        orgCall++;
+        if (orgCall === 1) {
+          return {
+            select: () => ({
+              eq: () => ({
+                limit: () => ({
+                  single: () =>
+                    Promise.resolve({
+                      data: { organization_id: 'org-1', role: 'member' },
+                      error: null,
+                    }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [{ user_id: 'creator-1' }, { user_id: 'owner-1' }],
+                error: null,
+              }),
+          }),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          select: () => ({
+            in: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: 'creator-1',
+                    first_name: '',
+                    last_name: '',
+                    email: 'l.silva@example.com',
+                    clients: [{ id: 'c1', name: 'Acme', addedBy: 'creator-1' }],
+                    team_members: [],
+                  },
+                  {
+                    id: 'owner-1',
+                    first_name: 'Owner',
+                    last_name: 'Admin',
+                    email: 'owner@example.com',
+                    clients: [],
+                    team_members: [
+                      {
+                        userId: 'creator-1',
+                        firstName: 'Luis',
+                        lastName: 'Silva',
+                        email: 'l.silva@example.com',
+                      },
+                    ],
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    const getOrgClientsHandler = (await import('@/pages/api/get-org-clients')).default;
+    const req = { method: 'POST', body: { userId: 'user-1' } };
+    const res = mockRes();
+
+    await getOrgClientsHandler(req, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.clients[0].addedByName).toBe('Luis Silva');
   });
 });

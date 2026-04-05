@@ -4,7 +4,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { useUserAccount } from '@/lib/UserAccountContext';
 import { getUserOrganization } from '@/services/organizationService';
 import { isOwnerRole, isOwnerOrDeveloperRole } from '@/config/rolePermissions';
-import { getOrgTrialStatus } from '@/lib/trialUtils';
 import { supabase } from '@/lib/supabase';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/layouts/UserMenu';
@@ -163,22 +162,6 @@ export default function DashboardLayout({ children }) {
     if (isOwner || isOwnerOrDeveloper) return;
     router.replace('/dashboard/team-member');
   }, [orgLoaded, router.pathname, isOwner, isOwnerOrDeveloper, router]);
-
-  // Trial: superadmin/owner only — when org trial expired, send to paywall. Team members are grandfathered.
-  const TEMPORARILY_BYPASS_TRIAL_FOR_SUPERADMIN = true; // TODO: set to false after testing
-  const orgTrialStatus = useMemo(
-    () => (organization ? getOrgTrialStatus(organization) : { expired: false }),
-    [organization]
-  );
-  const paywallAllowlist = ['/dashboard/subscriptions'];
-  const isOnPaywallAllowlist = paywallAllowlist.some(
-    (p) => router.pathname === p || router.pathname.startsWith(p + '/')
-  );
-  useEffect(() => {
-    if (!orgLoaded || !organization || memberRole !== 'superadmin') return;
-    if (TEMPORARILY_BYPASS_TRIAL_FOR_SUPERADMIN || !orgTrialStatus.expired || isOnPaywallAllowlist) return;
-    router.replace('/paywall');
-  }, [orgLoaded, organization, memberRole, orgTrialStatus.expired, isOnPaywallAllowlist, router]);
 
   useEffect(() => {
     if (memberRole !== 'member') return;

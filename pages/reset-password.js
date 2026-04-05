@@ -8,6 +8,25 @@ import PasswordField from '@/components/ui/PasswordField';
 import { PrimaryButton } from '@/components/ui/buttons';
 import Link from 'next/link';
 
+/** Same merge as @supabase/auth-js parseParametersFromURL (query overrides hash). */
+function parseAuthParamsFromUrl(href) {
+  const result = {};
+  try {
+    const url = new URL(href);
+    if (url.hash?.[0] === '#') {
+      new URLSearchParams(url.hash.slice(1)).forEach((value, key) => {
+        result[key] = value;
+      });
+    }
+    url.searchParams.forEach((value, key) => {
+      result[key] = value;
+    });
+  } catch {
+    // ignore
+  }
+  return result;
+}
+
 export default function ResetPasswordPage() {
   const { resetPasswordWithToken, currentUser } = useAuth();
   const router = useRouter();
@@ -20,50 +39,95 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [checkingToken, setCheckingToken] = useState(true);
   const [validToken, setValidToken] = useState(false);
+  /** Supabase redirect error (e.g. flow mismatch); distinct from generic invalid link */
+  const [authUrlError, setAuthUrlError] = useState('');
 
   useEffect(() => {
-    const hashParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash?.substring(1) || '') : null;
-    const hasRecoveryInUrl = hashParams?.get('type') === 'recovery' && hashParams?.get('access_token');
+    if (typeof window === 'undefined') return;
+
+    let cancelled = false;
+    const paramsBeforeInit = parseAuthParamsFromUrl(window.location.href);
+
+    if (paramsBeforeInit.error || paramsBeforeInit.error_code) {
+      const raw =
+        paramsBeforeInit.error_description ||
+        paramsBeforeInit.error ||
+        'Unable to complete sign-in from this link.';
+      try {
+        setAuthUrlError(decodeURIComponent(String(raw).replace(/\+/g, ' ')));
+      } catch {
+        setAuthUrlError(String(raw));
+      }
+      setCheckingToken(false);
+      setValidToken(false);
+      return;
+    }
+
+    // Parse before initialize(): implicit flow clears the hash after reading tokens.
+    const recoveryCallback =
+      (paramsBeforeInit.type === 'recovery' && !!paramsBeforeInit.access_token) ||
+      !!paramsBeforeInit.code;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
       if (event === 'PASSWORD_RECOVERY') {
         setValidToken(true);
         setCheckingToken(false);
         return;
       }
-      if (hasRecoveryInUrl) {
-        return;
-      }
-      if (session && event === 'SIGNED_IN') {
+      if (
+        session &&
+        recoveryCallback &&
+        (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')
+      ) {
         setValidToken(true);
         setCheckingToken(false);
       }
     });
 
-    if (hasRecoveryInUrl) {
-      supabase.auth.signOut().finally(() => {
-      });
-      const fallback = setTimeout(() => {
-        setValidToken(false);
-        setCheckingToken(false);
-      }, 10000);
-      return () => {
-        subscription.unsubscribe();
-        clearTimeout(fallback);
-      };
+    let fallbackTimer;
+    if (recoveryCallback) {
+      fallbackTimer = setTimeout(() => {
+        if (cancelled) return;
+        setValidToken((wasValid) => {
+          if (!wasValid) setCheckingToken(false);
+          return wasValid;
+        });
+      }, 15000);
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setValidToken(true);
-      setCheckingToken(false);
-    });
-    return () => subscription.unsubscribe();
+    void (async () => {
+      const { error: initError } = await supabase.auth.initialize();
+      if (cancelled) return;
+      if (initError?.message) setAuthUrlError(initError.message);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (session && recoveryCallback) {
+        setValidToken(true);
+        setCheckingToken(false);
+        return;
+      }
+      if (!recoveryCallback) {
+        setCheckingToken(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const hashParams = new URLSearchParams(window.location.hash?.substring(1) || '');
-    if (hashParams.get('type') === 'recovery') return;
+    const params = parseAuthParamsFromUrl(window.location.href);
+    const recoveryInUrl =
+      (params.type === 'recovery' && !!params.access_token) ||
+      !!params.code ||
+      params.error;
+    if (recoveryInUrl) return;
     if (currentUser) {
       setValidToken(true);
       setCheckingToken(false);
@@ -134,15 +198,26 @@ export default function ResetPasswordPage() {
             <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20 mt-8">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-white mb-4">Invalid or Expired Link</h2>
-                <p className="text-primary-200/70 mb-6">
+                <p className="text-primary-200/70 mb-4">
                   This password reset link is invalid or has expired. Please request a new one.
                 </p>
-                <Link
-                  href="/forgot-password"
-                  className="text-primary-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4"
-                >
-                  Request New Reset Link
-                </Link>
+                {authUrlError ? (
+                  <p className="text-sm text-amber-200/90 mb-6 px-2 break-words">{authUrlError}</p>
+                ) : null}
+                <div className="flex flex-col items-center gap-3">
+                  <Link
+                    href="/forgot-password"
+                    className="text-primary-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4"
+                  >
+                    Request New Reset Link
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="text-primary-200/80 hover:text-white font-medium text-sm transition-all duration-200 hover:underline underline-offset-4"
+                  >
+                    Back to Sign In
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

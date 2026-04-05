@@ -25,10 +25,19 @@ jest.mock('@/services/userService', () => ({
   getUserAccount: (...args) => mockGetUserAccount(...args),
 }));
 
-const mockGetTrialStatus = jest.fn(() => ({ expired: false }));
-jest.mock('@/lib/trialUtils', () => ({
-  getTrialStatus: (...args) => mockGetTrialStatus(...args),
+const mockGetUserOrganization = jest.fn(() => Promise.resolve(null));
+jest.mock('@/services/organizationService', () => ({
+  getUserOrganization: (...args) => mockGetUserOrganization(...args),
 }));
+
+const mockGetTrialStatus = jest.fn(() => ({ expired: false }));
+jest.mock('@/lib/trialUtils', () => {
+  const actual = jest.requireActual('@/lib/trialUtils');
+  return {
+    ...actual,
+    getTrialStatus: (...args) => mockGetTrialStatus(...args),
+  };
+});
 
 jest.mock('@/components/subscriptions/Paywall', () => {
   return function MockPaywall() {
@@ -41,6 +50,7 @@ describe('ProtectedRoute', () => {
     jest.clearAllMocks();
     mockUseAuth.mockReturnValue({ currentUser: null, loading: false });
     mockGetUserAccount.mockResolvedValue(null);
+    mockGetUserOrganization.mockResolvedValue(null);
     mockGetTrialStatus.mockReturnValue({ expired: false });
   });
 
@@ -82,8 +92,9 @@ describe('ProtectedRoute', () => {
     expect(await screen.findByText('Protected content')).toBeInTheDocument();
   });
 
-  it('renders Paywall when trial expired and user on trial', async () => {
+  it('renders Paywall when trial expired and user on trial (no org yet)', async () => {
     mockUseAuth.mockReturnValue({ currentUser: { uid: 'u1' }, loading: false });
+    mockGetUserOrganization.mockResolvedValue(null);
     mockGetUserAccount.mockResolvedValue({ trial: true });
     mockGetTrialStatus.mockReturnValue({ expired: true });
 
@@ -95,5 +106,28 @@ describe('ProtectedRoute', () => {
 
     expect(await screen.findByTestId('paywall')).toBeInTheDocument();
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+  });
+
+  it('does not render Paywall for org admin when user profile trial is expired (trial is org-owner only)', async () => {
+    mockUseAuth.mockReturnValue({ currentUser: { uid: 'u1' }, loading: false });
+    mockGetUserAccount.mockResolvedValue({ trial: true });
+    mockGetTrialStatus.mockReturnValue({ expired: true });
+    const past = new Date();
+    past.setDate(past.getDate() - 1);
+    mockGetUserOrganization.mockResolvedValue({
+      id: 'org-1',
+      trial: true,
+      trial_ends_at: past.toISOString(),
+      membership: { role: 'admin' },
+    });
+
+    render(
+      <ProtectedRoute>
+        <span>Protected content</span>
+      </ProtectedRoute>
+    );
+
+    expect(await screen.findByText('Protected content')).toBeInTheDocument();
+    expect(screen.queryByTestId('paywall')).not.toBeInTheDocument();
   });
 });

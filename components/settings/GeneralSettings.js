@@ -1,27 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount, createUserAccount } from '@/services/userService';
 import Dropdown from '@/components/ui/Dropdown';
 import Toggle from '@/components/ui/Toggle';
 import { PrimaryButton } from '@/components/ui/buttons';
-
-const TIMEZONES = [
-  'UTC',
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Phoenix',
-  'America/Anchorage',
-  'America/Honolulu',
-  'Europe/London',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Asia/Tokyo',
-  'Asia/Shanghai',
-  'Asia/Dubai',
-  'Australia/Sydney',
-];
+import { getTimeZoneSelectOptions, ensureTimeZoneOption } from '@/utils/timezoneOptions';
 
 const DATE_FORMATS = [
   { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
@@ -88,6 +71,12 @@ export default function GeneralSettings() {
     currency: 'USD',
     dataViewStyle: 'cards',
   });
+
+  const baseTimeZoneOptions = useMemo(() => getTimeZoneSelectOptions(), []);
+  const timezoneOptions = useMemo(
+    () => ensureTimeZoneOption(baseTimeZoneOptions, formData.timezone),
+    [baseTimeZoneOptions, formData.timezone]
+  );
 
   useEffect(() => {
     if (currentUser) {
@@ -177,9 +166,10 @@ export default function GeneralSettings() {
             id="timezone"
             name="timezone"
             label="Time Zone"
+            sublabel="Common IANA zones from the tz database. Search by region (Eastern, Central, Pacific, …)."
             value={formData.timezone}
             onChange={handleInputChange}
-            options={TIMEZONES.map((tz) => ({ value: tz, label: tz }))}
+            options={timezoneOptions}
             placeholder="Select time zone"
           />
           <Dropdown

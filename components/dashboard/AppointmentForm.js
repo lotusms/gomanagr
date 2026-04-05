@@ -10,6 +10,7 @@ import AppointmentRecurrence, { defaultRecurrence } from '@/components/dashboard
 import ServiceSelector from '@/components/dashboard/ServiceSelector';
 import ClientSelector from '@/components/dashboard/ClientSelector';
 import { buildTimeSlots, parseHour, parseTimeToSlotIndex } from './scheduleTimeUtils';
+import { getRecurrenceStateForEdit } from '@/utils/appointmentRecurrence';
 import { getTermForIndustry, getTermSingular } from '@/components/clients/clientProfileConstants';
 
 /**
@@ -242,7 +243,10 @@ export default function AppointmentForm({
         ? initialAppointment.staffIds.map(String)
         : (initialAppointment.staffId ? [String(initialAppointment.staffId)] : []);
       setStaffIds(staffRestrictedToId ? [staffRestrictedToId] : initialStaffIds);
-      if (initialAppointment.recurrence && typeof initialAppointment.recurrence === 'object') {
+      const resolvedRecurrence = getRecurrenceStateForEdit(initialAppointment, appointments);
+      if (resolvedRecurrence) {
+        setRecurrence({ ...defaultRecurrence(), ...resolvedRecurrence });
+      } else if (initialAppointment.recurrence && typeof initialAppointment.recurrence === 'object') {
         setRecurrence((prev) => ({ ...defaultRecurrence(), ...prev, ...initialAppointment.recurrence }));
       }
     } else {
@@ -266,7 +270,7 @@ export default function AppointmentForm({
       setRecurrence(defaultRecurrence());
     }
     setErrors({});
-  }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone, staffRestrictedToId]);
+  }, [initialAppointment, selectedDate, todayDateString, getCurrentDateTimeInTimezone, staffRestrictedToId, appointments]);
 
   useEffect(() => {
     if (!initialAppointment && effectiveStaffIds.length > 0 && Array.isArray(services)) {

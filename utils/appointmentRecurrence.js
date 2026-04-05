@@ -161,3 +161,93 @@ export function isPartOfRecurringSeries(appointment, allAppointments) {
   );
   return inSeries.length > 1;
 }
+
+function dayDiffYmd(a, b) {
+  const ms = new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime();
+  return Math.round(ms / 86400000);
+}
+
+/**
+ * Normalize stored recurrence for the edit form.
+ */
+function normalizeRecurrence(r) {
+  return {
+    isRecurring: true,
+    frequency: r.frequency || 'weekly',
+    specificDays: Array.isArray(r.specificDays) ? r.specificDays : [],
+    monthlyDay: Math.min(31, Math.max(1, parseInt(r.monthlyDay, 10) || 1)),
+    recurrenceStart: r.recurrenceStart || '',
+    recurrenceEnd: r.recurrenceEnd ?? null,
+    noEndDate: !!r.noEndDate,
+  };
+}
+
+/**
+ * Rebuild recurrence state when editing: use stored `appointment.recurrence` when present,
+ * or infer from series id / sibling occurrences (legacy rows had recurrence stripped on save).
+ * @returns {Object|null} Recurrence state for AppointmentRecurrence, or null if not recurring.
+ */
+export function getRecurrenceStateForEdit(appointment, allAppointments) {
+  if (!appointment?.id) return null;
+
+  const r = appointment.recurrence;
+  if (r && typeof r === 'object' && r.isRecurring) {
+    return normalizeRecurrence(r);
+  }
+
+  const baseId = getRecurrenceBaseId(appointment.id);
+  const seriesBase = baseId || appointment.id;
+
+  const series = (allAppointments || []).filter((a) => {
+    const aptBase = getRecurrenceBaseId(a.id);
+    return aptBase === seriesBase || a.id === seriesBase;
+  });
+
+  const isOccurrenceRow = baseId != null;
+  const multiRowSeries = series.length > 1;
+  if (!isOccurrenceRow && !multiRowSeries) return null;
+
+  const dates = series
+    .map((a) => (typeof a.date === 'string' ? a.date : ''))
+    .filter(Boolean)
+    .sort();
+
+  const recurrenceStart = dates[0] || (typeof appointment.date === 'string' ? appointment.date : '');
+  const recurrenceEnd = dates.length > 1 ? dates[dates.length - 1] : recurrenceStart;
+
+  let frequency = 'daily';
+  let specificDays = [];
+
+  if (dates.length >= 2) {
+    const steps = [];
+    for (let i = 1; i < dates.length; i++) {
+      steps.push(dayDiffYmd(dates[i - 1], dates[i]));
+    }
+    const allDailySteps = steps.every((s) => s === 1);
+    const allWeeklySteps = steps.every((s) => s === 7);
+
+    if (allDailySteps) {
+      frequency = 'daily';
+    } else if (allWeeklySteps) {
+      frequency = 'weekly';
+    } else {
+      const weekdays = [...new Set(dates.map((d) => new Date(`${d}T12:00:00`).getDay()))].sort((x, y) => x - y);
+      if (weekdays.length > 0 && weekdays.length < 7) {
+        frequency = 'specific_days';
+        specificDays = weekdays;
+      } else {
+        frequency = 'weekly';
+      }
+    }
+  }
+
+  return {
+    isRecurring: true,
+    frequency,
+    specificDays,
+    monthlyDay: 1,
+    recurrenceStart,
+    recurrenceEnd,
+    noEndDate: false,
+  };
+}

@@ -19,6 +19,7 @@ jest.mock('@/lib/AuthContext', () => ({
 const mockOnAuthStateChange = jest.fn();
 const mockGetSession = jest.fn();
 const mockSignOut = jest.fn();
+const mockInitialize = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   supabase: {
@@ -29,6 +30,7 @@ jest.mock('@/lib/supabase', () => ({
       },
       getSession: () => mockGetSession(),
       signOut: () => mockSignOut(),
+      initialize: () => mockInitialize(),
     },
   },
 }));
@@ -38,6 +40,7 @@ describe('Reset Password Page', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockInitialize.mockResolvedValue({ error: null });
     window.location.hash = '';
     mockUseRouter.mockReturnValue({
       push: mockPush,
@@ -65,6 +68,17 @@ describe('Reset Password Page', () => {
     expect(screen.getByText(/verifying reset link/i)).toBeInTheDocument();
   });
 
+  it('shows form when PASSWORD_RECOVERY fires (implicit reset link)', async () => {
+    mockGetSession.mockResolvedValue({ data: { session: null } });
+    render(<ResetPasswordPage />);
+    await waitFor(() => expect(mockOnAuthStateChange).toHaveBeenCalled());
+    const authCb = mockOnAuthStateChange.mock.calls[0][0];
+    authCb('PASSWORD_RECOVERY', { access_token: 't', user: { id: 'u' } });
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /set new password/i })).toBeInTheDocument();
+    });
+  });
+
   it('shows invalid link message when no valid session or recovery', async () => {
     mockGetSession.mockResolvedValue({ data: { session: null } });
 
@@ -75,9 +89,14 @@ describe('Reset Password Page', () => {
     });
     expect(screen.getByText(/please request a new one/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /request new reset link/i })).toHaveAttribute('href', '/forgot-password');
+    expect(screen.getByRole('link', { name: /back to sign in/i })).toHaveAttribute('href', '/login');
   });
 
-  it('shows set new password form when session is valid', async () => {
+  it('shows set new password form when logged in without recovery URL', async () => {
+    mockUseAuth.mockReturnValue({
+      resetPasswordWithToken: mockResetPasswordWithToken,
+      currentUser: { id: 'u1', email: 'user@test.com' },
+    });
     mockGetSession.mockResolvedValue({ data: { session: { user: {} } } });
 
     render(<ResetPasswordPage />);
@@ -93,6 +112,10 @@ describe('Reset Password Page', () => {
   });
 
   it('validates password length and match', async () => {
+    mockUseAuth.mockReturnValue({
+      resetPasswordWithToken: mockResetPasswordWithToken,
+      currentUser: { id: 'u1', email: 'user@test.com' },
+    });
     mockGetSession.mockResolvedValue({ data: { session: { user: {} } } });
 
     render(<ResetPasswordPage />);
@@ -122,6 +145,10 @@ describe('Reset Password Page', () => {
 
   it('shows success and redirects after reset', async () => {
     jest.useFakeTimers();
+    mockUseAuth.mockReturnValue({
+      resetPasswordWithToken: mockResetPasswordWithToken,
+      currentUser: { id: 'u1', email: 'user@test.com' },
+    });
     mockGetSession.mockResolvedValue({ data: { session: { user: {} } } });
     mockResetPasswordWithToken.mockResolvedValue(undefined);
 
@@ -148,6 +175,10 @@ describe('Reset Password Page', () => {
   });
 
   it('shows error when reset fails', async () => {
+    mockUseAuth.mockReturnValue({
+      resetPasswordWithToken: mockResetPasswordWithToken,
+      currentUser: { id: 'u1', email: 'user@test.com' },
+    });
     mockGetSession.mockResolvedValue({ data: { session: { user: {} } } });
     mockResetPasswordWithToken.mockRejectedValue(new Error('Token expired'));
 

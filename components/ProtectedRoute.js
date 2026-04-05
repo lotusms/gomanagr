@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/lib/AuthContext';
 import { getUserAccount } from '@/services/userService';
+import { getUserOrganization } from '@/services/organizationService';
 import { getTrialStatus } from '@/lib/trialUtils';
 import Paywall from '@/components/subscriptions/Paywall';
 
@@ -20,12 +21,20 @@ export default function ProtectedRoute({ children }) {
 
   useEffect(() => {
     if (currentUser?.uid && !loading) {
-      getUserAccount(currentUser.uid)
-        .then((data) => {
-          setUserAccount(data || null);
-          
-          const trialStatus = getTrialStatus(data);
-          setTrialExpired(trialStatus.expired && data?.trial === true);
+      Promise.all([
+        getUserAccount(currentUser.uid).catch(() => null),
+        getUserOrganization(currentUser.uid).catch(() => null),
+      ])
+        .then(([account, org]) => {
+          setUserAccount(account);
+          let expired = false;
+          if (org) {
+            expired = false;
+          } else {
+            const trialStatus = getTrialStatus(account);
+            expired = trialStatus.expired && account?.trial === true;
+          }
+          setTrialExpired(expired);
         })
         .catch(() => {
           setUserAccount(null);
@@ -52,7 +61,7 @@ export default function ProtectedRoute({ children }) {
     return null;
   }
 
-  if (trialExpired && userAccount?.trial === true) {
+  if (trialExpired) {
     return <Paywall userAccount={userAccount} />;
   }
 

@@ -3,42 +3,25 @@
  */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import Schedule from '@/components/dashboard/Schedule';
+import Schedule, { getSundayYmdInTimeZone, addCalendarDaysYmd } from '@/components/dashboard/Schedule';
 
-function getWeekStart(d) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
+/** Match Schedule grid: same IANA zone as the component. */
+const LOCAL_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function parseYmdToUtcNoon(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
 }
 
-function toDateKey(d) {
-  const x = d instanceof Date ? d : new Date(d);
-  return (
-    x.getFullYear() +
-    '-' +
-    String(x.getMonth() + 1).padStart(2, '0') +
-    '-' +
-    String(x.getDate()).padStart(2, '0')
-  );
-}
-
-/** Return a date key for a day in the current week (Monday = 0). */
+/** Return a date key for a day in the current week (Sunday = 0). */
 function currentWeekDayKey(dayOffset) {
-  const weekStart = getWeekStart(new Date());
-  const d = new Date(weekStart);
-  d.setDate(weekStart.getDate() + dayOffset);
-  return toDateKey(d);
+  const sun = getSundayYmdInTimeZone(LOCAL_TZ);
+  return addCalendarDaysYmd(sun, dayOffset, LOCAL_TZ);
 }
 
-/** Return a Date for a day in the current week. */
+/** Return a Date (noon UTC anchor) for a day in the current week. */
 function currentWeekDate(dayOffset) {
-  const weekStart = getWeekStart(new Date());
-  const d = new Date(weekStart);
-  d.setDate(weekStart.getDate() + dayOffset);
-  return d;
+  return parseYmdToUtcNoon(currentWeekDayKey(dayOffset));
 }
 
 const teamMembers = [
@@ -62,6 +45,7 @@ describe('Schedule', () => {
         appointments={[]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
         businessHoursStart="08:00"
         businessHoursEnd="18:00"
       />
@@ -77,6 +61,7 @@ describe('Schedule', () => {
         appointments={[]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     const monthYearBefore = screen.getByText(/\w+ \d{4}/).textContent;
@@ -92,6 +77,7 @@ describe('Schedule', () => {
         appointments={[]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     fireEvent.click(screen.getByRole('button', { name: /next week/i }));
@@ -104,6 +90,7 @@ describe('Schedule', () => {
         appointments={[]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     fireEvent.click(screen.getByRole('button', { name: /next week/i }));
@@ -127,6 +114,7 @@ describe('Schedule', () => {
         ]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     expect(screen.getByText('Client call')).toBeInTheDocument();
@@ -135,7 +123,6 @@ describe('Schedule', () => {
 
   it('processes appointments with date as Date object in current week', () => {
     const dateObj = currentWeekDate(1);
-    const dateKey = toDateKey(dateObj);
     render(
       <Schedule
         appointments={[
@@ -150,6 +137,7 @@ describe('Schedule', () => {
         ]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     expect(screen.getByText('Consultation')).toBeInTheDocument();
@@ -171,6 +159,7 @@ describe('Schedule', () => {
         ]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     expect(screen.getByText('Appointment')).toBeInTheDocument();
@@ -193,6 +182,7 @@ describe('Schedule', () => {
         ]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
         isTeamMember={true}
         currentUserStaffId="tm1"
       />
@@ -202,10 +192,8 @@ describe('Schedule', () => {
   });
 
   it('filters out appointments not in visible week', () => {
-    const weekStart = getWeekStart(new Date());
-    const nextWeek = new Date(weekStart);
-    nextWeek.setDate(weekStart.getDate() + 7);
-    const nextWeekKey = toDateKey(nextWeek);
+    const sun = getSundayYmdInTimeZone(LOCAL_TZ);
+    const nextWeekKey = addCalendarDaysYmd(sun, 7, LOCAL_TZ);
     render(
       <Schedule
         appointments={[
@@ -220,6 +208,7 @@ describe('Schedule', () => {
         ]}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     expect(screen.queryByText('Next week')).not.toBeInTheDocument();
@@ -231,6 +220,7 @@ describe('Schedule', () => {
         appointments={null}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     expect(screen.getByRole('button', { name: /today/i })).toBeInTheDocument();
@@ -240,6 +230,7 @@ describe('Schedule', () => {
         appointments={undefined}
         teamMembers={teamMembers}
         clients={clients}
+        timezone={LOCAL_TZ}
       />
     );
     expect(screen.getByRole('button', { name: /today/i })).toBeInTheDocument();

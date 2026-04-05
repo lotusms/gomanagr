@@ -7,8 +7,14 @@ import userEvent from '@testing-library/user-event';
 import Paywall from '@/components/subscriptions/Paywall';
 
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
 jest.mock('next/router', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+}));
+
+const mockLogout = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/lib/AuthContext', () => ({
+  useAuth: () => ({ logout: mockLogout }),
 }));
 
 jest.mock('react-icons/hi', () => ({
@@ -32,6 +38,7 @@ jest.mock('@/components/subscriptions/SubscriptionPlansGrid', () => {
 describe('Paywall', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLogout.mockResolvedValue(undefined);
   });
 
   it('renders trial expired message when trialEndsAt is in the past', () => {
@@ -96,5 +103,32 @@ describe('Paywall', () => {
   it('renders footer note', () => {
     render(<Paywall userAccount={{}} />);
     expect(screen.getByText(/30-day money-back guarantee/)).toBeInTheDocument();
+  });
+
+  it('when trial expired, offers sign out to return to login', async () => {
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 1);
+    render(
+      <Paywall userAccount={{ trialEndsAt: pastDate.toISOString() }} />
+    );
+    expect(
+      screen.getByRole('button', { name: 'Sign out and return to login' })
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Sign out and return to login' })
+    );
+    expect(mockLogout).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith('/login');
+  });
+
+  it('does not show sign-out link when trial has days remaining', () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 5);
+    render(
+      <Paywall userAccount={{ trialEndsAt: futureDate.toISOString() }} />
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Sign out and return to login' })
+    ).not.toBeInTheDocument();
   });
 });

@@ -79,7 +79,7 @@ export default function NewAppointmentPage() {
       let appointmentsToSave = isRecurring
         ? expandAppointmentWithRecurrence(appointmentPayload, recurrence)
         : [appointmentPayload];
-      appointmentsToSave = appointmentsToSave.map(({ recurrence: _r, pendingClients: _p, ...apt }) => apt);
+      appointmentsToSave = appointmentsToSave.map(({ pendingClients: _p, ...apt }) => apt);
 
       if (isTeamMember || isOrgAdmin) {
         const payload = appointmentsToSave.length === 1

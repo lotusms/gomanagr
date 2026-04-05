@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { HiLockClosed, HiCheck } from 'react-icons/hi';
+import { useAuth } from '@/lib/AuthContext';
 import SubscriptionPlansGrid from '@/components/subscriptions/SubscriptionPlansGrid';
 
 /**
@@ -9,8 +10,10 @@ import SubscriptionPlansGrid from '@/components/subscriptions/SubscriptionPlansG
  */
 export default function Paywall({ userAccount, onSubscribe }) {
   const router = useRouter();
+  const { logout } = useAuth();
   const [daysRemaining, setDaysRemaining] = useState(null);
   const [trialExpired, setTrialExpired] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (userAccount?.trialEndsAt) {
@@ -50,6 +53,16 @@ export default function Paywall({ userAccount, onSubscribe }) {
     return formatted.replace(/\.00$/, '');
   };
 
+  const handleSignInDifferentAccount = async () => {
+    setSigningOut(true);
+    try {
+      await logout();
+      await router.replace('/login');
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   const features = [
     'Unlimited clients and projects',
     'Unlimited team members',
@@ -75,6 +88,19 @@ export default function Paywall({ userAccount, onSubscribe }) {
               ? 'Subscribe to continue using GoManagr and unlock all features'
               : 'Subscribe now to ensure uninterrupted access to all features'}
           </p>
+          {trialExpired && (
+            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              Need to sign in with a different email?{' '}
+              <button
+                type="button"
+                onClick={handleSignInDifferentAccount}
+                disabled={signingOut}
+                className="font-medium text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
+              >
+                {signingOut ? 'Signing out…' : 'Sign out and return to login'}
+              </button>
+            </p>
+          )}
         </div>
 
         {/* Features Grid */}

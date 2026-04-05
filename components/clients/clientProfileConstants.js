@@ -1,18 +1,7 @@
-export const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time (ET)' },
-  { value: 'America/Chicago', label: 'Central Time (CT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-  { value: 'America/Phoenix', label: 'Arizona Time' },
-  { value: 'America/Anchorage', label: 'Alaska Time' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii Time' },
-  { value: 'UTC', label: 'UTC' },
-  { value: 'Europe/London', label: 'London (GMT)' },
-  { value: 'Europe/Paris', label: 'Paris (CET)' },
-  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-  { value: 'Australia/Sydney', label: 'Sydney (AEDT)' },
-];
+import { getTimeZoneSelectOptions } from '@/utils/timezoneOptions';
+
+/** Full IANA list with UTC offset labels (same as Settings → General). */
+export const TIMEZONES = getTimeZoneSelectOptions();
 
 export const LANGUAGES = [
   { value: 'en', label: 'English' },

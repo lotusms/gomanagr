@@ -9,6 +9,7 @@ import {
   isRecurrenceOccurrenceId,
   getRecurrenceSeriesFromDate,
   isPartOfRecurringSeries,
+  getRecurrenceStateForEdit,
 } from '@/utils/appointmentRecurrence';
 
 describe('appointmentRecurrence', () => {
@@ -283,6 +284,36 @@ describe('appointmentRecurrence', () => {
 
     it('returns false when appointment is null/undefined', () => {
       expect(isPartOfRecurringSeries(null, [])).toBe(false);
+    });
+  });
+
+  describe('getRecurrenceStateForEdit', () => {
+    it('returns normalized state when recurrence.isRecurring is true', () => {
+      const state = getRecurrenceStateForEdit(
+        {
+          id: 'apt-1',
+          recurrence: { isRecurring: true, frequency: 'daily', recurrenceStart: '2025-01-01' },
+        },
+        []
+      );
+      expect(state.isRecurring).toBe(true);
+      expect(state.frequency).toBe('daily');
+      expect(state.recurrenceStart).toBe('2025-01-01');
+    });
+
+    it('infers recurring when id is a recurrence occurrence and recurrence not stored', () => {
+      const state = getRecurrenceStateForEdit(
+        { id: 'apt-base-0-2025-04-04', date: '2025-04-04' },
+        [{ id: 'apt-base-0-2025-04-04', date: '2025-04-04' }]
+      );
+      expect(state.isRecurring).toBe(true);
+      expect(state.recurrenceStart).toBe('2025-04-04');
+    });
+
+    it('returns null for a standalone non-suffixed appointment', () => {
+      expect(
+        getRecurrenceStateForEdit({ id: 'apt-1', date: '2025-01-01' }, [{ id: 'apt-1', date: '2025-01-01' }])
+      ).toBeNull();
     });
   });
 });

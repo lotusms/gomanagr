@@ -66,7 +66,7 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('admin: shows exact admin nav items in order (no Marketing, Insights, Timesheets)', () => {
+  it('admin: shows exact admin nav items in order (no Marketing, Insights)', () => {
     renderSidebar({ memberRole: 'admin', isOwner: false });
 
     const items = getNavLinkNamesAndHrefs();
@@ -84,6 +84,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Invoices', href: '/dashboard/invoices' },
       { name: 'Receipts', href: '/dashboard/receipts' },
       { name: 'Tasks', href: '/dashboard/tasks' },
+      { name: 'Timesheets', href: '/dashboard/timesheets' },
       { name: 'Apps', href: '/dashboard/apps' },
     ];
 
@@ -122,7 +123,7 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('member: shows exact member nav items when all sections enabled (Home, My Profile, Schedule, Clients, Services, Projects, Tasks, Contracts)', () => {
+  it('member: shows exact member nav items when all sections enabled (includes Timesheets)', () => {
     renderSidebar({
       memberRole: 'member',
       memberAccess: { schedule: true, clients: true, projects: true, contracts: true },
@@ -139,6 +140,7 @@ describe('DashboardSidebar role-based navigation', () => {
       { name: 'Projects', href: '/dashboard/projects' },
       { name: 'Contracts', href: '/dashboard/contracts' },
       { name: 'Tasks', href: '/dashboard/tasks' },
+      { name: 'Timesheets', href: '/dashboard/timesheets' },
     ];
 
     expect(items).toHaveLength(expected.length);
@@ -148,7 +150,7 @@ describe('DashboardSidebar role-based navigation', () => {
     });
   });
 
-  it('member: does not show Team, Proposals, Invoices, Marketing, Insights, Timesheets, Apps (but does show Contracts)', () => {
+  it('member: does not show Team, Proposals, Invoices, Marketing, Insights, Apps (but does show Timesheets)', () => {
     renderSidebar({ memberRole: 'member', memberAccess: {} });
 
     const links = screen.getAllByRole('link');
@@ -160,7 +162,7 @@ describe('DashboardSidebar role-based navigation', () => {
     expect(names).not.toContain('Invoices');
     expect(names).not.toContain('Marketing');
     expect(names).not.toContain('Insights');
-    expect(names).not.toContain('Timesheets');
+    expect(names).toContain('Timesheets');
     expect(names).not.toContain('Apps');
   });
 

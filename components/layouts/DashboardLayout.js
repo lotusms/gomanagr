@@ -170,6 +170,8 @@ export default function DashboardLayout({ children }) {
     const baseAllowed =
       path === '/account' ||
       path.startsWith('/dashboard/team-member') ||
+      path === '/dashboard/timesheets' ||
+      path.startsWith('/dashboard/timesheets/') ||
       path === '/dashboard/settings';
     if (baseAllowed) return;
     if (memberAccess === null) return;

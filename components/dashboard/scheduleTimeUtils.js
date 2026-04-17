@@ -10,19 +10,45 @@ export function parseMinute(str) {
   return m >= 30 ? 30 : 0;
 }
 
-export function parseTimeToSlotIndex(timeStr, startHour) {
+/** Minutes since midnight from HH:MM (24h). */
+export function parseTimeToMinutesOfDay(timeStr) {
   const h = parseHour(timeStr);
-  const m = parseMinute(timeStr);
-  return (h - startHour) * 2 + m / 30;
+  const match = String(timeStr || '').match(/:(\d{2})/);
+  const m = match ? parseInt(match[1], 10) : 0;
+  return h * 60 + Math.min(59, Math.max(0, m));
 }
 
-export function buildTimeSlots(startStr, endStr, timeFormat) {
+/**
+ * Slot index along the business-day axis. Integer or fractional (e.g. hourly grid + half-past start).
+ * @param {string} timeStr
+ * @param {number} startHour - business start hour (0–23)
+ * @param {number} incrementMinutes - minutes per column (30 = half-hour, 60 = one hour)
+ */
+export function parseTimeToSlotIndex(timeStr, startHour, incrementMinutes = 30) {
+  const startM = startHour * 60;
+  const t = parseTimeToMinutesOfDay(timeStr);
+  return (t - startM) / incrementMinutes;
+}
+
+/**
+ * @param {string} startStr
+ * @param {string} endStr
+ * @param {'12h'|'24h'} timeFormat
+ * @param {number} incrementMinutes - minutes per column (30 = half-hour slots, 60 = hourly only)
+ */
+export function buildTimeSlots(startStr, endStr, timeFormat, incrementMinutes = 30) {
   const startHour = parseHour(startStr);
   const endHour = parseHour(endStr);
   const slots = [];
-  for (let h = startHour; h <= endHour; h++) {
-    slots.push({ hour: h, minute: 0 });
-    if (h < endHour) slots.push({ hour: h, minute: 30 });
+  if (incrementMinutes === 60) {
+    for (let h = startHour; h <= endHour; h++) {
+      slots.push({ hour: h, minute: 0 });
+    }
+  } else {
+    for (let h = startHour; h <= endHour; h++) {
+      slots.push({ hour: h, minute: 0 });
+      if (h < endHour) slots.push({ hour: h, minute: 30 });
+    }
   }
   if (timeFormat === '12h') {
     return slots.map(({ hour, minute }) => {

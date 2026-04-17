@@ -1,6 +1,6 @@
 /**
  * Save or delete an appointment in the org's schedule (admin's user_profiles.appointments).
- * - Admin (userId === org admin): can save/delete any appointment.
+ * - Org admins (superadmin, admin, developer): can save/delete any appointment on the shared org calendar.
  * - Team member: can only save appointments for themselves (staffId forced to their id)
  *   and only delete their own appointments (staffId must match).
  * All changes are persisted to the admin's profile so admin and team member views stay in sync.
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   try {
     const { data: membership, error: memErr } = await supabaseAdmin
       .from('org_members')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('user_id', userId)
       .limit(1)
       .single();
@@ -60,6 +60,7 @@ export default async function handler(req, res) {
     }
 
     const orgId = membership.organization_id;
+    const isOrgAdminCaller = ['superadmin', 'admin', 'developer'].includes(membership.role);
     const { data: superadminRow } = await supabaseAdmin
       .from('org_members')
       .select('user_id')
@@ -85,7 +86,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'No admin found for organization' });
     }
 
-    const isAdmin = userId === profileUserId;
+    const isAdmin = isOrgAdminCaller;
 
     const { data: profileRow, error: profileErr } = await supabaseAdmin
       .from('user_profiles')

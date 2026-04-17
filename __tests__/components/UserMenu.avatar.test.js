@@ -10,10 +10,12 @@ jest.mock('next/router', () => ({
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/AuthContext', () => ({ useAuth: () => ({}), AuthProvider: ({ children }) => children }));
 jest.mock('@/services/userService', () => ({ getUserAccount: () => Promise.resolve(null) }));
+const mockIsMemberRole = jest.fn(() => false);
+
 jest.mock('@/config/rolePermissions', () => ({
   isOwnerRole: () => false,
   isAdminRole: () => false,
-  isMemberRole: () => false,
+  isMemberRole: (...args) => mockIsMemberRole(...args),
   isDeveloperRole: () => false,
   isOwnerOrDeveloperRole: () => false,
 }));
@@ -25,6 +27,7 @@ jest.mock('@/lib/userPermissions', () => ({
 describe('UserMenu avatar and display name', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsMemberRole.mockReturnValue(false);
   });
 
   it('shows initials in avatar when no company or organization logo was added', () => {
@@ -78,7 +81,7 @@ describe('UserMenu avatar and display name', () => {
     expect(img).toHaveAttribute('src', 'https://example.com/my-company-logo.png');
   });
 
-  it('shows organization logo in avatar when org has logo (org logo takes priority)', () => {
+  it('shows organization logo in avatar when org has logo (non-member: org logo takes priority over company logo)', () => {
     const userAccount = {
       firstName: 'Luis',
       lastName: 'Silva',
@@ -100,6 +103,85 @@ describe('UserMenu avatar and display name', () => {
     const img = button.querySelector('img');
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('src', 'https://example.com/org-logo.png');
+  });
+
+  it('team member: shows personal photo over org logo when photoUrl is set', () => {
+    mockIsMemberRole.mockReturnValue(true);
+    const userAccount = {
+      firstName: 'Amanda',
+      lastName: 'Nunez',
+      photoUrl: 'https://example.com/amanda.png',
+      companyLogo: '',
+      nameView: 'full',
+    };
+    const organization = {
+      logo_url: 'https://example.com/org-logo.png',
+      membership: { role: 'member' },
+    };
+
+    render(
+      <UserMenu
+        userAccount={userAccount}
+        currentUser={{ email: 'amanda@example.com' }}
+        organization={organization}
+        onLogout={mockOnLogout}
+      />
+    );
+
+    const img = screen.getByRole('button', { name: /user menu/i }).querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://example.com/amanda.png');
+  });
+
+  it('team member: shows org logo when they have no personal photo', () => {
+    mockIsMemberRole.mockReturnValue(true);
+    const userAccount = {
+      firstName: 'Amanda',
+      lastName: 'Nunez',
+      companyLogo: '',
+      nameView: 'full',
+    };
+    const organization = {
+      logo_url: 'https://example.com/org-logo.png',
+      membership: { role: 'member' },
+    };
+
+    render(
+      <UserMenu
+        userAccount={userAccount}
+        currentUser={{ email: 'amanda@example.com' }}
+        organization={organization}
+        onLogout={mockOnLogout}
+      />
+    );
+
+    const img = screen.getByRole('button', { name: /user menu/i }).querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://example.com/org-logo.png');
+  });
+
+  it('team member: prefers companyLogo over org logo when that is their only uploaded image', () => {
+    mockIsMemberRole.mockReturnValue(true);
+    const userAccount = {
+      firstName: 'Amanda',
+      lastName: 'Nunez',
+      companyLogo: 'https://example.com/my-upload.png',
+      nameView: 'full',
+    };
+    const organization = {
+      logo_url: 'https://example.com/org-logo.png',
+      membership: { role: 'member' },
+    };
+
+    render(
+      <UserMenu
+        userAccount={userAccount}
+        currentUser={{ email: 'amanda@example.com' }}
+        organization={organization}
+        onLogout={mockOnLogout}
+      />
+    );
+
+    const img = screen.getByRole('button', { name: /user menu/i }).querySelector('img');
+    expect(img).toHaveAttribute('src', 'https://example.com/my-upload.png');
   });
 
   it('shows initials when account has no logo and no org logo (first name only)', () => {

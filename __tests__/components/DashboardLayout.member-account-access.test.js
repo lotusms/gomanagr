@@ -4,10 +4,11 @@ import { UserAccountProvider } from '@/lib/UserAccountContext';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 
 const mockReplace = jest.fn();
+let mockPathname = '/account';
 
 jest.mock('next/router', () => ({
   useRouter: () => ({
-    pathname: '/account',
+    pathname: mockPathname,
     replace: mockReplace,
     push: jest.fn(),
   }),
@@ -48,6 +49,7 @@ global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({}) }
 describe('DashboardLayout member access to My Account', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPathname = '/account';
   });
 
   it('allows member on /account without redirecting to team-member', async () => {
@@ -64,6 +66,23 @@ describe('DashboardLayout member access to My Account', () => {
     });
 
     // Member should stay on /account; must not be redirected to /dashboard/team-member
+    expect(mockReplace).not.toHaveBeenCalledWith('/dashboard/team-member');
+  });
+
+  it('allows member on /dashboard/timesheets without redirecting to team-member', async () => {
+    mockPathname = '/dashboard/timesheets';
+    render(
+      <UserAccountProvider>
+        <DashboardLayout>
+          <div data-testid="timesheets-content">Timesheets page content</div>
+        </DashboardLayout>
+      </UserAccountProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('timesheets-content')).toBeInTheDocument();
+    });
+
     expect(mockReplace).not.toHaveBeenCalledWith('/dashboard/team-member');
   });
 });

@@ -2,7 +2,8 @@
 -- Single file that defines the final database state (no intermediate adds/removes).
 -- Use on a fresh database or for schema-only restores. Does not run data migrations.
 -- Tables: user_profiles, organizations, org_members, org_invites, client_*, tasks, task_activity,
--- task_comments, platform_admins, backup_exports, app_settings, organization_integrations.
+-- task_comments, platform_admins, backup_exports, app_settings, organization_integrations,
+-- org_time_entries, org_work_shift_patterns, marketing_campaigns.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -155,6 +156,7 @@ RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
+SET search_path = public
 AS $$
 BEGIN
   RETURN EXISTS (
@@ -164,6 +166,27 @@ BEGIN
   );
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.check_user_org_admin(UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.check_user_org_admin(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.check_user_org_admin(UUID, UUID) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.check_org_has_member(p_organization_id UUID, p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.org_members
+    WHERE organization_id = p_organization_id AND user_id = p_user_id
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.check_org_has_member(UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.check_org_has_member(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.check_org_has_member(UUID, UUID) TO service_role;
 
 DROP POLICY IF EXISTS "Users can view their own membership" ON public.org_members;
 DROP POLICY IF EXISTS "Users can view members in their organizations" ON public.org_members;
@@ -1098,6 +1121,129 @@ CREATE INDEX IF NOT EXISTS idx_organization_integrations_provider ON public.orga
 COMMENT ON TABLE public.organization_integrations IS 'Per-org third-party integration credentials (encrypted). Provider: stripe, twilio, mailchimp, resend. Access via service role; RBAC in API.';
 COMMENT ON COLUMN public.organization_integrations.config_encrypted IS 'AES-256-GCM encrypted JSON of provider-specific credentials. Decrypted server-side only.';
 COMMENT ON COLUMN public.organization_integrations.metadata_json IS 'Non-secret display info: account label, masked key suffix, sender email/phone, etc.';
+
+-- ---------------------------------------------------------------------------
+-- org_time_entries (per-user timesheet lines; RLS: own rows + org membership)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.org_time_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  work_date DATE NOT NULL,
+  hours NUMERIC(10, 2) NOT NULL CHECK (hours >= 0 AND hours <= 24),
+  notes TEXT DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'draft'
+    CHECK (status IN ('draft', 'submitted', 'approved', 'rejected')),
+  entry_method TEXT NOT NULL DEFAULT 'manual'
+    CHECK (entry_method IN ('manual', 'timer', 'clock')),
+  billable BOOLEAN NOT NULL DEFAULT true,
+  costable BOOLEAN NOT NULL DEFAULT true,
+  linked_entity_type TEXT,
+  linked_entity_id TEXT,
+  linked_label TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_time_entries_org_user_date
+  ON public.org_time_entries(organization_id, user_id, work_date);
+
+COMMENT ON TABLE public.org_time_entries IS 'Timesheet lines: hours per user per day with optional link to client/project/task.';
+
+ALTER TABLE public.org_time_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Org members can view own time entries" ON public.org_time_entries;
+CREATE POLICY "Org members can view own time entries"
+  ON public.org_time_entries FOR SELECT
+  USING (
+    user_id = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Org members can insert own time entries" ON public.org_time_entries;
+CREATE POLICY "Org members can insert own time entries"
+  ON public.org_time_entries FOR INSERT
+  WITH CHECK (
+    user_id = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Org members can update own time entries" ON public.org_time_entries;
+CREATE POLICY "Org members can update own time entries"
+  ON public.org_time_entries FOR UPDATE
+  USING (
+    user_id = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  )
+  WITH CHECK (
+    user_id = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Org members can delete own time entries" ON public.org_time_entries;
+CREATE POLICY "Org members can delete own time entries"
+  ON public.org_time_entries FOR DELETE
+  USING (
+    user_id = auth.uid()
+    AND organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+-- ---------------------------------------------------------------------------
+-- org_work_shift_patterns (weekly hours per member; not task appointments)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.org_work_shift_patterns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.user_profiles(id) ON DELETE CASCADE,
+  weekday SMALLINT NOT NULL CHECK (weekday >= 0 AND weekday <= 6),
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT org_work_shift_patterns_time_order CHECK (start_time < end_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_work_shift_patterns_org_user
+  ON public.org_work_shift_patterns(organization_id, user_id);
+
+COMMENT ON TABLE public.org_work_shift_patterns IS 'Weekly work hours template per member (e.g. Mon/Wed 09:00–17:00); admins edit, members read own rows.';
+
+ALTER TABLE public.org_work_shift_patterns ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Members and admins can view work shift patterns" ON public.org_work_shift_patterns;
+CREATE POLICY "Members and admins can view work shift patterns"
+  ON public.org_work_shift_patterns FOR SELECT
+  USING (
+    organization_id IN (SELECT organization_id FROM public.org_members WHERE user_id = auth.uid())
+    AND (
+      user_id = auth.uid()
+      OR public.check_user_org_admin(organization_id)
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can insert work shift patterns" ON public.org_work_shift_patterns;
+CREATE POLICY "Admins can insert work shift patterns"
+  ON public.org_work_shift_patterns FOR INSERT
+  WITH CHECK (
+    public.check_user_org_admin(organization_id)
+    AND public.check_org_has_member(organization_id, user_id)
+  );
+
+DROP POLICY IF EXISTS "Admins can update work shift patterns" ON public.org_work_shift_patterns;
+CREATE POLICY "Admins can update work shift patterns"
+  ON public.org_work_shift_patterns FOR UPDATE
+  USING (public.check_user_org_admin(organization_id))
+  WITH CHECK (
+    public.check_user_org_admin(organization_id)
+    AND public.check_org_has_member(organization_id, user_id)
+  );
+
+DROP POLICY IF EXISTS "Admins can delete work shift patterns" ON public.org_work_shift_patterns;
+CREATE POLICY "Admins can delete work shift patterns"
+  ON public.org_work_shift_patterns FOR DELETE
+  USING (public.check_user_org_admin(organization_id));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.org_work_shift_patterns TO authenticated;
 
 -- ========================
 -- Marketing Campaigns

@@ -81,6 +81,7 @@ function getAdminNavItems(accountIndustry) {
     { name: 'Receipts', href: '/dashboard/receipts', icon: HiReceiptRefund },
     { divider: true },
     { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
+    { name: 'Timesheets', href: '/dashboard/timesheets', icon: HiClock },
     { name: 'Apps', href: '/dashboard/apps', icon: HiViewGrid }
   );
   return items;
@@ -119,6 +120,7 @@ function getMemberNavItems(memberAccess, accountIndustry) {
     { name: contractsTerm, href: '/dashboard/contracts', icon: HiClipboardList },
     { divider: true },
     { name: tasksTerm, href: '/dashboard/tasks', icon: HiViewList },
+    { name: 'Timesheets', href: '/dashboard/timesheets', icon: HiClock },
   ];
   // Show all items when access config not yet loaded or empty (avoid stripped nav before API returns)
   if (memberAccess == null || (typeof memberAccess === 'object' && Object.keys(memberAccess).length === 0)) return all;

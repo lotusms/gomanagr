@@ -13,7 +13,7 @@ const ALLOWED_USER_ID_FOR_DEV_TOGGLE = 'd5107c55-56d1-480d-9274-30dd2d66665f';
 /**
  * User avatar button and dropdown menu (My Account, Settings, Logout).
  * @param {Object} props
- * @param {Object} [props.userAccount] - User account data (companyLogo, nameView, firstName, lastName)
+ * @param {Object} [props.userAccount] - User account data (companyLogo, photoUrl, pictureUrl, nameView, firstName, lastName)
  * @param {Object} [props.previewAccount] - Preview overrides (e.g. from account form)
  * @param {Object} [props.currentUser] - Auth user (email)
  * @param {Object} [props.organization] - Organization data (logo_url)
@@ -41,13 +41,28 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
   };
 
   const account = previewAccount ? { ...userAccount, ...previewAccount } : userAccount;
-  const rawOrgLogo = organization?.logo_url;
-  const rawUserLogo = account?.companyLogo;
+
+  const trimUrl = (v) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v).trim();
+    return s.length > 0 ? s : '';
+  };
+
+  const orgLogoUrl = trimUrl(organization?.logo_url);
+  /** Personal images for the signed-in user (profile / team photo / registration logo). */
+  const personalPhotoUrl = trimUrl(account?.photoUrl || account?.pictureUrl || account?.companyLogo);
+  const companyLogoOnly = trimUrl(account?.companyLogo);
+
+  const memberRole = organization?.membership?.role;
+  const isTeamMember = isMemberRole(memberRole);
+
   let logoUrl = '';
-  if (rawOrgLogo !== null && rawOrgLogo !== undefined) {
-    logoUrl = String(rawOrgLogo).trim();
-  } else if (rawUserLogo !== null && rawUserLogo !== undefined) {
-    logoUrl = String(rawUserLogo).trim();
+  if (isTeamMember) {
+    // Members: show org branding only when they have no profile or personal image yet.
+    logoUrl = personalPhotoUrl || orgLogoUrl;
+  } else {
+    // Owners/admins: org logo in the header when set, else their company/registration logo.
+    logoUrl = orgLogoUrl || companyLogoOnly;
   }
   const displayName = getDisplayName(account, currentUser?.email ?? '');
   const firstName = (account?.firstName ?? '').trim();
@@ -59,8 +74,6 @@ export default function UserMenu({ userAccount, previewAccount, currentUser, org
   const shouldShowAvatar = headerReady && accountLoaded;
   const shouldShowInitials = accountLoaded && !hasLogo;
 
-  const memberRole = organization?.membership?.role;
-  const isTeamMember = isMemberRole(memberRole);
   const isAdmin = isAdminRole(memberRole);
   const isSuperAdmin = isOwnerRole(memberRole);
   const isDeveloper = isDeveloperRole(memberRole);

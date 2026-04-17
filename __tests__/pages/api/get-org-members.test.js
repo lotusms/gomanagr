@@ -34,6 +34,16 @@ describe('get-org-members API', () => {
     jest.clearAllMocks();
     orgMembersCallCount = 0;
     mockFrom.mockImplementation((t) => {
+      if (t === 'user_profiles') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () =>
+                Promise.resolve({ data: { team_members: [] }, error: null }),
+            }),
+          }),
+        };
+      }
       if (t === 'org_members') {
         const n = orgMembersCallCount++;
         if (n === 0) {
@@ -46,10 +56,10 @@ describe('get-org-members API', () => {
                       data: { role: 'admin' },
                       error: null,
                     }),
+                }),
               }),
             }),
-          })
-        };
+          };
         }
         return {
           select: () => ({
@@ -61,14 +71,20 @@ describe('get-org-members API', () => {
                       {
                         user_id: 'u1',
                         role: 'admin',
-                        user: { id: 'u1', email: 'admin@test.com' },
+                        user: {
+                          id: 'u1',
+                          email: 'admin@test.com',
+                          first_name: 'Admin',
+                          last_name: 'User',
+                          profile: {},
+                        },
                       },
                     ],
                     error: null,
                   }),
+              }),
             }),
           }),
-        })
         };
       }
       return {};
@@ -196,5 +212,7 @@ describe('get-org-members API', () => {
     expect(res.json.mock.calls[0][0].members).toHaveLength(1);
     expect(res.json.mock.calls[0][0].members[0].user_id).toBe('u1');
     expect(res.json.mock.calls[0][0].members[0].user.email).toBe('admin@test.com');
+    expect(res.json.mock.calls[0][0].members[0].displayName).toBe('Admin User');
+    expect(res.json.mock.calls[0][0].members[0].photoUrl).toBe('');
   });
 });

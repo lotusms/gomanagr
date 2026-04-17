@@ -42,7 +42,7 @@ function buildOrgMembersForSchedule() {
         eq: () => ({
           limit: () => ({
             single: () =>
-              Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+              Promise.resolve({ data: { organization_id: 'org-1', role: 'admin' }, error: null }),
           }),
         }),
       }),
@@ -206,7 +206,7 @@ describe('org-schedule-mutation API', () => {
               eq: () => ({
                 limit: () => ({
                   single: () =>
-                    Promise.resolve({ data: { organization_id: 'org-1' }, error: null }),
+                    Promise.resolve({ data: { organization_id: 'org-1', role: 'member' }, error: null }),
                 }),
               }),
             }),
@@ -243,6 +243,21 @@ describe('org-schedule-mutation API', () => {
     await handler({
       method: 'POST',
       body: { userId: 'admin-1', action: 'save', appointment: { id: 'apt2', title: 'Meeting' } },
+    }, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true });
+  });
+
+  it('returns 200 ok when any org admin saves (not only the profile owner row user)', async () => {
+    const handler = (await import('@/pages/api/org-schedule-mutation')).default;
+    const res = mockRes();
+    await handler({
+      method: 'POST',
+      body: {
+        userId: 'promoted-admin-2',
+        action: 'save',
+        appointment: { id: 'apt-new', title: 'Shift' },
+      },
     }, res);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ ok: true });

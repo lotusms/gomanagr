@@ -10,6 +10,8 @@ import DashboardHeaderLocalWeather from '@/components/layouts/DashboardHeaderLoc
 import UserMenu from '@/components/layouts/UserMenu';
 import DashboardSidebar from '@/components/layouts/DashboardSidebar';
 import { PATH_TO_SECTION } from '@/config/teamMemberAccess';
+import AIAgentChat from '@/components/ai/AIAgentChat';
+import { MdAutoAwesome } from 'react-icons/md';
 
 const SIDEBAR_STORAGE_KEY = 'gomanagr-sidebar-open';
 const MD_BREAKPOINT = 768;
@@ -54,6 +56,7 @@ export default function DashboardLayout({ children }) {
   const { account: userAccount, preview: previewAccount, setAccount, setPreview, loading: accountLoading } = useUserAccount();
   const accountLoaded = !accountLoading;
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
+  const [aiChatCollapsed, setAiChatCollapsed] = useState(true);
   const [organization, setOrganization] = useState(null);
   const [orgLoaded, setOrgLoaded] = useState(false);
   const [orgFetchFailed, setOrgFetchFailed] = useState(false);
@@ -267,6 +270,26 @@ export default function DashboardLayout({ children }) {
           <div className="p-4 sm:p-6 lg:p-8">{children}</div>
         </main>
       </div>
+
+      {router.pathname !== '/dashboard/ai-agent' && (
+        <div className="fixed bottom-5 right-5 z-[60] hidden md:block">
+          {aiChatCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setAiChatCollapsed(false)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-600 hover:bg-primary-700 text-white shadow-lg"
+              title="Open Hermes"
+            >
+              <MdAutoAwesome />
+              <span className="text-sm font-medium">Hermes</span>
+            </button>
+          ) : (
+            <div className="w-[360px] max-w-[calc(100vw-2rem)]">
+              <AIAgentChat compact showExpand onCollapse={() => setAiChatCollapsed(true)} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

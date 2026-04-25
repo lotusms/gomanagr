@@ -1,13 +1,66 @@
 import PublicLayout from '@/components/layouts/PublicLayout';
 import { useAuth } from '@/lib/AuthContext';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons';
-import { FaCalendarAlt, FaFolderOpen } from 'react-icons/fa';
+import { useEffect, useState } from 'react';
+import { FaCalendarAlt, FaBriefcase } from 'react-icons/fa';
 import { MdAutoAwesome } from 'react-icons/md';
 import { HiLightningBolt } from 'react-icons/hi';
 import { FaChartBar } from 'react-icons/fa';
 
+const FEATURE_DEMOS = [
+  {
+    key: 'operations',
+    name: 'Operations Hub',
+    icon: FaBriefcase,
+    image: '/images/dashboard1.png',
+    demoIdea: 'Manage clients, projects, and daily operations from one centralized workspace designed for team visibility and execution.',
+  },
+  {
+    key: 'scheduling',
+    name: 'Scheduling',
+    icon: FaCalendarAlt,
+    image: '/images/schedule.png',
+    demoIdea: 'Plan shifts with confidence using real-time availability, conflict prevention, and schedule visibility across your team.',
+  },
+  {
+    key: 'ai-agent',
+    name: 'AI Agent',
+    icon: MdAutoAwesome,
+    image: '/images/hermes.png',
+    demoIdea: 'Leverage AI-assisted workflows directly in the dashboard to streamline decisions, prioritization, and task execution.',
+  },
+  {
+    key: 'automation',
+    name: 'Automation',
+    icon: HiLightningBolt,
+    image: '/images/invoices.png',
+    demoIdea: 'Automate invoicing and recurring processes to reduce manual follow-up, improve consistency, and save operational time.',
+  },
+  {
+    key: 'insights',
+    name: 'Insights',
+    icon: FaChartBar,
+    image: '/images/insights.png',
+    demoIdea: 'Monitor business performance with live metrics, trend analysis, and decision-ready insights in one place.',
+  },
+];
+
 export default function LandingPage() {
   const { currentUser, loading } = useAuth();
+  const [activeDemoKey, setActiveDemoKey] = useState(FEATURE_DEMOS[0].key);
+  const activeDemo = FEATURE_DEMOS.find((item) => item.key === activeDemoKey) || FEATURE_DEMOS[0];
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setActiveDemoKey((currentKey) => {
+        const currentIndex = FEATURE_DEMOS.findIndex((item) => item.key === currentKey);
+        const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % FEATURE_DEMOS.length : 0;
+        return FEATURE_DEMOS[nextIndex].key;
+      });
+    }, 3000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   if (loading) {
     return (
@@ -33,13 +86,13 @@ export default function LandingPage() {
             <span className="text-primary-200">for modern organizations.</span>
           </h1>
           <p className="text-xl md:text-2xl text-primary-100 mb-10 max-w-3xl mx-auto">
-            GoManagr unifies client management, staff coordination, project tracking, and scheduling, and more in one platform.
+            GoManagr unifies client management, staff coordination, project tracking, scheduling, and more in one platform, with the flexibility to adapt to most industries.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <PrimaryButton href="/signup">
-              Request a demo
+            <PrimaryButton asChild>
+              <a href="mailto:support@gomanagr.com">Request a demo</a>
             </PrimaryButton>
             <SecondaryButton href="/signup">
               Start free trial
@@ -49,29 +102,30 @@ export default function LandingPage() {
       </section>
 
       {/* Feature Highlight Section */}
-      <section className="relative -mt-20 px-4 sm:px-6 lg:px-8">
+      <section id="features" className="relative -mt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-              {[
-                { name: 'Organization', icon: FaFolderOpen },
-                { name: 'Scheduling', icon: FaCalendarAlt },
-                { name: 'AI Agent', icon: MdAutoAwesome },
-                { name: 'Automation', icon: HiLightningBolt },
-                { name: 'Insights', icon: FaChartBar },
-              ].map((feature, index) => {
+              {FEATURE_DEMOS.map((feature) => {
                 const IconComponent = feature.icon;
+                const isActive = activeDemoKey === feature.key;
                 return (
-                  <div
+                  <button
                     key={feature.name}
-                    className="text-center cursor-pointer group"
+                    type="button"
+                    onClick={() => setActiveDemoKey(feature.key)}
+                    className={`text-center cursor-pointer group rounded-xl p-2 transition-all ${
+                      isActive ? 'bg-white/10 ring-1 ring-white/30' : 'hover:bg-white/5'
+                    }`}
                   >
                     <div className="text-4xl mb-2 group-hover:scale-110 transition-transform flex items-center justify-center text-white">
                       <IconComponent />
                     </div>
                     <div className="text-white font-medium mb-2">{feature.name}</div>
-                    <div className="h-1 bg-secondary-500 rounded-full mx-auto w-12 group-hover:w-16 transition-all opacity-90"></div>
-                  </div>
+                    <div className={`h-1 rounded-full mx-auto transition-all opacity-90 ${
+                      isActive ? 'bg-secondary-500 w-16' : 'bg-secondary-500/80 w-12 group-hover:w-16'
+                    }`}></div>
+                  </button>
                 );
               })}
             </div>
@@ -82,128 +136,21 @@ export default function LandingPage() {
       {/* Product Mockup Section */}
       <section className="mt-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            {/* Mock Dashboard Interface */}
-            <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <span className="text-gray-700 dark:text-gray-300 font-semibold">Open</span>
-                <div className="flex space-x-2">
-                  <button className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">🔽</button>
-                  <button className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">🔍</button>
-                </div>
-              </div>
+          <div className="bg-white/95 dark:bg-gray-900/90 rounded-2xl shadow-2xl overflow-hidden border border-white/20">
+            <div className="px-6 py-5 border-b border-gray-200/70 dark:border-gray-700/70 bg-gray-50/70 dark:bg-gray-800/60">
+              <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                {activeDemo.name} Demo
+              </h3>
+              <p className="mt-1 text-sm md:text-base text-gray-600 dark:text-gray-300">
+                {activeDemo.demoIdea}
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
-              {/* Left Panel - Conversation List */}
-              <div className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
-                <div className="space-y-3">
-                  {[
-                    {
-                      name: 'Kim Thompson',
-                      subject: 'Loyalty Discount?',
-                      preview: 'Hi there, I was wondering if...',
-                      tag: 'VIP',
-                      tagColor: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
-                      time: 'NOW',
-                    },
-                    {
-                      name: 'Lance Hodge',
-                      subject: 'Change of address for order',
-                      preview: 'Hi, I realized I accidentally...',
-                      tag: 'Urgent',
-                      tagColor: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
-                      time: '3h',
-                    },
-                    {
-                      name: 'Clara Baker',
-                      subject: "Can't pair to app",
-                      preview: '',
-                      tag: null,
-                      time: '5h',
-                    },
-                  ].map((conversation, index) => (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-lg cursor-pointer transition ${
-                        index === 0 ? 'bg-primary-50 dark:bg-primary-900/20 border-2 border-primary-200 dark:border-primary-600' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-8 h-8 bg-primary-200 dark:bg-primary-800 rounded-full flex items-center justify-center text-primary-800 dark:text-primary-200 font-semibold text-sm">
-                            {conversation.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                              {conversation.name}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{conversation.time}</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-1">
-                        {conversation.subject}
-                      </div>
-                      {conversation.preview && (
-                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">{conversation.preview}</div>
-                      )}
-                      {conversation.tag && (
-                        <span
-                          className={`inline-block px-2 py-1 rounded text-xs font-medium ${conversation.tagColor}`}
-                        >
-                          {conversation.tag}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Panel - Conversation Detail */}
-              <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Loyalty Discount?</h2>
-                    <div className="flex space-x-2">
-                      <SecondaryButton className="!rounded-lg text-sm min-w-0 px-4 py-2">
-                        Assign
-                      </SecondaryButton>
-                      <PrimaryButton className="!rounded-lg text-sm min-w-0 px-4 py-2">
-                        Open
-                      </PrimaryButton>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                    <span>Support Tier 1</span>
-                    <span>•</span>
-                    <span>SU-2132</span>
-                    <span>•</span>
-                    <span>1</span>
-                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded text-xs font-medium">
-                      VIP
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                  <div className="flex items-start space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-primary-200 dark:bg-primary-800 rounded-full flex items-center justify-center text-primary-800 dark:text-primary-200 font-semibold">
-                      KT
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span className="font-semibold text-gray-900 dark:text-white">Kim Thompson</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-sm">&lt;kim.thompson@gmail.com&gt;</span>
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">To: GoManagr Customer Support</div>
-                      <div className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                        Hi there, I was wondering if there was any long-time customer discount? I wanted to order another bike and was just curious if there was anything you could do. Huge fan and have told tons of friends about you guys.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="p-4 md:p-6 bg-slate-100 dark:bg-slate-900">
+              <img
+                src={activeDemo.image}
+                alt={`${activeDemo.name} feature demo`}
+                className="w-full h-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg"
+              />
             </div>
           </div>
         </div>

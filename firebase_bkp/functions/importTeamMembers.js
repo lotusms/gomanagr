@@ -15,6 +15,9 @@ const { initializeApp, getApps, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { readFileSync, existsSync } = require('fs');
 const { join } = require('path');
+const { loadFirebaseServiceAccount } = require('../../scripts/lib/loadFirebaseServiceAccount');
+
+const REPO_ROOT = join(__dirname, '../..');
 
 // Get command-line arguments
 const args = process.argv.slice(2);
@@ -40,15 +43,11 @@ if (!jsonFilePath) {
 // Initialize Firebase Admin
 let serviceAccount = null;
 
-// Try to load service account from default location
 try {
-  const defaultPath = join(__dirname, '..', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
-  const fileContent = readFileSync(defaultPath, 'utf8');
-  serviceAccount = JSON.parse(fileContent);
+  serviceAccount = loadFirebaseServiceAccount(REPO_ROOT);
   console.log('✅ Loaded Firebase Admin credentials');
 } catch (error) {
   console.error('❌ Failed to load Firebase Admin credentials:', error.message);
-  console.error('Please ensure the service account JSON file exists in the project root');
   process.exit(1);
 }
 

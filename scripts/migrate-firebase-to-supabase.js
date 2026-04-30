@@ -10,7 +10,7 @@
  * 4. Imports into Supabase user_account table
  * 
  * Prerequisites:
- * - Firebase Admin SDK credentials configured
+ * - Firebase Admin SDK credentials (see scripts/lib/loadFirebaseServiceAccount.js: env path or firebase_bkp/service-account.json)
  * - Supabase project URL and service_role key in .env.local
  * - Supabase user_account table created (run migration first)
  * 
@@ -26,6 +26,7 @@ const { getAuth } = require('firebase-admin/auth');
 const { createClient } = require('@supabase/supabase-js');
 const { readFileSync, existsSync } = require('fs');
 const { join } = require('path');
+const { loadFirebaseServiceAccount } = require('./lib/loadFirebaseServiceAccount');
 
 const envPath = join(__dirname, '..', '.env.local');
 if (existsSync(envPath)) {
@@ -47,26 +48,13 @@ const USER_ID_FILTER = process.argv.includes('--user-id')
   ? process.argv[process.argv.indexOf('--user-id') + 1]
   : null;
 
+const repoRoot = join(__dirname, '..');
 let serviceAccount = null;
 try {
-  const backupPath = join(__dirname, '..', 'firebase_bkp', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
-  const rootPath = join(__dirname, '..', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
-  
-  let filePath;
-  if (existsSync(backupPath)) {
-    filePath = backupPath;
-  } else if (existsSync(rootPath)) {
-    filePath = rootPath;
-  } else {
-    throw new Error('Service account file not found in firebase_bkp/ or root');
-  }
-  
-  const fileContent = readFileSync(filePath, 'utf8');
-  serviceAccount = JSON.parse(fileContent);
+  serviceAccount = loadFirebaseServiceAccount(repoRoot);
   console.log('✅ Loaded Firebase Admin credentials');
 } catch (error) {
   console.error('❌ Failed to load Firebase Admin credentials:', error.message);
-  console.error('Please ensure the service account JSON file exists in firebase_bkp/ or root directory');
   process.exit(1);
 }
 

@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DocumentsFilesSection, { DOC_TYPES } from '@/components/clients/add-client/DocumentsFilesSection';
 
@@ -630,5 +630,425 @@ describe('DocumentsFilesSection', () => {
     expect(screen.getByDisplayValue('https://site.com')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /^Add$/i }));
     expect(onOnlineResourcesChange).toHaveBeenCalledWith(['https://site.com', '']);
+  });
+
+  it('legacy mode: proposals tab onEdit and onRemove call onProposalsChange', async () => {
+    const onProposalsChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={['Alpha']}
+        invoices={[]}
+        attachments={[]}
+        onlineResources={[]}
+        onContractsChange={() => {}}
+        onProposalsChange={onProposalsChange}
+        onInvoicesChange={() => {}}
+        onAttachmentsChange={() => {}}
+        onOnlineResourcesChange={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByText('proposal'));
+    await userEvent.type(screen.getByDisplayValue('Alpha'), '!');
+    expect(onProposalsChange).toHaveBeenCalledWith(['Alpha!']);
+    await userEvent.click(screen.getByRole('button', { name: /Remove entry/i }));
+    expect(onProposalsChange).toHaveBeenCalledWith([]);
+  });
+
+  it('legacy mode: invoices tab onEdit and onRemove call onInvoicesChange', async () => {
+    const onInvoicesChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={[]}
+        invoices={['INV-A']}
+        attachments={[]}
+        onlineResources={[]}
+        onContractsChange={() => {}}
+        onProposalsChange={() => {}}
+        onInvoicesChange={onInvoicesChange}
+        onAttachmentsChange={() => {}}
+        onOnlineResourcesChange={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByText('invoice'));
+    await userEvent.type(screen.getByDisplayValue('INV-A'), 'x');
+    expect(onInvoicesChange).toHaveBeenCalledWith(['INV-Ax']);
+    await userEvent.click(screen.getByRole('button', { name: /Remove entry/i }));
+    expect(onInvoicesChange).toHaveBeenCalledWith([]);
+  });
+
+  it('legacy mode: attachments tab onEdit and onRemove call onAttachmentsChange', async () => {
+    const onAttachmentsChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={[]}
+        invoices={[]}
+        attachments={['file.txt']}
+        onlineResources={[]}
+        onContractsChange={() => {}}
+        onProposalsChange={() => {}}
+        onInvoicesChange={() => {}}
+        onAttachmentsChange={onAttachmentsChange}
+        onOnlineResourcesChange={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByText('Attachments'));
+    const attInput = screen.getByDisplayValue('file.txt');
+    fireEvent.change(attInput, { target: { value: 'file-renamed.txt' } });
+    expect(onAttachmentsChange).toHaveBeenLastCalledWith(['file-renamed.txt']);
+    await userEvent.click(screen.getByRole('button', { name: /Remove entry/i }));
+    expect(onAttachmentsChange).toHaveBeenCalledWith([]);
+  });
+
+  it('legacy mode: onlineResources tab onEdit and onRemove call onOnlineResourcesChange', async () => {
+    const onOnlineResourcesChange = jest.fn();
+    render(
+      <DocumentsFilesSection
+        contracts={[]}
+        proposals={[]}
+        invoices={[]}
+        attachments={[]}
+        onlineResources={['https://a.com']}
+        onContractsChange={() => {}}
+        onProposalsChange={() => {}}
+        onInvoicesChange={() => {}}
+        onAttachmentsChange={() => {}}
+        onOnlineResourcesChange={onOnlineResourcesChange}
+      />
+    );
+    await userEvent.click(screen.getByText('Online Resources'));
+    const urlInput = screen.getByDisplayValue('https://a.com');
+    fireEvent.change(urlInput, { target: { value: 'https://a.com/portal' } });
+    expect(onOnlineResourcesChange).toHaveBeenLastCalledWith(['https://a.com/portal']);
+    await userEvent.click(screen.getByRole('button', { name: /Remove entry/i }));
+    expect(onOnlineResourcesChange).toHaveBeenCalledWith([]);
+  });
+
+  it('updates selected section when initialSection changes (legacy)', () => {
+    const noop = () => {};
+    const { rerender } = render(
+      <DocumentsFilesSection
+        initialSection="contracts"
+        contracts={[]}
+        proposals={['Only']}
+        invoices={[]}
+        attachments={[]}
+        onlineResources={[]}
+        onContractsChange={noop}
+        onProposalsChange={noop}
+        onInvoicesChange={noop}
+        onAttachmentsChange={noop}
+        onOnlineResourcesChange={noop}
+      />
+    );
+    expect(screen.getByText('No entries yet')).toBeInTheDocument();
+    rerender(
+      <DocumentsFilesSection
+        initialSection="proposals"
+        contracts={[]}
+        proposals={['Only']}
+        invoices={[]}
+        attachments={[]}
+        onlineResources={[]}
+        onContractsChange={noop}
+        onProposalsChange={noop}
+        onInvoicesChange={noop}
+        onAttachmentsChange={noop}
+        onOnlineResourcesChange={noop}
+      />
+    );
+    expect(screen.getByDisplayValue('Only')).toBeInTheDocument();
+  });
+
+  it('ProposalsBlock: get-client-proposals reject shows empty state', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-proposals')) return Promise.reject(new Error('fail'));
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('proposal'));
+    await waitFor(() => expect(screen.getByText(/No proposal yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('ProposalsBlock: delete confirm removes proposal on API success', async () => {
+    const proposals = [{ id: 'p1', proposal_title: 'P Title', proposal_number: 'PR-1', status: 'draft' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-proposals')) return Promise.resolve({ ok: true, json: async () => ({ proposals }) });
+      if (url?.includes?.('delete-client-proposal')) return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('proposal'));
+    await waitFor(() => expect(screen.getByText('P Title')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Delete proposal/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.getByText(/No proposal yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('ProposalsBlock: delete API failure closes dialog and keeps list', async () => {
+    const proposals = [{ id: 'p1', proposal_title: 'Keep', proposal_number: 'PR-1', status: 'draft' }];
+    const origFetch = globalThis.fetch;
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-proposals')) return Promise.resolve({ ok: true, json: async () => ({ proposals }) });
+      if (url?.includes?.('delete-client-proposal')) return Promise.resolve({ ok: false, json: async () => ({ error: 'nope' }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('proposal'));
+    await waitFor(() => expect(screen.getByText('Keep')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Delete proposal/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('Keep')).toBeInTheDocument();
+    globalThis.fetch = origFetch;
+    consoleSpy.mockRestore();
+  });
+
+  it('ProposalsBlock: Add proposal navigates to new URL when list empty', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-proposals')) return Promise.resolve({ ok: true, json: async () => ({ proposals: [] }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('proposal'));
+    await waitFor(() => expect(screen.getByText(/No proposal yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Add proposal/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/proposals/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('InvoicesBlock: get-client-invoices reject shows empty state', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.reject(new Error('fail'));
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText(/No invoice yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('InvoicesBlock: paid invoice card navigates to receipts', async () => {
+    const invoices = [{ id: 'inv-paid', invoice_number: 'I-1', invoice_title: 'Done', status: 'paid', total: '10' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.resolve({ ok: true, json: async () => ({ invoices }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText('Done')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Done').closest('[role="button"]'));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/receipts?open=inv-paid');
+    globalThis.fetch = origFetch;
+  });
+
+  it('InvoicesBlock: partially_paid navigates to receipts', async () => {
+    const invoices = [{ id: 'inv-p', invoice_number: 'I-2', invoice_title: 'Part', status: 'partially_paid', total: '5' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.resolve({ ok: true, json: async () => ({ invoices }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText('Part')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Part').closest('[role="button"]'));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/receipts?open=inv-p');
+    globalThis.fetch = origFetch;
+  });
+
+  it('InvoicesBlock: draft invoice card navigates to edit', async () => {
+    const invoices = [{ id: 'inv-d', invoice_number: 'I-3', invoice_title: 'Draft inv', status: 'draft', total: '1' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.resolve({ ok: true, json: async () => ({ invoices }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText('Draft inv')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Draft inv').closest('[role="button"]'));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/invoices/inv-d/edit');
+    globalThis.fetch = origFetch;
+  });
+
+  it('InvoicesBlock: delete confirm removes invoice on API success', async () => {
+    const invoices = [{ id: 'ix', invoice_number: 'N1', invoice_title: 'T1', status: 'draft' }];
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.resolve({ ok: true, json: async () => ({ invoices }) });
+      if (url?.includes?.('delete-client-invoice')) return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText('T1')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Delete invoice/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.getByText(/No invoice yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('InvoicesBlock: delete API failure closes dialog', async () => {
+    const invoices = [{ id: 'ix', invoice_number: 'N1', invoice_title: 'Keep inv', status: 'draft' }];
+    const origFetch = globalThis.fetch;
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.resolve({ ok: true, json: async () => ({ invoices }) });
+      if (url?.includes?.('delete-client-invoice')) return Promise.resolve({ ok: false, json: async () => ({ error: 'bad' }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText('Keep inv')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Delete invoice/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('Keep inv')).toBeInTheDocument();
+    globalThis.fetch = origFetch;
+    consoleSpy.mockRestore();
+  });
+
+  it('InvoicesBlock: Add invoice navigates when list empty', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-invoices')) return Promise.resolve({ ok: true, json: async () => ({ invoices: [] }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('invoice'));
+    await waitFor(() => expect(screen.getByText(/No invoice yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Add invoice/i }));
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/clients/c1/invoices/new');
+    globalThis.fetch = origFetch;
+  });
+
+  it('AttachmentsBlock: get-client-attachments reject shows empty state', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.reject(new Error('net'));
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Attachments'));
+    await waitFor(() => expect(screen.getByText(/No attachments yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('AttachmentsBlock: delete API failure closes dialog', async () => {
+    const attachments = [{ id: 'a1', name: 'Keep.pdf', file_name: 'Keep.pdf' }];
+    const origFetch = globalThis.fetch;
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments }) });
+      if (url?.includes?.('delete-client-attachment')) return Promise.resolve({ ok: false, json: async () => ({ error: 'x' }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Attachments'));
+    await waitFor(() => expect(screen.getByText('Keep.pdf')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Delete attachment/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('Keep.pdf')).toBeInTheDocument();
+    globalThis.fetch = origFetch;
+    consoleSpy.mockRestore();
+  });
+
+  it('OnlineResourcesBlock: get-client-online-resources reject shows empty state', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-online-resources')) return Promise.reject(new Error('fail'));
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Online Resources'));
+    await waitFor(() => expect(screen.getByText(/No online resources yet/)).toBeInTheDocument());
+    globalThis.fetch = origFetch;
+  });
+
+  it('OnlineResourcesBlock: delete API failure closes dialog', async () => {
+    const resources = [{ id: 'r1', url: 'https://keep.com', label: 'K' }];
+    const origFetch = globalThis.fetch;
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    globalThis.fetch = jest.fn().mockImplementation((url) => {
+      if (url?.includes?.('get-client-contracts')) return Promise.resolve({ ok: true, json: async () => ({ contracts: [] }) });
+      if (url?.includes?.('get-client-attachments')) return Promise.resolve({ ok: true, json: async () => ({ attachments: [] }) });
+      if (url?.includes?.('get-client-online-resources')) return Promise.resolve({ ok: true, json: async () => ({ resources }) });
+      if (url?.includes?.('delete-client-online-resource')) return Promise.resolve({ ok: false, json: async () => ({ error: 'no' }) });
+      return Promise.reject(new Error('unknown'));
+    });
+    render(<DocumentsFilesSection clientId="c1" userId="u1" organizationId={null} />);
+    await waitFor(() => expect(screen.getByText(/No contract yet/)).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Online Resources'));
+    await waitFor(() => expect(screen.getByText(/https:\/\/keep\.com|K/)).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: /Delete resource/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    await userEvent.type(screen.getByPlaceholderText('delete'), 'delete');
+    await userEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText(/https:\/\/keep\.com|K/)).toBeInTheDocument();
+    globalThis.fetch = origFetch;
+    consoleSpy.mockRestore();
   });
 });

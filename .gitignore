@@ -29,6 +29,10 @@ pnpm-debug.log*
 .env*.local
 .env
 
+# Firebase Admin / GCP service account keys (never commit)
+firebase_bkp/gomanagr-*.json
+firebase_bkp/service-account.json
+
 # vercel
 .vercel
 

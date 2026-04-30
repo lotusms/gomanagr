@@ -5,8 +5,8 @@
 
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { join, isAbsolute } from 'path';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
@@ -21,27 +21,30 @@ if (!getApps().length) {
     }
   }
   
-  // Option 2: Read from file path in environment variable
-  if (!serviceAccount && process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+  // Option 2: Path from FIREBASE_SERVICE_ACCOUNT_PATH or GOOGLE_APPLICATION_CREDENTIALS
+  const pathFromEnv =
+    !serviceAccount &&
+    (process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS);
+  if (pathFromEnv) {
     try {
-      const filePath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH.startsWith('/')
-        ? process.env.FIREBASE_SERVICE_ACCOUNT_PATH
-        : join(process.cwd(), process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+      const raw = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      const filePath = isAbsolute(raw) ? raw : join(process.cwd(), raw);
       const fileContent = readFileSync(filePath, 'utf8');
       serviceAccount = JSON.parse(fileContent);
     } catch (error) {
       console.error('Failed to read service account file from path:', error);
     }
   }
-  
-  // Option 3: Try default file name in root directory
+
+  // Option 3: Gitignored local file (never commit real keys)
   if (!serviceAccount) {
     try {
-      const defaultPath = join(process.cwd(), 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
-      const fileContent = readFileSync(defaultPath, 'utf8');
-      serviceAccount = JSON.parse(fileContent);
-    } catch (error) {
-      // File doesn't exist or can't be read - that's okay, try other methods
+      const localPath = join(process.cwd(), 'firebase_bkp', 'service-account.json');
+      if (existsSync(localPath)) {
+        serviceAccount = JSON.parse(readFileSync(localPath, 'utf8'));
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -63,7 +66,10 @@ if (!getApps().length) {
       }
     } catch (error) {
       console.error('❌ Failed to initialize Firebase Admin:', error.message);
-      console.error('Please ensure service account JSON file exists in root directory or set FIREBASE_SERVICE_ACCOUNT_KEY/FIREBASE_SERVICE_ACCOUNT_PATH');
+      console.error(
+        'Set FIREBASE_SERVICE_ACCOUNT_KEY, FIREBASE_SERVICE_ACCOUNT_PATH or GOOGLE_APPLICATION_CREDENTIALS, ' +
+          'or add firebase_bkp/service-account.json (gitignored).'
+      );
     }
   }
 }

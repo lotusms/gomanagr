@@ -7,27 +7,14 @@
 const { initializeApp, getApps, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
-const { readFileSync } = require('fs');
 const { join } = require('path');
+const { loadFirebaseServiceAccount } = require('./lib/loadFirebaseServiceAccount');
 require('dotenv').config({ path: join(__dirname, '..', '.env.local') });
 
+const repoRoot = join(__dirname, '..');
 let serviceAccount = null;
 try {
-  const { existsSync } = require('fs');
-  const backupPath = join(__dirname, '..', 'firebase_bkp', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
-  const rootPath = join(__dirname, '..', 'gomanagr-845b4-firebase-adminsdk-fbsvc-ad93840423.json');
-  
-  let filePath;
-  if (existsSync(backupPath)) {
-    filePath = backupPath;
-  } else if (existsSync(rootPath)) {
-    filePath = rootPath;
-  } else {
-    throw new Error('Service account file not found');
-  }
-  
-  const fileContent = readFileSync(filePath, 'utf8');
-  serviceAccount = JSON.parse(fileContent);
+  serviceAccount = loadFirebaseServiceAccount(repoRoot);
 } catch (error) {
   console.error('❌ Failed to load Firebase Admin credentials:', error.message);
   process.exit(1);
